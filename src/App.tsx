@@ -16,6 +16,7 @@ import CandidateArchive from './pages/CandidateArchive';
 import CandidateProfile from './pages/CandidateProfile';
 import UploadCV from './pages/UploadCV';
 import OpenRecruitment from './pages/OpenRecruitment';
+import PublicCareer from './pages/PublicCareer';
 import { Toaster } from './components/ui/Toaster';
 import RealtimeNotifications from './components/RealtimeNotifications';
 
@@ -44,32 +45,40 @@ export default function App() {
     );
   }
 
-  if (!session) {
-    return <Login />;
-  }
-
   return (
     <BrowserRouter>
       <div className="min-h-screen font-sans text-slate-900 bg-transparent">
-        <DashboardLayout user={session.user}>
-          <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/open-recruitment" element={<OpenRecruitment />} />
-            <Route path="/screening" element={<Screening />} />
-            <Route path="/candidates/:id" element={<CandidateProfile />} />
-            <Route path="/funnel" element={<RecruitmentFunnel />} />
-            <Route path="/psikotes" element={<PsikotesSchedules />} />
-            <Route path="/interview" element={<InterviewSchedules />} />
-            <Route path="/logs" element={<Logs />} />
-            <Route path="/archive" element={<CandidateArchive />} />
-            <Route path="/upload-cv" element={<UploadCV />} />
-            <Route path="/templates" element={<Templates />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </DashboardLayout>
-        <RealtimeNotifications />
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/career" element={<PublicCareer />} />
+
+          {/* Protected Routes */}
+          <Route path="/*" element={
+            !session ? (
+              <Login />
+            ) : (
+              <DashboardLayout user={session.user}>
+                <Routes>
+                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/open-recruitment" element={<OpenRecruitment />} />
+                  <Route path="/screening" element={<Screening />} />
+                  <Route path="/candidates/:id" element={<CandidateProfile />} />
+                  <Route path="/funnel" element={<RecruitmentFunnel />} />
+                  <Route path="/psikotes" element={<PsikotesSchedules />} />
+                  <Route path="/interview" element={<InterviewSchedules />} />
+                  <Route path="/logs" element={<Logs />} />
+                  <Route path="/archive" element={<CandidateArchive />} />
+                  <Route path="/upload-cv" element={<UploadCV />} />
+                  <Route path="/templates" element={<Templates />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                </Routes>
+              </DashboardLayout>
+            )
+          } />
+        </Routes>
+        {session && <RealtimeNotifications />}
         <Toaster />
       </div>
     </BrowserRouter>

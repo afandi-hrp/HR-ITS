@@ -18,8 +18,9 @@ export default function Settings() {
   const [n8nWebhookUrl, setN8nWebhookUrl] = useState('');
   const [cvWebhookUrl, setCvWebhookUrl] = useState('');
   const [sheetWebhookUrl, setSheetWebhookUrl] = useState('');
+  const [otpWebhookUrl, setOtpWebhookUrl] = useState('');
   const [loading, setLoading] = useState(false);
-  const [testingWebhook, setTestingWebhook] = useState<'email' | 'cv' | 'sheet' | null>(null);
+  const [testingWebhook, setTestingWebhook] = useState<'email' | 'cv' | 'sheet' | 'otp' | null>(null);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -35,6 +36,7 @@ export default function Settings() {
       setN8nWebhookUrl(user?.user_metadata.n8n_webhook_url || '');
       setCvWebhookUrl(user?.user_metadata.cv_webhook_url || '');
       setSheetWebhookUrl(user?.user_metadata.sheet_webhook_url || '');
+      setOtpWebhookUrl(user?.user_metadata.otp_webhook_url || '');
     });
   }, []);
 
@@ -55,7 +57,8 @@ export default function Settings() {
         full_name: fullName,
         n8n_webhook_url: n8nWebhookUrl.trim(),
         cv_webhook_url: cvWebhookUrl.trim(),
-        sheet_webhook_url: sheetWebhookUrl.trim()
+        sheet_webhook_url: sheetWebhookUrl.trim(),
+        otp_webhook_url: otpWebhookUrl.trim()
       }
     });
 
@@ -67,8 +70,8 @@ export default function Settings() {
     setLoading(false);
   };
 
-  const testWebhook = async (type: 'email' | 'cv' | 'sheet') => {
-    const url = type === 'email' ? n8nWebhookUrl : type === 'cv' ? cvWebhookUrl : sheetWebhookUrl;
+  const testWebhook = async (type: 'email' | 'cv' | 'sheet' | 'otp') => {
+    const url = type === 'email' ? n8nWebhookUrl : type === 'cv' ? cvWebhookUrl : type === 'sheet' ? sheetWebhookUrl : otpWebhookUrl;
     if (!url) {
       toast({ title: 'Peringatan', description: 'Silakan masukkan URL webhook terlebih dahulu.', variant: 'destructive' });
       return;
@@ -334,6 +337,28 @@ export default function Settings() {
                     >
                       {testingWebhook === 'sheet' ? <Loader2 className="animate-spin" size={12} /> : null}
                       Test Koneksi Google Sheets Webhook
+                    </button>
+                  </div>
+                  <div className="pt-4 border-t border-slate-200">
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">n8n WhatsApp OTP Webhook URL</label>
+                    <input
+                      type="url"
+                      value={otpWebhookUrl}
+                      onChange={(e) => setOtpWebhookUrl(e.target.value)}
+                      className="block w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                      placeholder="https://n8n.your-domain.com/webhook/..."
+                    />
+                    <p className="mt-2 text-xs text-slate-500 italic">
+                      URL ini akan dipicu saat kandidat meminta OTP di halaman publik (/career).
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => testWebhook('otp')}
+                      disabled={testingWebhook === 'otp'}
+                      className="mt-2 text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 disabled:opacity-50"
+                    >
+                      {testingWebhook === 'otp' ? <Loader2 className="animate-spin" size={12} /> : null}
+                      Test Koneksi OTP Webhook
                     </button>
                   </div>
                 </div>

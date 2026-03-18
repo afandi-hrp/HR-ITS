@@ -314,7 +314,7 @@ export default function Screening() {
     if (!acc[c.position]) acc[c.position] = [];
     acc[c.position].push(c);
     return acc;
-  }, {});
+  }, {} as Record<string, Candidate[]>);
 
   const topCandidatesByPosition = React.useMemo(() => {
     const grouped: Record<string, Candidate[]> = {};
@@ -467,7 +467,7 @@ export default function Screening() {
 
       {/* Candidate List */}
       <div className="space-y-8">
-        {Object.entries(groupedCandidates).map(([position, candidatesInGroup]) => (
+        {Object.entries(groupedCandidates).map(([position, candidatesInGroup]: [string, any]) => (
           <div key={position} className="space-y-4">
             <h2 className="text-xl font-bold text-slate-800 border-b border-slate-200 pb-2 flex items-center gap-3">
               {position}

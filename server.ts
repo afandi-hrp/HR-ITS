@@ -171,6 +171,76 @@ app.use((req: any, res, next) => {
     }
   });
 
+  // Feature: Trigger OTP Webhook for Public Career Page
+  app.post("/api/n8n/trigger-otp", async (req, res) => {
+    const { phone, otp } = req.body || {};
+
+    if (!phone || !otp) {
+      return res.status(400).json({ error: "Phone and OTP are required" });
+    }
+
+    try {
+      const supabaseAdmin = getSupabaseAdmin();
+      const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
+      
+      if (error || !users || users.length === 0) {
+        return res.status(500).json({ error: "Could not fetch admin settings" });
+      }
+
+      // Find the first user that has otp_webhook_url configured
+      const adminUser = users.find((u: any) => u.user_metadata?.otp_webhook_url) || users[0];
+      const webhookUrl = adminUser?.user_metadata?.otp_webhook_url;
+
+      if (!webhookUrl) {
+        return res.status(400).json({ error: "OTP Webhook URL is not configured by Admin" });
+      }
+
+      if (isLocalUrl(webhookUrl)) {
+        return res.status(400).json({ 
+          error: "Vercel (Cloud) tidak dapat mengakses n8n lokal (localhost/IP Private). Gunakan ngrok, localtunnel, atau n8n Cloud agar dapat diakses dari internet." 
+        });
+      }
+
+      console.log(`Triggering OTP webhook: ${webhookUrl}`);
+      const response = await axios.post(webhookUrl, { phone, otp }, {
+        headers: { "Content-Type": "application/json" },
+        timeout: 5000
+      });
+
+      res.json(response.data);
+    } catch (error: any) {
+      console.error("Error triggering OTP proxy:", error);
+      const status = error.response?.status || 500;
+      const data = error.response?.data || { error: error.message };
+      res.status(status).json(data);
+    }
+  });
+
+  // Feature: Get Public CV Webhook URL
+  app.get("/api/n8n/public-cv-webhook", async (req, res) => {
+    try {
+      const supabaseAdmin = getSupabaseAdmin();
+      const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
+      
+      if (error || !users || users.length === 0) {
+        return res.status(500).json({ error: "Could not fetch admin settings" });
+      }
+
+      // Find the first user that has cv_webhook_url configured
+      const adminUser = users.find((u: any) => u.user_metadata?.cv_webhook_url) || users[0];
+      const webhookUrl = adminUser?.user_metadata?.cv_webhook_url;
+
+      if (!webhookUrl) {
+        return res.status(404).json({ error: "CV Webhook URL is not configured by Admin" });
+      }
+
+      res.json({ webhookUrl });
+    } catch (error: any) {
+      console.error("Error fetching public CV webhook:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Feature: Upload CV to n8n (Multipart)
   app.post("/api/n8n/upload-cv", (req: any, res, next) => {
     if (req.body && Buffer.isBuffer(req.body)) {

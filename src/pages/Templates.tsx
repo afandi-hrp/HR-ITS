@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { EmailTemplate } from '../types';
-import { Search, Plus, Mail, Trash2, Edit2, RefreshCcw, X, Save, Loader2 } from 'lucide-react';
+import { Search, Plus, Mail, Trash2, Edit2, RefreshCcw, X, Save, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '../components/ui/use-toast';
+import { cn } from '../lib/utils';
 
 export default function Templates() {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
