@@ -17,8 +17,9 @@ export default function Settings() {
   const [fullName, setFullName] = useState('');
   const [n8nWebhookUrl, setN8nWebhookUrl] = useState('');
   const [cvWebhookUrl, setCvWebhookUrl] = useState('');
+  const [sheetWebhookUrl, setSheetWebhookUrl] = useState('');
   const [loading, setLoading] = useState(false);
-  const [testingWebhook, setTestingWebhook] = useState<'email' | 'cv' | null>(null);
+  const [testingWebhook, setTestingWebhook] = useState<'email' | 'cv' | 'sheet' | null>(null);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -33,6 +34,7 @@ export default function Settings() {
       setFullName(user?.user_metadata.full_name || '');
       setN8nWebhookUrl(user?.user_metadata.n8n_webhook_url || '');
       setCvWebhookUrl(user?.user_metadata.cv_webhook_url || '');
+      setSheetWebhookUrl(user?.user_metadata.sheet_webhook_url || '');
     });
   }, []);
 
@@ -52,7 +54,8 @@ export default function Settings() {
       data: { 
         full_name: fullName,
         n8n_webhook_url: n8nWebhookUrl.trim(),
-        cv_webhook_url: cvWebhookUrl.trim()
+        cv_webhook_url: cvWebhookUrl.trim(),
+        sheet_webhook_url: sheetWebhookUrl.trim()
       }
     });
 
@@ -64,8 +67,8 @@ export default function Settings() {
     setLoading(false);
   };
 
-  const testWebhook = async (type: 'email' | 'cv') => {
-    const url = type === 'email' ? n8nWebhookUrl : cvWebhookUrl;
+  const testWebhook = async (type: 'email' | 'cv' | 'sheet') => {
+    const url = type === 'email' ? n8nWebhookUrl : type === 'cv' ? cvWebhookUrl : sheetWebhookUrl;
     if (!url) {
       toast({ title: 'Peringatan', description: 'Silakan masukkan URL webhook terlebih dahulu.', variant: 'destructive' });
       return;
@@ -96,7 +99,7 @@ export default function Settings() {
       }
 
       if (response.ok) {
-        toast({ title: 'Berhasil', description: `Koneksi ke webhook ${type === 'email' ? 'Email' : 'CV'} berhasil!` });
+        toast({ title: 'Berhasil', description: `Koneksi ke webhook ${type === 'email' ? 'Email' : type === 'cv' ? 'CV' : 'Google Sheets'} berhasil!` });
       } else {
         toast({ 
           title: 'Gagal', 
@@ -309,6 +312,28 @@ export default function Settings() {
                     >
                       {testingWebhook === 'cv' ? <Loader2 className="animate-spin" size={12} /> : null}
                       Test Koneksi CV Webhook
+                    </button>
+                  </div>
+                  <div className="pt-4 border-t border-slate-200">
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">n8n Google Sheets Sync Webhook URL</label>
+                    <input
+                      type="url"
+                      value={sheetWebhookUrl}
+                      onChange={(e) => setSheetWebhookUrl(e.target.value)}
+                      className="block w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                      placeholder="https://n8n.your-domain.com/webhook/..."
+                    />
+                    <p className="mt-2 text-xs text-slate-500 italic">
+                      URL ini akan dipicu saat Anda menekan tombol Sync di menu Open Recruitment.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => testWebhook('sheet')}
+                      disabled={testingWebhook === 'sheet'}
+                      className="mt-2 text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 disabled:opacity-50"
+                    >
+                      {testingWebhook === 'sheet' ? <Loader2 className="animate-spin" size={12} /> : null}
+                      Test Koneksi Google Sheets Webhook
                     </button>
                   </div>
                 </div>

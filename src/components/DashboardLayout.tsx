@@ -14,7 +14,8 @@ import {
   Upload,
   BarChart3,
   CalendarDays,
-  ClipboardList
+  ClipboardList,
+  Briefcase
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
@@ -36,6 +37,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'open-recruitment', label: 'Open Recruitment', icon: Briefcase },
     { id: 'screening', label: 'Screening Awal', icon: Users },
     { id: 'funnel', label: 'Recruitment Funnel', icon: BarChart3 },
     { id: 'psikotes', label: 'Jadwal Psikotes', icon: FileText },

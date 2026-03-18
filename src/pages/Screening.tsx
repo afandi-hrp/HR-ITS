@@ -467,12 +467,20 @@ export default function Screening() {
 
       {/* Candidate List */}
       <div className="space-y-8">
-        <div className={cn(
-          "grid gap-6",
-          viewMode === 'list' ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-        )}>
-          {paginatedCandidates.map((candidate) => {
-            const isExpanded = expandedCandidates.includes(candidate.id);
+        {Object.entries(groupedCandidates).map(([position, candidatesInGroup]) => (
+          <div key={position} className="space-y-4">
+            <h2 className="text-xl font-bold text-slate-800 border-b border-slate-200 pb-2 flex items-center gap-3">
+              {position}
+              <span className="text-sm font-medium px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                {candidatesInGroup.length} Pelamar Aktif
+              </span>
+            </h2>
+            <div className={cn(
+              "grid gap-6",
+              viewMode === 'list' ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+            )}>
+              {candidatesInGroup.map((candidate) => {
+                const isExpanded = expandedCandidates.includes(candidate.id);
             
             if (viewMode === 'card') {
               return (
@@ -829,7 +837,7 @@ export default function Screening() {
                                 <ThumbsDown size={22} />
                               </button>
                               <div className="h-px bg-slate-200 my-2 hidden lg:block" />
-                              {(!candidate.psikotes_schedules || candidate.psikotes_schedules.length === 0) && (
+                              {candidate.status_screening === 'accepted' && (!candidate.psikotes_schedules || candidate.psikotes_schedules.length === 0) && (
                                 <button 
                                   onClick={() => setSchedulingData({ candidate, type: 'psikotes' })}
                                   title="Jadwalkan Psikotes"
@@ -838,7 +846,7 @@ export default function Screening() {
                                   <FileText size={22} />
                                 </button>
                               )}
-                              {(!candidate.interview_schedules || candidate.interview_schedules.length === 0) && (
+                              {candidate.status_screening === 'accepted' && (!candidate.interview_schedules || candidate.interview_schedules.length === 0) && (
                                 <button 
                                   onClick={() => setSchedulingData({ candidate, type: 'interview' })}
                                   title="Jadwalkan Interview"
@@ -866,13 +874,6 @@ export default function Screening() {
                                   <Star size={22} />
                                 </button>
                               )}
-                              <button 
-                                onClick={() => setLogModalData(candidate)}
-                                title="Pindahkan ke Log"
-                                className="p-3.5 bg-white text-slate-600 border border-slate-200 rounded-2xl hover:bg-slate-50 transition-all hover:-translate-y-0.5"
-                              >
-                                <FolderInput size={22} />
-                              </button>
                             </div>
                           </div>
                         </div>
@@ -880,7 +881,9 @@ export default function Screening() {
                     </div>
                   );
                 })}
-              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Pagination Controls */}

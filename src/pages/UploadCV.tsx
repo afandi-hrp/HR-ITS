@@ -23,6 +23,8 @@ export default function UploadCV() {
   const [candidateName, setCandidateName] = useState('');
   const [candidateEmail, setCandidateEmail] = useState('');
   const [position, setPosition] = useState('');
+  const [availablePositions, setAvailablePositions] = useState<string[]>([]);
+  const [loadingPositions, setLoadingPositions] = useState(true);
   const [loading, setLoading] = useState(false);
   const [uploads, setUploads] = useState<CVUpload[]>([]);
   const [fetchingUploads, setFetchingUploads] = useState(true);
@@ -110,6 +112,33 @@ export default function UploadCV() {
   useEffect(() => {
     fetchUploads();
   }, [currentPage, itemsPerPage, debouncedSearch]);
+
+  useEffect(() => {
+    const fetchPositions = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('open_recruitment')
+          .select('position')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching positions:', error);
+        } else if (data) {
+          const positions = Array.from(new Set(data.map(item => item.position)));
+          setAvailablePositions(positions);
+          if (positions.length > 0 && !position) {
+            setPosition(positions[0]);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingPositions(false);
+      }
+    };
+
+    fetchPositions();
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -229,7 +258,7 @@ export default function UploadCV() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div className="space-y-1">
           <h1 className="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">
             Upload CV Kandidat
@@ -245,29 +274,6 @@ export default function UploadCV() {
           <Plus size={18} />
           Upload Massal
         </button>
-      </div>
-
-      <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-6 mb-8 flex items-start gap-4">
-        <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
-          <Info size={24} />
-        </div>
-        <div>
-          <h3 className="font-bold text-indigo-900 mb-1">Penting: Ekstraksi Rincian Skor Asesmen</h3>
-          <p className="text-sm text-indigo-700 leading-relaxed">
-            Untuk menampilkan rincian skor asesmen (Technical, Communication, dll) di profil kandidat, pastikan workflow n8n Anda mengekstrak dan mengirimkan field berikut ke database Supabase:
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <code className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded text-xs font-mono">technical_score</code>
-            <code className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded text-xs font-mono">communication_score</code>
-            <code className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded text-xs font-mono">problem_solving_score</code>
-            <code className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded text-xs font-mono">teamwork_score</code>
-            <code className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded text-xs font-mono">leadership_score</code>
-            <code className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded text-xs font-mono">adaptability_score</code>
-          </div>
-          <p className="text-xs text-indigo-600 mt-2 italic">
-            * Nilai harus berupa angka 0-100. Pastikan Anda telah menjalankan file migrasi SQL untuk menambahkan kolom-kolom ini ke tabel candidates.
-          </p>
-        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -298,13 +304,32 @@ export default function UploadCV() {
                 </div>
                 <div className="space-y-2 md:col-span-2">
                   <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Posisi Dilamar</label>
-                  <input
-                    type="text"
-                    value={position}
-                    onChange={(e) => setPosition(e.target.value)}
-                    placeholder="Contoh: Frontend Developer"
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium"
-                  />
+                  {loadingPositions ? (
+                    <div className="flex items-center gap-2 text-sm text-slate-500 py-3">
+                      <Loader2 className="animate-spin" size={16} /> Memuat posisi...
+                    </div>
+                  ) : availablePositions.length > 0 ? (
+                    <select
+                      required
+                      value={position}
+                      onChange={(e) => setPosition(e.target.value)}
+                      className="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium appearance-none"
+                    >
+                      <option value="" disabled>Pilih Posisi</option>
+                      {availablePositions.map((pos, idx) => (
+                        <option key={idx} value={pos}>{pos}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      required
+                      value={position}
+                      onChange={(e) => setPosition(e.target.value)}
+                      placeholder="Contoh: Frontend Developer"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium"
+                    />
+                  )}
                 </div>
               </div>
 
@@ -364,21 +389,6 @@ export default function UploadCV() {
                       </div>
                     </>
                   )}
-                </div>
-              </div>
-
-              <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex gap-3">
-                <AlertCircle className="text-amber-500 shrink-0" size={20} />
-                <div className="space-y-1">
-                  <p className="text-xs text-amber-700 leading-relaxed font-bold">
-                    Penting:
-                  </p>
-                  <p className="text-xs text-amber-700 leading-relaxed">
-                    File dikirim dalam format binary (multipart/form-data). Pastikan di n8n:
-                    <br />1. Node Webhook menggunakan HTTP Method <strong>POST</strong>.
-                    <br />2. Workflow sudah <strong>Active</strong>.
-                    <br />3. Node Webhook akan menerima file di properti bernama <code>file</code>.
-                  </p>
                 </div>
               </div>
             </div>

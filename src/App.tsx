@@ -15,6 +15,7 @@ import InterviewSchedules from './pages/InterviewSchedules';
 import CandidateArchive from './pages/CandidateArchive';
 import CandidateProfile from './pages/CandidateProfile';
 import UploadCV from './pages/UploadCV';
+import OpenRecruitment from './pages/OpenRecruitment';
 import { Toaster } from './components/ui/Toaster';
 import RealtimeNotifications from './components/RealtimeNotifications';
 
@@ -54,6 +55,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/open-recruitment" element={<OpenRecruitment />} />
             <Route path="/screening" element={<Screening />} />
             <Route path="/candidates/:id" element={<CandidateProfile />} />
             <Route path="/funnel" element={<RecruitmentFunnel />} />
