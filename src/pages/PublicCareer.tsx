@@ -246,17 +246,17 @@ export default function PublicCareer() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-transparent py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-xl mx-auto">
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-2xl mb-4 shadow-lg shadow-indigo-200">
             <span className="text-white text-3xl font-bold">H</span>
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
-            Karir ITS Waruna
+            Waruna Group Career
           </h1>
           <p className="mt-2 text-sm text-slate-500">
-            Bergabunglah bersama kami dan jadilah bagian dari tim yang luar biasa.
+            Bergabunglah Bersama Waruna Group dan Menjadi Bagian Dari Tim Yang Luar Biasa.
           </p>
         </div>
 

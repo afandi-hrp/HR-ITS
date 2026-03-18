@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -34,6 +34,35 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
   
   // Extract current path from location (e.g., "/dashboard" -> "dashboard")
   const currentPath = location.pathname.substring(1) || 'dashboard';
+
+  // Auto-logout after 10 minutes of inactivity
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
+    const resetTimer = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(async () => {
+        await supabase.auth.signOut();
+        navigate('/login');
+      }, 10 * 60 * 1000); // 10 minutes
+    };
+
+    // Initialize timer
+    resetTimer();
+
+    // Add event listeners for user activity
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    events.forEach(event => {
+      document.addEventListener(event, resetTimer);
+    });
+
+    return () => {
+      clearTimeout(timeoutId);
+      events.forEach(event => {
+        document.removeEventListener(event, resetTimer);
+      });
+    };
+  }, [navigate]);
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
