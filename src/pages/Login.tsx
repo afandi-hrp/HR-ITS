@@ -32,8 +32,8 @@ export default function Login() {
             <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-2xl mb-4 shadow-lg shadow-indigo-200">
               <span className="text-white text-3xl font-bold">H</span>
             </div>
-            <h1 className="text-2xl font-bold text-slate-900">Selamat Datang</h1>
-            <p className="text-slate-500 mt-2">Masuk ke dashboard HRD Automate Pro</p>
+            <h1 className="text-2xl font-bold text-slate-900">Welcome</h1>
+            <p className="text-slate-500 mt-2">Login to ITS Waruna Group Dashboard</p>
           </div>
 
           {error && (
@@ -91,7 +91,7 @@ export default function Login() {
           </form>
 
           <div className="mt-8 text-center text-sm text-slate-500">
-            <p>© 2024 HRD Automate Pro. All rights reserved.</p>
+            <p>© 2026 ITS Waruna Group App.</p>
           </div>
         </div>
       </div>
