@@ -34,6 +34,21 @@ export default function App() {
       setSession(session);
     });
 
+    // Fetch site settings for favicon
+    supabase.from('site_settings').select('favicon_url').eq('id', 1).single().then(({ data }) => {
+      if (data?.favicon_url) {
+        const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+        if (link) {
+          link.href = data.favicon_url;
+        } else {
+          const newLink = document.createElement('link');
+          newLink.rel = 'icon';
+          newLink.href = data.favicon_url;
+          document.head.appendChild(newLink);
+        }
+      }
+    });
+
     return () => subscription.unsubscribe();
   }, []);
 

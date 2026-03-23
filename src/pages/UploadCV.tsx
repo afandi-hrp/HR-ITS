@@ -279,7 +279,7 @@ export default function UploadCV() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Upload Form */}
         <div className="space-y-6">
-          <form onSubmit={handleUpload} className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
+          <form onSubmit={handleUpload} className="bg-white/40 backdrop-blur-xl rounded-3xl border border-white/60 shadow-2xl overflow-hidden">
             <div className="p-8 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
@@ -289,7 +289,7 @@ export default function UploadCV() {
                     value={candidateName}
                     onChange={(e) => setCandidateName(e.target.value)}
                     placeholder="Masukkan nama lengkap..."
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium"
+                    className="w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium"
                   />
                 </div>
                 <div className="space-y-2">
@@ -299,7 +299,7 @@ export default function UploadCV() {
                     value={candidateEmail}
                     onChange={(e) => setCandidateEmail(e.target.value)}
                     placeholder="kandidat@email.com"
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium"
+                    className="w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium"
                   />
                 </div>
                 <div className="space-y-2 md:col-span-2">
@@ -313,7 +313,7 @@ export default function UploadCV() {
                       required
                       value={position}
                       onChange={(e) => setPosition(e.target.value)}
-                      className="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium appearance-none"
+                      className="block w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium appearance-none"
                     >
                       <option value="" disabled>Pilih Posisi</option>
                       {availablePositions.map((pos, idx) => (
@@ -327,7 +327,7 @@ export default function UploadCV() {
                       value={position}
                       onChange={(e) => setPosition(e.target.value)}
                       placeholder="Contoh: Frontend Developer"
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium"
+                      className="w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium"
                     />
                   )}
                 </div>
@@ -338,7 +338,7 @@ export default function UploadCV() {
                 <div 
                   className={cn(
                     "relative border-2 border-dashed rounded-2xl p-10 transition-all flex flex-col items-center justify-center gap-4",
-                    files.length > 0 ? "border-emerald-200 bg-emerald-50/30" : "border-slate-200 bg-slate-50 hover:border-indigo-300 hover:bg-indigo-50/30"
+                    files.length > 0 ? "border-emerald-300 bg-emerald-50/50" : "border-white/60 bg-white/40 hover:border-indigo-300 hover:bg-white/60"
                   )}
                 >
                   <input
@@ -352,7 +352,7 @@ export default function UploadCV() {
                   {files.length > 0 ? (
                     <div className="w-full space-y-3 z-20">
                       {files.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 shadow-sm relative z-20">
+                        <div key={index} className="flex items-center justify-between bg-white/50 p-3 rounded-xl border border-white/60 shadow-sm relative z-20">
                           <div className="flex items-center gap-3">
                             <div className={cn(
                               "w-10 h-10 rounded-lg flex items-center justify-center",
@@ -374,13 +374,13 @@ export default function UploadCV() {
                           </button>
                         </div>
                       ))}
-                      <div className="text-center mt-4 pt-4 border-t border-slate-200">
+                      <div className="text-center mt-4 pt-4 border-t border-white/40">
                         <p className="text-sm font-medium text-indigo-600">Klik atau seret untuk menambah file lain</p>
                       </div>
                     </div>
                   ) : (
                     <>
-                      <div className="w-16 h-16 bg-white text-slate-400 rounded-2xl flex items-center justify-center shadow-sm border border-slate-100">
+                      <div className="w-16 h-16 bg-white/60 text-slate-500 rounded-2xl flex items-center justify-center shadow-sm border border-white/80">
                         <Upload size={32} />
                       </div>
                       <div className="text-center">
@@ -393,7 +393,7 @@ export default function UploadCV() {
               </div>
             </div>
 
-            <div className="p-8 bg-slate-50 border-t border-slate-100">
+            <div className="p-8 bg-white/30 border-t border-white/40">
               <button
                 type="submit"
                 disabled={loading || files.length === 0 || !candidateName || !position}
@@ -412,8 +412,8 @@ export default function UploadCV() {
 
         {/* History / Search */}
         <div className="space-y-6">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden flex flex-col h-full max-h-[800px]">
-            <div className="p-6 border-b border-slate-100 space-y-4">
+          <div className="bg-white/40 backdrop-blur-xl rounded-3xl border border-white/60 shadow-2xl overflow-hidden flex flex-col h-full max-h-[800px]">
+            <div className="p-6 border-b border-white/40 bg-white/30 space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold text-slate-900">Riwayat Upload</h2>
                 <div className="flex items-center gap-2">
@@ -442,7 +442,7 @@ export default function UploadCV() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && fetchUploads()}
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+                  className="w-full pl-10 pr-4 py-2.5 bg-white/50 backdrop-blur-md border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm"
                 />
               </div>
               {uploads.length > 0 && (
@@ -451,7 +451,7 @@ export default function UploadCV() {
                     type="checkbox" 
                     checked={selectedUploads.length === uploads.length && uploads.length > 0}
                     onChange={toggleSelectAll}
-                    className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    className="w-4 h-4 rounded border-white/60 bg-white/50 text-indigo-600 focus:ring-indigo-500"
                   />
                   <span className="text-xs font-medium text-slate-500">Pilih Semua</span>
                 </div>
@@ -469,7 +469,7 @@ export default function UploadCV() {
                   {uploads.map((upload) => (
                     <div key={upload.id} className={cn(
                       "p-4 border rounded-2xl transition-all group relative",
-                      selectedUploads.includes(upload.id) ? "bg-indigo-50 border-indigo-200" : "bg-slate-50 border-slate-100 hover:border-indigo-200 hover:bg-white"
+                      selectedUploads.includes(upload.id) ? "bg-indigo-50/80 border-indigo-200" : "bg-white/40 border-white/60 hover:border-indigo-300 hover:bg-white/60 hover:shadow-xl"
                     )}>
                       <div className="flex items-start gap-4">
                         <div className="pt-1">
@@ -477,7 +477,7 @@ export default function UploadCV() {
                             type="checkbox" 
                             checked={selectedUploads.includes(upload.id)}
                             onChange={() => toggleSelect(upload.id)}
-                            className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            className="w-4 h-4 rounded border-white/60 bg-white/50 text-indigo-600 focus:ring-indigo-500"
                           />
                         </div>
                         <div className="flex-1 space-y-1">
@@ -514,7 +514,7 @@ export default function UploadCV() {
                   
                   {/* Pagination Controls */}
                   {totalItems > itemsPerPage && (
-                    <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-6">
+                    <div className="flex items-center justify-between pt-4 border-t border-white/40 mt-6">
                       <div className="text-sm text-slate-500">
                         Menampilkan <span className="font-medium text-slate-900">{(currentPage - 1) * itemsPerPage + 1}</span> hingga <span className="font-medium text-slate-900">{Math.min(currentPage * itemsPerPage, totalItems)}</span> dari <span className="font-medium text-slate-900">{totalItems}</span>
                       </div>
@@ -522,7 +522,7 @@ export default function UploadCV() {
                         <button
                           disabled={currentPage === 1}
                           onClick={() => setCurrentPage(prev => prev - 1)}
-                          className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                          className="px-3 py-1.5 rounded-lg border border-white/60 text-sm font-medium text-slate-600 hover:bg-white/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                         >
                           Sebelumnya
                         </button>
@@ -543,7 +543,7 @@ export default function UploadCV() {
                                   "w-8 h-8 rounded-lg text-sm font-medium transition-all",
                                   currentPage === pageNum 
                                     ? "bg-indigo-600 text-white shadow-md shadow-indigo-100" 
-                                    : "text-slate-600 hover:bg-slate-100"
+                                    : "text-slate-600 hover:bg-white/50"
                                 )}
                               >
                                 {pageNum}
@@ -554,7 +554,7 @@ export default function UploadCV() {
                         <button
                           disabled={currentPage === Math.ceil(totalItems / itemsPerPage)}
                           onClick={() => setCurrentPage(prev => prev + 1)}
-                          className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                          className="px-3 py-1.5 rounded-lg border border-white/60 text-sm font-medium text-slate-600 hover:bg-white/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                         >
                           Selanjutnya
                         </button>
@@ -564,7 +564,7 @@ export default function UploadCV() {
                 </>
               ) : (
                 <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
-                  <div className="p-4 bg-slate-50 rounded-full">
+                  <div className="p-4 bg-white/50 rounded-full border border-white/60 shadow-sm">
                     <Search size={32} />
                   </div>
                   <p className="text-sm font-medium">Tidak ada data ditemukan</p>

@@ -20,6 +20,8 @@ import {
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
+import { SiteSettings } from '../types';
+import { motion } from 'motion/react';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -29,11 +31,18 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children, user }: DashboardLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [settings, setSettings] = useState<SiteSettings | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
   
   // Extract current path from location (e.g., "/dashboard" -> "dashboard")
   const currentPath = location.pathname.substring(1) || 'dashboard';
+
+  useEffect(() => {
+    supabase.from('site_settings').select('*').eq('id', 1).single().then(({ data }) => {
+      if (data) setSettings(data);
+    });
+  }, []);
 
   // Auto-logout after 10 minutes of inactivity
   useEffect(() => {
@@ -95,17 +104,18 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
       {/* Sidebar */}
       <aside 
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex flex-col bg-[#3D2C44] border-r border-white/10 transition-all duration-300 lg:static",
+          "fixed inset-y-0 left-0 z-50 flex flex-col bg-[#3D2C44] transition-all duration-300 lg:static",
+          "lg:m-4 lg:rounded-3xl lg:shadow-2xl lg:h-[calc(100vh-2rem)]",
           isSidebarOpen ? "w-64" : "w-20",
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
         <div className="flex items-center justify-between h-16 px-6 border-b border-white/5">
           <div className={cn("flex items-center gap-3", !isSidebarOpen && "lg:hidden")}>
-            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-              <span className="text-[#3D2C44] font-bold">H</span>
-            </div>
-            <span className="font-bold text-xl tracking-tight text-white">HRD Pro</span>
+            {settings?.sidebar_logo_url && (
+              <img src={settings.sidebar_logo_url} alt="Logo" className="w-12 h-12 object-contain" referrerPolicy="no-referrer" />
+            )}
+            <span className="font-bold text-xl tracking-tight text-white">{settings?.sidebar_text || 'Waruna'}</span>
           </div>
           <button 
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -121,24 +131,33 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
           </button>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-3 py-4 space-y-2 overflow-y-auto relative [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {navItems.map((item) => (
             <Link
               key={item.id}
               to={`/${item.id}`}
               onClick={() => setIsMobileMenuOpen(false)}
               className={cn(
-                "flex items-center w-full px-3 py-2.5 rounded-lg transition-colors group",
+                "flex items-center w-full px-3 py-3 rounded-2xl transition-all duration-300 group relative",
                 currentPath === item.id 
-                  ? "bg-white/10 text-white" 
-                  : "text-white/60 hover:bg-white/5 hover:text-white"
+                  ? "text-slate-900 shadow-lg shadow-black/10 translate-x-1" 
+                  : "text-white/60 hover:bg-white/5 hover:text-white hover:translate-x-1"
               )}
             >
-              <item.icon className={cn(
-                "w-5 h-5 shrink-0",
-                currentPath === item.id ? "text-white" : "text-white/40 group-hover:text-white/60"
-              )} />
-              {isSidebarOpen && <span className="ml-3 font-medium">{item.label}</span>}
+              {currentPath === item.id && (
+                <motion.div
+                  layoutId="activeNav"
+                  className="absolute inset-0 bg-white rounded-2xl"
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                />
+              )}
+              <div className="relative z-10 flex items-center w-full">
+                <item.icon className={cn(
+                  "w-5 h-5 shrink-0 transition-transform duration-300",
+                  currentPath === item.id ? "text-slate-900 scale-110" : "text-white/40 group-hover:text-white/60 group-hover:scale-110"
+                )} />
+                {isSidebarOpen && <span className="ml-3 font-medium">{item.label}</span>}
+              </div>
             </Link>
           ))}
         </nav>
@@ -179,10 +198,10 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
         {/* Header */}
         <header className="h-16 bg-[#3D2C44] border-b border-white/10 flex items-center justify-between px-6 shrink-0 lg:hidden">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-              <span className="text-[#3D2C44] font-bold">H</span>
-            </div>
-            <span className="font-bold text-xl tracking-tight text-white">HRD Pro</span>
+            {settings?.sidebar_logo_url && (
+              <img src={settings.sidebar_logo_url} alt="Logo" className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
+            )}
+            <span className="font-bold text-xl tracking-tight text-white">{settings?.sidebar_text || 'Waruna'}</span>
           </div>
           <button 
             onClick={() => setIsMobileMenuOpen(true)}

@@ -12,6 +12,7 @@ export default function Logs() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
@@ -52,6 +53,10 @@ export default function Logs() {
       query = query.lte('date', `${endDate}T23:59:59`);
     }
 
+    if (statusFilter !== 'all') {
+      query = query.eq('status_screening', statusFilter);
+    }
+
     const { data, error, count } = await query
       .order('archived_at', { ascending: false })
       .range(from, to);
@@ -67,7 +72,7 @@ export default function Logs() {
 
   useEffect(() => {
     fetchLogs();
-  }, [currentPage, itemsPerPage, debouncedSearch, startDate, endDate]);
+  }, [currentPage, itemsPerPage, debouncedSearch, startDate, endDate, statusFilter]);
 
   const handleDelete = async () => {
     if (!deleteModalData) return;
@@ -153,6 +158,19 @@ export default function Logs() {
           />
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1">
+            <Filter size={16} className="text-slate-400" />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="bg-transparent text-sm focus:outline-none text-slate-700"
+            >
+              <option value="all">Semua Status</option>
+              <option value="accepted">Diterima</option>
+              <option value="rejected">Ditolak</option>
+              <option value="hired">Direkrut</option>
+            </select>
+          </div>
           <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1">
             <Calendar size={16} className="text-slate-400" />
             <input 
@@ -318,9 +336,17 @@ export default function Logs() {
             </div>
 
             {/* Card Footer */}
-            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between mt-auto">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Skor Akhir</span>
-              <span className="text-lg font-black text-indigo-600">{log.assessment_score || 0}</span>
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex flex-col gap-2 mt-auto">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Skor Screening</span>
+                <span className="text-lg font-black text-indigo-600">{log.assessment_score || 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Skor Asesmen</span>
+                <span className="text-lg font-black text-indigo-600">
+                  {Math.round(((log.technical_score || 0) + (log.communication_score || 0) + (log.problem_solving_score || 0) + (log.teamwork_score || 0) + (log.leadership_score || 0) + (log.adaptability_score || 0)) / 6)}
+                </span>
+              </div>
             </div>
           </div>
         ))}
@@ -521,8 +547,14 @@ export default function Logs() {
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-slate-500">Skor Akhir</span>
+                      <span className="text-sm text-slate-500">Skor Screening</span>
                       <span className="text-lg font-bold text-indigo-600">{selectedLog.assessment_score || 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-500">Skor Asesmen</span>
+                      <span className="text-lg font-bold text-indigo-600">
+                        {Math.round(((selectedLog.technical_score || 0) + (selectedLog.communication_score || 0) + (selectedLog.problem_solving_score || 0) + (selectedLog.teamwork_score || 0) + (selectedLog.leadership_score || 0) + (selectedLog.adaptability_score || 0)) / 6)}
+                      </span>
                     </div>
                   </div>
                 </div>

@@ -19,7 +19,14 @@ export default function Settings() {
   const [cvWebhookUrl, setCvWebhookUrl] = useState('');
   const [sheetWebhookUrl, setSheetWebhookUrl] = useState('');
   const [otpWebhookUrl, setOtpWebhookUrl] = useState('');
+  const [loginLogoUrl, setLoginLogoUrl] = useState('');
+  const [careerLogoUrl, setCareerLogoUrl] = useState('');
+  const [sidebarLogoUrl, setSidebarLogoUrl] = useState('');
+  const [sidebarText, setSidebarText] = useState('');
+  const [loginAnimationUrl, setLoginAnimationUrl] = useState('');
+  const [faviconUrl, setFaviconUrl] = useState('');
   const [loading, setLoading] = useState(false);
+  const [uploadingAssets, setUploadingAssets] = useState<Record<string, boolean>>({});
   const [testingWebhook, setTestingWebhook] = useState<'email' | 'cv' | 'sheet' | 'otp' | null>(null);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [newPassword, setNewPassword] = useState('');
@@ -37,6 +44,17 @@ export default function Settings() {
       setCvWebhookUrl(user?.user_metadata.cv_webhook_url || '');
       setSheetWebhookUrl(user?.user_metadata.sheet_webhook_url || '');
       setOtpWebhookUrl(user?.user_metadata.otp_webhook_url || '');
+    });
+
+    supabase.from('site_settings').select('*').eq('id', 1).single().then(({ data }) => {
+      if (data) {
+        setLoginLogoUrl(data.login_logo_url || '');
+        setCareerLogoUrl(data.career_logo_url || '');
+        setSidebarLogoUrl(data.sidebar_logo_url || '');
+        setSidebarText(data.sidebar_text || '');
+        setLoginAnimationUrl(data.login_animation_url || '');
+        setFaviconUrl(data.favicon_url || '');
+      }
     });
   }, []);
 
@@ -62,10 +80,21 @@ export default function Settings() {
       }
     });
 
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    const { error: settingsError } = await supabase.from('site_settings').upsert({
+      id: 1,
+      login_logo_url: loginLogoUrl.trim(),
+      career_logo_url: careerLogoUrl.trim(),
+      sidebar_logo_url: sidebarLogoUrl.trim(),
+      sidebar_text: sidebarText.trim(),
+      login_animation_url: loginAnimationUrl.trim(),
+      favicon_url: faviconUrl.trim(),
+      updated_at: new Date().toISOString()
+    });
+
+    if (error || settingsError) {
+      toast({ title: 'Error', description: error?.message || settingsError?.message, variant: 'destructive' });
     } else {
-      toast({ title: 'Berhasil', description: 'Profil diperbarui.' });
+      toast({ title: 'Berhasil', description: 'Profil dan pengaturan diperbarui.' });
     }
     setLoading(false);
   };
@@ -145,7 +174,7 @@ export default function Settings() {
       setShowWebhookSettings(true);
       setShowPinModal(false);
       setPinInput('');
-      toast({ title: 'Akses Diberikan', description: 'Pengaturan Webhook sekarang dapat diakses.' });
+      toast({ title: 'Akses Diberikan', description: 'Pengaturan Lanjutan sekarang dapat diakses.' });
     } else {
       toast({ title: 'PIN Salah', description: 'PIN yang Anda masukkan tidak valid.', variant: 'destructive' });
     }
@@ -184,6 +213,39 @@ export default function Settings() {
       toast({ title: 'Berhasil', description: 'Foto profil diperbarui.' });
     }
     setLoading(false);
+  };
+
+  const handleAssetUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'loginLogo' | 'careerLogo' | 'sidebarLogo' | 'favicon' | 'loginAnimation') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingAssets(prev => ({ ...prev, [type]: true }));
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${type}-${Date.now()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('site-assets')
+      .upload(filePath, file);
+
+    if (uploadError) {
+      toast({ title: 'Error', description: uploadError.message, variant: 'destructive' });
+      setUploadingAssets(prev => ({ ...prev, [type]: false }));
+      return;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('site-assets')
+      .getPublicUrl(filePath);
+
+    if (type === 'loginLogo') setLoginLogoUrl(publicUrl);
+    if (type === 'careerLogo') setCareerLogoUrl(publicUrl);
+    if (type === 'sidebarLogo') setSidebarLogoUrl(publicUrl);
+    if (type === 'favicon') setFaviconUrl(publicUrl);
+    if (type === 'loginAnimation') setLoginAnimationUrl(publicUrl);
+
+    toast({ title: 'Berhasil', description: 'File berhasil diunggah. Jangan lupa klik Simpan Perubahan.' });
+    setUploadingAssets(prev => ({ ...prev, [type]: false }));
   };
 
   if (!user) return null;
@@ -247,6 +309,7 @@ export default function Settings() {
                 />
               </div>
 
+              {/* Webhook Settings Block */}
               {!showWebhookSettings ? (
                 <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl">
                   <div>
@@ -272,6 +335,7 @@ export default function Settings() {
                   >
                     <X size={16} />
                   </button>
+                  <h4 className="font-bold text-slate-800 mb-4">Pengaturan Webhook</h4>
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-2">n8n Webhook URL</label>
                     <input
@@ -360,6 +424,171 @@ export default function Settings() {
                       {testingWebhook === 'otp' ? <Loader2 className="animate-spin" size={12} /> : null}
                       Test Koneksi OTP Webhook
                     </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Display Settings Block */}
+              {!showWebhookSettings ? (
+                <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-700">Pengaturan Tampilan</h3>
+                    <p className="text-xs text-slate-500">Tersembunyi untuk keamanan</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowPinModal(true)}
+                    className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                    title="Buka Pengaturan Tampilan"
+                  >
+                    <SettingsIcon size={20} />
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-6 p-6 bg-slate-50 border border-slate-200 rounded-xl relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowWebhookSettings(false)}
+                    className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-lg transition-all"
+                    title="Sembunyikan Pengaturan Tampilan"
+                  >
+                    <X size={16} />
+                  </button>
+                  <h4 className="font-bold text-slate-800 mb-4">Pengaturan Tampilan</h4>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Logo Halaman Login</label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center justify-center px-4 py-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-all text-sm font-medium text-slate-700">
+                          {uploadingAssets['loginLogo'] ? (
+                            <><Loader2 className="animate-spin mr-2" size={16} /> Mengunggah...</>
+                          ) : (
+                            <><Camera className="mr-2" size={16} /> Pilih File</>
+                          )}
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept="image/*"
+                            onChange={(e) => handleAssetUpload(e, 'loginLogo')}
+                            disabled={uploadingAssets['loginLogo']}
+                          />
+                        </label>
+                        {loginLogoUrl && (
+                          <div className="flex-1 truncate text-xs text-slate-500">
+                            {loginLogoUrl}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Logo Halaman Karir Publik</label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center justify-center px-4 py-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-all text-sm font-medium text-slate-700">
+                          {uploadingAssets['careerLogo'] ? (
+                            <><Loader2 className="animate-spin mr-2" size={16} /> Mengunggah...</>
+                          ) : (
+                            <><Camera className="mr-2" size={16} /> Pilih File</>
+                          )}
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept="image/*"
+                            onChange={(e) => handleAssetUpload(e, 'careerLogo')}
+                            disabled={uploadingAssets['careerLogo']}
+                          />
+                        </label>
+                        {careerLogoUrl && (
+                          <div className="flex-1 truncate text-xs text-slate-500">
+                            {careerLogoUrl}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Logo Sidebar Navigasi</label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center justify-center px-4 py-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-all text-sm font-medium text-slate-700">
+                          {uploadingAssets['sidebarLogo'] ? (
+                            <><Loader2 className="animate-spin mr-2" size={16} /> Mengunggah...</>
+                          ) : (
+                            <><Camera className="mr-2" size={16} /> Pilih File</>
+                          )}
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept="image/*"
+                            onChange={(e) => handleAssetUpload(e, 'sidebarLogo')}
+                            disabled={uploadingAssets['sidebarLogo']}
+                          />
+                        </label>
+                        {sidebarLogoUrl && (
+                          <div className="flex-1 truncate text-xs text-slate-500">
+                            {sidebarLogoUrl}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Teks Sidebar Navigasi</label>
+                      <input
+                        type="text"
+                        value={sidebarText}
+                        onChange={(e) => setSidebarText(e.target.value)}
+                        className="block w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                        placeholder="HRD Pro"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Favicon</label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center justify-center px-4 py-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-all text-sm font-medium text-slate-700">
+                          {uploadingAssets['favicon'] ? (
+                            <><Loader2 className="animate-spin mr-2" size={16} /> Mengunggah...</>
+                          ) : (
+                            <><Camera className="mr-2" size={16} /> Pilih File</>
+                          )}
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept="image/x-icon,image/png,image/jpeg,image/svg+xml"
+                            onChange={(e) => handleAssetUpload(e, 'favicon')}
+                            disabled={uploadingAssets['favicon']}
+                          />
+                        </label>
+                        {faviconUrl && (
+                          <div className="flex-1 truncate text-xs text-slate-500">
+                            {faviconUrl}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Animasi Login (Gambar/Video)</label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center justify-center px-4 py-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-all text-sm font-medium text-slate-700">
+                          {uploadingAssets['loginAnimation'] ? (
+                            <><Loader2 className="animate-spin mr-2" size={16} /> Mengunggah...</>
+                          ) : (
+                            <><Camera className="mr-2" size={16} /> Pilih File</>
+                          )}
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept="image/*,video/*"
+                            onChange={(e) => handleAssetUpload(e, 'loginAnimation')}
+                            disabled={uploadingAssets['loginAnimation']}
+                          />
+                        </label>
+                        {loginAnimationUrl && (
+                          <div className="flex-1 truncate text-xs text-slate-500">
+                            {loginAnimationUrl}
+                          </div>
+                        )}
+                      </div>
+                      <p className="mt-2 text-xs text-slate-500 italic">
+                        Upload file gambar (PNG/JPG/GIF) atau video (MP4) untuk animasi di halaman login.
+                      </p>
+                    </div>
                   </div>
                 </div>
               )}

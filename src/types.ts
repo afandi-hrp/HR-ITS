@@ -46,6 +46,17 @@ export interface EmailTemplate {
   created_at: string;
 }
 
+export interface SiteSettings {
+  id: number;
+  login_logo_url: string | null;
+  career_logo_url: string | null;
+  sidebar_logo_url: string | null;
+  sidebar_text: string | null;
+  login_animation_url: string | null;
+  favicon_url: string | null;
+  updated_at: string;
+}
+
 export interface Schedule {
   id: string;
   candidate_id: string;

@@ -9,7 +9,8 @@ import {
   Briefcase,
   FileText,
   GraduationCap,
-  Send
+  Send,
+  ChevronDown
 } from 'lucide-react';
 import { useToast } from '../components/ui/use-toast';
 import { cn } from '../lib/utils';
@@ -29,6 +30,7 @@ export default function OpenRecruitment() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     position: '',
     jobdesk: '',
@@ -235,6 +237,10 @@ export default function OpenRecruitment() {
     }
   };
 
+  const toggleExpand = (id: string) => {
+    setExpandedItems(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
@@ -248,25 +254,12 @@ export default function OpenRecruitment() {
         </div>
         <div className="flex gap-3">
           <button 
-            onClick={() => {
-              toast({
-                title: "Panduan Integrasi Google Sheets",
-                description: "Agar data yang dihapus di aplikasi juga terhapus di Google Sheets:\n\n1. Node 1: Webhook (Trigger)\n2. Node 2: Google Sheets (Operation: Clear) -> Hapus semua data lama di sheet.\n3. Node 3: Item Lists (Split Out Items) -> Pecah array 'data'.\n4. Node 4: Google Sheets (Operation: Append Row) -> Masukkan data terbaru.",
-                duration: 15000,
-              });
-            }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-600 hover:bg-slate-200 font-bold rounded-xl transition-all shadow-sm"
-          >
-            <FileText size={18} />
-            Panduan Sync
-          </button>
-          <button 
             onClick={handleSyncGoogleSheets}
             disabled={syncing || items.length === 0}
             className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-bold rounded-xl transition-all shadow-sm border border-emerald-200 disabled:opacity-50"
           >
-            {syncing ? <RefreshCcw size={18} className="animate-spin" /> : <Send size={18} />}
-            Sync ke Google Sheets
+            <RefreshCcw size={18} className={syncing ? "animate-spin" : ""} />
+            Sync
           </button>
           <button 
             onClick={() => {
@@ -328,54 +321,68 @@ export default function OpenRecruitment() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {items.map((item) => (
-            <div key={item.id} className="bg-white/70 backdrop-blur-md border border-slate-200 rounded-2xl overflow-hidden hover:border-indigo-300 hover:shadow-xl transition-all duration-300 flex flex-col">
-              <div className="p-5 border-b border-slate-100 flex items-start justify-between bg-slate-50/50">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
-                    <Briefcase size={20} />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-900">{item.position}</h3>
-                    <p className="text-xs text-slate-500">Dibuat: {new Date(item.created_at).toLocaleDateString('id-ID')}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="p-5 flex-1 space-y-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <FileText size={14} className="text-slate-400" />
-                    <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Jobdesk</h4>
-                  </div>
-                  <p className="text-sm text-slate-700 whitespace-pre-wrap">{item.jobdesk}</p>
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <GraduationCap size={14} className="text-slate-400" />
-                    <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Kualifikasi</h4>
-                  </div>
-                  <p className="text-sm text-slate-700 whitespace-pre-wrap">{item.kualifikasi}</p>
-                </div>
-              </div>
-              <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
-                <button 
-                  onClick={() => handleEdit(item)}
-                  className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                  title="Edit"
+        <div className="flex flex-col gap-4">
+          {items.map((item) => {
+            const isExpanded = expandedItems.includes(item.id);
+            return (
+              <div key={item.id} className="bg-white/70 backdrop-blur-md border border-slate-200 rounded-2xl overflow-hidden hover:border-indigo-300 hover:shadow-xl transition-all duration-300 flex flex-col">
+                <div 
+                  className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 cursor-pointer"
+                  onClick={() => toggleExpand(item.id)}
                 >
-                  <Edit2 size={18} />
-                </button>
-                <button 
-                  onClick={() => setDeleteConfirmId(item.id)}
-                  className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  title="Hapus"
-                >
-                  <Trash2 size={18} />
-                </button>
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+                      <Briefcase size={24} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-900 text-lg">{item.position}</h3>
+                      <p className="text-sm text-slate-500">Dibuat: {new Date(item.created_at).toLocaleDateString('id-ID')}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      <button 
+                        onClick={() => handleEdit(item)}
+                        className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                        title="Edit"
+                      >
+                        <Edit2 size={18} />
+                      </button>
+                      <button 
+                        onClick={() => setDeleteConfirmId(item.id)}
+                        className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Hapus"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                      <ChevronDown size={20} className={cn("transition-transform duration-300", isExpanded ? "rotate-180" : "")} />
+                    </div>
+                  </div>
+                </div>
+                
+                {isExpanded && (
+                  <div className="p-6 flex flex-col md:flex-row gap-8 bg-white animate-in slide-in-from-top-2 duration-300">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-3">
+                        <FileText size={16} className="text-indigo-500" />
+                        <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wider">Jobdesk</h4>
+                      </div>
+                      <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100">{item.jobdesk}</p>
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-3">
+                        <GraduationCap size={16} className="text-indigo-500" />
+                        <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wider">Kualifikasi</h4>
+                      </div>
+                      <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100">{item.kualifikasi}</p>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

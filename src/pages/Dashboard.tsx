@@ -184,7 +184,9 @@ export default function Dashboard() {
               top5[pos] = sortedByScore.slice(0, 5);
             }
             
-            const sortedByDetailed = [...grouped[pos]].sort((a, b) => (b.detailed_average || 0) - (a.detailed_average || 0));
+            const sortedByDetailed = [...grouped[pos]]
+              .filter(c => c.detailed_average > 0)
+              .sort((a, b) => (b.detailed_average || 0) - (a.detailed_average || 0));
             if (sortedByDetailed.length > 0) {
               top5Detailed[pos] = sortedByDetailed.slice(0, 5);
             }
@@ -253,14 +255,6 @@ export default function Dashboard() {
   }, [selectedPosition, dateFilter, searchQuery, positions.length]);
 
   const statCards = [
-    {
-      title: 'Total Pelamar',
-      value: stats.totalApplications,
-      icon: Users,
-      color: 'bg-blue-500',
-      bgColor: 'bg-blue-50',
-      textColor: 'text-blue-600'
-    },
     {
       title: 'Posisi Terbuka',
       value: stats.openPositions,
@@ -350,7 +344,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {statCards.map((stat, index) => (
           <div 
             key={index}
@@ -387,7 +381,7 @@ export default function Dashboard() {
                       key={c.id} 
                       onClick={() => navigate(`/candidates/${c.id}`)}
                       className={cn(
-                        "p-4 flex items-center justify-between cursor-pointer transition-all group border-l-4 relative overflow-x-auto custom-scrollbar",
+                        "p-4 flex items-center justify-between cursor-pointer transition-all duration-300 group border-l-4 relative overflow-x-auto custom-scrollbar hover:scale-[1.02] hover:shadow-md hover:z-10",
                         idx === 0 ? "bg-amber-50/50 hover:bg-amber-50 border-amber-400" : 
                         idx === 1 ? "bg-slate-50/80 hover:bg-slate-100 border-slate-300" : 
                         idx === 2 ? "bg-orange-50/30 hover:bg-orange-50 border-orange-300" : 
@@ -454,7 +448,7 @@ export default function Dashboard() {
                       key={c.id} 
                       onClick={() => navigate(`/candidates/${c.id}`)}
                       className={cn(
-                        "p-4 flex items-center justify-between cursor-pointer transition-all group border-l-4 relative overflow-x-auto custom-scrollbar",
+                        "p-4 flex items-center justify-between cursor-pointer transition-all duration-300 group border-l-4 relative overflow-x-auto custom-scrollbar hover:scale-[1.02] hover:shadow-md hover:z-10",
                         idx === 0 ? "bg-indigo-50/50 hover:bg-indigo-50 border-indigo-400" : 
                         idx === 1 ? "bg-slate-50/80 hover:bg-slate-100 border-slate-300" : 
                         idx === 2 ? "bg-blue-50/30 hover:bg-blue-50 border-blue-300" : 

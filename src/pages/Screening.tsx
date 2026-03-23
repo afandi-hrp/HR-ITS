@@ -39,6 +39,7 @@ export default function Screening() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
@@ -50,6 +51,7 @@ export default function Screening() {
   const [logNotes, setLogNotes] = useState('');
   const [movingToLog, setMovingToLog] = useState(false);
   const [rejectModalData, setRejectModalData] = useState<Candidate | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
   const [acceptModalData, setAcceptModalData] = useState<Candidate | null>(null);
   const [hireModalData, setHireModalData] = useState<Candidate | null>(null);
   const [hireNotes, setHireNotes] = useState('');
@@ -93,6 +95,9 @@ export default function Screening() {
     if (endDate) {
       query = query.lte('date', `${endDate}T23:59:59`);
     }
+    if (statusFilter !== 'all') {
+      query = query.eq('status_screening', statusFilter);
+    }
 
     // Apply pagination
     const from = (currentPage - 1) * itemsPerPage;
@@ -115,7 +120,7 @@ export default function Screening() {
 
   useEffect(() => {
     fetchCandidates();
-  }, [startDate, endDate, debouncedSearch, currentPage, itemsPerPage]);
+  }, [startDate, endDate, debouncedSearch, currentPage, itemsPerPage, statusFilter]);
 
   const confirmReject = async () => {
     if (!rejectModalData) return;
@@ -135,7 +140,7 @@ export default function Screening() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           candidateId: rejectModalData.id,
-          notes: 'Ditolak pada tahap Screening Awal'
+          notes: rejectReason.trim() || 'Ditolak pada tahap Screening Awal'
         }),
       });
 
@@ -147,6 +152,7 @@ export default function Screening() {
         });
         setCandidates(candidates.filter(c => c.id !== rejectModalData.id));
         setRejectModalData(null);
+        setRejectReason('');
       } else {
         throw new Error(result.error);
       }
@@ -408,6 +414,21 @@ export default function Screening() {
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1">
+            <Filter size={16} className="text-slate-400" />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="bg-transparent text-sm focus:outline-none text-slate-700"
+            >
+              <option value="all">Semua Status</option>
+              <option value="pending">Pending</option>
+              <option value="invited">Invited</option>
+              <option value="accepted">Accepted</option>
+              <option value="rejected">Rejected</option>
+              <option value="hired">Hired</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1">
             <CalendarIcon size={16} className="text-slate-400" />
             <input 
               type="date" 
@@ -428,6 +449,7 @@ export default function Screening() {
               setSearch('');
               setStartDate('');
               setEndDate('');
+              setStatusFilter('all');
             }}
             className="px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
           >
@@ -886,62 +908,6 @@ export default function Screening() {
         ))}
       </div>
 
-      {/* Pagination Controls */}
-      {totalItems > 0 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="text-sm text-slate-500 font-medium">
-            Menampilkan <span className="text-slate-900 font-bold">{(currentPage - 1) * itemsPerPage + 1}</span> hingga <span className="text-slate-900 font-bold">{Math.min(currentPage * itemsPerPage, totalItems)}</span> dari <span className="text-slate-900 font-bold">{totalItems}</span> kandidat
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(5, Math.ceil(totalItems / itemsPerPage)) }, (_, i) => {
-                let pageNum = i + 1;
-                const totalPages = Math.ceil(totalItems / itemsPerPage);
-                if (totalPages > 5) {
-                  if (currentPage > 3) {
-                    pageNum = currentPage - 2 + i;
-                  }
-                  if (currentPage > totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
-                  }
-                }
-                
-                if (pageNum > totalPages) return null;
-
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => setCurrentPage(pageNum)}
-                    className={cn(
-                      "w-8 h-8 rounded-lg text-sm font-bold transition-all flex items-center justify-center",
-                      currentPage === pageNum 
-                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-200" 
-                        : "text-slate-600 hover:bg-slate-100 hover:text-indigo-600"
-                    )}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              })}
-            </div>
-            <button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(totalItems / itemsPerPage)))}
-              disabled={currentPage === Math.ceil(totalItems / itemsPerPage)}
-              className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            >
-              <ChevronRight size={18} />
-            </button>
-          </div>
-        </div>
-      )}
-
       {schedulingData && (
         <SchedulingModal 
           candidate={schedulingData.candidate}
@@ -1147,10 +1113,23 @@ export default function Screening() {
                 Apakah Anda yakin ingin menolak kandidat <span className="font-bold text-slate-800">{rejectModalData.full_name}</span>? 
                 Kandidat ini akan dipindahkan ke Candidate Archive.
               </p>
+              <div className="text-left mt-4">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Alasan Penolakan (Opsional)</label>
+                <textarea
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all resize-none"
+                  placeholder="Ditolak pada tahap Screening Awal"
+                  rows={3}
+                />
+              </div>
             </div>
             <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-3">
               <button
-                onClick={() => setRejectModalData(null)}
+                onClick={() => {
+                  setRejectModalData(null);
+                  setRejectReason('');
+                }}
                 className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-all"
               >
                 Batal

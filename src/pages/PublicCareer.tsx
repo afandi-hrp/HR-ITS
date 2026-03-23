@@ -1,12 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Upload, FileText, CheckCircle2, Loader2, File, AlertCircle, Phone, User, Mail, Briefcase, KeyRound } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, Loader2, File, AlertCircle, Phone, User, Mail, Briefcase, KeyRound, ChevronRight, X, ArrowLeft, ClipboardList, GraduationCap } from 'lucide-react';
 import { useToast } from '../components/ui/use-toast';
 import { cn } from '../lib/utils';
+import { SiteSettings } from '../types';
+
+interface OpenRecruitment {
+  id: string;
+  position: string;
+  jobdesk: string;
+  kualifikasi: string;
+  created_at: string;
+}
 
 export default function PublicCareer() {
+  const [view, setView] = useState<'listing' | 'form'>('listing');
+  const [selectedJob, setSelectedJob] = useState<OpenRecruitment | null>(null);
   const [step, setStep] = useState<1 | 2 | 3>(1); // 1: Form, 2: OTP, 3: Upload
   const [loading, setLoading] = useState(false);
+  const [settings, setSettings] = useState<SiteSettings | null>(null);
   
   // Form Data
   const [candidateName, setCandidateName] = useState('');
@@ -23,21 +35,27 @@ export default function PublicCareer() {
   
   // Positions
   const [availablePositions, setAvailablePositions] = useState<string[]>([]);
+  const [jobs, setJobs] = useState<OpenRecruitment[]>([]);
   const [loadingPositions, setLoadingPositions] = useState(true);
 
   const { toast } = useToast();
 
   useEffect(() => {
+    supabase.from('site_settings').select('*').eq('id', 1).single().then(({ data }) => {
+      if (data) setSettings(data);
+    });
+
     const fetchPositions = async () => {
       try {
         const { data, error } = await supabase
           .from('open_recruitment')
-          .select('position')
+          .select('*')
           .order('created_at', { ascending: false });
 
         if (error) {
           console.error('Error fetching positions:', error);
         } else if (data) {
+          setJobs(data);
           const positions = Array.from(new Set(data.map(item => item.position)));
           setAvailablePositions(positions);
           if (positions.length > 0) {
@@ -247,11 +265,20 @@ export default function PublicCareer() {
 
   return (
     <div className="min-h-screen bg-transparent py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-xl mx-auto">
+      <style>{`
+        body {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        body::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
+      <div className={cn("mx-auto", view === 'listing' ? "max-w-6xl" : "max-w-xl")}>
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-2xl mb-4 shadow-lg shadow-indigo-200">
-            <span className="text-white text-3xl font-bold">H</span>
-          </div>
+          {settings?.career_logo_url && (
+            <img src={settings.career_logo_url} alt="Logo" className="h-24 mx-auto mb-4 object-contain mix-blend-multiply contrast-125" referrerPolicy="no-referrer" />
+          )}
           <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
             Waruna Group Career
           </h1>
@@ -260,21 +287,67 @@ export default function PublicCareer() {
           </p>
         </div>
 
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
-          {/* Progress Bar */}
-          <div className="bg-slate-50 border-b border-slate-100 p-4 flex justify-between items-center px-8">
-            <div className={cn("flex flex-col items-center", step >= 1 ? "text-indigo-600" : "text-slate-400")}>
-              <div className={cn("w-8 h-8 rounded-full flex items-center justify-center font-bold mb-1", step >= 1 ? "bg-indigo-100" : "bg-slate-100")}>1</div>
+        {view === 'listing' ? (
+          <div className="space-y-8">
+            {loadingPositions ? (
+              <div className="flex justify-center p-12">
+                <Loader2 className="animate-spin text-indigo-600" size={32} />
+              </div>
+            ) : jobs.length === 0 ? (
+              <div className="bg-white/40 backdrop-blur-xl rounded-3xl border border-white/60 p-12 text-center shadow-xl">
+                <Briefcase className="mx-auto text-slate-400 mb-4" size={48} />
+                <h3 className="text-lg font-bold text-slate-800">Belum Ada Lowongan</h3>
+                <p className="text-slate-600 mt-2">Saat ini belum ada posisi yang dibuka. Silakan cek kembali nanti.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {jobs.map((job) => (
+                  <div 
+                    key={job.id} 
+                    className="bg-white/40 backdrop-blur-xl rounded-3xl border border-white/60 shadow-xl hover:shadow-2xl hover:border-white/80 transition-all duration-300 p-6 flex flex-col cursor-pointer group"
+                    onClick={() => setSelectedJob(job)}
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <Briefcase size={24} />
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-indigo-600 transition-colors">{job.position}</h3>
+                    <p className="text-sm text-slate-500 line-clamp-3 mb-6 flex-1">
+                      {job.jobdesk}
+                    </p>
+                    <div className="flex items-center text-indigo-600 font-semibold text-sm group-hover:translate-x-1 transition-transform">
+                      Lihat Detail <ChevronRight size={16} className="ml-1" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="bg-white/40 backdrop-blur-xl rounded-3xl border border-white/60 shadow-xl overflow-hidden">
+            {/* Back Button */}
+            <div className="bg-white/30 border-b border-white/40 p-4 px-8">
+              <button 
+                onClick={() => setView('listing')}
+                className="flex items-center text-sm font-medium text-slate-600 hover:text-indigo-700 transition-colors"
+              >
+                <ArrowLeft size={16} className="mr-2" /> Kembali ke Daftar Lowongan
+              </button>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="bg-white/30 border-b border-white/40 p-4 flex justify-between items-center px-8">
+            <div className={cn("flex flex-col items-center", step >= 1 ? "text-indigo-700" : "text-slate-500")}>
+              <div className={cn("w-8 h-8 rounded-full flex items-center justify-center font-bold mb-1", step >= 1 ? "bg-indigo-100/80" : "bg-white/50")}>1</div>
               <span className="text-xs font-medium">Data Diri</span>
             </div>
-            <div className={cn("h-1 flex-1 mx-4 rounded-full", step >= 2 ? "bg-indigo-600" : "bg-slate-200")} />
-            <div className={cn("flex flex-col items-center", step >= 2 ? "text-indigo-600" : "text-slate-400")}>
-              <div className={cn("w-8 h-8 rounded-full flex items-center justify-center font-bold mb-1", step >= 2 ? "bg-indigo-100" : "bg-slate-100")}>2</div>
+            <div className={cn("h-1 flex-1 mx-4 rounded-full", step >= 2 ? "bg-indigo-600" : "bg-white/50")} />
+            <div className={cn("flex flex-col items-center", step >= 2 ? "text-indigo-700" : "text-slate-500")}>
+              <div className={cn("w-8 h-8 rounded-full flex items-center justify-center font-bold mb-1", step >= 2 ? "bg-indigo-100/80" : "bg-white/50")}>2</div>
               <span className="text-xs font-medium">Verifikasi</span>
             </div>
-            <div className={cn("h-1 flex-1 mx-4 rounded-full", step >= 3 ? "bg-indigo-600" : "bg-slate-200")} />
-            <div className={cn("flex flex-col items-center", step >= 3 ? "text-indigo-600" : "text-slate-400")}>
-              <div className={cn("w-8 h-8 rounded-full flex items-center justify-center font-bold mb-1", step >= 3 ? "bg-indigo-100" : "bg-slate-100")}>3</div>
+            <div className={cn("h-1 flex-1 mx-4 rounded-full", step >= 3 ? "bg-indigo-600" : "bg-white/50")} />
+            <div className={cn("flex flex-col items-center", step >= 3 ? "text-indigo-700" : "text-slate-500")}>
+              <div className={cn("w-8 h-8 rounded-full flex items-center justify-center font-bold mb-1", step >= 3 ? "bg-indigo-100/80" : "bg-white/50")}>3</div>
               <span className="text-xs font-medium">Upload CV</span>
             </div>
           </div>
@@ -292,7 +365,7 @@ export default function PublicCareer() {
                       value={candidateName}
                       onChange={(e) => setCandidateName(e.target.value)}
                       placeholder="Masukkan nama lengkap"
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium"
+                      className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium"
                     />
                   </div>
                 </div>
@@ -307,7 +380,7 @@ export default function PublicCareer() {
                       value={candidateEmail}
                       onChange={(e) => setCandidateEmail(e.target.value)}
                       placeholder="kandidat@email.com"
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium"
+                      className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium"
                     />
                   </div>
                 </div>
@@ -322,7 +395,7 @@ export default function PublicCareer() {
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
                       placeholder="Contoh: 6281234567890"
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium"
+                      className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium"
                     />
                   </div>
                   <p className="text-xs text-slate-500">Gunakan format 628... Kode OTP akan dikirim ke nomor ini.</p>
@@ -333,7 +406,7 @@ export default function PublicCareer() {
                   <div className="relative">
                     <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     {loadingPositions ? (
-                      <div className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-500">
+                      <div className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/60 rounded-xl text-sm text-slate-600">
                         Memuat posisi...
                       </div>
                     ) : availablePositions.length > 0 ? (
@@ -341,7 +414,7 @@ export default function PublicCareer() {
                         required
                         value={position}
                         onChange={(e) => setPosition(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium appearance-none"
+                        className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium appearance-none"
                       >
                         <option value="" disabled>Pilih Posisi</option>
                         {availablePositions.map((pos, idx) => (
@@ -355,7 +428,7 @@ export default function PublicCareer() {
                         value={position}
                         onChange={(e) => setPosition(e.target.value)}
                         placeholder="Contoh: Frontend Developer"
-                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium"
+                        className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium"
                       />
                     )}
                   </div>
@@ -391,7 +464,7 @@ export default function PublicCareer() {
                     value={otpInput}
                     onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ''))}
                     placeholder="• • • • • •"
-                    className="w-full text-center text-3xl tracking-[1em] py-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono font-bold"
+                    className="w-full text-center text-3xl tracking-[1em] py-4 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all font-mono font-bold"
                   />
                 </div>
 
@@ -424,7 +497,7 @@ export default function PublicCareer() {
                 <div 
                   className={cn(
                     "relative border-2 border-dashed rounded-2xl p-10 transition-all flex flex-col items-center justify-center gap-4",
-                    files.length > 0 ? "border-emerald-200 bg-emerald-50/30" : "border-slate-200 bg-slate-50 hover:border-indigo-300 hover:bg-indigo-50/30"
+                    files.length > 0 ? "border-emerald-300 bg-emerald-50/50" : "border-white/60 bg-white/40 hover:border-indigo-300 hover:bg-white/60"
                   )}
                 >
                   <input
@@ -437,7 +510,7 @@ export default function PublicCareer() {
                   {files.length > 0 ? (
                     <div className="w-full space-y-3 z-20">
                       {files.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 shadow-sm relative z-20">
+                        <div key={index} className="flex items-center justify-between bg-white/50 p-3 rounded-xl border border-white/60 shadow-sm relative z-20">
                           <div className="flex items-center gap-3">
                             <div className={cn(
                               "w-10 h-10 rounded-lg flex items-center justify-center",
@@ -452,13 +525,13 @@ export default function PublicCareer() {
                           </div>
                         </div>
                       ))}
-                      <div className="text-center mt-4 pt-4 border-t border-slate-200">
+                      <div className="text-center mt-4 pt-4 border-t border-white/40">
                         <p className="text-sm font-medium text-indigo-600">Klik untuk mengganti file</p>
                       </div>
                     </div>
                   ) : (
                     <>
-                      <div className="w-16 h-16 bg-white text-slate-400 rounded-2xl flex items-center justify-center shadow-sm border border-slate-100">
+                      <div className="w-16 h-16 bg-white/60 text-slate-500 rounded-2xl flex items-center justify-center shadow-sm border border-white/80">
                         <Upload size={32} />
                       </div>
                       <div className="text-center">
@@ -480,7 +553,78 @@ export default function PublicCareer() {
             )}
           </div>
         </div>
+        )}
       </div>
+
+      {/* Job Detail Modal */}
+      {selectedJob && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/20 backdrop-blur-md"
+          onClick={() => setSelectedJob(null)}
+        >
+          <div 
+            className="bg-white/60 backdrop-blur-2xl rounded-3xl border border-white/60 shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-white/40 flex items-center justify-between bg-white/30">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-100/80 text-indigo-700 flex items-center justify-center">
+                  <Briefcase size={24} />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-900">{selectedJob.position}</h2>
+                  <p className="text-sm text-slate-600">Waruna Group</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedJob(null)}
+                className="p-2 text-slate-500 hover:text-slate-800 hover:bg-white/50 rounded-xl transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto flex-1 space-y-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              <div>
+                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <ClipboardList size={16} className="text-indigo-600" /> Deskripsi Pekerjaan (Jobdesk)
+                </h3>
+                <div className="prose prose-sm prose-slate max-w-none">
+                  <p className="whitespace-pre-wrap text-slate-800 leading-relaxed">{selectedJob.jobdesk}</p>
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <GraduationCap size={16} className="text-indigo-600" /> Kualifikasi
+                </h3>
+                <div className="prose prose-sm prose-slate max-w-none">
+                  <p className="whitespace-pre-wrap text-slate-800 leading-relaxed">{selectedJob.kualifikasi}</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-6 border-t border-white/40 bg-white/30 flex justify-end gap-3">
+              <button
+                onClick={() => setSelectedJob(null)}
+                className="px-6 py-2.5 text-slate-700 font-bold hover:bg-white/60 rounded-xl transition-colors"
+              >
+                Tutup
+              </button>
+              <button
+                onClick={() => {
+                  setPosition(selectedJob.position);
+                  setSelectedJob(null);
+                  setView('form');
+                }}
+                className="px-8 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
+              >
+                Lamar Sekarang
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

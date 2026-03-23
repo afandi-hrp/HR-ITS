@@ -169,7 +169,7 @@ export default function CandidateProfile() {
               <div className="w-20 h-20 bg-white rounded-2xl border-4 border-white shadow-md flex items-center justify-center text-3xl font-bold text-indigo-600 absolute -top-10 bg-gradient-to-br from-indigo-50 to-white">
                 {candidate.full_name.charAt(0)}
               </div>
-              <div className="mt-12">
+              <div className="pt-14">
                 <h2 className="text-2xl font-bold text-slate-900">{candidate.full_name}</h2>
                 <div className="flex items-center gap-2 text-indigo-600 font-medium mt-1">
                   <Briefcase size={16} />

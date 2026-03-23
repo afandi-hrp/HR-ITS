@@ -301,6 +301,18 @@ export default function RecruitmentFunnel() {
 
   useEffect(() => {
     fetchData();
+
+    // Real-time Subscription
+    const channel = supabase.channel('recruitment_funnel_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'candidates' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'candidate_logs' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'psikotes_schedules' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'interview_schedules' }, () => fetchData())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [selectedPosition, dateFilter, customStartDate, customEndDate]);
 
   const handleResetFilter = () => {
@@ -336,7 +348,7 @@ export default function RecruitmentFunnel() {
           {(selectedPosition !== 'all' || dateFilter !== 'all') && (
             <button
               onClick={handleResetFilter}
-              className="px-4 py-2.5 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all flex items-center gap-2"
+              className="px-4 py-2.5 text-sm font-medium text-slate-600 bg-white/50 hover:bg-white/70 border border-white/60 rounded-xl transition-all flex items-center gap-2"
             >
               <X size={16} />
               Reset Filter
@@ -346,7 +358,7 @@ export default function RecruitmentFunnel() {
             <select
               value={selectedPosition}
               onChange={(e) => setSelectedPosition(e.target.value)}
-              className="pl-4 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none text-sm font-medium text-slate-700 shadow-sm min-w-[160px]"
+              className="pl-4 pr-10 py-2.5 bg-white/50 backdrop-blur-md border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all appearance-none text-sm font-medium text-slate-700 shadow-sm min-w-[160px]"
             >
               <option value="all">Semua Posisi</option>
               {positions.map(pos => (
@@ -361,7 +373,7 @@ export default function RecruitmentFunnel() {
               <select
                 value={dateFilter}
                 onChange={(e) => setDateFilter(e.target.value)}
-                className="pl-4 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none text-sm font-medium text-slate-700 shadow-sm min-w-[160px]"
+                className="pl-4 pr-10 py-2.5 bg-white/50 backdrop-blur-md border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all appearance-none text-sm font-medium text-slate-700 shadow-sm min-w-[160px]"
               >
                 <option value="all">Semua Waktu</option>
                 <option value="7days">7 Hari Terakhir</option>
@@ -373,7 +385,7 @@ export default function RecruitmentFunnel() {
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
             </div>
             {dateFilter === 'custom' && (
-              <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
+              <div className="flex items-center gap-2 bg-white/50 backdrop-blur-md border border-white/60 rounded-xl px-3 py-1.5 shadow-sm">
                 <input 
                   type="date" 
                   value={customStartDate}
@@ -395,42 +407,42 @@ export default function RecruitmentFunnel() {
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+        <div className="bg-white/40 backdrop-blur-xl p-6 rounded-3xl border border-white/60 shadow-xl hover:shadow-2xl hover:bg-white/50 hover:-translate-y-1 transition-all duration-300 group cursor-pointer">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
+            <div className="p-3 bg-indigo-100/80 text-indigo-700 rounded-2xl group-hover:scale-110 transition-transform duration-300">
               <Users size={24} />
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Applied</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Applied</p>
               <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
             </div>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+        <div className="bg-white/40 backdrop-blur-xl p-6 rounded-3xl border border-white/60 shadow-xl hover:shadow-2xl hover:bg-white/50 hover:-translate-y-1 transition-all duration-300 group cursor-pointer">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl">
+            <div className="p-3 bg-emerald-100/80 text-emerald-700 rounded-2xl group-hover:scale-110 transition-transform duration-300">
               <CheckCircle2 size={24} />
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Diterima (Hired)</p>
-              <p className="text-2xl font-bold text-emerald-600">{stats.accepted}</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Diterima (Hired)</p>
+              <p className="text-2xl font-bold text-emerald-700">{stats.accepted}</p>
             </div>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+        <div className="bg-white/40 backdrop-blur-xl p-6 rounded-3xl border border-white/60 shadow-xl hover:shadow-2xl hover:bg-white/50 hover:-translate-y-1 transition-all duration-300 group cursor-pointer">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-red-50 text-red-600 rounded-2xl">
+            <div className="p-3 bg-red-100/80 text-red-700 rounded-2xl group-hover:scale-110 transition-transform duration-300">
               <XCircle size={24} />
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Rejected</p>
-              <p className="text-2xl font-bold text-red-600">{stats.rejected}</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Rejected</p>
+              <p className="text-2xl font-bold text-red-700">{stats.rejected}</p>
             </div>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+        <div className="bg-white/40 backdrop-blur-xl p-6 rounded-3xl border border-white/60 shadow-xl hover:shadow-2xl hover:bg-white/50 hover:-translate-y-1 transition-all duration-300 group cursor-pointer">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl">
+            <div className="p-3 bg-amber-100/80 text-amber-700 rounded-2xl group-hover:scale-110 transition-transform duration-300">
               <Clock size={24} />
             </div>
             <div>
@@ -443,7 +455,7 @@ export default function RecruitmentFunnel() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Visual Funnel */}
-        <div className="lg:col-span-2 bg-white p-4 sm:p-8 rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
+        <div className="lg:col-span-2 bg-white/40 backdrop-blur-xl p-4 sm:p-8 rounded-3xl border border-white/60 shadow-2xl overflow-hidden">
           <h2 className="text-xl font-bold text-slate-900 mb-4 sm:mb-8 flex items-center gap-2">
             <TrendingUp className="text-indigo-600" />
             Visualisasi Corong Rekrutmen
@@ -464,7 +476,7 @@ export default function RecruitmentFunnel() {
                       </div>
                       
                       {/* Colored Bar Graph */}
-                      <div className="flex-1 relative h-12 flex items-center justify-center bg-slate-100 rounded-full overflow-hidden">
+                      <div className="flex-1 relative h-12 flex items-center justify-center bg-white/40 border border-white/60 rounded-full overflow-hidden">
                         <div 
                           className={cn("absolute left-1/2 -translate-x-1/2 h-full transition-all duration-1000 rounded-full flex items-center justify-center", item.color)}
                           style={{ width: `${width}%` }}
@@ -503,17 +515,17 @@ export default function RecruitmentFunnel() {
         </div>
 
         {/* Table Data */}
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden flex flex-col">
-          <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+        <div className="bg-white/40 backdrop-blur-xl rounded-3xl border border-white/60 shadow-2xl overflow-hidden flex flex-col">
+          <div className="p-6 border-b border-white/40 bg-white/30">
             <h2 className="text-lg font-bold text-slate-900">Detail Konversi</h2>
-            <p className="text-xs text-slate-500 mt-1">Klik pada tahap untuk melihat detail kandidat.</p>
+            <p className="text-xs text-slate-600 mt-1">Klik pada tahap untuk melihat detail kandidat.</p>
           </div>
-          <div className="divide-y divide-slate-100 flex-1 overflow-y-auto">
+          <div className="divide-y divide-white/40 flex-1 overflow-y-auto">
             {funnelData.map((item) => (
               <button 
                 key={item.stage} 
                 onClick={() => setSelectedStage(item)}
-                className="w-full text-left p-6 hover:bg-slate-50 transition-colors group focus:outline-none focus:bg-indigo-50/50"
+                className="w-full text-left p-6 hover:bg-white/50 transition-colors group focus:outline-none focus:bg-indigo-50/50"
               >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-3">
@@ -524,7 +536,7 @@ export default function RecruitmentFunnel() {
                   </div>
                   <span className="text-lg font-bold text-slate-900">{item.count}</span>
                 </div>
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                <div className="w-full bg-white/40 border border-white/60 h-2 rounded-full overflow-hidden">
                   <div 
                     className={cn("h-full transition-all duration-1000", item.color)}
                     style={{ width: `${item.percentage}%` }}
@@ -553,7 +565,7 @@ export default function RecruitmentFunnel() {
       {/* New Metrics Panels */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Monthly Metrics */}
-        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xl overflow-hidden flex flex-col">
+        <div className="bg-white/40 backdrop-blur-xl p-6 sm:p-8 rounded-3xl border border-white/60 shadow-2xl overflow-hidden flex flex-col">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
               <Calendar className="text-indigo-600" />
@@ -586,7 +598,7 @@ export default function RecruitmentFunnel() {
                   <div className="flex-1 flex flex-col gap-1.5">
                     {/* Hired Bar */}
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                      <div className="flex-1 bg-white/40 border border-white/60 h-2.5 rounded-full overflow-hidden">
                         <div 
                           className="h-full bg-indigo-500 rounded-full transition-all duration-500" 
                           style={{ width: `${countWidth}%` }} 
@@ -596,7 +608,7 @@ export default function RecruitmentFunnel() {
                     </div>
                     {/* Days Bar */}
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                      <div className="flex-1 bg-white/40 border border-white/60 h-2.5 rounded-full overflow-hidden">
                         <div 
                           className="h-full bg-emerald-500 rounded-full transition-all duration-500" 
                           style={{ width: `${daysWidth}%` }} 
@@ -612,7 +624,7 @@ export default function RecruitmentFunnel() {
         </div>
 
         {/* Pipeline Efficiency */}
-        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xl overflow-hidden flex flex-col">
+        <div className="bg-white/40 backdrop-blur-xl p-6 sm:p-8 rounded-3xl border border-white/60 shadow-2xl overflow-hidden flex flex-col">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
               <Clock className="text-indigo-600" />
@@ -634,7 +646,7 @@ export default function RecruitmentFunnel() {
                     <span className="text-sm font-bold text-slate-700">{item.stage}</span>
                     <span className="text-sm font-bold text-indigo-600">{item.days} Hari</span>
                   </div>
-                  <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+                  <div className="w-full bg-white/40 border border-white/60 h-3 rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-gradient-to-r from-indigo-400 to-violet-500 transition-all duration-1000 rounded-full"
                       style={{ width: `${width}%` }}
@@ -649,9 +661,15 @@ export default function RecruitmentFunnel() {
 
       {/* Modal Detail Kandidat */}
       {selectedStage && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-3xl shadow-2xl border border-slate-200 flex flex-col animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between p-6 border-b border-slate-100 shrink-0">
+        <div 
+          className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-white/20 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setSelectedStage(null)}
+        >
+          <div 
+            className="bg-white/60 backdrop-blur-2xl w-full max-w-4xl max-h-[90vh] rounded-3xl shadow-2xl border border-white/60 flex flex-col animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 border-b border-white/40 shrink-0 bg-white/30">
               <div className="flex items-center gap-4">
                 <div className={cn("p-3 rounded-xl text-white", selectedStage.color)}>
                   <selectedStage.icon size={24} />
@@ -663,17 +681,17 @@ export default function RecruitmentFunnel() {
               </div>
               <button 
                 onClick={() => setSelectedStage(null)} 
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all"
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-white/50 rounded-full transition-all"
               >
                 <X size={24} />
               </button>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {selectedStage.candidates.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {selectedStage.candidates.map((candidate: any) => (
-                    <div key={candidate.id} className="p-4 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-white hover:shadow-md transition-all group">
+                    <div key={candidate.id} className="p-4 rounded-2xl border border-white/60 bg-white/40 hover:bg-white/60 hover:shadow-xl transition-all group">
                       <div className="flex justify-between items-start mb-2">
                         <h3 className="font-bold text-slate-900 text-lg group-hover:text-indigo-600 transition-colors">{candidate.full_name}</h3>
                         <span className={cn(
@@ -682,7 +700,7 @@ export default function RecruitmentFunnel() {
                           candidate.status_screening === 'accepted' ? "bg-emerald-100 text-emerald-700" :
                           candidate.status_screening === 'rejected' ? "bg-red-100 text-red-700" :
                           candidate.status_screening === 'pending' ? "bg-amber-100 text-amber-700" :
-                          "bg-slate-200 text-slate-700"
+                          "bg-white/60 text-slate-700 border border-white/80"
                         )}>
                           {candidate.status_screening}
                         </span>
@@ -713,10 +731,10 @@ export default function RecruitmentFunnel() {
               )}
             </div>
             
-            <div className="p-6 border-t border-slate-100 bg-slate-50 shrink-0 rounded-b-3xl">
+            <div className="p-6 border-t border-white/40 bg-white/30 shrink-0 rounded-b-3xl">
               <button 
                 onClick={() => setSelectedStage(null)}
-                className="w-full py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-100 transition-all"
+                className="w-full py-3 bg-white/50 border border-white/60 text-slate-800 font-bold rounded-xl hover:bg-white/80 transition-all shadow-sm"
               >
                 Tutup
               </button>
