@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { Upload, FileText, CheckCircle2, Loader2, File, AlertCircle, Phone, User, Mail, Briefcase, KeyRound, ChevronRight, X, ArrowLeft, ClipboardList, GraduationCap } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, Loader2, File, AlertCircle, Phone, User, Mail, Briefcase, KeyRound, ChevronRight, X, ArrowLeft, ClipboardList, GraduationCap, RefreshCw } from 'lucide-react';
 import { useToast } from '../components/ui/use-toast';
 import { cn } from '../lib/utils';
 import { SiteSettings } from '../types';
@@ -29,9 +29,15 @@ export default function PublicCareer() {
   // OTP Data
   const [otpInput, setOtpInput] = useState('');
   const [otpRequestId, setOtpRequestId] = useState('');
+  const [uploadToken, setUploadToken] = useState('');
   
   // Upload Data
   const [files, setFiles] = useState<File[]>([]);
+  
+  // CAPTCHA Data
+  const [captchaText, setCaptchaText] = useState('');
+  const [captchaInput, setCaptchaInput] = useState('');
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   
   // Positions
   const [availablePositions, setAvailablePositions] = useState<string[]>([]);
@@ -39,6 +45,59 @@ export default function PublicCareer() {
   const [loadingPositions, setLoadingPositions] = useState(true);
 
   const { toast } = useToast();
+
+  const generateCaptcha = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    let text = '';
+    for (let i = 0; i < 5; i++) {
+      text += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setCaptchaText(text);
+  };
+
+  useEffect(() => {
+    if (step === 2) {
+      generateCaptcha();
+    }
+  }, [step]);
+
+  useEffect(() => {
+    if (step === 2 && captchaText && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Background
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Add noise (lines)
+        for (let i = 0; i < 5; i++) {
+          ctx.beginPath();
+          ctx.moveTo(Math.random() * canvas.width, Math.random() * canvas.height);
+          ctx.lineTo(Math.random() * canvas.width, Math.random() * canvas.height);
+          ctx.strokeStyle = '#cbd5e1';
+          ctx.stroke();
+        }
+
+        // Add text
+        ctx.font = 'bold 24px Inter, sans-serif';
+        ctx.fillStyle = '#334155';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        // Draw characters with slight rotation
+        for (let i = 0; i < captchaText.length; i++) {
+          ctx.save();
+          ctx.translate(20 + i * 20, canvas.height / 2);
+          ctx.rotate((Math.random() - 0.5) * 0.4);
+          ctx.fillText(captchaText[i], 0, 0);
+          ctx.restore();
+        }
+      }
+    }
+  }, [captchaText, step]);
 
   useEffect(() => {
     supabase.from('site_settings').select('*').eq('id', 1).single().then(({ data }) => {
@@ -81,35 +140,12 @@ export default function PublicCareer() {
 
     setLoading(true);
     try {
-      // Generate 6-digit OTP
-      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-      
-      // Save to Supabase
-      const expiresAt = new Date();
-      expiresAt.setMinutes(expiresAt.getMinutes() + 5); // 5 minutes expiration
-      
-      const { data, error } = await supabase
-        .from('otp_requests')
-        .insert([{
-          phone_number: phoneNumber,
-          otp_code: otpCode,
-          expires_at: expiresAt.toISOString(),
-          is_used: false
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-      
-      setOtpRequestId(data.id);
-
-      // Trigger n8n webhook
-      const response = await fetch('/api/n8n/trigger-otp', {
+      // Request OTP via backend
+      const response = await fetch('/api/request-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          phone: phoneNumber,
-          otp: otpCode
+          phone: phoneNumber
         }),
       });
 
@@ -117,6 +153,9 @@ export default function PublicCareer() {
         const errData = await response.json();
         throw new Error(errData.error || 'Gagal mengirim OTP via WhatsApp');
       }
+
+      const data = await response.json();
+      setOtpRequestId(data.otpRequestId);
 
       toast({ title: 'OTP Terkirim', description: 'Silakan periksa WhatsApp Anda untuk kode OTP.' });
       setStep(2);
@@ -135,33 +174,32 @@ export default function PublicCareer() {
       return;
     }
 
+    if (captchaInput !== captchaText) {
+      toast({ title: 'Peringatan', description: 'CAPTCHA tidak valid. Silakan coba lagi.', variant: 'destructive' });
+      generateCaptcha();
+      setCaptchaInput('');
+      return;
+    }
+
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('otp_requests')
-        .select('*')
-        .eq('id', otpRequestId)
-        .single();
+      // Verify OTP via backend
+      const response = await fetch('/api/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          otpRequestId,
+          otpInput
+        }),
+      });
 
-      if (error || !data) throw new Error('Permintaan OTP tidak ditemukan.');
-
-      if (data.is_used) {
-        throw new Error('Kode OTP ini sudah digunakan.');
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'Gagal memverifikasi OTP');
       }
 
-      if (new Date() > new Date(data.expires_at)) {
-        throw new Error('Kode OTP sudah kadaluarsa. Silakan minta ulang.');
-      }
-
-      if (data.otp_code !== otpInput) {
-        throw new Error('Kode OTP salah.');
-      }
-
-      // Mark as used
-      await supabase
-        .from('otp_requests')
-        .update({ is_used: true })
-        .eq('id', otpRequestId);
+      const data = await response.json();
+      setUploadToken(data.uploadToken);
 
       toast({ title: 'Berhasil', description: 'Verifikasi berhasil. Silakan unggah CV Anda.' });
       setStep(3);
@@ -207,18 +245,7 @@ export default function PublicCareer() {
       const file = files[0];
       const formData = new FormData();
       
-      // We need to fetch the admin's CV webhook URL. 
-      // Since this is a public page, we can use a new endpoint or the existing one.
-      // Wait, the existing /api/n8n/upload-cv requires webhookUrl in the body.
-      // Let's create a public wrapper for it in server.ts, or just fetch the webhookUrl first.
-      // Let's fetch the webhook URL via a new endpoint /api/n8n/public-cv-webhook
-      const webhookRes = await fetch('/api/n8n/public-cv-webhook');
-      if (!webhookRes.ok) {
-        throw new Error('Sistem sedang tidak dapat menerima lamaran saat ini (Webhook belum dikonfigurasi).');
-      }
-      const { webhookUrl } = await webhookRes.json();
-
-      formData.append('webhookUrl', webhookUrl);
+      formData.append('uploadToken', uploadToken);
       formData.append('candidateName', candidateName);
       formData.append('candidateEmail', candidateEmail);
       formData.append('candidatePosition', position);
@@ -466,6 +493,42 @@ export default function PublicCareer() {
                     placeholder="• • • • • •"
                     className="w-full text-center text-3xl tracking-[1em] py-4 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all font-mono font-bold"
                   />
+                </div>
+
+                {/* CAPTCHA Section */}
+                <div className="pt-4 text-left">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Verifikasi Keamanan</label>
+                  <div className="flex gap-3 items-center">
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        required
+                        maxLength={5}
+                        value={captchaInput}
+                        onChange={(e) => setCaptchaInput(e.target.value)}
+                        className="block w-full px-4 py-3 bg-white/50 border border-white/40 rounded-xl text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all font-mono tracking-widest"
+                        placeholder="Ketik 5 karakter"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 bg-white/60 p-1.5 rounded-xl border border-white/40 shadow-sm">
+                      <canvas 
+                        ref={canvasRef} 
+                        width="120" 
+                        height="40" 
+                        className="rounded-lg cursor-pointer"
+                        onClick={generateCaptcha}
+                        title="Klik untuk mengganti CAPTCHA"
+                      />
+                      <button
+                        type="button"
+                        onClick={generateCaptcha}
+                        className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                        title="Ganti CAPTCHA"
+                      >
+                        <RefreshCw size={16} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 <button

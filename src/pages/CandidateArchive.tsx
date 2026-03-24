@@ -125,13 +125,13 @@ export default function CandidateArchive() {
               setDateFilter('');
               setCurrentPage(1);
             }}
-            className="px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+            className="px-4 py-2 text-sm font-bold text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm"
           >
             Reset
           </button>
           <button 
             onClick={fetchLogs}
-            className="p-2.5 text-slate-500 hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 rounded-xl transition-all"
+            className="p-2.5 text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm flex items-center justify-center"
             title="Refresh Data"
           >
             <RefreshCcw size={20} className={loading ? 'animate-spin' : ''} />

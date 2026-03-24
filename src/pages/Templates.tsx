@@ -145,8 +145,16 @@ export default function Templates() {
           />
         </div>
         <button 
+          onClick={() => {
+            setSearch('');
+          }}
+          className="px-4 py-2 text-sm font-bold text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm"
+        >
+          Reset
+        </button>
+        <button 
           onClick={fetchTemplates}
-          className="p-2.5 text-slate-500 hover:bg-slate-50 border border-slate-200 rounded-xl transition-all"
+          className="p-2.5 text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm flex items-center justify-center"
         >
           <RefreshCcw size={20} className={loading ? 'animate-spin' : ''} />
         </button>

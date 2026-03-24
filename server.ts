@@ -7,13 +7,43 @@ import multer from "multer";
 import axios from "axios";
 import FormData from "form-data";
 import { PassThrough } from "stream";
+import crypto from "crypto";
+import rateLimit from "express-rate-limit";
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const upload = multer({ storage: multer.memoryStorage() });
+const triggerRateLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 10, // limit each IP to 10 requests per windowMs
+  message: { error: "Terlalu banyak permintaan, silakan coba lagi nanti." }
+});
+
+const uploadRateLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 5, // limit each IP to 5 uploads per windowMs
+  message: { error: "Terlalu banyak permintaan upload, silakan coba lagi nanti." }
+});
+
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    // Strict MIME type validation
+    const allowedMimeTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Invalid file type. Only PDF and Word documents are allowed."));
+    }
+  }
+});
 const app = express();
 
 // Supabase Admin Client (Lazy initialization to prevent crash if env vars are missing)
@@ -141,21 +171,55 @@ app.use((req: any, res, next) => {
   };
 
   // Feature: Trigger n8n Webhook (Proxy to avoid CORS)
-  app.post("/api/n8n/trigger", async (req, res) => {
-    const { webhookUrl, payload } = req.body || {};
+  app.post("/api/n8n/trigger", triggerRateLimiter, async (req, res) => {
+    const { type, payload } = req.body || {};
+    const authHeader = req.headers.authorization;
 
-    if (!webhookUrl) {
-      return res.status(400).json({ error: "Webhook URL is required" });
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: "Unauthorized. Missing or invalid Authorization header." });
     }
 
-    if (isLocalUrl(webhookUrl)) {
-      return res.status(400).json({ 
-        error: "Vercel (Cloud) tidak dapat mengakses n8n lokal (localhost/IP Private). Gunakan ngrok, localtunnel, atau n8n Cloud agar dapat diakses dari internet." 
-      });
+    if (!type || !['email', 'wa', 'test'].includes(type)) {
+      return res.status(400).json({ error: "Valid type (email, wa, test) is required" });
     }
 
     try {
-      console.log(`Triggering n8n webhook: ${webhookUrl}`);
+      const supabaseAdmin = getSupabaseAdmin();
+      const token = authHeader.split(' ')[1];
+      
+      // Verify user
+      const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+      
+      if (authError || !user) {
+        return res.status(401).json({ error: "Unauthorized. Invalid token." });
+      }
+
+      // Fetch webhook URL based on type from user metadata
+      let webhookUrl = '';
+      if (type === 'email') {
+        webhookUrl = user.user_metadata?.n8n_webhook_url;
+      } else if (type === 'wa') {
+        webhookUrl = user.user_metadata?.wa_webhook_url;
+      } else if (type === 'test') {
+        const testType = payload?.type;
+        if (testType === 'email') webhookUrl = user.user_metadata?.n8n_webhook_url;
+        else if (testType === 'cv') webhookUrl = user.user_metadata?.cv_webhook_url;
+        else if (testType === 'sheet') webhookUrl = user.user_metadata?.sheet_webhook_url;
+        else if (testType === 'otp') webhookUrl = user.user_metadata?.otp_webhook_url;
+        else if (testType === 'wa') webhookUrl = user.user_metadata?.wa_webhook_url;
+      }
+
+      if (!webhookUrl) {
+        return res.status(400).json({ error: `Webhook URL for ${type === 'test' ? payload?.type : type} is not configured in your settings. Please save your settings first.` });
+      }
+
+      if (isLocalUrl(webhookUrl)) {
+        return res.status(400).json({ 
+          error: "Vercel (Cloud) tidak dapat mengakses n8n lokal (localhost/IP Private). Gunakan ngrok, localtunnel, atau n8n Cloud agar dapat diakses dari internet." 
+        });
+      }
+
+      console.log(`Triggering n8n webhook for ${type}`);
       const response = await axios.post(webhookUrl, payload, {
         headers: { "Content-Type": "application/json" },
         timeout: 5000 // 5 seconds timeout to prevent Vercel 10s kill
@@ -171,16 +235,30 @@ app.use((req: any, res, next) => {
     }
   });
 
-  // Feature: Trigger OTP Webhook for Public Career Page
-  app.post("/api/n8n/trigger-otp", async (req, res) => {
-    const { phone, otp } = req.body || {};
+  // Feature: Request OTP for Public Career Page
+  app.post("/api/request-otp", async (req, res) => {
+    const { phone } = req.body || {};
 
-    if (!phone || !otp) {
-      return res.status(400).json({ error: "Phone and OTP are required" });
+    if (!phone) {
+      return res.status(400).json({ error: "Phone number is required" });
     }
 
     try {
       const supabaseAdmin = getSupabaseAdmin();
+      
+      // Basic Rate Limiting: Check if there are more than 3 requests in the last 5 minutes for this phone
+      const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      const { count, error: rateLimitError } = await supabaseAdmin
+        .from('otp_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('phone_number', phone)
+        .gte('created_at', fiveMinsAgo);
+
+      if (rateLimitError) throw rateLimitError;
+      if (count && count >= 3) {
+        return res.status(429).json({ error: "Terlalu banyak permintaan OTP. Silakan coba lagi dalam 5 menit." });
+      }
+
       const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
       
       if (error || !users || users.length === 0) {
@@ -201,48 +279,97 @@ app.use((req: any, res, next) => {
         });
       }
 
+      // Generate 6-digit OTP
+      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      // Save to Supabase
+      const expiresAt = new Date();
+      expiresAt.setMinutes(expiresAt.getMinutes() + 5); // 5 minutes expiration
+      
+      const { data: otpData, error: insertError } = await supabaseAdmin
+        .from('otp_requests')
+        .insert([{
+          phone_number: phone,
+          otp_code: otpCode,
+          expires_at: expiresAt.toISOString(),
+          is_used: false
+        }])
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
       console.log(`Triggering OTP webhook: ${webhookUrl}`);
-      const response = await axios.post(webhookUrl, { phone, otp }, {
+      const response = await axios.post(webhookUrl, { phone, otp: otpCode }, {
         headers: { "Content-Type": "application/json" },
         timeout: 5000
       });
 
-      res.json(response.data);
+      res.json({ success: true, otpRequestId: otpData.id });
     } catch (error: any) {
-      console.error("Error triggering OTP proxy:", error);
+      console.error("Error requesting OTP:", error);
       const status = error.response?.status || 500;
       const data = error.response?.data || { error: error.message };
       res.status(status).json(data);
     }
   });
 
-  // Feature: Get Public CV Webhook URL
-  app.get("/api/n8n/public-cv-webhook", async (req, res) => {
+  // Feature: Verify OTP for Public Career Page
+  app.post("/api/verify-otp", async (req, res) => {
+    const { otpRequestId, otpInput } = req.body || {};
+
+    if (!otpRequestId || !otpInput) {
+      return res.status(400).json({ error: "OTP Request ID and OTP Input are required" });
+    }
+
     try {
       const supabaseAdmin = getSupabaseAdmin();
-      const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
       
-      if (error || !users || users.length === 0) {
-        return res.status(500).json({ error: "Could not fetch admin settings" });
+      const { data, error } = await supabaseAdmin
+        .from('otp_requests')
+        .select('*')
+        .eq('id', otpRequestId)
+        .single();
+
+      if (error || !data) {
+        return res.status(400).json({ error: "Permintaan OTP tidak ditemukan." });
       }
 
-      // Find the first user that has cv_webhook_url configured
-      const adminUser = users.find((u: any) => u.user_metadata?.cv_webhook_url) || users[0];
-      const webhookUrl = adminUser?.user_metadata?.cv_webhook_url;
-
-      if (!webhookUrl) {
-        return res.status(404).json({ error: "CV Webhook URL is not configured by Admin" });
+      if (data.is_used) {
+        return res.status(400).json({ error: "Kode OTP ini sudah digunakan." });
       }
 
-      res.json({ webhookUrl });
+      if (new Date() > new Date(data.expires_at)) {
+        return res.status(400).json({ error: "Kode OTP sudah kadaluarsa. Silakan minta ulang." });
+      }
+
+      if (data.otp_code !== otpInput) {
+        return res.status(400).json({ error: "Kode OTP salah." });
+      }
+
+      // Generate an upload token and extend expiration to 1 hour
+      const uploadToken = crypto.randomBytes(32).toString('hex');
+      const newExpiresAt = new Date();
+      newExpiresAt.setHours(newExpiresAt.getHours() + 1);
+
+      await supabaseAdmin
+        .from('otp_requests')
+        .update({ 
+          is_used: true, 
+          otp_code: uploadToken, // Store token in otp_code field to reuse the table
+          expires_at: newExpiresAt.toISOString() 
+        })
+        .eq('id', otpRequestId);
+
+      res.json({ success: true, uploadToken });
     } catch (error: any) {
-      console.error("Error fetching public CV webhook:", error);
+      console.error("Error verifying OTP:", error);
       res.status(500).json({ error: error.message });
     }
   });
 
   // Feature: Upload CV to n8n (Multipart)
-  app.post("/api/n8n/upload-cv", (req: any, res, next) => {
+  app.post("/api/n8n/upload-cv", uploadRateLimiter, (req: any, res, next) => {
     if (req.body && Buffer.isBuffer(req.body)) {
       // Vercel parsed the body into a Buffer (raw body)
       const stream = new PassThrough();
@@ -276,7 +403,7 @@ app.use((req: any, res, next) => {
     }
   }, async (req: any, res: any) => {
     const { 
-      webhookUrl, 
+      uploadToken,
       candidateName, 
       candidateEmail,
       candidatePosition, 
@@ -288,17 +415,73 @@ app.use((req: any, res, next) => {
     } = req.body || {};
     const file = req.file;
 
-    if (!webhookUrl || !file) {
-      return res.status(400).json({ error: "Webhook URL and file are required" });
-    }
-
-    if (isLocalUrl(webhookUrl)) {
-      return res.status(400).json({ 
-        error: "Vercel (Cloud) tidak dapat mengakses n8n lokal (localhost/IP Private). Gunakan ngrok, localtunnel, atau n8n Cloud agar dapat diakses dari internet." 
-      });
+    if (!file) {
+      return res.status(400).json({ error: "File is required" });
     }
 
     try {
+      const supabaseAdmin = getSupabaseAdmin();
+      let webhookUrl = '';
+
+      // Check if request is authenticated (HR) or public (Candidate with token)
+      const authHeader = req.headers.authorization;
+      
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        // HR Upload: Validate Supabase token
+        const token = authHeader.split(' ')[1];
+        const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+        
+        if (error || !user) {
+          return res.status(401).json({ error: "Unauthorized" });
+        }
+        
+        webhookUrl = user.user_metadata?.cv_webhook_url;
+        
+        if (!webhookUrl) {
+          // Fallback to first admin if not set for this specific user
+          const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
+          const adminUser = users?.find((u: any) => u.user_metadata?.cv_webhook_url) || users?.[0];
+          webhookUrl = adminUser?.user_metadata?.cv_webhook_url;
+        }
+      } else {
+        // Public Upload: Validate uploadToken
+        if (!uploadToken) {
+          return res.status(401).json({ error: "Upload token is required" });
+        }
+
+        // Atomic delete to prevent race conditions
+        const { data: tokenData, error: tokenError } = await supabaseAdmin
+          .from('otp_requests')
+          .delete()
+          .eq('otp_code', uploadToken)
+          .eq('is_used', true)
+          .select()
+          .single();
+
+        if (tokenError || !tokenData) {
+          return res.status(401).json({ error: "Invalid or already used upload token" });
+        }
+
+        if (new Date() > new Date(tokenData.expires_at)) {
+          return res.status(401).json({ error: "Upload token expired" });
+        }
+
+        // Fetch webhook URL from admin settings
+        const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
+        const adminUser = users?.find((u: any) => u.user_metadata?.cv_webhook_url) || users?.[0];
+        webhookUrl = adminUser?.user_metadata?.cv_webhook_url;
+      }
+
+      if (!webhookUrl) {
+        return res.status(400).json({ error: "CV Webhook URL is not configured by Admin" });
+      }
+
+      if (isLocalUrl(webhookUrl)) {
+        return res.status(400).json({ 
+          error: "Vercel (Cloud) tidak dapat mengakses n8n lokal (localhost/IP Private). Gunakan ngrok, localtunnel, atau n8n Cloud agar dapat diakses dari internet." 
+        });
+      }
+
       console.log(`Uploading CV to n8n webhook: ${webhookUrl}`);
       console.log(`File details: ${file.originalname}, ${file.mimetype}, ${file.size} bytes`);
       

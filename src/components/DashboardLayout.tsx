@@ -75,15 +75,15 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'open-recruitment', label: 'Open Recruitment', icon: Briefcase },
-    { id: 'screening', label: 'Screening Awal', icon: Users },
     { id: 'funnel', label: 'Recruitment Funnel', icon: BarChart3 },
+    { id: 'screening', label: 'Screening Awal', icon: Users },
     { id: 'psikotes', label: 'Jadwal Psikotes', icon: FileText },
     { id: 'interview', label: 'Jadwal Interview', icon: CalendarDays },
-    { id: 'logs', label: 'Log Kandidat', icon: ClipboardList },
-    { id: 'archive', label: 'Candidate Archive', icon: Archive },
+    { id: 'open-recruitment', label: 'Open Recruitment', icon: Briefcase },
     { id: 'upload-cv', label: 'Upload CV', icon: Upload },
     { id: 'templates', label: 'Template Email', icon: FileText },
+    { id: 'logs', label: 'Log Kandidat', icon: ClipboardList },
+    { id: 'archive', label: 'Candidate Archive', icon: Archive },
     { id: 'settings', label: 'Pengaturan', icon: Settings },
   ];
 

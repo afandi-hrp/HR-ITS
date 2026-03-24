@@ -30,6 +30,7 @@ export default function Dashboard() {
     upcomingInterview: 0
   });
   const [funnelData, setFunnelData] = useState<any[]>([]);
+  const [upcomingNotifications, setUpcomingNotifications] = useState<any[]>([]);
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [topCandidatesByPosition, setTopCandidatesByPosition] = useState<Record<string, any[]>>({});
   const [topCandidatesByDetailed, setTopCandidatesByDetailed] = useState<Record<string, any[]>>({});
@@ -141,18 +142,25 @@ export default function Dashboard() {
         // Fetch Recent Activities (Server-Side Limit)
         // We fetch top 10 from each relevant table/query, then merge and sort in JS.
         // This ensures we download max 40 rows instead of 100,000.
+        const next24Hours = new Date();
+        next24Hours.setHours(nowForQuery.getHours() + 24);
+
         const [
           { data: recentCands },
           { data: recentLogs },
           { data: recentPsi },
           { data: recentInt },
-          { data: allActiveCandidates }
+          { data: allActiveCandidates },
+          { data: upcomingPsiData },
+          { data: upcomingIntData }
         ] = await Promise.all([
           buildDataQuery('candidates', 'id, full_name, position, created_at').order('created_at', { ascending: false }).limit(10),
           buildDataQuery('candidate_logs', 'id, full_name, position, created_at, status_screening').order('created_at', { ascending: false }).limit(10),
           supabase.from('psikotes_schedules').select('id, created_at, candidates!inner(id, full_name, position)').order('created_at', { ascending: false }).limit(10),
           supabase.from('interview_schedules').select('id, created_at, candidates!inner(id, full_name, position)').order('created_at', { ascending: false }).limit(10),
-          supabase.from('candidates').select('id, full_name, email, position, assessment_score, status_screening, technical_score, communication_score, problem_solving_score, teamwork_score, leadership_score, adaptability_score').not('status_screening', 'in', '("rejected","hired")')
+          supabase.from('candidates').select('id, full_name, email, position, assessment_score, status_screening, technical_score, communication_score, problem_solving_score, teamwork_score, leadership_score, adaptability_score').not('status_screening', 'in', '("rejected","hired")'),
+          supabase.from('psikotes_schedules').select('id, schedule_date, candidates!inner(id, full_name, position)').gte('schedule_date', nowForQuery.toISOString()).lte('schedule_date', next24Hours.toISOString()),
+          supabase.from('interview_schedules').select('id, schedule_date, candidates!inner(id, full_name, position)').gte('schedule_date', nowForQuery.toISOString()).lte('schedule_date', next24Hours.toISOString())
         ]);
 
         // Process Top Candidates
@@ -243,6 +251,44 @@ export default function Dashboard() {
 
         activities.sort((a, b) => b.date.getTime() - a.date.getTime());
         setRecentActivities(activities.slice(0, 10));
+
+        let notifications: any[] = [];
+        (upcomingPsiData || []).forEach((p: any) => {
+          if (p.candidates) {
+            notifications.push({
+              id: `psi-notif-${p.id}`,
+              type: 'psikotes',
+              title: 'Jadwal Psikotes Mendatang',
+              name: p.candidates.full_name,
+              position: p.candidates.position,
+              date: new Date(p.schedule_date),
+              icon: FileText,
+              color: 'text-amber-500',
+              bgColor: 'bg-amber-50',
+              path: 'psikotes'
+            });
+          }
+        });
+
+        (upcomingIntData || []).forEach((i: any) => {
+          if (i.candidates) {
+            notifications.push({
+              id: `int-notif-${i.id}`,
+              type: 'interview',
+              title: 'Jadwal Interview Mendatang',
+              name: i.candidates.full_name,
+              position: i.candidates.position,
+              date: new Date(i.schedule_date),
+              icon: Calendar,
+              color: 'text-purple-500',
+              bgColor: 'bg-purple-50',
+              path: 'interview'
+            });
+          }
+        });
+
+        notifications.sort((a, b) => a.date.getTime() - b.date.getTime());
+        setUpcomingNotifications(notifications);
 
       } catch (error) {
         console.error('Error fetching stats:', error);
@@ -497,33 +543,51 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white/70 backdrop-blur-md p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-slate-900">Recruitment Funnel</h3>
+          <div className="bg-white/70 backdrop-blur-md p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[400px]">
+            <div className="flex items-center justify-between mb-4 shrink-0">
+              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <Clock className="text-indigo-500" size={20} />
+                Pengingat Jadwal (24 Jam Kedepan)
+              </h3>
             </div>
-            <div className="space-y-4">
-              {funnelData.map((stage, index) => {
-                const maxCount = Math.max(...funnelData.map(d => d.count), 1);
-                const width = `${(stage.count / maxCount) * 100}%`;
-                
-                return (
-                  <div key={index} className="relative">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2">
-                        <stage.icon size={16} className="text-slate-500" />
-                        <span className="text-sm font-bold text-slate-700">{stage.stage}</span>
+            <div className="space-y-3 overflow-y-auto pr-2 flex-1 custom-scrollbar">
+              {upcomingNotifications.length > 0 ? (
+                upcomingNotifications.map((notif, i) => {
+                  return (
+                    <div 
+                      key={notif.id} 
+                      onClick={() => navigate(`/${notif.path}`)}
+                      className="flex items-start gap-4 p-4 rounded-xl transition-all cursor-pointer border bg-white border-indigo-100 shadow-sm hover:border-indigo-300 hover:shadow-md"
+                    >
+                      <div className={cn("w-12 h-12 rounded-full flex items-center justify-center shrink-0", notif.bgColor)}>
+                        <notif.icon size={24} className={notif.color} />
                       </div>
-                      <span className="text-sm font-bold text-slate-900">{stage.count}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-slate-900 truncate">
+                          {notif.title}
+                        </p>
+                        <p className="text-sm text-slate-600 truncate mt-0.5">
+                          <span className="font-bold text-slate-800">{notif.name}</span> • {notif.position}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end shrink-0 ml-4">
+                        <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg">
+                          {notif.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <span className="text-[10px] font-medium text-slate-400 mt-1">
+                          {notif.date.toLocaleDateString()}
+                        </span>
+                      </div>
                     </div>
-                    <div className="h-4 bg-slate-100 rounded-full overflow-hidden">
-                      <div 
-                        className={cn("h-full rounded-full transition-all duration-1000", stage.color)}
-                        style={{ width }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-center text-slate-500">
+                  <CheckCircle2 size={40} className="text-emerald-300 mb-3" />
+                  <p className="font-medium text-slate-600">Tidak ada jadwal dalam 24 jam kedepan</p>
+                  <p className="text-sm text-slate-400 mt-1">Semua jadwal sudah diselesaikan atau belum ada jadwal baru.</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

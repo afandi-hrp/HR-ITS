@@ -58,7 +58,7 @@ export function Toaster() {
           className={`p-4 rounded-xl shadow-lg border animate-in slide-in-from-right-full transition-all ${
             t.variant === 'destructive'
               ? 'bg-red-600 border-red-700 text-white'
-              : 'bg-white border-slate-200 text-slate-900'
+              : 'bg-emerald-500 border-emerald-600 text-white'
           }`}
           onClick={() => removeToast(t.id)}
         >

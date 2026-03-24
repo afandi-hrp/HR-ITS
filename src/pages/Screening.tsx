@@ -68,7 +68,7 @@ export default function Screening() {
   const [savingAssessment, setSavingAssessment] = useState(false);
   const { toast } = useToast();
 
-  const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'card'>('card');
   const [totalItems, setTotalItems] = useState(0);
 
   useEffect(() => {
@@ -84,7 +84,7 @@ export default function Screening() {
     let query = supabase
       .from('candidates')
       .select('*, psikotes_schedules(id, is_confirmed, schedule_date), interview_schedules(id, is_confirmed, schedule_date)', { count: 'exact' })
-      .order('date', { ascending: false });
+      .order('created_at', { ascending: false });
 
     if (debouncedSearch) {
       query = query.or(`full_name.ilike.%${debouncedSearch}%,position.ilike.%${debouncedSearch}%`);
@@ -451,13 +451,13 @@ export default function Screening() {
               setEndDate('');
               setStatusFilter('all');
             }}
-            className="px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+            className="px-4 py-2 text-sm font-bold text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm"
           >
             Reset
           </button>
           <button 
             onClick={fetchCandidates}
-            className="p-2.5 text-slate-500 hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 rounded-xl transition-all"
+            className="p-2.5 text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm flex items-center justify-center"
             title="Refresh Data"
           >
             <RefreshCcw size={20} className={loading ? 'animate-spin' : ''} />
@@ -561,7 +561,48 @@ export default function Screening() {
                             )}
                           </div>
                         </div>
-                        <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
+                        <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2 flex-wrap">
+                          <button 
+                            onClick={() => handleUpdateStatus(candidate.id, 'accepted')}
+                            title="Terima Kandidat"
+                            className="p-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all"
+                          >
+                            <ThumbsUp size={16} />
+                          </button>
+                          {candidate.status_screening === 'accepted' && candidate.psikotes_schedules?.some(s => s.is_confirmed) && candidate.interview_schedules?.some(s => s.is_confirmed) && (
+                            <button 
+                              onClick={() => handleUpdateStatus(candidate.id, 'hired')}
+                              title="Rekrut Kandidat"
+                              className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all"
+                            >
+                              <Briefcase size={16} />
+                            </button>
+                          )}
+                          <button 
+                            onClick={() => handleUpdateStatus(candidate.id, 'rejected')}
+                            title="Tolak Kandidat"
+                            className="p-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all"
+                          >
+                            <ThumbsDown size={16} />
+                          </button>
+                          {candidate.status_screening === 'accepted' && (!candidate.psikotes_schedules || candidate.psikotes_schedules.length === 0) && (
+                            <button 
+                              onClick={() => setSchedulingData({ candidate, type: 'psikotes' })}
+                              title="Jadwalkan Psikotes"
+                              className="p-2 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-all"
+                            >
+                              <FileText size={16} />
+                            </button>
+                          )}
+                          {candidate.status_screening === 'accepted' && (!candidate.interview_schedules || candidate.interview_schedules.length === 0) && (
+                            <button 
+                              onClick={() => setSchedulingData({ candidate, type: 'interview' })}
+                              title="Jadwalkan Interview"
+                              className="p-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-all"
+                            >
+                              <Users size={16} />
+                            </button>
+                          )}
                           {candidate.status_screening === 'accepted' && (
                             <button 
                               onClick={() => {
@@ -581,27 +622,6 @@ export default function Screening() {
                               <Star size={16} />
                             </button>
                           )}
-                          <button 
-                            onClick={() => handleUpdateStatus(candidate.id, 'accepted')}
-                            title="Terima Kandidat"
-                            className="p-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all"
-                          >
-                            <ThumbsUp size={16} />
-                          </button>
-                          <button 
-                            onClick={() => handleUpdateStatus(candidate.id, 'hired')}
-                            title="Rekrut Kandidat"
-                            className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all"
-                          >
-                            <Briefcase size={16} />
-                          </button>
-                          <button 
-                            onClick={() => handleUpdateStatus(candidate.id, 'rejected')}
-                            title="Tolak Kandidat"
-                            className="p-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all"
-                          >
-                            <ThumbsDown size={16} />
-                          </button>
                         </div>
                       </div>
                     );
@@ -818,17 +838,17 @@ export default function Screening() {
                                   </div>
                                 </div>
 
-                                <div className="flex items-start gap-4">
-                                  <div className="w-10 h-10 rounded-xl bg-slate-200 flex items-center justify-center shrink-0">
-                                    <FileText className="text-slate-600" size={20} />
+                                <div className="flex items-start gap-4 bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100">
+                                  <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
+                                    <FileText className="text-indigo-600" size={20} />
                                   </div>
                                   <div className="flex-1">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Skor & Alasan Penilaian</p>
+                                    <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Skor & Alasan Penilaian</p>
                                     <div className="flex items-center gap-4 mt-2">
                                       <div className="w-12 h-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-xl font-bold shadow-lg shadow-indigo-200">
                                         {candidate.assessment_score || 0}
                                       </div>
-                                      <p className="text-sm text-slate-600 leading-relaxed italic flex-1">"{candidate.assessment_reason || '-'}"</p>
+                                      <p className="text-sm text-indigo-900 leading-relaxed italic flex-1">"{candidate.assessment_reason || '-'}"</p>
                                     </div>
                                   </div>
                                 </div>

@@ -197,7 +197,6 @@ export default function UploadCV() {
 
       for (const file of files) {
         const formData = new FormData();
-        formData.append('webhookUrl', webhookUrl);
         formData.append('candidateName', candidateName);
         formData.append('candidateEmail', candidateEmail);
         formData.append('candidatePosition', position);
@@ -209,8 +208,12 @@ export default function UploadCV() {
         formData.append('file', file);
 
         try {
+          const { data: { session } } = await supabase.auth.getSession();
           const response = await fetch('/api/n8n/upload-cv', {
             method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session?.access_token}`
+            },
             body: formData,
           });
 
@@ -227,7 +230,7 @@ export default function UploadCV() {
       if (successCount > 0) {
         toast({ 
           title: 'Berhasil', 
-          description: `${successCount} CV telah berhasil dikirim ke n8n.` 
+          description: 'CV Berhasil di Upload' 
         });
       }
       if (errorCount > 0) {
@@ -428,7 +431,7 @@ export default function UploadCV() {
                   )}
                   <button 
                     onClick={fetchUploads}
-                    className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                    className="p-2.5 text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm flex items-center justify-center"
                   >
                     <RefreshCcw size={20} className={fetchingUploads ? 'animate-spin' : ''} />
                   </button>

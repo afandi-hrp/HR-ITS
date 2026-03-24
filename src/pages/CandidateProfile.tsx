@@ -19,7 +19,10 @@ import {
   ThumbsUp,
   ThumbsDown,
   Download,
-  Users
+  Users,
+  Edit2,
+  Save,
+  X
 } from 'lucide-react';
 import { cn, formatDate } from '../lib/utils';
 import { useToast } from '../components/ui/use-toast';
@@ -39,6 +42,9 @@ export default function CandidateProfile() {
   const { toast } = useToast();
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedCandidate, setEditedCandidate] = useState<Partial<Candidate>>({});
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -67,11 +73,86 @@ export default function CandidateProfile() {
         navigate('/screening');
       } else {
         setCandidate(logData);
+        setEditedCandidate(logData);
       }
     } else {
       setCandidate(data);
+      setEditedCandidate(data);
     }
     setLoading(false);
+  };
+
+  const handleSave = async () => {
+    if (!candidate || !id) return;
+    setSaving(true);
+
+    try {
+      // Calculate new average score
+      const techScore = editedCandidate.technical_score || 0;
+      const commScore = editedCandidate.communication_score || 0;
+      const probScore = editedCandidate.problem_solving_score || 0;
+      const teamScore = editedCandidate.teamwork_score || 0;
+      const leadScore = editedCandidate.leadership_score || 0;
+      const adaptScore = editedCandidate.adaptability_score || 0;
+      const totalScore = techScore + commScore + probScore + teamScore + leadScore + adaptScore;
+      const averageScore = Math.round(totalScore / 6);
+
+      const updateData = {
+        ...editedCandidate,
+        assessment_score: averageScore
+      };
+
+      // Remove joined tables before update
+      delete updateData.psikotes_schedules;
+      delete updateData.interview_schedules;
+
+      // Check if candidate is in active candidates or logs
+      const { data: activeData } = await supabase
+        .from('candidates')
+        .select('id')
+        .eq('id', id)
+        .single();
+
+      const table = activeData ? 'candidates' : 'candidate_logs';
+
+      const { error } = await supabase
+        .from(table)
+        .update(updateData)
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Berhasil',
+        description: 'Profil kandidat berhasil diperbarui',
+        className: 'bg-emerald-500 text-white border-none',
+      });
+      
+      setIsEditing(false);
+      fetchCandidate(id);
+    } catch (error: any) {
+      console.error('Error updating candidate:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Gagal memperbarui profil kandidat',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditedCandidate(candidate || {});
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target;
+    setEditedCandidate(prev => ({
+      ...prev,
+      [name]: type === 'number' ? Number(value) : value
+    }));
   };
 
   if (loading) {
@@ -154,8 +235,37 @@ export default function CandidateProfile() {
             <p className="text-slate-500 text-sm mt-1">Detail informasi dan hasil asesmen kandidat</p>
           </div>
         </div>
-        <div className={cn("px-4 py-1.5 rounded-full border text-sm font-bold uppercase tracking-wider", getStatusColor(candidate.status_screening))}>
-          {getStatusText(candidate.status_screening)}
+        <div className="flex items-center gap-3">
+          {isEditing ? (
+            <>
+              <button
+                onClick={handleCancelEdit}
+                className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-2 text-sm font-medium"
+              >
+                <X size={16} />
+                Batal
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2 text-sm font-medium disabled:opacity-50"
+              >
+                <Save size={16} />
+                {saving ? 'Menyimpan...' : 'Simpan'}
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="px-4 py-2 bg-white border border-slate-200 text-indigo-600 rounded-xl hover:bg-indigo-50 transition-colors flex items-center gap-2 text-sm font-medium"
+            >
+              <Edit2 size={16} />
+              Edit Profil
+            </button>
+          )}
+          <div className={cn("px-4 py-1.5 rounded-full border text-sm font-bold uppercase tracking-wider", getStatusColor(candidate.status_screening))}>
+            {getStatusText(candidate.status_screening)}
+          </div>
         </div>
       </div>
 
@@ -170,23 +280,66 @@ export default function CandidateProfile() {
                 {candidate.full_name.charAt(0)}
               </div>
               <div className="pt-14">
-                <h2 className="text-2xl font-bold text-slate-900">{candidate.full_name}</h2>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    name="full_name"
+                    value={editedCandidate.full_name || ''}
+                    onChange={handleInputChange}
+                    className="w-full text-2xl font-bold text-slate-900 bg-white border border-slate-300 rounded-lg px-3 py-1 mb-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                ) : (
+                  <h2 className="text-2xl font-bold text-slate-900">{candidate.full_name}</h2>
+                )}
+                
                 <div className="flex items-center gap-2 text-indigo-600 font-medium mt-1">
                   <Briefcase size={16} />
-                  <span>{candidate.position}</span>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      name="position"
+                      value={editedCandidate.position || ''}
+                      onChange={handleInputChange}
+                      className="flex-1 bg-white border border-slate-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  ) : (
+                    <span>{candidate.position}</span>
+                  )}
                 </div>
                 
                 <div className="mt-6 space-y-3">
                   <div className="flex items-center gap-3 text-slate-600">
-                    <Mail size={16} className="text-slate-400" />
-                    <a href={`mailto:${candidate.email}`} className="hover:text-indigo-600 transition-colors">{candidate.email}</a>
+                    <Mail size={16} className="text-slate-400 shrink-0" />
+                    {isEditing ? (
+                      <input
+                        type="email"
+                        name="email"
+                        value={editedCandidate.email || ''}
+                        onChange={handleInputChange}
+                        className="flex-1 bg-white border border-slate-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    ) : (
+                      <a href={`mailto:${candidate.email}`} className="hover:text-indigo-600 transition-colors truncate">{candidate.email}</a>
+                    )}
                   </div>
-                  {candidate.phone && (
-                    <div className="flex items-center gap-3 text-slate-600">
-                      <Phone size={16} className="text-slate-400" />
-                      <a href={`tel:${candidate.phone}`} className="hover:text-indigo-600 transition-colors">{candidate.phone}</a>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-3 text-slate-600">
+                    <Phone size={16} className="text-slate-400 shrink-0" />
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        name="phone"
+                        value={editedCandidate.phone || ''}
+                        onChange={handleInputChange}
+                        className="flex-1 bg-white border border-slate-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    ) : (
+                      candidate.phone ? (
+                        <a href={`tel:${candidate.phone}`} className="hover:text-indigo-600 transition-colors">{candidate.phone}</a>
+                      ) : (
+                        <span className="text-slate-400 italic">Belum ada nomor telepon</span>
+                      )
+                    )}
+                  </div>
                   <div className="flex items-center gap-3 text-slate-600">
                     <CalendarIcon size={16} className="text-slate-400" />
                     <span>Melamar pada {formatDate(candidate.date)}</span>
@@ -218,25 +371,57 @@ export default function CandidateProfile() {
             </h3>
             
             <div className="flex items-end gap-2 mb-6">
-              <span className="text-5xl font-black text-slate-900">{averageScore}</span>
+              <span className="text-5xl font-black text-slate-900">{isEditing ? Math.round((
+                (editedCandidate.technical_score || 0) + 
+                (editedCandidate.communication_score || 0) + 
+                (editedCandidate.problem_solving_score || 0) + 
+                (editedCandidate.teamwork_score || 0) + 
+                (editedCandidate.leadership_score || 0) + 
+                (editedCandidate.adaptability_score || 0)
+              ) / 6) : averageScore}</span>
               <span className="text-lg text-slate-500 font-medium mb-1">/ 100</span>
             </div>
 
-            {/* Radar Chart */}
-            <div className="h-64 w-full -ml-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
-                  <PolarGrid stroke="#e2e8f0" />
-                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 11 }} />
-                  <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                  <Radar name="Skor" dataKey="A" stroke="#6366f1" fill="#6366f1" fillOpacity={0.3} />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                    itemStyle={{ color: '#4f46e5', fontWeight: 'bold' }}
-                  />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
+            {isEditing ? (
+              <div className="space-y-4">
+                {[
+                  { key: 'technical_score', label: 'Technical' },
+                  { key: 'communication_score', label: 'Communication' },
+                  { key: 'problem_solving_score', label: 'Problem Solving' },
+                  { key: 'teamwork_score', label: 'Teamwork' },
+                  { key: 'leadership_score', label: 'Leadership' },
+                  { key: 'adaptability_score', label: 'Adaptability' }
+                ].map((score) => (
+                  <div key={score.key} className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-slate-700">{score.label}</label>
+                    <input
+                      type="number"
+                      name={score.key}
+                      min="0"
+                      max="100"
+                      value={editedCandidate[score.key as keyof Candidate] || 0}
+                      onChange={handleInputChange}
+                      className="w-20 bg-white border border-slate-300 rounded-lg px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="h-64 w-full -ml-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
+                    <PolarGrid stroke="#e2e8f0" />
+                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 11 }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                    <Radar name="Skor" dataKey="A" stroke="#6366f1" fill="#6366f1" fillOpacity={0.3} />
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      itemStyle={{ color: '#4f46e5', fontWeight: 'bold' }}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </div>
         </div>
 
@@ -342,10 +527,13 @@ export default function CandidateProfile() {
               </div>
             </div>
 
-            <div className="pt-6 border-t border-slate-100">
-              <h4 className="font-bold text-slate-800 mb-2">Alasan Penilaian</h4>
-              <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">
-                {candidate.assessment_reason || <span className="italic text-slate-400">Tidak ada alasan penilaian yang diberikan.</span>}
+            <div className="mt-6 p-4 bg-indigo-50/50 rounded-xl border border-indigo-100">
+              <h4 className="font-bold text-indigo-900 mb-2 flex items-center gap-2">
+                <FileText size={16} className="text-indigo-500" />
+                Alasan Penilaian
+              </h4>
+              <p className="text-sm text-indigo-800 whitespace-pre-wrap leading-relaxed">
+                {candidate.assessment_reason || <span className="italic opacity-70">Tidak ada alasan penilaian yang diberikan.</span>}
               </p>
             </div>
           </div>

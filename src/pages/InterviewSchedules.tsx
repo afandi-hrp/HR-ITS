@@ -18,12 +18,14 @@ import {
   ChevronDown,
   CheckCircle2,
   Send,
-  List
+  List,
+  MessageCircle
 } from 'lucide-react';
 import { cn, formatDate } from '../lib/utils';
 import { useToast } from '../components/ui/use-toast';
 import SchedulingModal from '../components/SchedulingModal';
 import SendEmailModal from '../components/SendEmailModal';
+import SendWAModal from '../components/SendWAModal';
 import ScheduleCalendar from '../components/ScheduleCalendar';
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
 
@@ -38,6 +40,7 @@ export default function InterviewSchedules() {
   const [previewSchedule, setPreviewSchedule] = useState<Schedule | null>(null);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [emailModalData, setEmailModalData] = useState<{ candidate: Candidate, schedule: Schedule } | null>(null);
+  const [waModalData, setWaModalData] = useState<{ candidate: Candidate, schedule: Schedule } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
@@ -220,7 +223,7 @@ export default function InterviewSchedules() {
           {viewMode === 'list' && (
             <button 
               onClick={resetFilters}
-              className="px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+              className="px-4 py-2 text-sm font-bold text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm"
             >
               Reset
             </button>
@@ -251,7 +254,7 @@ export default function InterviewSchedules() {
 
           <button 
             onClick={() => viewMode === 'list' ? fetchSchedules() : fetchCalendarSchedules()}
-            className="p-2.5 text-slate-500 hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 rounded-xl transition-all"
+            className="p-2.5 text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm flex items-center justify-center"
             title="Refresh Data"
           >
             <RefreshCcw size={20} className={loading ? 'animate-spin' : ''} />
@@ -326,7 +329,7 @@ export default function InterviewSchedules() {
                       {schedule.location_type}
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex gap-1">
                         <button 
                           onClick={(e) => { 
                             e.stopPropagation(); 
@@ -334,7 +337,7 @@ export default function InterviewSchedules() {
                               setEmailModalData({ candidate: schedule.candidate, schedule });
                             }
                           }} 
-                          className="p-1.5 rounded-lg transition-colors text-white/80 hover:text-white hover:bg-white/20"
+                          className="p-1.5 rounded-lg transition-colors text-white bg-indigo-600 hover:bg-indigo-700"
                           title="Kirim Undangan Email"
                         >
                           <Send size={14} />
@@ -342,10 +345,25 @@ export default function InterviewSchedules() {
                         <button 
                           onClick={(e) => { 
                             e.stopPropagation(); 
+                            if (schedule.candidate) {
+                              setWaModalData({ candidate: schedule.candidate, schedule });
+                            }
+                          }} 
+                          className="p-1.5 rounded-lg transition-colors text-white bg-emerald-600 hover:bg-emerald-700"
+                          title="Kirim Undangan WA"
+                        >
+                          <MessageCircle size={14} />
+                        </button>
+                        <button 
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
                             handleConfirm(schedule.id, schedule.is_confirmed); 
                           }} 
-                          className="p-1.5 rounded-lg transition-colors text-white/80 hover:text-white hover:bg-white/20"
-                          title="Konfirmasi Sudah Interview"
+                          className={cn(
+                            "p-1.5 rounded-lg transition-colors text-white",
+                            schedule.is_confirmed ? "bg-slate-500 hover:bg-slate-600" : "bg-cyan-600 hover:bg-cyan-700"
+                          )}
+                          title={schedule.is_confirmed ? "Batalkan Konfirmasi" : "Konfirmasi Sudah Interview"}
                         >
                           <CheckCircle2 size={14} />
                         </button>
@@ -354,11 +372,11 @@ export default function InterviewSchedules() {
                             e.stopPropagation(); 
                             setEditingSchedule(schedule);
                           }} 
-                          className="p-1.5 rounded-lg transition-colors text-white/80 hover:text-white hover:bg-white/20"
+                          className="p-1.5 rounded-lg transition-colors text-white bg-amber-500 hover:bg-amber-600"
                         >
                           <Edit2 size={14} />
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); handleDelete(schedule.id); }} className="p-1.5 rounded-lg transition-colors text-white/80 hover:text-white hover:bg-white/20">
+                        <button onClick={(e) => { e.stopPropagation(); handleDelete(schedule.id); }} className="p-1.5 rounded-lg transition-colors text-white bg-rose-600 hover:bg-rose-700">
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -482,6 +500,17 @@ export default function InterviewSchedules() {
                               title="Kirim Undangan Email"
                             >
                               <Send size={16} />
+                            </button>
+                            <button 
+                              onClick={() => {
+                                if (schedule.candidate) {
+                                  setWaModalData({ candidate: schedule.candidate, schedule });
+                                }
+                              }}
+                              className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                              title="Kirim Undangan WA"
+                            >
+                              <MessageCircle size={16} />
                             </button>
                             <button 
                               onClick={() => handleConfirm(schedule.id, true)}
@@ -693,12 +722,23 @@ export default function InterviewSchedules() {
                 Kirim Email
               </button>
               <button 
+                onClick={() => {
+                  if (previewSchedule.candidate) {
+                    setWaModalData({ candidate: previewSchedule.candidate, schedule: previewSchedule });
+                  }
+                }}
+                className="flex-1 py-2.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all flex items-center justify-center gap-2"
+              >
+                <MessageCircle size={18} />
+                Kirim WA
+              </button>
+              <button 
                 onClick={() => handleConfirm(previewSchedule.id, previewSchedule.is_confirmed)}
                 className={cn(
                   "flex-1 py-2.5 rounded-xl font-bold transition-all flex items-center justify-center gap-2",
                   previewSchedule.is_confirmed
                     ? "bg-slate-200 text-slate-600 hover:bg-slate-300"
-                    : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-200"
+                    : "bg-cyan-600 text-white hover:bg-cyan-700 shadow-lg shadow-cyan-200"
                 )}
               >
                 <CheckCircle2 size={18} />
@@ -724,6 +764,24 @@ export default function InterviewSchedules() {
             if (viewMode === 'list') fetchSchedules();
             else fetchCalendarSchedules();
           }}
+        />
+      )}
+
+      {emailModalData && (
+        <SendEmailModal
+          candidate={emailModalData.candidate}
+          schedule={emailModalData.schedule}
+          type="interview"
+          onClose={() => setEmailModalData(null)}
+        />
+      )}
+
+      {waModalData && (
+        <SendWAModal
+          candidate={waModalData.candidate}
+          schedule={waModalData.schedule}
+          type="interview"
+          onClose={() => setWaModalData(null)}
         />
       )}
     </div>
