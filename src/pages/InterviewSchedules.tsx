@@ -27,6 +27,7 @@ import SchedulingModal from '../components/SchedulingModal';
 import SendEmailModal from '../components/SendEmailModal';
 import SendWAModal from '../components/SendWAModal';
 import ScheduleCalendar from '../components/ScheduleCalendar';
+import ConfirmModal from '../components/ConfirmModal';
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
 
 export default function InterviewSchedules() {
@@ -47,6 +48,12 @@ export default function InterviewSchedules() {
   const { toast } = useToast();
 
   const [isScheduling, setIsScheduling] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    id: string;
+    currentStatus?: boolean;
+    type: 'confirm' | 'delete';
+  }>({ isOpen: false, id: '', type: 'confirm' });
 
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [calendarDate, setCalendarDate] = useState(new Date());
@@ -140,7 +147,10 @@ export default function InterviewSchedules() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Hapus jadwal interview ini?')) return;
+    setConfirmModal({ isOpen: true, id, type: 'delete' });
+  };
+
+  const executeDelete = async (id: string) => {
     const { error } = await supabase.from('interview_schedules').delete().eq('id', id);
     if (error) toast({ title: 'Error', description: error.message, variant: 'destructive' });
     else {
@@ -151,9 +161,10 @@ export default function InterviewSchedules() {
   };
 
   const handleConfirm = async (id: string, currentStatus: boolean) => {
-    const actionText = !currentStatus ? 'mengonfirmasi bahwa kandidat ini sudah melakukan interview' : 'membatalkan konfirmasi interview';
-    if (!confirm(`Apakah Anda yakin ingin ${actionText}?`)) return;
+    setConfirmModal({ isOpen: true, id, currentStatus, type: 'confirm' });
+  };
 
+  const executeConfirm = async (id: string, currentStatus: boolean) => {
     const { error } = await supabase
       .from('interview_schedules')
       .update({ is_confirmed: !currentStatus })
@@ -787,6 +798,26 @@ export default function InterviewSchedules() {
           onClose={() => setWaModalData(null)}
         />
       )}
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={() => {
+          if (confirmModal.type === 'delete') {
+            executeDelete(confirmModal.id);
+          } else if (confirmModal.type === 'confirm') {
+            executeConfirm(confirmModal.id, confirmModal.currentStatus || false);
+          }
+        }}
+        title={confirmModal.type === 'delete' ? 'Hapus Jadwal' : 'Konfirmasi Kehadiran'}
+        message={
+          confirmModal.type === 'delete'
+            ? 'Apakah Anda yakin ingin menghapus jadwal interview ini? Tindakan ini tidak dapat dibatalkan.'
+            : `Apakah Anda yakin ingin ${!confirmModal.currentStatus ? 'mengonfirmasi bahwa kandidat ini sudah melakukan interview' : 'membatalkan konfirmasi interview'}?`
+        }
+        confirmText={confirmModal.type === 'delete' ? 'Hapus' : 'Ya, Konfirmasi'}
+        variant={confirmModal.type === 'delete' ? 'danger' : 'primary'}
+      />
     </div>
   );
 }

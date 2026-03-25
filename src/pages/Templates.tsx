@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { EmailTemplate } from '../types';
 import { Search, Plus, Mail, Trash2, Edit2, RefreshCcw, X, Save, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '../components/ui/use-toast';
+import ConfirmModal from '../components/ConfirmModal';
 import { cn } from '../lib/utils';
 
 export default function Templates() {
@@ -21,6 +22,7 @@ export default function Templates() {
     body_html: ''
   });
   const [saving, setSaving] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; id: string }>({ isOpen: false, id: '' });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -102,8 +104,10 @@ export default function Templates() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Hapus template ini?')) return;
-    
+    setConfirmModal({ isOpen: true, id });
+  };
+
+  const executeDelete = async (id: string) => {
     const { error } = await supabase.from('email_templates').delete().eq('id', id);
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -339,6 +343,16 @@ export default function Templates() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={() => executeDelete(confirmModal.id)}
+        title="Hapus Template"
+        message="Apakah Anda yakin ingin menghapus template ini? Tindakan ini tidak dapat dibatalkan."
+        confirmText="Hapus"
+        variant="danger"
+      />
     </div>
   );
 }
