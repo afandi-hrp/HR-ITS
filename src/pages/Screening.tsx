@@ -527,6 +527,10 @@ export default function Screening() {
                   </div>
                   <div className="p-5 flex-1 space-y-3">
                     <div className="flex items-center gap-2 text-xs text-slate-600">
+                      <CalendarIcon size={14} className="text-slate-400 shrink-0" />
+                      <span className="truncate">Melamar: {formatDate(candidate.date)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-slate-600">
                       <Briefcase size={14} className="text-slate-400 shrink-0" />
                       <span className="font-medium text-indigo-600 truncate">{candidate.position}</span>
                     </div>
@@ -557,6 +561,11 @@ export default function Screening() {
                             {candidate.status_screening === 'rejected' && (
                               <span className="px-2 py-1 bg-red-50 text-red-700 rounded-md text-[9px] font-bold uppercase tracking-wider border border-red-100">
                                 Ditolak
+                              </span>
+                            )}
+                            {candidate.interview_schedules?.filter(s => s.is_confirmed).length > 0 && (
+                              <span className="px-2 py-1 bg-sky-50 text-sky-700 rounded-md text-[9px] font-bold uppercase tracking-wider border border-sky-100">
+                                Selesai Interview {candidate.interview_schedules.filter(s => s.is_confirmed).length > 1 ? candidate.interview_schedules.filter(s => s.is_confirmed).length : ''}
                               </span>
                             )}
                           </div>
@@ -594,7 +603,7 @@ export default function Screening() {
                               <FileText size={16} />
                             </button>
                           )}
-                          {candidate.status_screening === 'accepted' && (!candidate.interview_schedules || candidate.interview_schedules.length === 0) && (
+                          {candidate.status_screening === 'accepted' && (!candidate.interview_schedules || candidate.interview_schedules.length === 0 || candidate.interview_schedules.every(s => s.is_confirmed)) && (
                             <button 
                               onClick={() => setSchedulingData({ candidate, type: 'interview' })}
                               title="Jadwalkan Interview"
@@ -674,7 +683,7 @@ export default function Screening() {
                                 {candidate.interview_schedules?.some(s => s.is_confirmed) && (
                                   <span className="text-[10px] font-bold text-sky-600 uppercase tracking-widest flex items-center gap-1">
                                     <span className="w-1.5 h-1.5 rounded-full bg-sky-500" />
-                                    Telah Dilakukan interview ({formatDate(candidate.interview_schedules.find(s => s.is_confirmed)!.schedule_date)})
+                                    Selesai Interview {candidate.interview_schedules.filter(s => s.is_confirmed).length > 1 ? candidate.interview_schedules.filter(s => s.is_confirmed).length : ''}
                                   </span>
                                 )}
                                 {candidate.status_screening === 'accepted' && (
@@ -888,7 +897,7 @@ export default function Screening() {
                                   <FileText size={22} />
                                 </button>
                               )}
-                              {candidate.status_screening === 'accepted' && (!candidate.interview_schedules || candidate.interview_schedules.length === 0) && (
+                              {candidate.status_screening === 'accepted' && (!candidate.interview_schedules || candidate.interview_schedules.length === 0 || candidate.interview_schedules.every(s => s.is_confirmed)) && (
                                 <button 
                                   onClick={() => setSchedulingData({ candidate, type: 'interview' })}
                                   title="Jadwalkan Interview"

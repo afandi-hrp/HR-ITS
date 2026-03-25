@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Loader2, TrendingUp, Users, CheckCircle2, XCircle, Clock, Filter, ChevronDown, X, Mail, Calendar, MapPin } from 'lucide-react';
+import { Loader2, TrendingUp, Users, CheckCircle2, XCircle, Clock, Filter, ChevronDown, X, Mail, Calendar, MapPin, Download, FileText, Eye } from 'lucide-react';
 import { cn, formatDate } from '../lib/utils';
 import { Candidate } from '../types';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface FunnelData {
   stage: string;
@@ -22,6 +24,8 @@ export default function RecruitmentFunnel() {
   const [customStartDate, setCustomStartDate] = useState<string>('');
   const [customEndDate, setCustomEndDate] = useState<string>('');
   const [selectedStage, setSelectedStage] = useState<FunnelData | null>(null);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfDataUri, setPdfDataUri] = useState<string | null>(null);
   const [monthlyMetrics, setMonthlyMetrics] = useState<{label: string, count: number, avgDaysToHire: number}[]>([]);
   const [pipelineEfficiency, setPipelineEfficiency] = useState<{stage: string, days: number}[]>([]);
   const [stats, setStats] = useState({
@@ -322,6 +326,228 @@ export default function RecruitmentFunnel() {
     setCustomEndDate('');
   };
 
+  const generatePDF = (isPreview = false) => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    
+    // Professional Color Palette (Matching App Theme)
+    const colors = {
+      primary: [15, 23, 42] as [number, number, number], // slate-900
+      secondary: [79, 70, 229] as [number, number, number], // indigo-600
+      accent: [124, 58, 237] as [number, number, number], // violet-600
+      success: [16, 185, 129] as [number, number, number], // emerald-500
+      warning: [245, 158, 11] as [number, number, number], // amber-500
+      danger: [239, 68, 68] as [number, number, number], // red-500
+      text: [71, 85, 105] as [number, number, number], // slate-600
+      muted: [148, 163, 184] as [number, number, number], // slate-400
+      light: [248, 250, 252] as [number, number, number], // slate-50
+      border: [226, 232, 240] as [number, number, number], // slate-200
+      white: [255, 255, 255] as [number, number, number]
+    };
+
+    // 1. Modern Header with Gradient-like effect
+    doc.setFillColor(colors.secondary[0], colors.secondary[1], colors.secondary[2]);
+    doc.rect(0, 0, pageWidth, 50, 'F');
+    
+    // Decorative circle
+    doc.setFillColor(255, 255, 255, 0.1);
+    doc.circle(pageWidth, 0, 60, 'F');
+    
+    // Header Text
+    doc.setFontSize(26);
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.text('RECRUITMENT ANALYTICS', 14, 28);
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(255, 255, 255, 0.8);
+    doc.text('Waruna Group - Recruitment Management System', 14, 38);
+
+    // 2. Report Info Section (Clean Layout)
+    const infoY = 60;
+    doc.setFontSize(9);
+    doc.setTextColor(colors.muted[0], colors.muted[1], colors.muted[2]);
+    doc.setFont('helvetica', 'bold');
+    doc.text('LAPORAN UNTUK:', 14, infoY);
+    doc.text('PERIODE ANALISA:', 80, infoY);
+    doc.text('TANGGAL CETAK:', pageWidth - 14, infoY, { align: 'right' });
+    
+    doc.setFontSize(11);
+    doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
+    doc.text(selectedPosition === 'all' ? 'SEMUA POSISI' : selectedPosition.toUpperCase(), 14, infoY + 7);
+    
+    const dateStr = dateFilter === 'all' ? 'SEMUA WAKTU' : 
+                    dateFilter === 'custom' ? `${customStartDate} - ${customEndDate}` : 
+                    dateFilter.replace('_', ' ').toUpperCase();
+    doc.text(dateStr, 80, infoY + 7);
+    doc.text(new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }), pageWidth - 14, infoY + 7, { align: 'right' });
+
+    // Separator
+    doc.setDrawColor(colors.border[0], colors.border[1], colors.border[2]);
+    doc.line(14, infoY + 15, pageWidth - 14, infoY + 15);
+
+    // 3. Summary Cards (Visual Representation)
+    const cardY = infoY + 25;
+    const cardWidth = (pageWidth - 28 - 15) / 4;
+    const cardHeight = 25;
+
+    const statsData = [
+      { label: 'TOTAL PELAMAR', value: stats.total, color: colors.secondary },
+      { label: 'DITERIMA', value: stats.accepted, color: colors.success },
+      { label: 'DITOLAK', value: stats.rejected, color: colors.danger },
+      { label: 'PENDING', value: stats.pending, color: colors.warning }
+    ];
+
+    statsData.forEach((stat, i) => {
+      const x = 14 + (i * (cardWidth + 5));
+      
+      // Card Background
+      doc.setFillColor(stat.color[0], stat.color[1], stat.color[2], 0.05);
+      doc.roundedRect(x, cardY, cardWidth, cardHeight, 3, 3, 'F');
+      
+      // Left Border Accent
+      doc.setFillColor(stat.color[0], stat.color[1], stat.color[2]);
+      doc.rect(x, cardY, 2, cardHeight, 'F');
+      
+      // Label
+      doc.setFontSize(7);
+      doc.setTextColor(colors.muted[0], colors.muted[1], colors.muted[2]);
+      doc.setFont('helvetica', 'bold');
+      doc.text(stat.label, x + 6, cardY + 8);
+      
+      // Value
+      doc.setFontSize(14);
+      doc.setTextColor(stat.color[0], stat.color[1], stat.color[2]);
+      doc.text(stat.value.toLocaleString(), x + 6, cardY + 18);
+    });
+
+    // 4. Funnel Visualization (Table with modern style)
+    doc.setFontSize(14);
+    doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
+    doc.setFont('helvetica', 'bold');
+    doc.text('VISUALISASI CORONG (FUNNEL)', 14, cardY + 45);
+    
+    autoTable(doc, {
+      startY: cardY + 50,
+      head: [['TAHAPAN REKRUTMEN', 'JUMLAH KANDIDAT', 'TINGKAT KONVERSI']],
+      body: funnelData.map(item => [
+        item.stage.toUpperCase(),
+        item.count.toLocaleString(),
+        `${item.percentage.toFixed(1)}%`
+      ]),
+      theme: 'grid',
+      headStyles: { 
+        fillColor: colors.primary,
+        fontSize: 9,
+        fontStyle: 'bold',
+        cellPadding: 4
+      },
+      bodyStyles: {
+        fontSize: 9,
+        cellPadding: 4
+      },
+      columnStyles: {
+        1: { halign: 'center' },
+        2: { halign: 'center', fontStyle: 'bold', textColor: colors.secondary }
+      },
+      margin: { left: 14, right: 14 }
+    });
+    
+    // 5. Pipeline Efficiency
+    doc.setFontSize(14);
+    doc.text('EFISIENSI WAKTU PROSES', 14, (doc as any).lastAutoTable.finalY + 15);
+    
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 20,
+      head: [['TAHAPAN', 'RATA-RATA DURASI']],
+      body: pipelineEfficiency.map(item => [
+        item.stage,
+        `${item.days} Hari`
+      ]),
+      theme: 'striped',
+      headStyles: { 
+        fillColor: colors.success,
+        fontSize: 9,
+        fontStyle: 'bold'
+      },
+      columnStyles: {
+        1: { halign: 'center', fontStyle: 'bold' }
+      },
+      margin: { left: 14, right: 14 }
+    });
+
+    // 6. Monthly Trends (New Page if needed)
+    const currentY = (doc as any).lastAutoTable.finalY;
+    if (pageHeight - currentY < 80) {
+      doc.addPage();
+      doc.setFontSize(14);
+      doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
+      doc.text('TREN PEREKRUTAN BULANAN', 14, 25);
+      autoTable(doc, {
+        startY: 32,
+        head: [['BULAN', 'KANDIDAT DITERIMA', 'RATA-RATA HARI HIRE']],
+        body: monthlyMetrics.map(item => [
+          item.label,
+          item.count.toString(),
+          `${item.avgDaysToHire} Hari`
+        ]),
+        theme: 'striped',
+        headStyles: { fillColor: colors.accent },
+        columnStyles: {
+          1: { halign: 'center' },
+          2: { halign: 'center' }
+        },
+        margin: { left: 14, right: 14 }
+      });
+    } else {
+      doc.setFontSize(14);
+      doc.text('TREN PEREKRUTAN BULANAN', 14, currentY + 15);
+      autoTable(doc, {
+        startY: currentY + 20,
+        head: [['BULAN', 'KANDIDAT DITERIMA', 'RATA-RATA HARI HIRE']],
+        body: monthlyMetrics.map(item => [
+          item.label,
+          item.count.toString(),
+          `${item.avgDaysToHire} Hari`
+        ]),
+        theme: 'striped',
+        headStyles: { fillColor: colors.accent },
+        columnStyles: {
+          1: { halign: 'center' },
+          2: { halign: 'center' }
+        },
+        margin: { left: 14, right: 14 }
+      });
+    }
+
+    // Footer with Page Numbers
+    const pageCount = (doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(colors.muted[0], colors.muted[1], colors.muted[2]);
+      doc.text(`Halaman ${i} dari ${pageCount}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+      doc.text('RMS Waruna Group - Confidential Analytics', 14, pageHeight - 10);
+    }
+    
+    if (isPreview) {
+      return doc.output('blob');
+    } else {
+      doc.save(`Recruitment-Funnel-${selectedPosition}-${new Date().toISOString().split('T')[0]}.pdf`);
+    }
+  };
+
+  const handlePreviewPDF = () => {
+    setShowPdfPreview(true);
+  };
+
+  const handleDownloadPDF = () => {
+    generatePDF(false);
+    setShowPdfPreview(false);
+  };
+
   if (loading && funnelData.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -345,6 +571,13 @@ export default function RecruitmentFunnel() {
         
         {/* Filters */}
         <div className="flex flex-col sm:flex-row items-center gap-3">
+          <button
+            onClick={handlePreviewPDF}
+            className="px-4 py-2.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-red-200 group"
+          >
+            <FileText size={18} className="group-hover:scale-110 transition-transform" />
+            PDF Report
+          </button>
           {(selectedPosition !== 'all' || dateFilter !== 'all') && (
             <button
               onClick={handleResetFilter}
@@ -658,6 +891,206 @@ export default function RecruitmentFunnel() {
           </div>
         </div>
       </div>
+
+      {/* Modal PDF Preview */}
+      {showPdfPreview && (
+        <div 
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setShowPdfPreview(false)}
+        >
+          <div 
+            className="bg-white w-full max-w-5xl h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-white shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
+                  <FileText size={20} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">Preview Laporan Rekrutmen</h2>
+                  <p className="text-xs text-slate-500">Tinjau laporan sebelum mengunduh.</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => {
+                  if (pdfDataUri) URL.revokeObjectURL(pdfDataUri);
+                  setShowPdfPreview(false);
+                }} 
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-full transition-all"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="flex-1 bg-slate-200 p-4 sm:p-8 overflow-y-auto space-y-8">
+              {/* High-Fidelity Visual Preview (HTML) - Page 1 */}
+              <div className="max-w-[800px] mx-auto bg-white shadow-2xl min-h-[1100px] flex flex-col font-sans text-slate-900 shrink-0">
+                {/* PDF Header Mockup */}
+                <div className="bg-indigo-600 p-10 text-white relative overflow-hidden shrink-0">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+                  <h1 className="text-3xl font-bold relative z-10">RECRUITMENT ANALYTICS</h1>
+                  <p className="text-indigo-100 mt-2 relative z-10">Waruna Group - Recruitment Management System</p>
+                </div>
+
+                {/* PDF Content Mockup */}
+                <div className="p-10 flex-1 space-y-10">
+                  {/* Info Section */}
+                  <div className="flex justify-between items-start border-b border-slate-100 pb-6">
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Laporan Untuk:</p>
+                        <p className="text-lg font-bold text-slate-900">{selectedPosition === 'all' ? 'SEMUA POSISI' : selectedPosition.toUpperCase()}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Periode Analisa:</p>
+                        <p className="text-sm font-bold text-slate-700">
+                          {dateFilter === 'all' ? 'SEMUA WAKTU' : 
+                           dateFilter === 'custom' ? `${customStartDate} - ${customEndDate}` : 
+                           dateFilter.replace('_', ' ').toUpperCase()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tanggal Cetak:</p>
+                      <p className="text-sm font-bold text-slate-700">{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                    </div>
+                  </div>
+
+                  {/* Summary Cards Mockup */}
+                  <div className="grid grid-cols-4 gap-4">
+                    {[
+                      { label: 'TOTAL PELAMAR', value: stats.total, color: 'bg-indigo-600', light: 'bg-indigo-50', text: 'text-indigo-600' },
+                      { label: 'DITERIMA', value: stats.accepted, color: 'bg-emerald-500', light: 'bg-emerald-50', text: 'text-emerald-600' },
+                      { label: 'DITOLAK', value: stats.rejected, color: 'bg-red-500', light: 'bg-red-50', text: 'text-red-600' },
+                      { label: 'PENDING', value: stats.pending, color: 'bg-amber-500', light: 'bg-amber-50', text: 'text-amber-600' }
+                    ].map((stat, i) => (
+                      <div key={i} className={cn("p-4 rounded-xl relative overflow-hidden", stat.light)}>
+                        <div className={cn("absolute left-0 top-0 bottom-0 w-1", stat.color)} />
+                        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mb-1">{stat.label}</p>
+                        <p className={cn("text-xl font-bold", stat.text)}>{stat.value.toLocaleString()}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Table Mockup: Funnel */}
+                  <div className="space-y-4">
+                    <h2 className="text-sm font-bold text-slate-900 border-l-4 border-indigo-600 pl-3 uppercase tracking-wider">Visualisasi Corong (Funnel)</h2>
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-900 text-white text-[10px] font-bold uppercase tracking-wider">
+                          <th className="p-3">Tahapan Rekrutmen</th>
+                          <th className="p-3 text-center">Jumlah Kandidat</th>
+                          <th className="p-3 text-center">Tingkat Konversi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-xs divide-y divide-slate-100">
+                        {funnelData.map((item, i) => (
+                          <tr key={i} className={i % 2 === 1 ? 'bg-slate-50/50' : ''}>
+                            <td className="p-3 font-medium">{item.stage.toUpperCase()}</td>
+                            <td className="p-3 text-center">{item.count.toLocaleString()}</td>
+                            <td className="p-3 text-center font-bold text-indigo-600">{item.percentage.toFixed(1)}%</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Table Mockup: Efficiency */}
+                  <div className="space-y-4">
+                    <h2 className="text-sm font-bold text-slate-900 border-l-4 border-emerald-500 pl-3 uppercase tracking-wider">Efisiensi Waktu Proses</h2>
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-emerald-500 text-white text-[10px] font-bold uppercase tracking-wider">
+                          <th className="p-3">Tahapan</th>
+                          <th className="p-3 text-center">Rata-rata Durasi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-xs divide-y divide-slate-100">
+                        {pipelineEfficiency.map((item, i) => (
+                          <tr key={i} className={i % 2 === 1 ? 'bg-emerald-50/20' : ''}>
+                            <td className="p-3 font-medium">{item.stage}</td>
+                            <td className="p-3 text-center font-bold">{item.days} Hari</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* PDF Footer Mockup */}
+                <div className="p-10 pt-0 flex justify-between items-center text-[10px] text-slate-400 font-medium">
+                  <p>RMS Waruna Group - Confidential Analytics</p>
+                  <p>Halaman 1 dari 2</p>
+                </div>
+              </div>
+
+              {/* High-Fidelity Visual Preview (HTML) - Page 2 */}
+              <div className="max-w-[800px] mx-auto bg-white shadow-2xl min-h-[1100px] flex flex-col font-sans text-slate-900 shrink-0">
+                <div className="p-10 flex-1 space-y-10">
+                  {/* Table Mockup: Monthly Trends */}
+                  <div className="space-y-4">
+                    <h2 className="text-sm font-bold text-slate-900 border-l-4 border-violet-600 pl-3 uppercase tracking-wider">Tren Perekrutan Bulanan</h2>
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-violet-600 text-white text-[10px] font-bold uppercase tracking-wider">
+                          <th className="p-3">Bulan</th>
+                          <th className="p-3 text-center">Kandidat Diterima</th>
+                          <th className="p-3 text-center">Rata-rata Hari Hire</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-xs divide-y divide-slate-100">
+                        {monthlyMetrics.map((item, i) => (
+                          <tr key={i} className={i % 2 === 1 ? 'bg-violet-50/30' : ''}>
+                            <td className="p-3 font-medium">{item.label}</td>
+                            <td className="p-3 text-center">{item.count}</td>
+                            <td className="p-3 text-center font-bold text-violet-600">{item.avgDaysToHire} Hari</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Additional Analytics Placeholder */}
+                  <div className="p-8 border-2 border-dashed border-slate-100 rounded-3xl flex flex-col items-center justify-center text-center space-y-3">
+                    <div className="p-4 bg-slate-50 rounded-full text-slate-300">
+                      <TrendingUp size={32} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-400">Analisa Lanjutan</p>
+                      <p className="text-xs text-slate-300 max-w-[200px]">Data tren bulanan membantu dalam perencanaan kapasitas rekrutmen di masa mendatang.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* PDF Footer Mockup */}
+                <div className="p-10 pt-0 flex justify-between items-center text-[10px] text-slate-400 font-medium">
+                  <p>RMS Waruna Group - Confidential Analytics</p>
+                  <p>Halaman 2 dari 2</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-5 border-t border-slate-100 bg-white flex items-center justify-end gap-3 shrink-0">
+              <button 
+                onClick={() => {
+                  setShowPdfPreview(false);
+                }}
+                className="px-6 py-2.5 text-sm font-bold text-white bg-slate-900 hover:bg-black rounded-xl transition-all shadow-lg shadow-slate-200"
+              >
+                Batal
+              </button>
+              <button 
+                onClick={handleDownloadPDF}
+                className="px-8 py-2.5 bg-red-600 text-white text-sm font-bold rounded-xl hover:bg-red-700 transition-all shadow-lg shadow-red-100 flex items-center gap-2"
+              >
+                <Download size={18} />
+                Konfirmasi & Download PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Detail Kandidat */}
       {selectedStage && (

@@ -160,11 +160,15 @@ export default function OpenRecruitment() {
         const webhookUrl = user?.user_metadata?.sheet_webhook_url;
         
         if (webhookUrl) {
+          const { data: { session } } = await supabase.auth.getSession();
           fetch('/api/n8n/trigger', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session?.access_token}`
+            },
             body: JSON.stringify({
-              webhookUrl,
+              type: 'sheet',
               payload: {
                 event: 'sync_open_recruitment',
                 action: 'auto_sync_after_delete',
@@ -209,11 +213,15 @@ export default function OpenRecruitment() {
       }
 
       // Send data to n8n
+      const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch('/api/n8n/trigger', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        },
         body: JSON.stringify({
-          webhookUrl,
+          type: 'sheet',
           payload: {
             event: 'sync_open_recruitment',
             data: items,

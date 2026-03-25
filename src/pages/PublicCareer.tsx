@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { Upload, FileText, CheckCircle2, Loader2, File, AlertCircle, Phone, User, Mail, Briefcase, KeyRound, ChevronRight, X, ArrowLeft, ClipboardList, GraduationCap, RefreshCw } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, Loader2, File, AlertCircle, Phone, User, Mail, Briefcase, KeyRound, ChevronRight, X, ArrowLeft, ClipboardList, GraduationCap, RefreshCw, MessageCircle, Heart, TrendingUp, Users, Zap, HelpCircle, ChevronDown, ChevronUp, Quote, Star } from 'lucide-react';
 import { useToast } from '../components/ui/use-toast';
 import { cn } from '../lib/utils';
 import { SiteSettings } from '../types';
@@ -44,7 +44,44 @@ export default function PublicCareer() {
   const [jobs, setJobs] = useState<OpenRecruitment[]>([]);
   const [loadingPositions, setLoadingPositions] = useState(true);
 
+  const [showOtpConfirmModal, setShowOtpConfirmModal] = useState(false);
+  const [showUploadConfirmModal, setShowUploadConfirmModal] = useState(false);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
   const { toast } = useToast();
+
+  const faqs = [
+    {
+      q: "Berapa lama proses seleksi berlangsung?",
+      a: "Proses seleksi biasanya memakan waktu 1-2 minggu setelah batas waktu pendaftaran ditutup. Kami akan menghubungi Anda melalui email atau WhatsApp terkait status lamaran Anda."
+    },
+    {
+      q: "Apakah fresh graduate bisa melamar?",
+      a: "Tentu! Kami memiliki beberapa posisi entry-level yang sangat cocok untuk fresh graduate. Silakan cek kualifikasi pada setiap lowongan."
+    },
+    {
+      q: "Apakah saya bisa melamar lebih dari satu posisi?",
+      a: "Kami menyarankan Anda untuk melamar pada posisi yang paling sesuai dengan minat dan keahlian Anda. Namun, Anda diperbolehkan melamar maksimal 2 posisi yang relevan."
+    },
+    {
+      q: "Bagaimana tahapan interview di Waruna Group?",
+      a: "Tahapan interview meliputi interview HR untuk menilai kecocokan budaya kerja, dilanjutkan dengan interview User/Teknis untuk menilai kompetensi spesifik sesuai posisi."
+    }
+  ];
+
+  const benefits = [
+    { icon: <Heart className="text-rose-500" size={24} />, title: "Asuransi Kesehatan", desc: "Perlindungan kesehatan komprehensif untuk Anda dan keluarga." },
+    { icon: <TrendingUp className="text-emerald-500" size={24} />, title: "Jenjang Karir", desc: "Kesempatan berkembang dengan program mentoring dan promosi yang jelas." },
+    { icon: <Users className="text-blue-500" size={24} />, title: "Lingkungan Positif", desc: "Budaya kerja yang kolaboratif, inklusif, dan saling mendukung." },
+    { icon: <Zap className="text-amber-500" size={24} />, title: "Pelatihan Rutin", desc: "Program pengembangan skill dan kompetensi secara berkala." }
+  ];
+
+  const processSteps = [
+    { step: "01", title: "Seleksi Berkas", desc: "Tim HR kami akan mereview CV dan portofolio Anda." },
+    { step: "02", title: "Psikotes & Teknis", desc: "Pengerjaan tes sesuai dengan bidang yang dilamar." },
+    { step: "03", title: "Wawancara", desc: "Sesi diskusi dengan tim HR dan calon atasan Anda." },
+    { step: "04", title: "Offering", desc: "Penawaran kerja dan proses onboarding karyawan baru." }
+  ];
 
   const generateCaptcha = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
@@ -131,13 +168,17 @@ export default function PublicCareer() {
     fetchPositions();
   }, []);
 
-  const handleRequestOTP = async (e: React.FormEvent) => {
+  const handleRequestOTPClick = (e: React.FormEvent) => {
     e.preventDefault();
     if (!candidateName || !candidateEmail || !phoneNumber || !position) {
       toast({ title: 'Peringatan', description: 'Silakan lengkapi semua data.', variant: 'destructive' });
       return;
     }
+    setShowOtpConfirmModal(true);
+  };
 
+  const handleRequestOTP = async () => {
+    setShowOtpConfirmModal(false);
     setLoading(true);
     try {
       // Request OTP via backend
@@ -233,13 +274,17 @@ export default function PublicCareer() {
     }
   };
 
-  const handleUpload = async (e: React.FormEvent) => {
+  const handleUploadClick = (e: React.FormEvent) => {
     e.preventDefault();
     if (files.length === 0) {
       toast({ title: 'Peringatan', description: 'Silakan pilih file CV Anda.', variant: 'destructive' });
       return;
     }
+    setShowUploadConfirmModal(true);
+  };
 
+  const handleUpload = async () => {
+    setShowUploadConfirmModal(false);
     setLoading(true);
     try {
       const file = files[0];
@@ -327,11 +372,11 @@ export default function PublicCareer() {
                 <p className="text-slate-600 mt-2">Saat ini belum ada posisi yang dibuka. Silakan cek kembali nanti.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="flex flex-wrap justify-center gap-6">
                 {jobs.map((job) => (
                   <div 
                     key={job.id} 
-                    className="bg-white/40 backdrop-blur-xl rounded-3xl border border-white/60 shadow-xl hover:shadow-2xl hover:border-white/80 transition-all duration-300 p-6 flex flex-col cursor-pointer group"
+                    className="w-full md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] bg-white/40 backdrop-blur-xl rounded-3xl border border-white/60 shadow-xl hover:shadow-2xl hover:border-white/80 transition-all duration-300 p-6 flex flex-col cursor-pointer group"
                     onClick={() => setSelectedJob(job)}
                   >
                     <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
@@ -348,13 +393,138 @@ export default function PublicCareer() {
                 ))}
               </div>
             )}
+
+            {/* 1. Hero Banner / Life at Waruna */}
+            <div className="mt-20 relative rounded-3xl overflow-hidden shadow-2xl">
+              <div className="absolute inset-0 bg-gradient-to-r from-indigo-900/90 to-slate-900/80 z-10"></div>
+              <img 
+                src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80" 
+                alt="Tim Waruna" 
+                className="w-full h-80 object-cover"
+                referrerPolicy="no-referrer"
+              />
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center text-center p-8">
+                <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-4">Membangun Masa Depan Bersama</h2>
+                <p className="text-lg text-indigo-100 max-w-2xl">
+                  Kami mencari individu yang bersemangat, inovatif, dan siap memberikan dampak positif. 
+                  Jadilah bagian dari perjalanan luar biasa kami.
+                </p>
+              </div>
+            </div>
+
+            {/* 2. Why Join Us */}
+            <div className="mt-24">
+              <div className="text-center mb-12">
+                <h2 className="text-3xl font-bold text-slate-900">Mengapa Bergabung Bersama Kami?</h2>
+                <p className="mt-4 text-slate-500">Kami memberikan lingkungan terbaik agar Anda dapat berkembang secara maksimal.</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {benefits.map((benefit, idx) => (
+                  <div key={idx} className="bg-white/60 backdrop-blur-lg rounded-3xl p-6 border border-white/80 shadow-lg hover:-translate-y-2 transition-transform duration-300">
+                    <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center shadow-sm mb-6">
+                      {benefit.icon}
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-800 mb-2">{benefit.title}</h3>
+                    <p className="text-sm text-slate-600 leading-relaxed">{benefit.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 3. Hiring Process */}
+            <div className="mt-24">
+              <div className="text-center mb-12">
+                <h2 className="text-3xl font-bold text-slate-900">Alur Rekrutmen</h2>
+                <p className="mt-4 text-slate-500">Langkah-langkah transparan menuju karir impian Anda.</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 relative">
+                <div className="hidden md:block absolute top-1/2 left-0 w-full h-0.5 bg-indigo-100 -translate-y-1/2 z-0"></div>
+                {processSteps.map((step, idx) => (
+                  <div key={idx} className="relative z-10 flex flex-col items-center text-center">
+                    <div className="w-16 h-16 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xl font-bold border-4 border-white shadow-xl mb-6">
+                      {step.step}
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-800 mb-2">{step.title}</h3>
+                    <p className="text-sm text-slate-600">{step.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 4. Employee Testimonial */}
+            <div className="mt-24 bg-indigo-900 rounded-3xl p-8 md:p-12 shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 -mt-10 -mr-10 text-indigo-800 opacity-50">
+                <Quote size={200} />
+              </div>
+              <div className="relative z-10 max-w-3xl mx-auto text-center">
+                <div className="flex justify-center mb-6">
+                  {[...Array(5)].map((_, i) => <Star key={i} className="text-amber-400 fill-amber-400 mx-1" size={24} />)}
+                </div>
+                <p className="text-xl md:text-2xl font-medium text-white leading-relaxed mb-8">
+                  "Bekerja di sini memberikan saya ruang untuk terus berinovasi. Lingkungan yang kolaboratif dan suportif membuat setiap tantangan terasa lebih mudah diselesaikan bersama."
+                </p>
+                <div className="flex items-center justify-center gap-4">
+                  <img 
+                    src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80" 
+                    alt="Employee" 
+                    className="w-14 h-14 rounded-full border-2 border-indigo-400 object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="text-left">
+                    <p className="font-bold text-white">Sarah Anindya</p>
+                    <p className="text-sm text-indigo-300">Senior Software Engineer</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 5. FAQ */}
+            <div className="mt-24 mb-12 max-w-3xl mx-auto">
+              <div className="text-center mb-12">
+                <h2 className="text-3xl font-bold text-slate-900">Pertanyaan Umum (FAQ)</h2>
+                <p className="mt-4 text-slate-500">Informasi yang sering ditanyakan seputar proses rekrutmen.</p>
+              </div>
+              <div className="space-y-4">
+                {faqs.map((faq, idx) => (
+                  <div 
+                    key={idx} 
+                    className="bg-white/60 backdrop-blur-sm border border-white/80 rounded-2xl overflow-hidden shadow-sm transition-all duration-200"
+                  >
+                    <button
+                      onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
+                      className="w-full px-6 py-5 flex items-center justify-between text-left focus:outline-none"
+                    >
+                      <span className="font-bold text-slate-800">{faq.q}</span>
+                      {openFaq === idx ? (
+                        <ChevronUp className="text-indigo-600 flex-shrink-0" size={20} />
+                      ) : (
+                        <ChevronDown className="text-slate-400 flex-shrink-0" size={20} />
+                      )}
+                    </button>
+                    <div 
+                      className={cn(
+                        "px-6 overflow-hidden transition-all duration-300 ease-in-out",
+                        openFaq === idx ? "max-h-40 pb-5 opacity-100" : "max-h-0 opacity-0"
+                      )}
+                    >
+                      <p className="text-slate-600 text-sm leading-relaxed">{faq.a}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         ) : (
           <div className="bg-white/40 backdrop-blur-xl rounded-3xl border border-white/60 shadow-xl overflow-hidden">
             {/* Back Button */}
             <div className="bg-white/30 border-b border-white/40 p-4 px-8">
               <button 
-                onClick={() => setView('listing')}
+                onClick={() => {
+                  setView('listing');
+                  setStep(1);
+                  setOtpInput('');
+                  setFiles([]);
+                }}
                 className="flex items-center text-sm font-medium text-slate-600 hover:text-indigo-700 transition-colors"
               >
                 <ArrowLeft size={16} className="mr-2" /> Kembali ke Daftar Lowongan
@@ -462,11 +632,12 @@ export default function PublicCareer() {
                 </div>
 
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={handleRequestOTPClick}
                   disabled={loading}
-                  className="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full py-4 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  {loading ? <Loader2 size={20} className="animate-spin" /> : <Phone size={20} />}
+                  {loading ? <Loader2 size={20} className="animate-spin" /> : <MessageCircle size={20} />}
                   Kirim OTP via WhatsApp
                 </button>
               </form>
@@ -551,7 +722,7 @@ export default function PublicCareer() {
             )}
 
             {step === 3 && (
-              <form onSubmit={handleUpload} className="space-y-6">
+              <form onSubmit={(e) => { e.preventDefault(); handleUploadClick(e); }} className="space-y-6">
                 <div className="text-center mb-6">
                   <h2 className="text-xl font-bold text-slate-900">Upload CV Anda</h2>
                   <p className="text-sm text-slate-500">Format yang didukung: PDF, DOC, DOCX (Maks. 5MB)</p>
@@ -647,19 +818,19 @@ export default function PublicCareer() {
               </button>
             </div>
             
-            <div className="p-6 overflow-y-auto flex-1 space-y-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              <div>
-                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                  <ClipboardList size={16} className="text-indigo-600" /> Deskripsi Pekerjaan (Jobdesk)
+            <div className="p-6 overflow-y-auto flex-1 space-y-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              <div className="bg-blue-50/60 border border-blue-100/60 rounded-2xl p-6 shadow-sm">
+                <h3 className="text-sm font-bold text-blue-800 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <ClipboardList size={16} className="text-blue-600" /> Deskripsi Pekerjaan (Jobdesk)
                 </h3>
                 <div className="prose prose-sm prose-slate max-w-none">
                   <p className="whitespace-pre-wrap text-slate-800 leading-relaxed">{selectedJob.jobdesk}</p>
                 </div>
               </div>
               
-              <div>
-                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                  <GraduationCap size={16} className="text-indigo-600" /> Kualifikasi
+              <div className="bg-emerald-50/60 border border-emerald-100/60 rounded-2xl p-6 shadow-sm">
+                <h3 className="text-sm font-bold text-emerald-800 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <GraduationCap size={16} className="text-emerald-600" /> Kualifikasi
                 </h3>
                 <div className="prose prose-sm prose-slate max-w-none">
                   <p className="whitespace-pre-wrap text-slate-800 leading-relaxed">{selectedJob.kualifikasi}</p>
@@ -678,11 +849,89 @@ export default function PublicCareer() {
                 onClick={() => {
                   setPosition(selectedJob.position);
                   setSelectedJob(null);
+                  setStep(1);
+                  setOtpInput('');
+                  setFiles([]);
                   setView('form');
                 }}
                 className="px-8 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
               >
                 Lamar Sekarang
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* OTP Confirmation Modal */}
+      {showOtpConfirmModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-slate-100">
+              <h2 className="text-xl font-bold text-slate-900">Konfirmasi Data</h2>
+              <p className="text-sm text-slate-500 mt-1">Pastikan data Anda sudah benar sebelum melanjutkan.</p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Nama Lengkap</p>
+                <p className="text-slate-900 font-medium">{candidateName}</p>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Email</p>
+                <p className="text-slate-900 font-medium">{candidateEmail}</p>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Nomor WhatsApp</p>
+                <p className="text-slate-900 font-medium">{phoneNumber}</p>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Posisi Dilamar</p>
+                <p className="text-slate-900 font-medium">{position}</p>
+              </div>
+            </div>
+            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+              <button
+                onClick={() => setShowOtpConfirmModal(false)}
+                className="px-6 py-2.5 text-slate-600 font-bold hover:bg-slate-200 rounded-xl transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleRequestOTP}
+                className="px-6 py-2.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-200 flex items-center gap-2"
+              >
+                Lanjutkan Verifikasi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Confirmation Modal */}
+      {showUploadConfirmModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-slate-100">
+              <h2 className="text-xl font-bold text-slate-900">Konfirmasi Upload CV</h2>
+            </div>
+            <div className="p-6">
+              <p className="text-slate-700">Apakah Anda yakin ingin mengunggah CV ini dan mengirimkan lamaran Anda?</p>
+              <div className="mt-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                <p className="text-sm font-medium text-slate-900 truncate">{files[0]?.name}</p>
+                <p className="text-xs text-slate-500">{(files[0]?.size / 1024 / 1024).toFixed(2)} MB</p>
+              </div>
+            </div>
+            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+              <button
+                onClick={() => setShowUploadConfirmModal(false)}
+                className="px-6 py-2.5 text-slate-600 font-bold hover:bg-slate-200 rounded-xl transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleUpload}
+                className="px-6 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
+              >
+                Ya, Kirim Lamaran
               </button>
             </div>
           </div>

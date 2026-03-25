@@ -40,21 +40,25 @@ export default function SchedulingModal({ candidate, type, initialData, onClose,
         setFetchingCandidates(true);
         const tableName = type === 'psikotes' ? 'psikotes_schedules' : 'interview_schedules';
         
-        // Fetch candidates and their schedules for this type to filter out those already scheduled
-        const { data, error } = await supabase
-          .from('candidates')
-          .select(`
-            *,
-            schedules: ${tableName}(id)
-          `)
-          .in('status_screening', ['pending', 'invited', 'accepted'])
-          .order('full_name', { ascending: true });
-          
-        if (!error && data) {
-          // Only show candidates who don't have a schedule of this type yet
-          const filtered = data.filter((c: any) => !c.schedules || c.schedules.length === 0);
-          setCandidates(filtered);
-        }
+          // Fetch candidates and their schedules for this type to filter out those already scheduled
+          const { data, error } = await supabase
+            .from('candidates')
+            .select(`
+              *,
+              schedules: ${tableName}(id, is_confirmed)
+            `)
+            .eq('status_screening', 'accepted')
+            .order('full_name', { ascending: true });
+            
+          if (!error && data) {
+            // Only show candidates who don't have a schedule of this type yet, OR all their schedules are confirmed
+            const filtered = data.filter((c: any) => {
+              if (!c.schedules || c.schedules.length === 0) return true;
+              // If they have schedules, allow scheduling again ONLY IF all previous schedules are confirmed
+              return c.schedules.every((s: any) => s.is_confirmed === true);
+            });
+            setCandidates(filtered);
+          }
         setFetchingCandidates(false);
       };
       fetchCandidates();

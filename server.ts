@@ -179,8 +179,8 @@ app.use((req: any, res, next) => {
       return res.status(401).json({ error: "Unauthorized. Missing or invalid Authorization header." });
     }
 
-    if (!type || !['email', 'wa', 'test'].includes(type)) {
-      return res.status(400).json({ error: "Valid type (email, wa, test) is required" });
+    if (!type || !['email', 'wa', 'test', 'sheet'].includes(type)) {
+      return res.status(400).json({ error: "Valid type (email, wa, test, sheet) is required" });
     }
 
     try {
@@ -200,6 +200,8 @@ app.use((req: any, res, next) => {
         webhookUrl = user.user_metadata?.n8n_webhook_url;
       } else if (type === 'wa') {
         webhookUrl = user.user_metadata?.wa_webhook_url;
+      } else if (type === 'sheet') {
+        webhookUrl = user.user_metadata?.sheet_webhook_url;
       } else if (type === 'test') {
         const testType = payload?.type;
         if (testType === 'email') webhookUrl = user.user_metadata?.n8n_webhook_url;

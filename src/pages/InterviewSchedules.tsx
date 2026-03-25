@@ -151,6 +151,9 @@ export default function InterviewSchedules() {
   };
 
   const handleConfirm = async (id: string, currentStatus: boolean) => {
+    const actionText = !currentStatus ? 'mengonfirmasi bahwa kandidat ini sudah melakukan interview' : 'membatalkan konfirmasi interview';
+    if (!confirm(`Apakah Anda yakin ingin ${actionText}?`)) return;
+
     const { error } = await supabase
       .from('interview_schedules')
       .update({ is_confirmed: !currentStatus })

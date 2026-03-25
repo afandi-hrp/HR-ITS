@@ -20,7 +20,7 @@ export default function Login() {
   const generateCaptcha = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
     let text = '';
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 4; i++) {
       text += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     setCaptchaText(text);
@@ -172,17 +172,17 @@ export default function Login() {
                   <input
                     type="text"
                     required
-                    maxLength={3}
+                    maxLength={4}
                     value={captchaInput}
                     onChange={(e) => setCaptchaInput(e.target.value)}
                     className="block w-full px-4 py-3 bg-white/50 border border-white/40 rounded-xl text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all font-mono tracking-widest"
-                    placeholder="Ketik 3 karakter"
+                    placeholder="Ketik 4 karakter"
                   />
                 </div>
                 <div className="flex items-center gap-2 bg-white/60 p-1.5 rounded-xl border border-white/40 shadow-sm">
                   <canvas 
                     ref={canvasRef} 
-                    width="120" 
+                    width="140" 
                     height="40" 
                     className="rounded-lg bg-slate-50 border border-slate-200"
                   />

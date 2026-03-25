@@ -151,6 +151,9 @@ export default function PsikotesSchedules() {
   };
 
   const handleConfirm = async (id: string, currentStatus: boolean) => {
+    const actionText = !currentStatus ? 'mengonfirmasi bahwa kandidat ini sudah melakukan psikotes' : 'membatalkan konfirmasi psikotes';
+    if (!confirm(`Apakah Anda yakin ingin ${actionText}?`)) return;
+
     const { error } = await supabase
       .from('psikotes_schedules')
       .update({ is_confirmed: !currentStatus })
