@@ -17,14 +17,14 @@ const __dirname = path.dirname(__filename);
 
 const triggerRateLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
-  max: 10, // limit each IP to 10 requests per windowMs
+  max: 100, // limit each IP to 100 requests per windowMs
   message: { error: "Terlalu banyak permintaan, silakan coba lagi nanti." },
   validate: { trustProxy: false, xForwardedForHeader: false }
 });
 
 const uploadRateLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
-  max: 5, // limit each IP to 5 uploads per windowMs
+  max: 50, // limit each IP to 50 uploads per windowMs
   message: { error: "Terlalu banyak permintaan upload, silakan coba lagi nanti." },
   validate: { trustProxy: false, xForwardedForHeader: false }
 });

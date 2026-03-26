@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Upload, FileText, CheckCircle2, Loader2, X, AlertCircle, Search, RefreshCcw, Mail, Calendar, User, Trash2, File, Plus, Info } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../components/ui/use-toast';
-import { cn } from '../lib/utils';
+import { cn, fetchWithRetry } from '../lib/utils';
 import BulkUploadModal from '../components/BulkUploadModal';
 
 interface CVUpload {
@@ -48,30 +48,18 @@ export default function UploadCV() {
   const fetchUploads = async () => {
     setFetchingUploads(true);
     try {
-      const response = await fetch(`/api/cv-uploads?search=${encodeURIComponent(debouncedSearch)}&page=${currentPage}&limit=${itemsPerPage}`, {
+      const response = await fetchWithRetry(`/api/cv-uploads?search=${encodeURIComponent(debouncedSearch)}&page=${currentPage}&limit=${itemsPerPage}`, {
         headers: {
           'Accept': 'application/json'
         }
       });
       if (response.ok) {
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.indexOf("application/json") !== -1) {
-          const result = await response.json();
-          setUploads(result.data || []);
-          setTotalItems(result.count || 0);
-        } else {
-          const text = await response.text();
-          if (text.includes('Please wait') || text.includes('<html')) {
-            console.warn('Server is starting up or returned HTML. Retrying in 2 seconds...');
-            setTimeout(fetchUploads, 2000);
-            return;
-          }
-          console.error('Expected JSON response but got:', contentType);
-          console.error('Response body:', text.substring(0, 200));
-          throw new Error('API returned non-JSON response');
-        }
+        const result = await response.json();
+        setUploads(result.data || []);
+        setTotalItems(result.count || 0);
       } else {
-        throw new Error(`API error: ${response.status}`);
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `API error: ${response.status}`);
       }
     } catch (error) {
       console.error('Error fetching uploads:', error);
@@ -81,84 +69,38 @@ export default function UploadCV() {
   };
 
   const handleDelete = async (id: string) => {
-    let retries = 3;
-    let success = false;
-    
-    while (retries > 0 && !success) {
-      try {
-        const response = await fetch('/api/cv-uploads', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ids: [id] }),
-        });
-        if (!response.ok) throw new Error('Gagal menghapus riwayat');
-        
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.indexOf("application/json") === -1) {
-          const text = await response.text();
-          if (text.includes('Please wait') || text.includes('<html')) {
-             console.warn('Server is starting up. Retrying delete...');
-             await new Promise(resolve => setTimeout(resolve, 2000));
-             retries--;
-             continue;
-          }
-        }
-        
-        success = true;
-        toast({ title: 'Berhasil', description: 'Riwayat berhasil dihapus.' });
-        setSelectedUploads(prev => prev.filter(selectedId => selectedId !== id));
-        fetchUploads();
-      } catch (error: any) {
-        if (retries <= 1) {
-          toast({ title: 'Error', description: error.message, variant: 'destructive' });
-        } else {
-          console.warn('Delete failed, retrying...', error);
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        }
-        retries--;
-      }
+    try {
+      const response = await fetchWithRetry('/api/cv-uploads', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [id] }),
+      });
+      if (!response.ok) throw new Error('Gagal menghapus riwayat');
+      
+      toast({ title: 'Berhasil', description: 'Riwayat berhasil dihapus.' });
+      setSelectedUploads(prev => prev.filter(selectedId => selectedId !== id));
+      fetchUploads();
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
     }
   };
 
   const handleBulkDelete = async () => {
     if (selectedUploads.length === 0) return;
     
-    let retries = 3;
-    let success = false;
-    
-    while (retries > 0 && !success) {
-      try {
-        const response = await fetch('/api/cv-uploads', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ids: selectedUploads }),
-        });
-        if (!response.ok) throw new Error('Gagal menghapus riwayat');
-        
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.indexOf("application/json") === -1) {
-          const text = await response.text();
-          if (text.includes('Please wait') || text.includes('<html')) {
-             console.warn('Server is starting up. Retrying delete...');
-             await new Promise(resolve => setTimeout(resolve, 2000));
-             retries--;
-             continue;
-          }
-        }
-        
-        success = true;
-        toast({ title: 'Berhasil', description: `${selectedUploads.length} riwayat berhasil dihapus.` });
-        setSelectedUploads([]);
-        fetchUploads();
-      } catch (error: any) {
-        if (retries <= 1) {
-          toast({ title: 'Error', description: error.message, variant: 'destructive' });
-        } else {
-          console.warn('Delete failed, retrying...', error);
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        }
-        retries--;
-      }
+    try {
+      const response = await fetchWithRetry('/api/cv-uploads', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedUploads }),
+      });
+      if (!response.ok) throw new Error('Gagal menghapus riwayat');
+      
+      toast({ title: 'Berhasil', description: `${selectedUploads.length} riwayat berhasil dihapus.` });
+      setSelectedUploads([]);
+      fetchUploads();
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
     }
   };
 
@@ -266,6 +208,8 @@ export default function UploadCV() {
       let successCount = 0;
       let errorCount = 0;
 
+      const { data: { session } } = await supabase.auth.getSession();
+
       for (const file of files) {
         const formData = new FormData();
         formData.append('candidateName', candidateName);
@@ -278,47 +222,23 @@ export default function UploadCV() {
         formData.append('senderEmail', user?.email || '');
         formData.append('file', file);
 
-        let retries = 3;
-        let success = false;
-        
-        while (retries > 0 && !success) {
-          try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch('/api/n8n/upload-cv', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${session?.access_token}`
-              },
-              body: formData,
-            });
+        try {
+          const response = await fetchWithRetry('/api/n8n/upload-cv', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session?.access_token}`
+            },
+            body: formData,
+          });
 
-            if (!response.ok) {
-              throw new Error(`Gagal mengirim ke n8n: ${response.statusText}`);
-            }
-            
-            const contentType = response.headers.get("content-type");
-            if (contentType && contentType.indexOf("application/json") === -1) {
-              const text = await response.text();
-              if (text.includes('Please wait') || text.includes('<html')) {
-                 console.warn('Server is starting up. Retrying upload...');
-                 await new Promise(resolve => setTimeout(resolve, 2000));
-                 retries--;
-                 continue;
-              }
-            }
-            
-            success = true;
-            successCount++;
-          } catch (err) {
-            if (retries <= 1) {
-              console.error('Error uploading CV:', err);
-              errorCount++;
-            } else {
-              console.warn('Upload failed, retrying...', err);
-              await new Promise(resolve => setTimeout(resolve, 2000));
-            }
-            retries--;
+          if (!response.ok) {
+            throw new Error(`Gagal mengirim ke n8n: ${response.statusText}`);
           }
+          
+          successCount++;
+        } catch (err) {
+          console.error('Error uploading CV:', err);
+          errorCount++;
         }
         
         setUploadProgress(prev => ({ ...prev, current: prev.current + 1 }));

@@ -42,6 +42,11 @@ export async function fetchWithRetry(url: string, options?: RequestInit, maxRetr
       continue;
     }
     
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.indexOf("application/json") === -1) {
+      throw new Error(`API Error ${response.status}: ${response.statusText}`);
+    }
+    
     return response;
   }
   throw new Error(`Failed to fetch ${url} after ${maxRetries} retries`);

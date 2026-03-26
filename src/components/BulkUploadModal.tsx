@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Upload, FileText, File, Loader2, Plus, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useToast } from './ui/use-toast';
-import { cn } from '../lib/utils';
+import { cn, fetchWithRetry } from '../lib/utils';
 
 interface BulkUploadModalProps {
   isOpen: boolean;
@@ -138,6 +138,8 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
       let successCount = 0;
       let errorCount = 0;
 
+      const { data: { session } } = await supabase.auth.getSession();
+
       for (const row of validRows) {
         if (!row.file) continue;
 
@@ -153,47 +155,23 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
         formData.append('senderEmail', user?.email || '');
         formData.append('file', row.file);
 
-        let retries = 3;
-        let success = false;
-        
-        while (retries > 0 && !success) {
-          try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch('/api/n8n/upload-cv', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${session?.access_token}`
-              },
-              body: formData,
-            });
+        try {
+          const response = await fetchWithRetry('/api/n8n/upload-cv', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session?.access_token}`
+            },
+            body: formData,
+          });
 
-            if (!response.ok) {
-              throw new Error(`Gagal mengirim ke n8n: ${response.statusText}`);
-            }
-            
-            const contentType = response.headers.get("content-type");
-            if (contentType && contentType.indexOf("application/json") === -1) {
-              const text = await response.text();
-              if (text.includes('Please wait') || text.includes('<html')) {
-                 console.warn('Server is starting up. Retrying upload...');
-                 await new Promise(resolve => setTimeout(resolve, 2000));
-                 retries--;
-                 continue;
-              }
-            }
-            
-            success = true;
-            successCount++;
-          } catch (err) {
-            if (retries <= 1) {
-              console.error('Error uploading CV:', err);
-              errorCount++;
-            } else {
-              console.warn('Upload failed, retrying...', err);
-              await new Promise(resolve => setTimeout(resolve, 2000));
-            }
-            retries--;
+          if (!response.ok) {
+            throw new Error(`Gagal mengirim ke n8n: ${response.statusText}`);
           }
+          
+          successCount++;
+        } catch (err) {
+          console.error('Error uploading CV:', err);
+          errorCount++;
         }
         
         setUploadProgress(prev => ({ ...prev, current: prev.current + 1 }));

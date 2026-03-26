@@ -301,41 +301,13 @@ export default function PublicCareer() {
       formData.append('senderEmail', candidateEmail);
       formData.append('file', file);
 
-      let retries = 3;
-      let success = false;
-      
-      while (retries > 0 && !success) {
-        try {
-          const response = await fetch('/api/n8n/upload-cv', {
-            method: 'POST',
-            body: formData,
-          });
+      const response = await fetchWithRetry('/api/n8n/upload-cv', {
+        method: 'POST',
+        body: formData,
+      });
 
-          if (!response.ok) {
-            throw new Error(`Gagal mengirim lamaran: ${response.statusText}`);
-          }
-          
-          const contentType = response.headers.get("content-type");
-          if (contentType && contentType.indexOf("application/json") === -1) {
-            const text = await response.text();
-            if (text.includes('Please wait') || text.includes('<html')) {
-               console.warn('Server is starting up. Retrying upload...');
-               await new Promise(resolve => setTimeout(resolve, 2000));
-               retries--;
-               continue;
-            }
-          }
-          
-          success = true;
-        } catch (error: any) {
-          if (retries <= 1) {
-            throw error;
-          } else {
-            console.warn('Upload failed, retrying...', error);
-            await new Promise(resolve => setTimeout(resolve, 2000));
-          }
-          retries--;
-        }
+      if (!response.ok) {
+        throw new Error(`Gagal mengirim lamaran: ${response.statusText}`);
       }
 
       toast({ 
