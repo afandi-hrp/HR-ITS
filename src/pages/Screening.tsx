@@ -27,7 +27,8 @@ import {
   ThumbsDown,
   X,
   LayoutList,
-  LayoutGrid
+  LayoutGrid,
+  Loader2
 } from 'lucide-react';
 import { cn, formatDate } from '../lib/utils';
 import { useToast } from '../components/ui/use-toast';
@@ -56,6 +57,8 @@ export default function Screening() {
   const [hireModalData, setHireModalData] = useState<Candidate | null>(null);
   const [hireNotes, setHireNotes] = useState('');
   const [hiring, setHiring] = useState(false);
+  const [accepting, setAccepting] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
   const [assessmentModalData, setAssessmentModalData] = useState<Candidate | null>(null);
   const [assessmentScores, setAssessmentScores] = useState({
     technical_score: 0,
@@ -125,6 +128,7 @@ export default function Screening() {
   const confirmReject = async () => {
     if (!rejectModalData) return;
     
+    setRejecting(true);
     try {
       // Set status to rejected first so it's recorded as rejected in the log
       const { error: updateError } = await supabase
@@ -144,8 +148,13 @@ export default function Screening() {
         }),
       });
 
+      const contentType = response.headers.get("content-type");
+      if (!contentType || contentType.indexOf("application/json") === -1) {
+        throw new Error('API returned non-JSON response');
+      }
+
       const result = await response.json();
-      if (result.success) {
+      if (response.ok) {
         toast({ 
           title: 'Berhasil', 
           description: `Kandidat ${rejectModalData.full_name} telah ditolak dan dipindahkan ke Candidate Archive.` 
@@ -154,10 +163,12 @@ export default function Screening() {
         setRejectModalData(null);
         setRejectReason('');
       } else {
-        throw new Error(result.error);
+        throw new Error(result.error || 'Gagal memindahkan kandidat');
       }
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setRejecting(false);
     }
   };
 
@@ -190,20 +201,25 @@ export default function Screening() {
   const confirmAccept = async () => {
     if (!acceptModalData) return;
 
-    const { error } = await supabase
-      .from('candidates')
-      .update({ status_screening: 'accepted' })
-      .eq('id', acceptModalData.id);
+    setAccepting(true);
+    try {
+      const { error } = await supabase
+        .from('candidates')
+        .update({ status_screening: 'accepted' })
+        .eq('id', acceptModalData.id);
 
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
-      toast({ 
-        title: 'Berhasil', 
-        description: `Status kandidat ${acceptModalData.full_name} diperbarui menjadi Diterima (Lolos Screening).` 
-      });
-      fetchCandidates();
-      setAcceptModalData(null);
+      if (error) {
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      } else {
+        toast({ 
+          title: 'Berhasil', 
+          description: `Status kandidat ${acceptModalData.full_name} diperbarui menjadi Diterima (Lolos Screening).` 
+        });
+        fetchCandidates();
+        setAcceptModalData(null);
+      }
+    } finally {
+      setAccepting(false);
     }
   };
 
@@ -230,8 +246,13 @@ export default function Screening() {
         }),
       });
 
+      const contentType = response.headers.get("content-type");
+      if (!contentType || contentType.indexOf("application/json") === -1) {
+        throw new Error('API returned non-JSON response');
+      }
+
       const result = await response.json();
-      if (result.success) {
+      if (response.ok) {
         toast({ 
           title: 'Berhasil', 
           description: `Kandidat ${hireModalData.full_name} telah direkrut dan dipindahkan ke Candidate Archive.` 
@@ -240,7 +261,7 @@ export default function Screening() {
         setHireModalData(null);
         setHireNotes('');
       } else {
-        throw new Error(result.error);
+        throw new Error(result.error || 'Gagal memindahkan kandidat');
       }
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -267,14 +288,19 @@ export default function Screening() {
         }),
       });
 
+      const contentType = response.headers.get("content-type");
+      if (!contentType || contentType.indexOf("application/json") === -1) {
+        throw new Error('API returned non-JSON response');
+      }
+
       const result = await response.json();
-      if (result.success) {
+      if (response.ok) {
         toast({ title: 'Berhasil', description: 'Kandidat dipindahkan ke log.' });
         setLogModalData(null);
         setLogNotes('');
         fetchCandidates();
       } else {
-        throw new Error(result.error);
+        throw new Error(result.error || 'Gagal memindahkan kandidat');
       }
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -315,6 +341,19 @@ export default function Screening() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   // We already paginated on the server, so paginatedCandidates is just candidates
   const paginatedCandidates = candidates;
+
+  const getManualAssessmentScore = (candidate: Candidate) => {
+    const scores = [
+      candidate.technical_score || 0,
+      candidate.communication_score || 0,
+      candidate.problem_solving_score || 0,
+      candidate.teamwork_score || 0,
+      candidate.leadership_score || 0,
+      candidate.adaptability_score || 0
+    ];
+    const total = scores.reduce((a, b) => a + b, 0);
+    return Math.round(total / 6);
+  };
 
   const groupedCandidates = paginatedCandidates.reduce((acc: Record<string, Candidate[]>, c) => {
     if (!acc[c.position]) acc[c.position] = [];
@@ -445,6 +484,13 @@ export default function Screening() {
             />
           </div>
           <button 
+            onClick={() => setStatusFilter('all')}
+            className="px-4 py-2 text-sm font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm whitespace-nowrap"
+            title="Tampilkan semua kandidat terlepas dari filter status"
+          >
+            Semua Kandidat
+          </button>
+          <button 
             onClick={() => {
               setSearch('');
               setStartDate('');
@@ -521,8 +567,15 @@ export default function Screening() {
                         <p className="text-xs text-slate-500 truncate">{candidate.email}</p>
                       </div>
                     </div>
-                    <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold shadow-sm shrink-0 text-xs">
-                      {candidate.assessment_score || 0}
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <div className="flex items-center gap-1.5 bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100" title="Skor CV (AI)">
+                        <span className="text-[10px] font-bold text-indigo-400 uppercase">CV</span>
+                        <span className="text-xs font-bold text-indigo-700">{candidate.assessment_score || 0}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100" title="Skor Asesmen (Manual)">
+                        <span className="text-[10px] font-bold text-emerald-500 uppercase">Asesmen</span>
+                        <span className="text-xs font-bold text-emerald-700">{getManualAssessmentScore(candidate)}</span>
+                      </div>
                     </div>
                   </div>
                   <div className="p-5 flex-1 space-y-3">
@@ -573,20 +626,18 @@ export default function Screening() {
                         <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2 flex-wrap">
                           <button 
                             onClick={() => handleUpdateStatus(candidate.id, 'accepted')}
-                            title="Terima Kandidat"
+                            title="Terima Kandidat (Lolos Screening)"
                             className="p-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all"
                           >
                             <ThumbsUp size={16} />
                           </button>
-                          {candidate.status_screening === 'accepted' && candidate.psikotes_schedules?.some(s => s.is_confirmed) && candidate.interview_schedules?.some(s => s.is_confirmed) && (
-                            <button 
-                              onClick={() => handleUpdateStatus(candidate.id, 'hired')}
-                              title="Rekrut Kandidat"
-                              className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all"
-                            >
-                              <Briefcase size={16} />
-                            </button>
-                          )}
+                          <button 
+                            onClick={() => handleUpdateStatus(candidate.id, 'hired')}
+                            title="Rekrut Kandidat (Hired)"
+                            className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all"
+                          >
+                            <Briefcase size={16} />
+                          </button>
                           <button 
                             onClick={() => handleUpdateStatus(candidate.id, 'rejected')}
                             title="Tolak Kandidat"
@@ -709,10 +760,14 @@ export default function Screening() {
                           </div>
                         </div>
                         <div className="flex items-center gap-6">
-                          <div className="flex items-center gap-3">
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden sm:block">Skor</p>
-                            <div className="w-10 h-10 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold shadow-lg shadow-indigo-100">
-                              {candidate.assessment_score || 0}
+                          <div className="flex flex-col items-end gap-1">
+                            <div className="flex items-center gap-2 bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100" title="Skor CV (AI)">
+                              <span className="text-[10px] font-bold text-indigo-400 uppercase">CV</span>
+                              <span className="text-sm font-bold text-indigo-700">{candidate.assessment_score || 0}</span>
+                            </div>
+                            <div className="flex items-center gap-2 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100" title="Skor Asesmen (Manual)">
+                              <span className="text-[10px] font-bold text-emerald-500 uppercase">Asesmen</span>
+                              <span className="text-sm font-bold text-emerald-700">{getManualAssessmentScore(candidate)}</span>
                             </div>
                           </div>
                           <div className={cn("p-2 rounded-lg bg-slate-100 text-slate-400 transition-transform duration-300", isExpanded && "rotate-180")}>
@@ -852,9 +907,9 @@ export default function Screening() {
                                     <FileText className="text-indigo-600" size={20} />
                                   </div>
                                   <div className="flex-1">
-                                    <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Skor & Alasan Penilaian</p>
+                                    <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Skor CV (AI) & Alasan Penilaian</p>
                                     <div className="flex items-center gap-4 mt-2">
-                                      <div className="w-12 h-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-xl font-bold shadow-lg shadow-indigo-200">
+                                      <div className="w-12 h-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-xl font-bold shadow-lg shadow-indigo-200" title="Skor CV (AI)">
                                         {candidate.assessment_score || 0}
                                       </div>
                                       <p className="text-sm text-indigo-900 leading-relaxed italic flex-1">"{candidate.assessment_reason || '-'}"</p>
@@ -1110,6 +1165,17 @@ export default function Screening() {
                 Apakah Anda yakin ingin menerima kandidat <span className="font-bold text-slate-800">{acceptModalData.full_name}</span>? 
                 Status kandidat akan diubah menjadi Lolos Screening.
               </p>
+              
+              <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 grid grid-cols-2 gap-4 text-left">
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Skor Screening</p>
+                  <p className="text-sm font-bold text-indigo-600">{acceptModalData.assessment_score || 0}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Skor Assessment</p>
+                  <p className="text-sm font-bold text-emerald-600">{getManualAssessmentScore(acceptModalData)}</p>
+                </div>
+              </div>
             </div>
             <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-3">
               <button
@@ -1120,9 +1186,10 @@ export default function Screening() {
               </button>
               <button
                 onClick={confirmAccept}
-                className="flex-1 py-2.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-200"
+                disabled={accepting}
+                className="flex-1 py-2.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Ya, Terima Kandidat
+                {accepting ? <Loader2 className="animate-spin" size={18} /> : 'Ya, Terima Kandidat'}
               </button>
             </div>
           </div>
@@ -1165,9 +1232,10 @@ export default function Screening() {
               </button>
               <button
                 onClick={confirmReject}
-                className="flex-1 py-2.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-all shadow-sm shadow-red-200"
+                disabled={rejecting}
+                className="flex-1 py-2.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-all shadow-sm shadow-red-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Ya, Tolak Kandidat
+                {rejecting ? <Loader2 className="animate-spin" size={18} /> : 'Ya, Tolak Kandidat'}
               </button>
             </div>
           </div>
@@ -1200,14 +1268,18 @@ export default function Screening() {
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                 <h4 className="font-bold text-slate-900">{hireModalData.full_name}</h4>
                 <p className="text-sm text-slate-500">{hireModalData.email}</p>
-                <div className="mt-3 pt-3 border-t border-slate-200 grid grid-cols-2 gap-4">
+                <div className="mt-3 pt-3 border-t border-slate-200 grid grid-cols-3 gap-4">
                   <div>
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Posisi</p>
                     <p className="text-sm font-medium text-slate-700">{hireModalData.position}</p>
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Skor Assessment</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Skor Screening</p>
                     <p className="text-sm font-bold text-indigo-600">{hireModalData.assessment_score || 0}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Skor Assessment</p>
+                    <p className="text-sm font-bold text-emerald-600">{getManualAssessmentScore(hireModalData)}</p>
                   </div>
                 </div>
                 {(hireModalData.strengths || hireModalData.risk_factors) && (

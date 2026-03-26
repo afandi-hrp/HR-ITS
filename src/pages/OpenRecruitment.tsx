@@ -37,6 +37,7 @@ export default function OpenRecruitment() {
     kualifikasi: ''
   });
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const { toast } = useToast();
 
@@ -136,6 +137,7 @@ export default function OpenRecruitment() {
   };
 
   const handleDelete = async (id: string) => {
+    setDeleting(true);
     try {
       const { error } = await supabase
         .from('open_recruitment')
@@ -182,6 +184,8 @@ export default function OpenRecruitment() {
       }
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -517,9 +521,10 @@ export default function OpenRecruitment() {
               </button>
               <button
                 onClick={() => handleDelete(deleteConfirmId)}
-                className="flex-1 px-4 py-3 bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 shadow-lg shadow-red-200 transition-all"
+                disabled={deleting}
+                className="flex-1 px-4 py-3 bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 shadow-lg shadow-red-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Ya, Hapus
+                {deleting ? <RefreshCcw className="animate-spin" size={18} /> : 'Ya, Hapus'}
               </button>
             </div>
           </div>

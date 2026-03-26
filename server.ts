@@ -18,13 +18,15 @@ const __dirname = path.dirname(__filename);
 const triggerRateLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
   max: 10, // limit each IP to 10 requests per windowMs
-  message: { error: "Terlalu banyak permintaan, silakan coba lagi nanti." }
+  message: { error: "Terlalu banyak permintaan, silakan coba lagi nanti." },
+  validate: { trustProxy: false, xForwardedForHeader: false }
 });
 
 const uploadRateLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
   max: 5, // limit each IP to 5 uploads per windowMs
-  message: { error: "Terlalu banyak permintaan upload, silakan coba lagi nanti." }
+  message: { error: "Terlalu banyak permintaan upload, silakan coba lagi nanti." },
+  validate: { trustProxy: false, xForwardedForHeader: false }
 });
 
 const upload = multer({ 
@@ -45,6 +47,7 @@ const upload = multer({
   }
 });
 const app = express();
+app.set('trust proxy', 1);
 
 // Supabase Admin Client (Lazy initialization to prevent crash if env vars are missing)
 const getSupabaseAdmin = () => {

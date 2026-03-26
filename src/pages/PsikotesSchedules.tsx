@@ -53,7 +53,8 @@ export default function PsikotesSchedules() {
     id: string;
     currentStatus?: boolean;
     type: 'confirm' | 'delete';
-  }>({ isOpen: false, id: '', type: 'confirm' });
+    loading?: boolean;
+  }>({ isOpen: false, id: '', type: 'confirm', loading: false });
 
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [calendarDate, setCalendarDate] = useState(new Date());
@@ -147,39 +148,49 @@ export default function PsikotesSchedules() {
   };
 
   const handleDelete = async (id: string) => {
-    setConfirmModal({ isOpen: true, id, type: 'delete' });
+    setConfirmModal({ isOpen: true, id, type: 'delete', loading: false });
   };
 
   const executeDelete = async (id: string) => {
-    const { error } = await supabase.from('psikotes_schedules').delete().eq('id', id);
-    if (error) toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    else {
-      toast({ title: 'Berhasil', description: 'Jadwal dihapus.' });
-      if (viewMode === 'list') fetchSchedules(false);
-      else fetchCalendarSchedules();
+    setConfirmModal(prev => ({ ...prev, loading: true }));
+    try {
+      const { error } = await supabase.from('psikotes_schedules').delete().eq('id', id);
+      if (error) toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      else {
+        toast({ title: 'Berhasil', description: 'Jadwal dihapus.' });
+        if (viewMode === 'list') fetchSchedules(false);
+        else fetchCalendarSchedules();
+      }
+    } finally {
+      setConfirmModal(prev => ({ ...prev, loading: false, isOpen: false }));
     }
   };
 
   const handleConfirm = async (id: string, currentStatus: boolean) => {
-    setConfirmModal({ isOpen: true, id, currentStatus, type: 'confirm' });
+    setConfirmModal({ isOpen: true, id, currentStatus, type: 'confirm', loading: false });
   };
 
   const executeConfirm = async (id: string, currentStatus: boolean) => {
-    const { error } = await supabase
-      .from('psikotes_schedules')
-      .update({ is_confirmed: !currentStatus })
-      .eq('id', id);
+    setConfirmModal(prev => ({ ...prev, loading: true }));
+    try {
+      const { error } = await supabase
+        .from('psikotes_schedules')
+        .update({ is_confirmed: !currentStatus })
+        .eq('id', id);
 
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
-      toast({ 
-        title: 'Berhasil', 
-        description: !currentStatus ? 'Kandidat dikonfirmasi sudah psikotes.' : 'Konfirmasi dibatalkan.' 
-      });
-      setPreviewSchedule(null);
-      if (viewMode === 'list') fetchSchedules(false);
-      else fetchCalendarSchedules();
+      if (error) {
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      } else {
+        toast({ 
+          title: 'Berhasil', 
+          description: !currentStatus ? 'Kandidat dikonfirmasi sudah psikotes.' : 'Konfirmasi dibatalkan.' 
+        });
+        setPreviewSchedule(null);
+        if (viewMode === 'list') fetchSchedules(false);
+        else fetchCalendarSchedules();
+      }
+    } finally {
+      setConfirmModal(prev => ({ ...prev, loading: false, isOpen: false }));
     }
   };
 
@@ -817,6 +828,7 @@ export default function PsikotesSchedules() {
         }
         confirmText={confirmModal.type === 'delete' ? 'Hapus' : 'Ya, Konfirmasi'}
         variant={confirmModal.type === 'delete' ? 'danger' : 'primary'}
+        loading={confirmModal.loading}
       />
     </div>
   );

@@ -49,9 +49,19 @@ export default function UploadCV() {
     try {
       const response = await fetch(`/api/cv-uploads?search=${encodeURIComponent(debouncedSearch)}&page=${currentPage}&limit=${itemsPerPage}`);
       if (response.ok) {
-        const result = await response.json();
-        setUploads(result.data || []);
-        setTotalItems(result.count || 0);
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+          const result = await response.json();
+          setUploads(result.data || []);
+          setTotalItems(result.count || 0);
+        } else {
+          console.error('Expected JSON response but got:', contentType);
+          const text = await response.text();
+          console.error('Response body:', text.substring(0, 200));
+          throw new Error('API returned non-JSON response');
+        }
+      } else {
+        throw new Error(`API error: ${response.status}`);
       }
     } catch (error) {
       console.error('Error fetching uploads:', error);
@@ -241,8 +251,10 @@ export default function UploadCV() {
         });
       }
       
-      // Reset files only, keep fields
+      // Reset files and fields
       setFiles([]);
+      setCandidateName('');
+      setCandidateEmail('');
       
       // Refresh list
       fetchUploads();

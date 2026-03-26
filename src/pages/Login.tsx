@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Mail, Lock, Loader2, RefreshCw } from 'lucide-react';
 import { SiteSettings } from '../types';
@@ -9,8 +10,10 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const location = useLocation();
 
   // CAPTCHA states
   const [captchaText, setCaptchaText] = useState('');
@@ -76,7 +79,11 @@ export default function Login() {
       // Trigger animation after a tiny delay for smooth entry
       setTimeout(() => setIsLoaded(true), 100);
     });
-  }, []);
+
+    if (location.state?.message) {
+      setMessage(location.state.message);
+    }
+  }, [location.state]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,6 +134,15 @@ export default function Login() {
                 <span className="text-red-600 font-bold">!</span>
               </div>
               <p className="font-medium">{error}</p>
+            </div>
+          )}
+
+          {message && !error && (
+            <div className="mb-6 p-4 bg-indigo-50/80 backdrop-blur-sm border border-indigo-200 text-indigo-700 text-sm rounded-xl flex items-center gap-3 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center shrink-0">
+                <span className="text-indigo-600 font-bold">i</span>
+              </div>
+              <p className="font-medium">{message}</p>
             </div>
           )}
 

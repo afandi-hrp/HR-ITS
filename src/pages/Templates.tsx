@@ -22,7 +22,7 @@ export default function Templates() {
     body_html: ''
   });
   const [saving, setSaving] = useState(false);
-  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; id: string }>({ isOpen: false, id: '' });
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; id: string; loading?: boolean }>({ isOpen: false, id: '', loading: false });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -104,16 +104,21 @@ export default function Templates() {
   };
 
   const handleDelete = async (id: string) => {
-    setConfirmModal({ isOpen: true, id });
+    setConfirmModal({ isOpen: true, id, loading: false });
   };
 
   const executeDelete = async (id: string) => {
-    const { error } = await supabase.from('email_templates').delete().eq('id', id);
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
-      toast({ title: 'Berhasil', description: 'Template berhasil dihapus.' });
-      fetchTemplates();
+    setConfirmModal(prev => ({ ...prev, loading: true }));
+    try {
+      const { error } = await supabase.from('email_templates').delete().eq('id', id);
+      if (error) {
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      } else {
+        toast({ title: 'Berhasil', description: 'Template berhasil dihapus.' });
+        fetchTemplates();
+      }
+    } finally {
+      setConfirmModal(prev => ({ ...prev, loading: false, isOpen: false }));
     }
   };
 
@@ -352,6 +357,7 @@ export default function Templates() {
         message="Apakah Anda yakin ingin menghapus template ini? Tindakan ini tidak dapat dibatalkan."
         confirmText="Hapus"
         variant="danger"
+        loading={confirmModal.loading}
       />
     </div>
   );

@@ -22,7 +22,8 @@ import {
   Users,
   Edit2,
   Save,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
 import { cn, formatDate } from '../lib/utils';
 import { useToast } from '../components/ui/use-toast';
@@ -250,7 +251,7 @@ export default function CandidateProfile() {
                 disabled={saving}
                 className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2 text-sm font-medium disabled:opacity-50"
               >
-                <Save size={16} />
+                {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                 {saving ? 'Menyimpan...' : 'Simpan'}
               </button>
             </>

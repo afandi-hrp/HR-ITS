@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Loader2, TrendingUp, Users, CheckCircle2, XCircle, Clock, Filter, ChevronDown, X, Mail, Calendar, MapPin, Download, FileText, Eye } from 'lucide-react';
+import { Loader2, TrendingUp, Users, CheckCircle2, XCircle, Clock, Filter, ChevronDown, X, Mail, Calendar, MapPin, Download, FileText, Eye, Info } from 'lucide-react';
 import { cn, formatDate } from '../lib/utils';
 import { Candidate } from '../types';
 import jsPDF from 'jspdf';
@@ -26,6 +26,7 @@ export default function RecruitmentFunnel() {
   const [selectedStage, setSelectedStage] = useState<FunnelData | null>(null);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfDataUri, setPdfDataUri] = useState<string | null>(null);
+  const [showEfficiencyInfo, setShowEfficiencyInfo] = useState(false);
   const [monthlyMetrics, setMonthlyMetrics] = useState<{label: string, count: number, avgDaysToHire: number}[]>([]);
   const [pipelineEfficiency, setPipelineEfficiency] = useState<{stage: string, days: number}[]>([]);
   const [stats, setStats] = useState({
@@ -858,15 +859,42 @@ export default function RecruitmentFunnel() {
 
         {/* Pipeline Efficiency */}
         <div className="bg-white/40 backdrop-blur-xl p-6 sm:p-8 rounded-3xl border border-white/60 shadow-2xl overflow-hidden flex flex-col">
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
               <Clock className="text-indigo-600" />
               Pipeline Efficiency of Hiring
+              <button 
+                onClick={() => setShowEfficiencyInfo(!showEfficiencyInfo)}
+                className="text-slate-400 hover:text-indigo-600 transition-colors ml-1"
+                title="Info Perhitungan"
+              >
+                <Info size={18} />
+              </button>
             </h2>
             <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-full border border-indigo-100">
               Avg Days per Stage
             </span>
           </div>
+
+          {showEfficiencyInfo && (
+            <div className="mb-8 p-3 bg-indigo-50/50 rounded-xl border border-indigo-100 flex items-start gap-3 relative animate-in fade-in slide-in-from-top-2 duration-300">
+              <button 
+                onClick={() => setShowEfficiencyInfo(false)}
+                className="absolute top-2 right-2 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X size={14} />
+              </button>
+              <Info className="text-indigo-500 shrink-0 mt-0.5" size={16} />
+              <div className="text-xs text-slate-600 leading-relaxed pr-4">
+                <p className="font-bold text-slate-700 mb-1">Metode Perhitungan (Rata-rata Hari):</p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li><span className="font-medium text-slate-700">Screening Awal:</span> Dari tanggal melamar hingga jadwal tes/interview dibuat.</li>
+                  <li><span className="font-medium text-slate-700">Tahap Psikotes/Interview:</span> Dari tanggal jadwal dibuat hingga tanggal pelaksanaan.</li>
+                  <li><span className="font-medium text-slate-700">Total Waktu (Hired):</span> Dari tanggal melamar hingga status diubah menjadi Hired.</li>
+                </ul>
+              </div>
+            </div>
+          )}
 
           <div className="flex-1 flex flex-col justify-center space-y-6">
             {pipelineEfficiency.map((item, index) => {

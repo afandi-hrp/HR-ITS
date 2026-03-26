@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, AlertTriangle } from 'lucide-react';
+import { X, AlertTriangle, Loader2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface ConfirmModalProps {
@@ -11,6 +11,7 @@ interface ConfirmModalProps {
   confirmText?: string;
   cancelText?: string;
   variant?: 'danger' | 'primary';
+  loading?: boolean;
 }
 
 export default function ConfirmModal({
@@ -21,7 +22,8 @@ export default function ConfirmModal({
   message,
   confirmText = 'Konfirmasi',
   cancelText = 'Batal',
-  variant = 'primary'
+  variant = 'primary',
+  loading = false
 }: ConfirmModalProps) {
   if (!isOpen) return null;
 
@@ -40,7 +42,8 @@ export default function ConfirmModal({
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-2 rounded-xl transition-colors"
+            disabled={loading}
+            className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-2 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <X size={20} />
           </button>
@@ -53,22 +56,24 @@ export default function ConfirmModal({
         <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200 bg-slate-100 rounded-xl transition-colors"
+            disabled={loading}
+            className="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200 bg-slate-100 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {cancelText}
           </button>
           <button
             onClick={() => {
               onConfirm();
-              onClose();
             }}
+            disabled={loading}
             className={cn(
-              "px-4 py-2 text-sm font-bold text-white rounded-xl transition-colors shadow-sm",
+              "px-4 py-2 text-sm font-bold text-white rounded-xl transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed",
               variant === 'danger' 
                 ? "bg-red-600 hover:bg-red-700 shadow-red-200" 
                 : "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200"
             )}
           >
+            {loading && <Loader2 size={16} className="animate-spin" />}
             {confirmText}
           </button>
         </div>

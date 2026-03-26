@@ -191,7 +191,7 @@ export default function PublicCareer() {
       });
 
       if (!response.ok) {
-        const errData = await response.json();
+        const errData = await response.json().catch(() => ({}));
         throw new Error(errData.error || 'Gagal mengirim OTP via WhatsApp');
       }
 
@@ -235,7 +235,7 @@ export default function PublicCareer() {
       });
 
       if (!response.ok) {
-        const errData = await response.json();
+        const errData = await response.json().catch(() => ({}));
         throw new Error(errData.error || 'Gagal memverifikasi OTP');
       }
 
