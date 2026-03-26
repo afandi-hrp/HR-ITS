@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { Upload, FileText, CheckCircle2, Loader2, File, AlertCircle, Phone, User, Mail, Briefcase, KeyRound, ChevronRight, X, ArrowLeft, ClipboardList, GraduationCap, RefreshCw, MessageCircle, Heart, TrendingUp, Users, Zap, HelpCircle, ChevronDown, ChevronUp, Quote, Star } from 'lucide-react';
 import { useToast } from '../components/ui/use-toast';
-import { cn } from '../lib/utils';
+import { cn, fetchWithRetry } from '../lib/utils';
 import { SiteSettings } from '../types';
 
 interface OpenRecruitment {
@@ -182,7 +182,7 @@ export default function PublicCareer() {
     setLoading(true);
     try {
       // Request OTP via backend
-      const response = await fetch('/api/request-otp', {
+      const response = await fetchWithRetry('/api/request-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -225,7 +225,7 @@ export default function PublicCareer() {
     setLoading(true);
     try {
       // Verify OTP via backend
-      const response = await fetch('/api/verify-otp', {
+      const response = await fetchWithRetry('/api/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -301,13 +301,41 @@ export default function PublicCareer() {
       formData.append('senderEmail', candidateEmail);
       formData.append('file', file);
 
-      const response = await fetch('/api/n8n/upload-cv', {
-        method: 'POST',
-        body: formData,
-      });
+      let retries = 3;
+      let success = false;
+      
+      while (retries > 0 && !success) {
+        try {
+          const response = await fetch('/api/n8n/upload-cv', {
+            method: 'POST',
+            body: formData,
+          });
 
-      if (!response.ok) {
-        throw new Error(`Gagal mengirim lamaran: ${response.statusText}`);
+          if (!response.ok) {
+            throw new Error(`Gagal mengirim lamaran: ${response.statusText}`);
+          }
+          
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.indexOf("application/json") === -1) {
+            const text = await response.text();
+            if (text.includes('Please wait') || text.includes('<html')) {
+               console.warn('Server is starting up. Retrying upload...');
+               await new Promise(resolve => setTimeout(resolve, 2000));
+               retries--;
+               continue;
+            }
+          }
+          
+          success = true;
+        } catch (error: any) {
+          if (retries <= 1) {
+            throw error;
+          } else {
+            console.warn('Upload failed, retrying...', error);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+          retries--;
+        }
       }
 
       toast({ 

@@ -30,7 +30,7 @@ import {
   LayoutGrid,
   Loader2
 } from 'lucide-react';
-import { cn, formatDate } from '../lib/utils';
+import { cn, formatDate, fetchWithRetry } from '../lib/utils';
 import { useToast } from '../components/ui/use-toast';
 
 import SchedulingModal from '../components/SchedulingModal';
@@ -139,7 +139,7 @@ export default function Screening() {
       if (updateError) throw updateError;
 
       // Then move to log
-      const response = await fetch('/api/candidates/move-to-log', {
+      const response = await fetchWithRetry('/api/candidates/move-to-log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -147,11 +147,6 @@ export default function Screening() {
           notes: rejectReason.trim() || 'Ditolak pada tahap Screening Awal'
         }),
       });
-
-      const contentType = response.headers.get("content-type");
-      if (!contentType || contentType.indexOf("application/json") === -1) {
-        throw new Error('API returned non-JSON response');
-      }
 
       const result = await response.json();
       if (response.ok) {
@@ -237,7 +232,7 @@ export default function Screening() {
       if (updateError) throw updateError;
 
       // Then move to log
-      const response = await fetch('/api/candidates/move-to-log', {
+      const response = await fetchWithRetry('/api/candidates/move-to-log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -245,11 +240,6 @@ export default function Screening() {
           notes: hireNotes || 'Kandidat telah direkrut (Hired)'
         }),
       });
-
-      const contentType = response.headers.get("content-type");
-      if (!contentType || contentType.indexOf("application/json") === -1) {
-        throw new Error('API returned non-JSON response');
-      }
 
       const result = await response.json();
       if (response.ok) {
@@ -279,7 +269,7 @@ export default function Screening() {
     
     setMovingToLog(true);
     try {
-      const response = await fetch('/api/candidates/move-to-log', {
+      const response = await fetchWithRetry('/api/candidates/move-to-log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -287,11 +277,6 @@ export default function Screening() {
           notes: logNotes
         }),
       });
-
-      const contentType = response.headers.get("content-type");
-      if (!contentType || contentType.indexOf("application/json") === -1) {
-        throw new Error('API returned non-JSON response');
-      }
 
       const result = await response.json();
       if (response.ok) {

@@ -13,7 +13,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { useToast } from '../components/ui/use-toast';
-import { cn } from '../lib/utils';
+import { cn, fetchWithRetry } from '../lib/utils';
 
 interface OpenRecruitment {
   id: string;
@@ -163,7 +163,7 @@ export default function OpenRecruitment() {
         
         if (webhookUrl) {
           const { data: { session } } = await supabase.auth.getSession();
-          fetch('/api/n8n/trigger', {
+          fetchWithRetry('/api/n8n/trigger', {
             method: 'POST',
             headers: { 
               'Content-Type': 'application/json',
@@ -218,7 +218,7 @@ export default function OpenRecruitment() {
 
       // Send data to n8n
       const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch('/api/n8n/trigger', {
+      const response = await fetchWithRetry('/api/n8n/trigger', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -240,7 +240,7 @@ export default function OpenRecruitment() {
 
       toast({ 
         title: 'Berhasil', 
-        description: 'Data berhasil dikirim ke n8n untuk sinkronisasi Google Sheets.' 
+        description: 'Data berhasil dikirim untuk disinkronisasi.' 
       });
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });

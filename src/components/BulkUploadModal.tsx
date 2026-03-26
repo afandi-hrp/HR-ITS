@@ -21,7 +21,34 @@ interface CandidateRow {
 export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUploadModalProps) {
   const [rows, setRows] = useState<CandidateRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
+  const [availablePositions, setAvailablePositions] = useState<string[]>([]);
+  const [loadingPositions, setLoadingPositions] = useState(true);
   const { toast } = useToast();
+
+  React.useEffect(() => {
+    const fetchPositions = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('open_recruitment')
+          .select('position')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching positions:', error);
+        } else if (data) {
+          const positions = Array.from(new Set(data.map(item => item.position)));
+          setAvailablePositions(positions);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingPositions(false);
+      }
+    };
+
+    fetchPositions();
+  }, []);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -93,6 +120,7 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
     }
 
     setLoading(true);
+    setUploadProgress({ current: 0, total: validRows.length });
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const webhookUrl = user?.user_metadata?.cv_webhook_url;
@@ -125,20 +153,50 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
         formData.append('senderEmail', user?.email || '');
         formData.append('file', row.file);
 
-        try {
-          const response = await fetch('/api/n8n/upload-cv', {
-            method: 'POST',
-            body: formData,
-          });
+        let retries = 3;
+        let success = false;
+        
+        while (retries > 0 && !success) {
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch('/api/n8n/upload-cv', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${session?.access_token}`
+              },
+              body: formData,
+            });
 
-          if (!response.ok) {
-            throw new Error(`Gagal mengirim ke n8n: ${response.statusText}`);
+            if (!response.ok) {
+              throw new Error(`Gagal mengirim ke n8n: ${response.statusText}`);
+            }
+            
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.indexOf("application/json") === -1) {
+              const text = await response.text();
+              if (text.includes('Please wait') || text.includes('<html')) {
+                 console.warn('Server is starting up. Retrying upload...');
+                 await new Promise(resolve => setTimeout(resolve, 2000));
+                 retries--;
+                 continue;
+              }
+            }
+            
+            success = true;
+            successCount++;
+          } catch (err) {
+            if (retries <= 1) {
+              console.error('Error uploading CV:', err);
+              errorCount++;
+            } else {
+              console.warn('Upload failed, retrying...', err);
+              await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+            retries--;
           }
-          successCount++;
-        } catch (err) {
-          console.error('Error uploading CV:', err);
-          errorCount++;
         }
+        
+        setUploadProgress(prev => ({ ...prev, current: prev.current + 1 }));
       }
 
       if (successCount > 0) {
@@ -216,13 +274,30 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Posisi</label>
-                    <input
-                      type="text"
-                      value={row.position}
-                      onChange={(e) => handleRowChange(row.id, 'position', e.target.value)}
-                      placeholder="Posisi Dilamar"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
-                    />
+                    {loadingPositions ? (
+                      <div className="flex items-center gap-2 text-sm text-slate-500 py-2">
+                        <Loader2 className="animate-spin" size={14} /> Memuat...
+                      </div>
+                    ) : availablePositions.length > 0 ? (
+                      <select
+                        value={row.position}
+                        onChange={(e) => handleRowChange(row.id, 'position', e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm appearance-none"
+                      >
+                        <option value="" disabled>Pilih Posisi</option>
+                        {availablePositions.map((pos, idx) => (
+                          <option key={idx} value={pos}>{pos}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={row.position}
+                        onChange={(e) => handleRowChange(row.id, 'position', e.target.value)}
+                        placeholder="Posisi Dilamar"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+                      />
+                    )}
                   </div>
                 </div>
 
@@ -279,31 +354,49 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
           </button>
         </div>
 
-        <div className="p-6 border-t border-slate-100 bg-white flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            disabled={loading}
-            className="px-6 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 rounded-xl transition-all"
-          >
-            Batal
-          </button>
-          <button
-            onClick={handleUpload}
-            disabled={loading}
-            className="flex items-center gap-2 px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-indigo-200 disabled:opacity-70 disabled:cursor-not-allowed"
-          >
-            {loading ? (
-              <>
-                <Loader2 size={18} className="animate-spin" />
-                <span>Mengunggah...</span>
-              </>
-            ) : (
-              <>
-                <Upload size={18} />
-                <span>Upload Semua</span>
-              </>
+        <div className="p-6 border-t border-slate-100 bg-white flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="w-full sm:w-1/2">
+            {loading && uploadProgress.total > 0 && (
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs font-medium text-slate-500">
+                  <span>Mengunggah...</span>
+                  <span>{uploadProgress.current} / {uploadProgress.total}</span>
+                </div>
+                <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                  <div 
+                    className="bg-indigo-600 h-full rounded-full transition-all duration-300"
+                    style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
+                  />
+                </div>
+              </div>
             )}
-          </button>
+          </div>
+          <div className="flex justify-end gap-3 w-full sm:w-auto">
+            <button
+              onClick={onClose}
+              disabled={loading}
+              className="px-6 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 rounded-xl transition-all"
+            >
+              Batal
+            </button>
+            <button
+              onClick={handleUpload}
+              disabled={loading}
+              className="flex items-center justify-center gap-2 px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-indigo-200 disabled:opacity-70 disabled:cursor-not-allowed min-w-[160px]"
+            >
+              {loading ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  <span>{uploadProgress.current} / {uploadProgress.total}</span>
+                </>
+              ) : (
+                <>
+                  <Upload size={18} />
+                  <span>Upload Semua</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>

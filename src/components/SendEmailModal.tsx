@@ -3,7 +3,7 @@ import { X, Send, Mail, ChevronDown, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Candidate, EmailTemplate, Schedule } from '../types';
 import { useToast } from './ui/use-toast';
-import { cn, formatDate } from '../lib/utils';
+import { cn, formatDate, fetchWithRetry } from '../lib/utils';
 
 interface SendEmailModalProps {
   candidate: Candidate;
@@ -110,7 +110,7 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
         return;
       }
 
-      const response = await fetch('/api/n8n/trigger', {
+      const response = await fetchWithRetry('/api/n8n/trigger', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -163,7 +163,7 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
 
       toast({ 
         title: 'Berhasil', 
-        description: data.message || `Email undangan untuk ${candidate.full_name} telah dikirim ke n8n.` 
+        description: 'Berhasil kirim email kepada kandidat' 
       });
       onClose();
     } catch (error: any) {

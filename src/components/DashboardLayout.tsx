@@ -52,7 +52,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
       clearTimeout(timeoutId);
       timeoutId = setTimeout(async () => {
         await supabase.auth.signOut();
-        navigate('/login', { state: { message: 'Sesi Anda telah berakhir karena tidak ada aktivitas selama 10 menit.' } });
+        navigate('/login');
       }, 10 * 60 * 1000); // 10 minutes
     };
 

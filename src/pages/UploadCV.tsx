@@ -26,6 +26,7 @@ export default function UploadCV() {
   const [availablePositions, setAvailablePositions] = useState<string[]>([]);
   const [loadingPositions, setLoadingPositions] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
   const [uploads, setUploads] = useState<CVUpload[]>([]);
   const [fetchingUploads, setFetchingUploads] = useState(true);
   const [search, setSearch] = useState('');
@@ -47,7 +48,11 @@ export default function UploadCV() {
   const fetchUploads = async () => {
     setFetchingUploads(true);
     try {
-      const response = await fetch(`/api/cv-uploads?search=${encodeURIComponent(debouncedSearch)}&page=${currentPage}&limit=${itemsPerPage}`);
+      const response = await fetch(`/api/cv-uploads?search=${encodeURIComponent(debouncedSearch)}&page=${currentPage}&limit=${itemsPerPage}`, {
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
       if (response.ok) {
         const contentType = response.headers.get("content-type");
         if (contentType && contentType.indexOf("application/json") !== -1) {
@@ -55,8 +60,13 @@ export default function UploadCV() {
           setUploads(result.data || []);
           setTotalItems(result.count || 0);
         } else {
-          console.error('Expected JSON response but got:', contentType);
           const text = await response.text();
+          if (text.includes('Please wait') || text.includes('<html')) {
+            console.warn('Server is starting up or returned HTML. Retrying in 2 seconds...');
+            setTimeout(fetchUploads, 2000);
+            return;
+          }
+          console.error('Expected JSON response but got:', contentType);
           console.error('Response body:', text.substring(0, 200));
           throw new Error('API returned non-JSON response');
         }
@@ -71,37 +81,84 @@ export default function UploadCV() {
   };
 
   const handleDelete = async (id: string) => {
-    try {
-      const response = await fetch('/api/cv-uploads', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: [id] }),
-      });
-      if (!response.ok) throw new Error('Gagal menghapus riwayat');
-      
-      toast({ title: 'Berhasil', description: 'Riwayat berhasil dihapus.' });
-      setSelectedUploads(prev => prev.filter(selectedId => selectedId !== id));
-      fetchUploads();
-    } catch (error: any) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    let retries = 3;
+    let success = false;
+    
+    while (retries > 0 && !success) {
+      try {
+        const response = await fetch('/api/cv-uploads', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: [id] }),
+        });
+        if (!response.ok) throw new Error('Gagal menghapus riwayat');
+        
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") === -1) {
+          const text = await response.text();
+          if (text.includes('Please wait') || text.includes('<html')) {
+             console.warn('Server is starting up. Retrying delete...');
+             await new Promise(resolve => setTimeout(resolve, 2000));
+             retries--;
+             continue;
+          }
+        }
+        
+        success = true;
+        toast({ title: 'Berhasil', description: 'Riwayat berhasil dihapus.' });
+        setSelectedUploads(prev => prev.filter(selectedId => selectedId !== id));
+        fetchUploads();
+      } catch (error: any) {
+        if (retries <= 1) {
+          toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        } else {
+          console.warn('Delete failed, retrying...', error);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+        retries--;
+      }
     }
   };
 
   const handleBulkDelete = async () => {
     if (selectedUploads.length === 0) return;
-    try {
-      const response = await fetch('/api/cv-uploads', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: selectedUploads }),
-      });
-      if (!response.ok) throw new Error('Gagal menghapus riwayat');
-      
-      toast({ title: 'Berhasil', description: `${selectedUploads.length} riwayat berhasil dihapus.` });
-      setSelectedUploads([]);
-      fetchUploads();
-    } catch (error: any) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    
+    let retries = 3;
+    let success = false;
+    
+    while (retries > 0 && !success) {
+      try {
+        const response = await fetch('/api/cv-uploads', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: selectedUploads }),
+        });
+        if (!response.ok) throw new Error('Gagal menghapus riwayat');
+        
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") === -1) {
+          const text = await response.text();
+          if (text.includes('Please wait') || text.includes('<html')) {
+             console.warn('Server is starting up. Retrying delete...');
+             await new Promise(resolve => setTimeout(resolve, 2000));
+             retries--;
+             continue;
+          }
+        }
+        
+        success = true;
+        toast({ title: 'Berhasil', description: `${selectedUploads.length} riwayat berhasil dihapus.` });
+        setSelectedUploads([]);
+        fetchUploads();
+      } catch (error: any) {
+        if (retries <= 1) {
+          toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        } else {
+          console.warn('Delete failed, retrying...', error);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+        retries--;
+      }
     }
   };
 
@@ -169,6 +226,9 @@ export default function UploadCV() {
       if (validFiles.length > 0) {
         setFiles(prev => [...prev, ...validFiles]);
       }
+      
+      // Reset input value so the same file can be selected again
+      e.target.value = '';
     }
   };
 
@@ -188,6 +248,7 @@ export default function UploadCV() {
     }
 
     setLoading(true);
+    setUploadProgress({ current: 0, total: files.length });
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const webhookUrl = user?.user_metadata?.cv_webhook_url;
@@ -217,24 +278,50 @@ export default function UploadCV() {
         formData.append('senderEmail', user?.email || '');
         formData.append('file', file);
 
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          const response = await fetch('/api/n8n/upload-cv', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${session?.access_token}`
-            },
-            body: formData,
-          });
+        let retries = 3;
+        let success = false;
+        
+        while (retries > 0 && !success) {
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch('/api/n8n/upload-cv', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${session?.access_token}`
+              },
+              body: formData,
+            });
 
-          if (!response.ok) {
-            throw new Error(`Gagal mengirim ke n8n: ${response.statusText}`);
+            if (!response.ok) {
+              throw new Error(`Gagal mengirim ke n8n: ${response.statusText}`);
+            }
+            
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.indexOf("application/json") === -1) {
+              const text = await response.text();
+              if (text.includes('Please wait') || text.includes('<html')) {
+                 console.warn('Server is starting up. Retrying upload...');
+                 await new Promise(resolve => setTimeout(resolve, 2000));
+                 retries--;
+                 continue;
+              }
+            }
+            
+            success = true;
+            successCount++;
+          } catch (err) {
+            if (retries <= 1) {
+              console.error('Error uploading CV:', err);
+              errorCount++;
+            } else {
+              console.warn('Upload failed, retrying...', err);
+              await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+            retries--;
           }
-          successCount++;
-        } catch (err) {
-          console.error('Error uploading CV:', err);
-          errorCount++;
         }
+        
+        setUploadProgress(prev => ({ ...prev, current: prev.current + 1 }));
       }
 
       if (successCount > 0) {
@@ -255,6 +342,7 @@ export default function UploadCV() {
       setFiles([]);
       setCandidateName('');
       setCandidateEmail('');
+      setPosition('');
       
       // Refresh list
       fetchUploads();
@@ -301,6 +389,7 @@ export default function UploadCV() {
                   <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Nama Kandidat</label>
                   <input
                     type="text"
+                    required
                     value={candidateName}
                     onChange={(e) => setCandidateName(e.target.value)}
                     placeholder="Masukkan nama lengkap..."
@@ -311,6 +400,7 @@ export default function UploadCV() {
                   <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Email Kandidat</label>
                   <input
                     type="email"
+                    required
                     value={candidateEmail}
                     onChange={(e) => setCandidateEmail(e.target.value)}
                     placeholder="kandidat@email.com"
@@ -408,10 +498,24 @@ export default function UploadCV() {
               </div>
             </div>
 
-            <div className="p-8 bg-white/30 border-t border-white/40">
+            <div className="p-8 bg-white/30 border-t border-white/40 space-y-4">
+              {loading && uploadProgress.total > 0 && (
+                <div className="space-y-2 mb-4">
+                  <div className="flex justify-between text-xs font-medium text-slate-500">
+                    <span>Mengunggah file...</span>
+                    <span>{uploadProgress.current} / {uploadProgress.total}</span>
+                  </div>
+                  <div className="w-full bg-slate-200/50 rounded-full h-2 overflow-hidden">
+                    <div 
+                      className="bg-indigo-600 h-full rounded-full transition-all duration-300"
+                      style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              )}
               <button
                 type="submit"
-                disabled={loading || files.length === 0 || !candidateName || !position}
+                disabled={loading || files.length === 0 || !candidateName || !candidateEmail || !position}
                 className="w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
@@ -419,7 +523,7 @@ export default function UploadCV() {
                 ) : (
                   <CheckCircle2 size={24} />
                 )}
-                {loading ? 'Sedang Mengirim...' : `Kirim ${files.length > 0 ? files.length : ''} CV`}
+                {loading ? `Mengirim ${uploadProgress.current}/${uploadProgress.total} CV...` : `Kirim ${files.length > 0 ? files.length : ''} CV`}
               </button>
             </div>
           </form>

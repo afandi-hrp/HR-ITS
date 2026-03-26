@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { fetchWithRetry } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
 import { 
@@ -131,7 +132,7 @@ export default function Settings() {
     setTestingWebhook(type);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch('/api/n8n/trigger', {
+      const response = await fetchWithRetry('/api/n8n/trigger', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
