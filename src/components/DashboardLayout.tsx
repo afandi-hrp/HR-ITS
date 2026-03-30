@@ -22,6 +22,7 @@ import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
 import { SiteSettings } from '../types';
 import { motion } from 'motion/react';
+import NotificationPanel from './NotificationPanel';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -203,13 +204,21 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
             )}
             <span className="font-bold text-xl tracking-tight text-white">{settings?.sidebar_text || 'Waruna'}</span>
           </div>
-          <button 
-            onClick={() => setIsMobileMenuOpen(true)}
-            className="p-2 text-white/70 hover:bg-white/10 rounded-md"
-          >
-            <Menu size={24} />
-          </button>
+          <div className="flex items-center gap-2">
+            <NotificationPanel isMobile={true} />
+            <button 
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="p-2 text-white/70 hover:bg-white/10 rounded-md"
+            >
+              <Menu size={24} />
+            </button>
+          </div>
         </header>
+
+        {/* Floating Notification Panel for Desktop */}
+        <div className="hidden lg:block fixed top-6 right-8 z-50">
+          <NotificationPanel />
+        </div>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8">
           <div className="max-w-7xl mx-auto">

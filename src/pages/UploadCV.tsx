@@ -192,7 +192,8 @@ export default function UploadCV() {
     setLoading(true);
     setUploadProgress({ current: 0, total: files.length });
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       const webhookUrl = user?.user_metadata?.cv_webhook_url;
 
       if (!webhookUrl) {
@@ -207,8 +208,6 @@ export default function UploadCV() {
 
       let successCount = 0;
       let errorCount = 0;
-
-      const { data: { session } } = await supabase.auth.getSession();
 
       for (const file of files) {
         const formData = new FormData();
@@ -232,7 +231,8 @@ export default function UploadCV() {
           });
 
           if (!response.ok) {
-            throw new Error(`Gagal mengirim ke n8n: ${response.statusText}`);
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.error || `Gagal mengirim ke n8n: ${response.statusText}`);
           }
           
           successCount++;
@@ -246,8 +246,8 @@ export default function UploadCV() {
 
       if (successCount > 0) {
         toast({ 
-          title: 'Berhasil', 
-          description: 'CV Berhasil di Upload' 
+          title: 'Berhasil Diunggah', 
+          description: `${successCount} CV berhasil dikirim ke antrean. Anda akan menerima notifikasi saat proses analisa selesai.` 
         });
       }
       if (errorCount > 0) {

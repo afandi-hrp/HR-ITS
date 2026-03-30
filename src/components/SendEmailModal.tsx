@@ -162,16 +162,18 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
       }
 
       toast({ 
-        title: 'Berhasil', 
-        description: 'Berhasil kirim email kepada kandidat' 
+        title: 'Berhasil Dikirim', 
+        description: 'Undangan Email telah dikirim, periksa notifikasi untuk cek status',
+        duration: 10000
       });
       onClose();
     } catch (error: any) {
       console.error('Error sending email:', error);
       toast({ 
         title: 'Error', 
-        description: error.message || 'Gagal mengirim email. Periksa koneksi n8n Anda.', 
-        variant: 'destructive' 
+        description: 'Undangan Email gagal dikirim, coba beberapa saat lagi.', 
+        variant: 'destructive',
+        duration: 10000
       });
     } finally {
       setLoading(false);

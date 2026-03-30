@@ -186,6 +186,8 @@ app.use((req: any, res, next) => {
       return res.status(400).json({ error: "Valid type (email, wa, test, sheet) is required" });
     }
 
+    let jobId = null;
+
     try {
       const supabaseAdmin = getSupabaseAdmin();
       const token = authHeader.split(' ')[1];
@@ -207,11 +209,16 @@ app.use((req: any, res, next) => {
         webhookUrl = user.user_metadata?.sheet_webhook_url;
       } else if (type === 'test') {
         const testType = payload?.type;
-        if (testType === 'email') webhookUrl = user.user_metadata?.n8n_webhook_url;
-        else if (testType === 'cv') webhookUrl = user.user_metadata?.cv_webhook_url;
-        else if (testType === 'sheet') webhookUrl = user.user_metadata?.sheet_webhook_url;
-        else if (testType === 'otp') webhookUrl = user.user_metadata?.otp_webhook_url;
-        else if (testType === 'wa') webhookUrl = user.user_metadata?.wa_webhook_url;
+        webhookUrl = payload?.url; // Use URL from payload if provided
+        
+        if (!webhookUrl) {
+          if (testType === 'email') webhookUrl = user.user_metadata?.n8n_webhook_url;
+          else if (testType === 'cv') webhookUrl = user.user_metadata?.cv_webhook_url;
+          else if (testType === 'public_cv') webhookUrl = user.user_metadata?.public_cv_webhook_url;
+          else if (testType === 'sheet') webhookUrl = user.user_metadata?.sheet_webhook_url;
+          else if (testType === 'otp') webhookUrl = user.user_metadata?.otp_webhook_url;
+          else if (testType === 'wa') webhookUrl = user.user_metadata?.wa_webhook_url;
+        }
       }
 
       if (!webhookUrl) {
@@ -224,16 +231,97 @@ app.use((req: any, res, next) => {
         });
       }
 
+      if (type !== 'test') {
+        try {
+          const { data: job, error: jobError } = await supabaseAdmin
+            .from('n8n_jobs')
+            .insert([{
+              job_type: type,
+              status: 'pending',
+              user_id: user.id
+            }])
+            .select()
+            .single();
+          if (!jobError && job) {
+            jobId = job.id;
+            payload.job_id = jobId;
+          }
+        } catch (e) {
+          console.warn("n8n_jobs table might not exist yet. Falling back to synchronous mode.");
+        }
+      }
+
       console.log(`Triggering n8n webhook for ${type}`);
-      const response = await axios.post(webhookUrl, payload, {
-        headers: { "Content-Type": "application/json" },
-        timeout: 5000 // 5 seconds timeout to prevent Vercel 10s kill
-      });
+      let response;
+      
+      if (type === 'test' && (payload?.type === 'cv' || payload?.type === 'public_cv')) {
+        // Send as multipart/form-data for CV webhooks (without actual file for test)
+        const form = new FormData();
+        form.append('event', payload.event || 'test_connection');
+        form.append('type', payload.type);
+        form.append('timestamp', payload.timestamp || new Date().toISOString());
+        form.append('message', payload.message || 'Testing connection from HR Dashboard');
+
+        response = await axios.post(webhookUrl, form, {
+          headers: { ...form.getHeaders() },
+          timeout: 30000,
+          validateStatus: () => true
+        });
+      } else {
+        // Send as application/json for other webhooks
+        response = await axios.post(webhookUrl, payload, {
+          headers: { "Content-Type": "application/json" },
+          timeout: 30000, // 30 seconds timeout to prevent Vercel kill
+          validateStatus: () => true // Resolve promise for all HTTP status codes
+        });
+      }
 
       console.log(`n8n response status: ${response.status}`);
-      res.json(response.data);
+      
+      if (response.status >= 400) {
+        if (type === 'test') {
+          // For test connections, return the actual error from n8n
+          // so the user can see exactly what went wrong.
+          const errorData = typeof response.data === 'object' && response.data !== null 
+            ? response.data 
+            : { error: response.data || `Webhook returned status ${response.status}` };
+          return res.status(response.status).json(errorData);
+        }
+        
+        // For non-test, throw an error to be caught by the catch block
+        const err: any = new Error(`Webhook returned status ${response.status}`);
+        err.response = response;
+        throw err;
+      }
+
+      if (jobId) {
+        if (typeof response.data === 'object' && response.data !== null) {
+          res.json({ ...response.data, jobId });
+        } else {
+          res.json({ message: response.data, jobId });
+        }
+      } else {
+        res.json(response.data);
+      }
     } catch (error: any) {
       console.error("Error triggering n8n proxy:", error);
+      
+      // If we created a job, update it to error status
+      if (jobId) {
+        try {
+          const supabaseAdmin = getSupabaseAdmin();
+          await supabaseAdmin
+            .from('n8n_jobs')
+            .update({ 
+              status: 'error', 
+              message: error.message || 'Gagal menghubungi server n8n' 
+            })
+            .eq('id', jobId);
+        } catch (dbError) {
+          console.error("Failed to update job status to error:", dbError);
+        }
+      }
+
       const status = error.response?.status || 500;
       const data = error.response?.data || { error: error.message };
       res.status(status).json(data);
@@ -307,7 +395,7 @@ app.use((req: any, res, next) => {
       console.log(`Triggering OTP webhook: ${webhookUrl}`);
       const response = await axios.post(webhookUrl, { phone, otp: otpCode }, {
         headers: { "Content-Type": "application/json" },
-        timeout: 5000
+        timeout: 30000
       });
 
       res.json({ success: true, otpRequestId: otpData.id });
@@ -411,6 +499,7 @@ app.use((req: any, res, next) => {
       uploadToken,
       candidateName, 
       candidateEmail,
+      candidatePhone,
       candidatePosition, 
       fileName,
       mimeType,
@@ -424,9 +513,12 @@ app.use((req: any, res, next) => {
       return res.status(400).json({ error: "File is required" });
     }
 
+    let jobId = null;
+
     try {
       const supabaseAdmin = getSupabaseAdmin();
       let webhookUrl = '';
+      let userId = null;
 
       // Check if request is authenticated (HR) or public (Candidate with token)
       const authHeader = req.headers.authorization;
@@ -440,6 +532,7 @@ app.use((req: any, res, next) => {
           return res.status(401).json({ error: "Unauthorized" });
         }
         
+        userId = user.id;
         webhookUrl = user.user_metadata?.cv_webhook_url;
         
         if (!webhookUrl) {
@@ -473,8 +566,8 @@ app.use((req: any, res, next) => {
 
         // Fetch webhook URL from admin settings
         const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
-        const adminUser = users?.find((u: any) => u.user_metadata?.cv_webhook_url) || users?.[0];
-        webhookUrl = adminUser?.user_metadata?.cv_webhook_url;
+        const adminUser = users?.find((u: any) => u.user_metadata?.public_cv_webhook_url) || users?.[0];
+        webhookUrl = adminUser?.user_metadata?.public_cv_webhook_url;
       }
 
       if (!webhookUrl) {
@@ -487,18 +580,39 @@ app.use((req: any, res, next) => {
         });
       }
 
+      try {
+        const { data: job, error: jobError } = await supabaseAdmin
+          .from('n8n_jobs')
+          .insert([{
+            job_type: 'upload_cv',
+            status: 'pending',
+            user_id: userId
+          }])
+          .select()
+          .single();
+        if (!jobError && job) {
+          jobId = job.id;
+        }
+      } catch (e) {
+        console.warn("n8n_jobs table might not exist yet. Falling back to synchronous mode.");
+      }
+
       console.log(`Uploading CV to n8n webhook: ${webhookUrl}`);
       console.log(`File details: ${file.originalname}, ${file.mimetype}, ${file.size} bytes`);
       
       const form = new FormData();
       form.append('candidateName', candidateName || '');
       form.append('candidateEmail', candidateEmail || '');
+      form.append('candidatePhone', candidatePhone || '');
       form.append('candidatePosition', candidatePosition || '');
       form.append('fileName', fileName || file.originalname);
       form.append('mimeType', mimeType || file.mimetype);
       form.append('uploadedAt', uploadedAt || new Date().toISOString());
       form.append('senderName', senderName || '');
       form.append('senderEmail', senderEmail || '');
+      if (jobId) {
+        form.append('job_id', jobId);
+      }
       
       // Append the file buffer directly
       form.append('file', file.buffer, {
@@ -510,7 +624,7 @@ app.use((req: any, res, next) => {
         headers: {
           ...form.getHeaders()
         },
-        timeout: 5000 // 5 seconds timeout to prevent Vercel 10s kill
+        timeout: 30000 // 30 seconds timeout to prevent Vercel kill
       });
 
       console.log(`n8n upload response status: ${response.status}`);
@@ -532,9 +646,34 @@ app.use((req: any, res, next) => {
         console.warn("Could not save CV metadata to Supabase (table might not exist):", dbError);
       }
 
-      res.json(response.data);
+      if (jobId) {
+        if (typeof response.data === 'object' && response.data !== null) {
+          res.json({ ...response.data, jobId });
+        } else {
+          res.json({ message: response.data, jobId });
+        }
+      } else {
+        res.json(response.data);
+      }
     } catch (error: any) {
       console.error("Error uploading CV to n8n:", error);
+      
+      // If we created a job, update it to error status
+      if (jobId) {
+        try {
+          const supabaseAdmin = getSupabaseAdmin();
+          await supabaseAdmin
+            .from('n8n_jobs')
+            .update({ 
+              status: 'error', 
+              message: error.message || 'Gagal mengunggah CV ke server n8n' 
+            })
+            .eq('id', jobId);
+        } catch (dbError) {
+          console.error("Failed to update job status to error:", dbError);
+        }
+      }
+
       const status = error.response?.status || 500;
       const data = error.response?.data || { error: error.message };
       res.status(status).json(data);

@@ -160,16 +160,18 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
       }
 
       toast({ 
-        title: 'Berhasil', 
-        description: 'Berhasil kirim whatsapp kepada kandidat' 
+        title: 'Berhasil Dikirim', 
+        description: 'Undangan Whatsapp telah dikirim, periksa notifikasi untuk cek status',
+        duration: 10000
       });
       onClose();
     } catch (error: any) {
       console.error('Error sending WA:', error);
       toast({ 
         title: 'Error', 
-        description: error.message || 'Gagal mengirim pesan WA. Periksa koneksi n8n Anda.', 
-        variant: 'destructive' 
+        description: 'Undangan Whatsapp gagal dikirim, coba beberapa saat lagi.', 
+        variant: 'destructive',
+        duration: 10000
       });
     } finally {
       setLoading(false);

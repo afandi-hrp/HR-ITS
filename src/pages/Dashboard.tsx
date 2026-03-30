@@ -101,7 +101,8 @@ export default function Dashboard() {
           { count: cPsi }, { count: lPsi },
           { count: cInt }, { count: lInt },
           { count: upcomingPsiCount },
-          { count: upcomingIntCount }
+          { count: upcomingIntCount },
+          { count: openRecruitmentCount }
         ] = await Promise.all([
           buildCountQuery('candidates'), buildCountQuery('candidate_logs'),
           buildCountQuery('candidates').eq('status_screening', 'hired'), buildCountQuery('candidate_logs').eq('status_screening', 'hired'),
@@ -110,7 +111,8 @@ export default function Dashboard() {
           buildCountQuery('candidates', 'id, psikotes_schedules!inner(id)'), buildCountQuery('candidate_logs').eq('psikotes_status', 'Sudah Psikotes'),
           buildCountQuery('candidates', 'id, interview_schedules!inner(id)'), buildCountQuery('candidate_logs').eq('interview_status', 'Sudah Interview'),
           supabase.from('psikotes_schedules').select('*', { count: 'exact', head: true }).gte('schedule_date', nowForQuery.toISOString()).lte('schedule_date', next7Days.toISOString()),
-          supabase.from('interview_schedules').select('*', { count: 'exact', head: true }).gte('schedule_date', nowForQuery.toISOString()).lte('schedule_date', next7Days.toISOString())
+          supabase.from('interview_schedules').select('*', { count: 'exact', head: true }).gte('schedule_date', nowForQuery.toISOString()).lte('schedule_date', next7Days.toISOString()),
+          supabase.from('open_recruitment').select('*', { count: 'exact', head: true })
         ]);
 
         const totalApplied = (cTotal || 0) + (lTotal || 0);
@@ -126,7 +128,7 @@ export default function Dashboard() {
           inPipeline,
           hired,
           rejected,
-          openPositions: positions.length,
+          openPositions: openRecruitmentCount || 0,
           upcomingPsikotes: upcomingPsiCount || 0,
           upcomingInterview: upcomingIntCount || 0
         });

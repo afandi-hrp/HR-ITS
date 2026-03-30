@@ -18,6 +18,7 @@ export default function Settings() {
   const [fullName, setFullName] = useState('');
   const [n8nWebhookUrl, setN8nWebhookUrl] = useState('');
   const [cvWebhookUrl, setCvWebhookUrl] = useState('');
+  const [publicCvWebhookUrl, setPublicCvWebhookUrl] = useState('');
   const [sheetWebhookUrl, setSheetWebhookUrl] = useState('');
   const [otpWebhookUrl, setOtpWebhookUrl] = useState('');
   const [waWebhookUrl, setWaWebhookUrl] = useState('');
@@ -29,7 +30,7 @@ export default function Settings() {
   const [faviconUrl, setFaviconUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [uploadingAssets, setUploadingAssets] = useState<Record<string, boolean>>({});
-  const [testingWebhook, setTestingWebhook] = useState<'email' | 'cv' | 'sheet' | 'otp' | 'wa' | null>(null);
+  const [testingWebhook, setTestingWebhook] = useState<'email' | 'cv' | 'public_cv' | 'sheet' | 'otp' | 'wa' | null>(null);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -50,6 +51,7 @@ export default function Settings() {
       setFullName(user?.user_metadata.full_name || '');
       setN8nWebhookUrl(user?.user_metadata.n8n_webhook_url || '');
       setCvWebhookUrl(user?.user_metadata.cv_webhook_url || '');
+      setPublicCvWebhookUrl(user?.user_metadata.public_cv_webhook_url || '');
       setSheetWebhookUrl(user?.user_metadata.sheet_webhook_url || '');
       setOtpWebhookUrl(user?.user_metadata.otp_webhook_url || '');
       setWaWebhookUrl(user?.user_metadata.wa_webhook_url || '');
@@ -86,6 +88,7 @@ export default function Settings() {
         full_name: fullName,
         n8n_webhook_url: n8nWebhookUrl.trim(),
         cv_webhook_url: cvWebhookUrl.trim(),
+        public_cv_webhook_url: publicCvWebhookUrl.trim(),
         sheet_webhook_url: sheetWebhookUrl.trim(),
         otp_webhook_url: otpWebhookUrl.trim(),
         wa_webhook_url: waWebhookUrl.trim(),
@@ -122,8 +125,8 @@ export default function Settings() {
     setLoading(false);
   };
 
-  const testWebhook = async (type: 'email' | 'cv' | 'sheet' | 'otp' | 'wa') => {
-    const url = type === 'email' ? n8nWebhookUrl : type === 'cv' ? cvWebhookUrl : type === 'sheet' ? sheetWebhookUrl : type === 'otp' ? otpWebhookUrl : waWebhookUrl;
+  const testWebhook = async (type: 'email' | 'cv' | 'public_cv' | 'sheet' | 'otp' | 'wa') => {
+    const url = type === 'email' ? n8nWebhookUrl : type === 'cv' ? cvWebhookUrl : type === 'public_cv' ? publicCvWebhookUrl : type === 'sheet' ? sheetWebhookUrl : type === 'otp' ? otpWebhookUrl : waWebhookUrl;
     if (!url) {
       toast({ title: 'Peringatan', description: 'Silakan masukkan URL webhook terlebih dahulu.', variant: 'destructive' });
       return;
@@ -143,6 +146,7 @@ export default function Settings() {
           payload: {
             event: 'test_connection',
             type: type,
+            url: url,
             timestamp: new Date().toISOString(),
             message: 'Testing connection from HR Dashboard'
           }
@@ -158,7 +162,10 @@ export default function Settings() {
       }
 
       if (response.ok) {
-        toast({ title: 'Berhasil', description: `Koneksi ke webhook ${type === 'email' ? 'Email' : type === 'cv' ? 'CV' : type === 'wa' ? 'WhatsApp' : 'Google Sheets'} berhasil!` });
+        toast({ 
+          title: 'Berhasil', 
+          description: data.message || `Koneksi ke webhook ${type === 'email' ? 'Email' : type === 'cv' ? 'CV Internal' : type === 'public_cv' ? 'CV Publik' : type === 'wa' ? 'WhatsApp' : type === 'otp' ? 'OTP' : 'Google Sheets'} berhasil!` 
+        });
       } else {
         toast({ 
           title: 'Gagal', 
@@ -392,7 +399,7 @@ export default function Settings() {
                   </button>
                   <h4 className="font-bold text-slate-800 mb-4">Pengaturan Webhook</h4>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">n8n Webhook URL</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">n8n Webhook URL (Email)</label>
                     <input
                       type="url"
                       value={n8nWebhookUrl}
@@ -413,8 +420,8 @@ export default function Settings() {
                       Test Koneksi Email Webhook
                     </button>
                   </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">n8n CV Upload Webhook URL</label>
+                  <div className="pt-4 border-t border-slate-200">
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">n8n CV Upload Webhook URL (Internal)</label>
                     <input
                       type="url"
                       value={cvWebhookUrl}
@@ -423,7 +430,7 @@ export default function Settings() {
                       placeholder="https://n8n.your-domain.com/webhook/..."
                     />
                     <p className="mt-2 text-xs text-slate-500 italic">
-                      URL ini khusus digunakan untuk menu <strong>Upload CV</strong>. 
+                      URL ini khusus digunakan untuk menu <strong>Upload CV</strong> di dashboard internal. 
                       File akan dikirimkan sebagai <code>multipart/form-data</code> (format asli).
                     </p>
                     <button
@@ -433,7 +440,30 @@ export default function Settings() {
                       className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
                     >
                       {testingWebhook === 'cv' ? <Loader2 className="animate-spin" size={16} /> : null}
-                      Test Koneksi CV Webhook
+                      Test Koneksi CV Webhook (Internal)
+                    </button>
+                  </div>
+                  <div className="pt-4 border-t border-slate-200">
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">n8n CV Upload Webhook URL (Public Career)</label>
+                    <input
+                      type="url"
+                      value={publicCvWebhookUrl}
+                      onChange={(e) => setPublicCvWebhookUrl(e.target.value)}
+                      className="block w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                      placeholder="https://n8n.your-domain.com/webhook/..."
+                    />
+                    <p className="mt-2 text-xs text-slate-500 italic">
+                      URL ini khusus digunakan untuk halaman <strong>/public/career</strong>. 
+                      File akan dikirimkan sebagai <code>multipart/form-data</code> (format asli).
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => testWebhook('public_cv')}
+                      disabled={testingWebhook === 'public_cv'}
+                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
+                    >
+                      {testingWebhook === 'public_cv' ? <Loader2 className="animate-spin" size={16} /> : null}
+                      Test Koneksi CV Webhook (Public)
                     </button>
                   </div>
                   <div className="pt-4 border-t border-slate-200">
@@ -452,7 +482,7 @@ export default function Settings() {
                       type="button"
                       onClick={() => testWebhook('sheet')}
                       disabled={testingWebhook === 'sheet'}
-                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
+                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
                     >
                       {testingWebhook === 'sheet' ? <Loader2 className="animate-spin" size={16} /> : null}
                       Test Koneksi Google Sheets Webhook
@@ -474,7 +504,7 @@ export default function Settings() {
                       type="button"
                       onClick={() => testWebhook('otp')}
                       disabled={testingWebhook === 'otp'}
-                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
+                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
                     >
                       {testingWebhook === 'otp' ? <Loader2 className="animate-spin" size={16} /> : null}
                       Test Koneksi OTP Webhook
@@ -496,7 +526,7 @@ export default function Settings() {
                       type="button"
                       onClick={() => testWebhook('wa')}
                       disabled={testingWebhook === 'wa'}
-                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
+                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
                     >
                       {testingWebhook === 'wa' ? <Loader2 className="animate-spin" size={16} /> : null}
                       Test Koneksi WA Webhook

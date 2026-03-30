@@ -293,6 +293,7 @@ export default function PublicCareer() {
       formData.append('uploadToken', uploadToken);
       formData.append('candidateName', candidateName);
       formData.append('candidateEmail', candidateEmail);
+      formData.append('candidatePhone', phoneNumber);
       formData.append('candidatePosition', position);
       formData.append('fileName', file.name);
       formData.append('mimeType', file.type);
@@ -307,9 +308,12 @@ export default function PublicCareer() {
       });
 
       if (!response.ok) {
-        throw new Error(`Gagal mengirim lamaran: ${response.statusText}`);
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Gagal mengirim lamaran: ${response.statusText}`);
       }
 
+      const responseData = await response.json();
+      
       toast({ 
         title: 'Lamaran Terkirim!', 
         description: 'Terima kasih telah melamar. Tim kami akan segera meninjau CV Anda.' 
@@ -325,9 +329,21 @@ export default function PublicCareer() {
       
     } catch (error: any) {
       console.error('Error uploading CV:', error);
+      
+      let errorMessage = error.message || 'Gagal terhubung keserver, silakan coba kembali';
+      if (
+        errorMessage.includes('Failed to fetch') || 
+        errorMessage.includes('n8n') || 
+        errorMessage.includes('Gagal mengirim') ||
+        errorMessage.includes('ECONNREFUSED') ||
+        errorMessage.includes('timeout')
+      ) {
+        errorMessage = 'Gagal terhubung keserver, silakan coba kembali';
+      }
+
       toast({ 
         title: 'Error', 
-        description: error.message || 'Gagal mengunggah CV. Periksa koneksi Anda.', 
+        description: errorMessage, 
         variant: 'destructive' 
       });
     } finally {

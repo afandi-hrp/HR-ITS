@@ -122,7 +122,8 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
     setLoading(true);
     setUploadProgress({ current: 0, total: validRows.length });
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       const webhookUrl = user?.user_metadata?.cv_webhook_url;
 
       if (!webhookUrl) {
@@ -137,8 +138,6 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
 
       let successCount = 0;
       let errorCount = 0;
-
-      const { data: { session } } = await supabase.auth.getSession();
 
       for (const row of validRows) {
         if (!row.file) continue;
@@ -179,8 +178,8 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
 
       if (successCount > 0) {
         toast({ 
-          title: 'Berhasil', 
-          description: `${successCount} CV telah berhasil dikirim ke n8n.` 
+          title: 'Berhasil Diunggah', 
+          description: `${successCount} CV berhasil dikirim ke antrean. Anda akan menerima notifikasi saat proses analisa selesai.` 
         });
         onSuccess();
         onClose();

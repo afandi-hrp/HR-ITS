@@ -240,10 +240,16 @@ export default function OpenRecruitment() {
 
       toast({ 
         title: 'Berhasil', 
-        description: 'Data berhasil dikirim untuk disinkronisasi.' 
+        description: 'Berhasil kirim Job Vacancy, periksa notifikasi untuk cek status',
+        duration: 10000
       });
     } catch (error: any) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ 
+        title: 'Error', 
+        description: 'Gagal kirim Job Vacancy, coba beberapa saat lagi.', 
+        variant: 'destructive',
+        duration: 10000
+      });
     } finally {
       setSyncing(false);
     }
