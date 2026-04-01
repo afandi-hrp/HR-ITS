@@ -187,8 +187,21 @@ export default function PsikotesSchedules() {
     }
   };
 
-  const handleConfirm = async (id: string, currentStatus: boolean) => {
-    setConfirmModal({ isOpen: true, id, currentStatus, type: 'confirm', loading: false });
+  const handleConfirm = async (schedule: any) => {
+    if (!schedule.is_confirmed) {
+      const scheduleTime = new Date(schedule.schedule_date).getTime();
+      const currentTime = new Date().getTime();
+      
+      if (currentTime < scheduleTime) {
+        toast({
+          title: 'Belum Waktunya',
+          description: 'Waktu psikotes belum berlalu. Anda belum bisa mengkonfirmasi kehadiran.',
+          variant: 'destructive'
+        });
+        return;
+      }
+    }
+    setConfirmModal({ isOpen: true, id: schedule.id, currentStatus: schedule.is_confirmed, type: 'confirm', loading: false });
   };
 
   const executeConfirm = async (id: string, currentStatus: boolean) => {
@@ -403,7 +416,7 @@ export default function PsikotesSchedules() {
                       <button 
                         onClick={(e) => { 
                           e.stopPropagation(); 
-                          handleConfirm(schedule.id, schedule.is_confirmed); 
+                          handleConfirm(schedule); 
                         }} 
                         className={cn(
                           "p-1.5 rounded-lg transition-colors text-white",
@@ -566,7 +579,7 @@ export default function PsikotesSchedules() {
                             <MessageCircle size={16} />
                           </button>
                           <button 
-                            onClick={() => handleConfirm(schedule.id, true)}
+                            onClick={() => handleConfirm(schedule)}
                             className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
                             title="Batalkan Konfirmasi"
                           >
@@ -786,7 +799,7 @@ export default function PsikotesSchedules() {
                 Kirim WA
               </button>
               <button 
-                onClick={() => handleConfirm(previewSchedule.id, previewSchedule.is_confirmed)}
+                onClick={() => handleConfirm(previewSchedule)}
                 className={cn(
                   "flex-1 py-2.5 rounded-xl font-bold transition-all flex items-center justify-center gap-2",
                   previewSchedule.is_confirmed
