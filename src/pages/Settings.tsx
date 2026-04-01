@@ -22,7 +22,6 @@ export default function Settings() {
   const [sheetWebhookUrl, setSheetWebhookUrl] = useState('');
   const [otpWebhookUrl, setOtpWebhookUrl] = useState('');
   const [waWebhookUrl, setWaWebhookUrl] = useState('');
-  const [externalDataGetWebhookUrl, setExternalDataGetWebhookUrl] = useState('');
   const [externalDataDeleteWebhookUrl, setExternalDataDeleteWebhookUrl] = useState('');
   const [loginLogoUrl, setLoginLogoUrl] = useState('');
   const [careerLogoUrl, setCareerLogoUrl] = useState('');
@@ -32,7 +31,7 @@ export default function Settings() {
   const [faviconUrl, setFaviconUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [uploadingAssets, setUploadingAssets] = useState<Record<string, boolean>>({});
-  const [testingWebhook, setTestingWebhook] = useState<'email' | 'cv' | 'public_cv' | 'sheet' | 'otp' | 'wa' | 'external_data_get' | 'external_data_delete' | null>(null);
+  const [testingWebhook, setTestingWebhook] = useState<'email' | 'cv' | 'public_cv' | 'sheet' | 'otp' | 'wa' | 'external_data_delete' | null>(null);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -60,7 +59,6 @@ export default function Settings() {
       setSheetWebhookUrl(user?.user_metadata.sheet_webhook_url || '');
       setOtpWebhookUrl(user?.user_metadata.otp_webhook_url || '');
       setWaWebhookUrl(user?.user_metadata.wa_webhook_url || '');
-      setExternalDataGetWebhookUrl(user?.user_metadata.external_data_get_webhook_url || '');
       setExternalDataDeleteWebhookUrl(user?.user_metadata.external_data_delete_webhook_url || '');
       if (user?.user_metadata.webhook_pin) setWebhookPin(user.user_metadata.webhook_pin);
       if (user?.user_metadata.display_pin) setDisplayPin(user.user_metadata.display_pin);
@@ -101,7 +99,6 @@ export default function Settings() {
         sheet_webhook_url: sheetWebhookUrl.trim(),
         otp_webhook_url: otpWebhookUrl.trim(),
         wa_webhook_url: waWebhookUrl.trim(),
-        external_data_get_webhook_url: externalDataGetWebhookUrl.trim(),
         external_data_delete_webhook_url: externalDataDeleteWebhookUrl.trim(),
         webhook_pin: newWebhookPin || webhookPin,
         display_pin: newDisplayPin || displayPin
@@ -136,8 +133,8 @@ export default function Settings() {
     setLoading(false);
   };
 
-  const testWebhook = async (type: 'email' | 'cv' | 'public_cv' | 'sheet' | 'otp' | 'wa' | 'external_data_get' | 'external_data_delete') => {
-    const url = type === 'email' ? n8nWebhookUrl : type === 'cv' ? cvWebhookUrl : type === 'public_cv' ? publicCvWebhookUrl : type === 'sheet' ? sheetWebhookUrl : type === 'otp' ? otpWebhookUrl : type === 'wa' ? waWebhookUrl : type === 'external_data_get' ? externalDataGetWebhookUrl : externalDataDeleteWebhookUrl;
+  const testWebhook = async (type: 'email' | 'cv' | 'public_cv' | 'sheet' | 'otp' | 'wa' | 'external_data_delete') => {
+    const url = type === 'email' ? n8nWebhookUrl : type === 'cv' ? cvWebhookUrl : type === 'public_cv' ? publicCvWebhookUrl : type === 'sheet' ? sheetWebhookUrl : type === 'otp' ? otpWebhookUrl : type === 'wa' ? waWebhookUrl : externalDataDeleteWebhookUrl;
     if (!url) {
       toast({ title: 'Peringatan', description: 'Silakan masukkan URL webhook terlebih dahulu.', variant: 'destructive' });
       return;
@@ -541,28 +538,6 @@ export default function Settings() {
                     >
                       {testingWebhook === 'wa' ? <Loader2 className="animate-spin" size={16} /> : null}
                       Test Koneksi WA Webhook
-                    </button>
-                  </div>
-                  <div className="pt-4 border-t border-slate-200">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">n8n External Data GET Webhook URL</label>
-                    <input
-                      type="url"
-                      value={externalDataGetWebhookUrl}
-                      onChange={(e) => setExternalDataGetWebhookUrl(e.target.value)}
-                      className="block w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                      placeholder="https://n8n.your-domain.com/webhook/..."
-                    />
-                    <p className="mt-2 text-xs text-slate-500 italic">
-                      URL ini akan dipicu saat Anda membuka menu Data Eksternal untuk menarik data dari Google Sheet.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => testWebhook('external_data_get')}
-                      disabled={testingWebhook === 'external_data_get'}
-                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
-                    >
-                      {testingWebhook === 'external_data_get' ? <Loader2 className="animate-spin" size={16} /> : null}
-                      Test Koneksi GET Webhook
                     </button>
                   </div>
                   <div className="pt-4 border-t border-slate-200">

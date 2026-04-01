@@ -182,8 +182,8 @@ app.use((req: any, res, next) => {
       return res.status(401).json({ error: "Unauthorized. Missing or invalid Authorization header." });
     }
 
-    if (!type || !['email', 'wa', 'test', 'sheet'].includes(type)) {
-      return res.status(400).json({ error: "Valid type (email, wa, test, sheet) is required" });
+    if (!type || !['email', 'wa', 'test', 'sheet', 'external_data_delete'].includes(type)) {
+      return res.status(400).json({ error: "Valid type (email, wa, test, sheet, external_data_delete) is required" });
     }
 
     let jobId = null;
@@ -207,6 +207,8 @@ app.use((req: any, res, next) => {
         webhookUrl = user.user_metadata?.wa_webhook_url;
       } else if (type === 'sheet') {
         webhookUrl = user.user_metadata?.sheet_webhook_url;
+      } else if (type === 'external_data_delete') {
+        webhookUrl = user.user_metadata?.external_data_delete_webhook_url;
       } else if (type === 'test') {
         const testType = payload?.type;
         webhookUrl = payload?.url; // Use URL from payload if provided

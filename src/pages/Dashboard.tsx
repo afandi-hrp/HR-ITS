@@ -15,7 +15,8 @@ import {
   Search,
   FileText,
   Star,
-  X
+  X,
+  RefreshCcw
 } from 'lucide-react';
 import { cn, formatDate } from '../lib/utils';
 
@@ -47,6 +48,13 @@ export default function Dashboard() {
   const [selectedPosition, setSelectedPosition] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const handleReset = () => {
+    setSearchQuery('');
+    setSelectedPosition('all');
+    setDateFilter('all');
+  };
 
   // Fetch unique positions once on mount
   useEffect(() => {
@@ -328,7 +336,7 @@ export default function Dashboard() {
     };
 
     fetchStats();
-  }, [selectedPosition, dateFilter, searchQuery, positions.length]);
+  }, [selectedPosition, dateFilter, searchQuery, positions.length, refreshTrigger]);
 
   const statCards = [
     {
@@ -383,7 +391,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col gap-2 mb-2">
         <div className="space-y-1">
           <h1 className="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">
             Dashboard
@@ -392,23 +400,25 @@ export default function Dashboard() {
             Ringkasan aktivitas rekrutmen dan status kandidat.
           </p>
         </div>
-        
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <input 
-              type="text" 
-              placeholder="Cari kandidat..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-2 bg-white/70 backdrop-blur-md border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm w-full md:w-48"
-            />
-          </div>
+      </div>
+
+      {/* Panel Pencarian & Filter */}
+      <div className="bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row gap-4 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+          <input 
+            type="text" 
+            placeholder="Cari kandidat..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+          />
+        </div>
+        <div className="flex flex-col sm:flex-row gap-4">
           <select 
             value={selectedPosition}
             onChange={(e) => setSelectedPosition(e.target.value)}
-            className="px-4 py-2 bg-white/70 backdrop-blur-md border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+            className="w-full sm:w-auto px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
           >
             <option value="all">Semua Posisi</option>
             {positions.map(pos => (
@@ -418,13 +428,26 @@ export default function Dashboard() {
           <select 
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
-            className="px-4 py-2 bg-white/70 backdrop-blur-md border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+            className="w-full sm:w-auto px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
           >
             <option value="all">Semua Waktu</option>
             <option value="7days">7 Hari Terakhir</option>
             <option value="30days">30 Hari Terakhir</option>
             <option value="this_month">Bulan Ini</option>
           </select>
+          <button 
+            onClick={handleReset}
+            className="px-4 py-2.5 text-sm font-bold text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm whitespace-nowrap"
+          >
+            Reset
+          </button>
+          <button 
+            onClick={() => setRefreshTrigger(prev => prev + 1)}
+            className="p-2.5 text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm flex items-center justify-center"
+            title="Refresh Data"
+          >
+            <RefreshCcw size={20} className={loading ? 'animate-spin' : ''} />
+          </button>
         </div>
       </div>
 

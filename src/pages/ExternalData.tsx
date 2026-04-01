@@ -1,122 +1,137 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { fetchWithRetry } from '../lib/utils';
-import { Database, CloudDownload, FileText, Trash2, X, Download, Loader2, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Database, CloudDownload, FileText, Trash2, X, Download, Loader2, Search, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { useToast } from '../components/ui/use-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 export default function ExternalData() {
-  const [data, setData] = useState<any[]>(() => {
-    const cached = sessionStorage.getItem('externalDataCache');
-    return cached ? JSON.parse(cached) : [];
-  });
+  const [data, setData] = useState<any[]>([]);
+  const [totalItems, setTotalItems] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [previewData, setPreviewData] = useState<any | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
-  const [webhookGetUrl, setWebhookGetUrl] = useState('');
   const [webhookDeleteUrl, setWebhookDeleteUrl] = useState('');
   const [showConfirmDelete, setShowConfirmDelete] = useState<any | null>(null);
+  const [siteSettings, setSiteSettings] = useState<any>(null);
   
   // Pagination & Search States
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   
-  const [pdfDataUri, setPdfDataUri] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Debounce search term to prevent spamming Supabase
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+      if (searchTerm !== debouncedSearchTerm) {
+        setCurrentPage(1); // Reset to page 1 only if search term actually changed
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   useEffect(() => {
     loadWebhooks();
+    loadSiteSettings();
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [currentPage, itemsPerPage, debouncedSearchTerm]);
+
+  const loadSiteSettings = async () => {
+    try {
+      const { data } = await supabase.from('site_settings').select('*').eq('id', 1).single();
+      if (data) setSiteSettings(data);
+    } catch (err) {
+      console.error('Error loading site settings:', err);
+    }
+  };
+
+  const isExcludedKey = (key: string) => {
+    const lowerKey = key.toLowerCase();
+    return ['row_number', 'id', 'uid_sheet', 'created_at', 'uid', 'timestamp', 'change_type'].includes(lowerKey);
+  };
+
+  const hexToRgb = (hex: string): [number, number, number] => {
+    const defaultColor: [number, number, number] = [79, 70, 229]; // indigo-600
+    if (!hex) return defaultColor;
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? [
+      parseInt(result[1], 16),
+      parseInt(result[2], 16),
+      parseInt(result[3], 16)
+    ] : defaultColor;
+  };
 
   const loadWebhooks = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const getUrl = user.user_metadata.external_data_get_webhook_url || '';
         const deleteUrl = user.user_metadata.external_data_delete_webhook_url || '';
-        setWebhookGetUrl(getUrl);
         setWebhookDeleteUrl(deleteUrl);
-        
-        if (!getUrl) {
-          toast({ title: 'Peringatan', description: 'URL Webhook GET belum diatur. Silakan atur di menu Pengaturan.', variant: 'destructive' });
-        }
       }
     } catch (err) {
       console.error(err);
     }
   };
 
-  const fetchData = async (url: string) => {
+  const fetchData = async () => {
     setIsLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetchWithRetry(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${session?.access_token}`
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      let query = supabase
+        .from('external_data')
+        .select('*', { count: 'exact' });
+
+      if (debouncedSearchTerm) {
+        // Menggunakan textSearch bawaan Supabase untuk mencari di dalam JSONB.
+        // Catatan: Jika ini error, Anda mungkin perlu membuat kolom text search khusus di Supabase
+        // atau menggunakan fungsi RPC.
+        query = query.textSearch('raw_data', `'${debouncedSearchTerm}'`);
       }
-      
-      const result = await response.json();
-      let parsedData: any[] = [];
-      
-      if (Array.isArray(result)) {
-        // Handle n8n specific structure where data might be nested or have pairedItem
-        parsedData = result.map(item => {
-          if (item.json) {
-            return item.json;
-          }
-          return item;
-        });
-      } else if (result && Array.isArray(result.data)) {
-        parsedData = result.data.map((item: any) => {
-          if (item.json) {
-            return item.json;
-          }
-          return item;
-        });
-      } else if (result && result.json) {
-        parsedData = [result.json];
-      } else {
-        parsedData = [result]; // Fallback
+
+      // Pagination (Server-Side)
+      const from = (currentPage - 1) * itemsPerPage;
+      const to = from + itemsPerPage - 1;
+      query = query.range(from, to).order('created_at', { ascending: false });
+
+      const { data: result, error, count } = await query;
+
+      if (error) {
+        throw error;
       }
+
+      if (count !== null) {
+        setTotalItems(count);
+      }
+
+      // Flatten data agar sesuai dengan struktur UI yang sudah ada
+      const parsedData = (result || []).map(item => ({
+        uid_sheet: item.uid_sheet,
+        ...item.raw_data
+      }));
       
       setData(parsedData);
-      sessionStorage.setItem('externalDataCache', JSON.stringify(parsedData));
-      setCurrentPage(1); // Reset to first page on new data
     } catch (err: any) {
-      toast({ title: 'Gagal', description: 'Gagal tarik data, silahkan coba kembali', variant: 'destructive' });
+      console.error("Fetch error:", err);
+      toast({ title: 'Gagal', description: 'Gagal menarik data dari Supabase. Pastikan tabel external_data sudah dibuat.', variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleRefresh = () => {
-    if (webhookGetUrl) {
-      fetchData(webhookGetUrl);
-    } else {
-      toast({ title: 'Peringatan', description: 'URL Webhook belum diatur.', variant: 'destructive' });
-    }
+    fetchData();
   };
 
-  // Pagination & Search Logic
-  const filteredData = data.filter(row => {
-    if (!searchTerm) return true;
-    const searchLower = searchTerm.toLowerCase();
-    return Object.values(row).some(val => 
-      String(val).toLowerCase().includes(searchLower)
-    );
-  });
-
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedData = data; // Data sudah di-paginate dari server
 
   const handleDelete = async (row: any) => {
     if (!webhookDeleteUrl) {
@@ -124,61 +139,80 @@ export default function ExternalData() {
       return;
     }
 
-    // Identify the row. n8n usually provides row_number. If not, we might need to rely on an ID or index.
-    const rowIdentifier = row.row_number || row.id || row.ID || row.Id;
+    const rowIdentifier = row.uid_sheet;
     
-    if (!rowIdentifier && rowIdentifier !== 0) {
-      toast({ title: 'Error', description: 'Tidak dapat menemukan identitas baris (row_number/id) pada data ini.', variant: 'destructive' });
+    if (!rowIdentifier) {
+      toast({ title: 'Error', description: 'Tidak dapat menemukan identitas baris (uid_sheet) pada data ini.', variant: 'destructive' });
       setShowConfirmDelete(null);
       return;
     }
 
     setIsDeleting(rowIdentifier);
+    
+    // Setup AbortController for 30-second timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetchWithRetry(webhookDeleteUrl, {
+      
+      // Kirim Webhook ke n8n (Workflow B) via proxy
+      const response = await fetchWithRetry('/api/n8n/trigger', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session?.access_token}`
         },
-        body: JSON.stringify({ row_number: rowIdentifier, data: row })
-      });
+        body: JSON.stringify({ 
+          type: 'external_data_delete',
+          payload: { uid_sheet: rowIdentifier, data: row }
+        }),
+        signal: controller.signal
+      }, 1); // Set maxRetries to 1 to avoid long retries on timeout
+
+      clearTimeout(timeoutId);
 
       if (response.ok) {
-        toast({ title: 'Berhasil', description: 'Data berhasil dihapus.' });
-        // Remove from UI
-        setData(prev => {
-          const newData = prev.filter(item => (item.row_number || item.id || item.ID || item.Id) !== rowIdentifier);
-          sessionStorage.setItem('externalDataCache', JSON.stringify(newData));
-          return newData;
+        toast({ 
+          title: 'Berhasil', 
+          description: 'Permintaan hapus data telah dikirim. Periksa notifikasi untuk status selanjutnya.',
+          duration: 10000
         });
+        // We don't refresh data immediately since it's async now.
+        // The user will get a notification when it's done.
       } else {
         const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.message || 'Gagal menghapus data');
+        throw new Error(errData.message || 'Gagal menghapus data di n8n');
       }
     } catch (err: any) {
-      toast({ title: 'Gagal', description: err.message, variant: 'destructive' });
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        toast({ title: 'Waktu Habis', description: 'Server n8n terlalu lama merespons (lebih dari 30 detik).', variant: 'destructive' });
+      } else {
+        toast({ title: 'Gagal', description: err.message, variant: 'destructive' });
+      }
     } finally {
       setIsDeleting(null);
       setShowConfirmDelete(null);
     }
   };
 
-  const generatePDF = (row: any) => {
+  const generatePDF = async (row: any) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     
-    // Professional Color Palette (Waruna Group / App Theme)
+    const sidebarColorRgb = siteSettings?.sidebar_color ? hexToRgb(siteSettings.sidebar_color) : [79, 70, 229];
+
+    // Professional Color Palette (Plum Theme)
     const colors = {
-      primary: [15, 23, 42] as [number, number, number], // slate-900
-      secondary: [79, 70, 229] as [number, number, number], // indigo-600
-      accent: [224, 231, 255] as [number, number, number], // indigo-100
+      primary: [142, 69, 133] as [number, number, number], // Plum (#8E4585)
+      secondary: [142, 69, 133] as [number, number, number], // Plum
+      accent: [253, 244, 255] as [number, number, number], // fuchsia-50
       text: [51, 65, 85] as [number, number, number], // slate-700
-      muted: [100, 116, 139] as [number, number, number], // slate-500
-      border: [226, 232, 240] as [number, number, number], // slate-200
-      bg: [248, 250, 252] as [number, number, number], // slate-50
+      muted: [134, 25, 143] as [number, number, number], // fuchsia-800
+      border: [232, 121, 249] as [number, number, number], // fuchsia-300
+      bg: [253, 244, 255] as [number, number, number], // fuchsia-50
     };
 
     // --- HEADER ---
@@ -190,17 +224,36 @@ export default function ExternalData() {
     doc.setFillColor(colors.bg[0], colors.bg[1], colors.bg[2]);
     doc.rect(0, 8, pageWidth, 35, 'F');
 
+    let textStartX = 14;
+
+    if (siteSettings?.sidebar_logo_url) {
+      try {
+        const response = await fetch(siteSettings.sidebar_logo_url);
+        const blob = await response.blob();
+        const base64data = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+        
+        doc.addImage(base64data, 'PNG', 14, 12, 24, 24);
+        textStartX = 44; // Shift text to the right
+      } catch (e) {
+        console.error("Failed to load logo for PDF", e);
+      }
+    }
+
     // Title
     doc.setFontSize(22);
     doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
     doc.setFont('helvetica', 'bold');
-    doc.text('DETAIL DATA KANDIDAT', 14, 26);
+    doc.text('DETAIL DATA KANDIDAT', textStartX, 26);
     
     // Subtitle
     doc.setFontSize(10);
     doc.setTextColor(colors.muted[0], colors.muted[1], colors.muted[2]);
     doc.setFont('helvetica', 'normal');
-    doc.text('Sistem Informasi Rekrutmen - Waruna Group', 14, 34);
+    doc.text('Sistem Informasi Rekrutmen - Waruna Group', textStartX, 34);
 
     // --- INFO SECTION ---
     const infoY = 55;
@@ -220,7 +273,7 @@ export default function ExternalData() {
 
     // --- CONTENT TABLE ---
     const tableData = Object.entries(row)
-      .filter(([key]) => key !== 'row_number' && key !== 'id')
+      .filter(([key]) => !isExcludedKey(key))
       .map(([key, value]) => [key.toUpperCase(), String(value || '-')]);
 
     autoTable(doc, {
@@ -263,22 +316,22 @@ export default function ExternalData() {
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
       
-      // Footer line
-      doc.setDrawColor(colors.border[0], colors.border[1], colors.border[2]);
-      doc.line(14, pageHeight - 20, pageWidth - 14, pageHeight - 20);
+      // Footer background
+      doc.setFillColor(colors.secondary[0], colors.secondary[1], colors.secondary[2]);
+      doc.rect(0, pageHeight - 20, pageWidth, 20, 'F');
 
       doc.setFontSize(9);
-      doc.setTextColor(colors.muted[0], colors.muted[1], colors.muted[2]);
+      doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'normal');
       doc.text(
         'Dokumen ini dihasilkan secara otomatis oleh sistem.',
         14,
-        pageHeight - 12
+        pageHeight - 8
       );
       doc.text(
         `Halaman ${i} dari ${pageCount}`,
         pageWidth - 14,
-        pageHeight - 12,
+        pageHeight - 8,
         { align: 'right' }
       );
     }
@@ -290,9 +343,9 @@ export default function ExternalData() {
     setPreviewData(row);
   };
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     if (previewData) {
-      generatePDF(previewData);
+      await generatePDF(previewData);
       setPreviewData(null);
     }
   };
@@ -309,29 +362,31 @@ export default function ExternalData() {
             Menampilkan data dari Form yang disubmit oleh user.
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input
-              type="text"
-              placeholder="Cari data..."
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="pl-10 pr-4 py-2 border border-slate-200 rounded-lg w-full sm:w-64 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-            />
-          </div>
-          <button
-            onClick={handleRefresh}
-            disabled={isLoading}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50"
-          >
-            <CloudDownload size={18} className={isLoading ? 'animate-bounce' : ''} />
-            Get Data
-          </button>
+      </div>
+
+      {/* Panel Pencarian & Refresh */}
+      <div className="bg-white/60 backdrop-blur-md p-4 rounded-2xl border border-white/60 shadow-xl flex flex-col sm:flex-row gap-4 items-center">
+        <div className="relative w-full flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+          <input
+            type="text"
+            placeholder="Cari data..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              // setCurrentPage(1) dipindah ke useEffect debounce
+            }}
+            className="pl-10 pr-4 py-2.5 border border-white/60 bg-white/50 backdrop-blur-md rounded-xl w-full focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-sm"
+          />
         </div>
+        <button
+          onClick={handleRefresh}
+          disabled={isLoading}
+          className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-white/50 backdrop-blur-md border border-white/60 text-indigo-700 rounded-xl hover:bg-white/80 hover:shadow-md transition-all shadow-sm disabled:opacity-50 font-medium text-sm"
+        >
+          <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
+          Refresh Data
+        </button>
       </div>
 
       {isLoading ? (
@@ -346,7 +401,7 @@ export default function ExternalData() {
           </div>
           <h3 className="text-xl font-bold text-slate-700 mb-2">Belum Ada Data</h3>
           <p className="text-slate-500 max-w-md mx-auto">
-            Data dari Google Sheet masih kosong atau belum ditarik. Pastikan Webhook n8n Anda sudah aktif dan klik tombol "Get Data".
+            Data dari Supabase masih kosong. Pastikan Workflow n8n Anda sudah berjalan dan menyinkronkan data dari Google Sheet ke Supabase.
           </p>
         </div>
       ) : (
@@ -359,9 +414,9 @@ export default function ExternalData() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
               {paginatedData.map((row, index) => {
-              const rowId = row.row_number || row.id || row.ID || row.Id || index;
+              const rowId = row.uid_sheet || index;
               // Get entries for preview card
-              const entries = Object.entries(row).filter(([key]) => key !== 'row_number' && key !== 'id');
+              const entries = Object.entries(row).filter(([key]) => !isExcludedKey(key));
               
               // Find a good title field (name, nama, title, judul)
               let titleEntry = entries.find(([key]) => {
@@ -434,8 +489,8 @@ export default function ExternalData() {
           </div>
 
           {/* Pagination */}
-          {filteredData.length > 0 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between bg-white/80 backdrop-blur-md px-4 py-3 border border-slate-200/60 rounded-xl shadow-sm gap-4 mt-8 relative z-10">
+          {totalItems > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between bg-white/60 backdrop-blur-md px-4 py-3 border border-white/60 rounded-2xl shadow-xl gap-4 mt-8 relative z-10">
               <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-slate-600">Tampilkan</span>
@@ -445,7 +500,7 @@ export default function ExternalData() {
                       setItemsPerPage(Number(e.target.value));
                       setCurrentPage(1);
                     }}
-                    className="border border-slate-300 rounded-lg text-sm py-1.5 px-3 bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="border border-white/60 rounded-xl text-sm py-1.5 px-3 bg-white/50 backdrop-blur-md focus:ring-2 focus:ring-indigo-500 outline-none"
                   >
                     <option value={10}>10</option>
                     <option value={20}>20</option>
@@ -455,16 +510,16 @@ export default function ExternalData() {
                   <span className="text-sm text-slate-600">baris</span>
                 </div>
                 <p className="text-sm text-slate-700 hidden sm:block">
-                  Menampilkan <span className="font-medium">{startIndex + 1}</span> hingga <span className="font-medium">{Math.min(startIndex + itemsPerPage, filteredData.length)}</span> dari <span className="font-medium">{filteredData.length}</span> hasil
+                  Menampilkan <span className="font-medium">{startIndex + 1}</span> hingga <span className="font-medium">{Math.min(startIndex + itemsPerPage, totalItems)}</span> dari <span className="font-medium">{totalItems}</span> hasil
                 </p>
               </div>
               
               <div>
-                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <nav className="relative z-0 inline-flex rounded-xl shadow-sm -space-x-px overflow-hidden" aria-label="Pagination">
                   <button
                     onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                     disabled={currentPage === 1}
-                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="relative inline-flex items-center px-2 py-2 border border-white/60 bg-white/50 backdrop-blur-md text-sm font-medium text-slate-500 hover:bg-white/80 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span className="sr-only">Previous</span>
                     <ChevronLeft size={20} />
@@ -477,8 +532,8 @@ export default function ExternalData() {
                         onClick={() => setCurrentPage(i + 1)}
                         className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                           currentPage === i + 1
-                            ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
-                            : 'bg-white border-slate-300 text-slate-500 hover:bg-slate-50'
+                            ? 'z-10 bg-indigo-50/80 backdrop-blur-md border-indigo-200 text-indigo-600'
+                            : 'bg-white/50 backdrop-blur-md border-white/60 text-slate-500 hover:bg-white/80'
                         }`}
                       >
                         {i + 1}
@@ -489,17 +544,17 @@ export default function ExternalData() {
                         <button
                           onClick={() => setCurrentPage(1)}
                           className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                            currentPage === 1 ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600' : 'bg-white border-slate-300 text-slate-500 hover:bg-slate-50'
+                            currentPage === 1 ? 'z-10 bg-indigo-50/80 backdrop-blur-md border-indigo-200 text-indigo-600' : 'bg-white/50 backdrop-blur-md border-white/60 text-slate-500 hover:bg-white/80'
                           }`}
                         >
                           1
                         </button>
-                        {currentPage > 3 && <span className="relative inline-flex items-center px-4 py-2 border border-slate-300 bg-white text-sm font-medium text-slate-700">...</span>}
+                        {currentPage > 3 && <span className="relative inline-flex items-center px-4 py-2 border border-white/60 bg-white/50 backdrop-blur-md text-sm font-medium text-slate-700">...</span>}
                         
                         {currentPage > 2 && currentPage < totalPages - 1 && (
                           <button
                             onClick={() => setCurrentPage(currentPage - 1)}
-                            className="relative inline-flex items-center px-4 py-2 border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50"
+                            className="relative inline-flex items-center px-4 py-2 border border-white/60 bg-white/50 backdrop-blur-md text-sm font-medium text-slate-500 hover:bg-white/80"
                           >
                             {currentPage - 1}
                           </button>
@@ -507,7 +562,7 @@ export default function ExternalData() {
                         
                         {currentPage !== 1 && currentPage !== totalPages && (
                           <button
-                            className="relative inline-flex items-center px-4 py-2 border text-sm font-medium z-10 bg-indigo-50 border-indigo-500 text-indigo-600"
+                            className="relative inline-flex items-center px-4 py-2 border text-sm font-medium z-10 bg-indigo-50/80 backdrop-blur-md border-indigo-200 text-indigo-600"
                           >
                             {currentPage}
                           </button>
@@ -516,17 +571,17 @@ export default function ExternalData() {
                         {currentPage > 1 && currentPage < totalPages - 1 && (
                           <button
                             onClick={() => setCurrentPage(currentPage + 1)}
-                            className="relative inline-flex items-center px-4 py-2 border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50"
+                            className="relative inline-flex items-center px-4 py-2 border border-white/60 bg-white/50 backdrop-blur-md text-sm font-medium text-slate-500 hover:bg-white/80"
                           >
                             {currentPage + 1}
                           </button>
                         )}
 
-                        {currentPage < totalPages - 2 && <span className="relative inline-flex items-center px-4 py-2 border border-slate-300 bg-white text-sm font-medium text-slate-700">...</span>}
+                        {currentPage < totalPages - 2 && <span className="relative inline-flex items-center px-4 py-2 border border-white/60 bg-white/50 backdrop-blur-md text-sm font-medium text-slate-700">...</span>}
                         <button
                           onClick={() => setCurrentPage(totalPages)}
                           className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                            currentPage === totalPages ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600' : 'bg-white border-slate-300 text-slate-500 hover:bg-slate-50'
+                            currentPage === totalPages ? 'z-10 bg-indigo-50/80 backdrop-blur-md border-indigo-200 text-indigo-600' : 'bg-white/50 backdrop-blur-md border-white/60 text-slate-500 hover:bg-white/80'
                           }`}
                         >
                           {totalPages}
@@ -536,7 +591,7 @@ export default function ExternalData() {
                   <button
                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                     disabled={currentPage === totalPages || totalPages === 0}
-                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="relative inline-flex items-center px-2 py-2 border border-white/60 bg-white/50 backdrop-blur-md text-sm font-medium text-slate-500 hover:bg-white/80 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span className="sr-only">Next</span>
                     <ChevronRight size={20} />
@@ -575,10 +630,15 @@ export default function ExternalData() {
               {/* High-Fidelity Visual Preview (HTML) */}
               <div className="w-full max-w-[800px] bg-white shadow-2xl min-h-[1100px] flex flex-col font-sans text-slate-900 shrink-0">
                 {/* PDF Header Mockup */}
-                <div className="w-full h-[24px] bg-indigo-600"></div>
-                <div className="w-full bg-slate-50 px-12 py-8">
-                  <h1 className="text-[28px] leading-none font-bold text-slate-900 tracking-tight">DETAIL DATA KANDIDAT</h1>
-                  <p className="text-[13px] text-slate-500 mt-2">Sistem Informasi Rekrutmen - Waruna Group</p>
+                <div className="w-full h-[24px]" style={{ backgroundColor: '#8E4585' }}></div>
+                <div className="w-full bg-fuchsia-50 px-12 py-8 flex items-center gap-6">
+                  {siteSettings?.sidebar_logo_url && (
+                    <img src={siteSettings.sidebar_logo_url} alt="Logo" className="h-16 w-auto object-contain" />
+                  )}
+                  <div>
+                    <h1 className="text-[28px] leading-none font-bold text-[#8E4585] tracking-tight">DETAIL DATA KANDIDAT</h1>
+                    <p className="text-[13px] text-fuchsia-800 mt-2">Sistem Informasi Rekrutmen - Waruna Group</p>
+                  </div>
                 </div>
 
                 <div className="px-12 py-8 flex-1 space-y-6">
@@ -593,23 +653,23 @@ export default function ExternalData() {
                   <div className="w-full h-px bg-slate-200"></div>
 
                   {/* Table Mockup */}
-                  <div className="border border-slate-200 rounded-sm overflow-hidden">
+                  <div className="border border-fuchsia-200 rounded-sm overflow-hidden">
                     <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className="bg-indigo-600 text-white text-[11px] font-bold uppercase tracking-wider">
-                          <th className="p-2.5 border border-indigo-500 w-[35%]">Informasi</th>
-                          <th className="p-2.5 border border-indigo-500 w-[65%]">Keterangan</th>
+                        <tr className="text-white text-[11px] font-bold uppercase tracking-wider" style={{ backgroundColor: '#8E4585' }}>
+                          <th className="p-2.5 border w-[35%]" style={{ borderColor: '#8E4585' }}>Informasi</th>
+                          <th className="p-2.5 border w-[65%]" style={{ borderColor: '#8E4585' }}>Keterangan</th>
                         </tr>
                       </thead>
                       <tbody className="text-[11px]">
                         {Object.entries(previewData)
-                          .filter(([key]) => key !== 'row_number' && key !== 'id')
+                          .filter(([key]) => !isExcludedKey(key))
                           .map(([key, value], i) => (
                             <tr key={key} className="bg-white">
-                              <td className="p-2.5 font-bold text-slate-900 bg-slate-50 border border-slate-200 uppercase w-[35%] break-words">
+                              <td className="p-2.5 font-bold text-[#8E4585] bg-fuchsia-50 border border-fuchsia-200 uppercase w-[35%] break-words">
                                 {key}
                               </td>
-                              <td className="p-2.5 text-slate-700 border border-slate-200 w-[65%] break-words whitespace-pre-wrap">
+                              <td className="p-2.5 text-slate-700 border border-fuchsia-200 w-[65%] break-words whitespace-pre-wrap">
                                 {String(value || '-')}
                               </td>
                             </tr>
@@ -620,12 +680,9 @@ export default function ExternalData() {
                 </div>
 
                 {/* PDF Footer Mockup */}
-                <div className="px-12 pb-10 pt-0">
-                  <div className="w-full h-px bg-slate-200 mb-4"></div>
-                  <div className="flex justify-between items-center text-[10px] text-slate-500">
-                    <p>Dokumen ini dihasilkan secara otomatis oleh sistem.</p>
-                    <p>Halaman 1 dari 1</p>
-                  </div>
+                <div className="w-full bg-[#8E4585] px-12 py-6 mt-auto flex justify-between items-center text-[10px] text-white">
+                  <p>Dokumen ini dihasilkan secara otomatis oleh sistem.</p>
+                  <p>Halaman 1 dari 1</p>
                 </div>
               </div>
             </div>
