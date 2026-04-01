@@ -17,6 +17,7 @@ import CandidateProfile from './pages/CandidateProfile';
 import UploadCV from './pages/UploadCV';
 import OpenRecruitment from './pages/OpenRecruitment';
 import PublicCareer from './pages/PublicCareer';
+import ExternalData from './pages/ExternalData';
 import { Toaster } from './components/ui/Toaster';
 import RealtimeNotifications from './components/RealtimeNotifications';
 
@@ -25,8 +26,18 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.warn('Session error:', error.message);
+        if (error.message.includes('Refresh Token Not Found') || error.message.includes('Invalid Refresh Token')) {
+          supabase.auth.signOut().catch(() => {});
+        }
+      }
       setSession(session);
+      setLoading(false);
+    }).catch((err) => {
+      console.warn('Failed to get session:', err);
+      setSession(null);
       setLoading(false);
     });
 
@@ -87,6 +98,7 @@ export default function App() {
                   <Route path="/upload-cv" element={<UploadCV />} />
                   <Route path="/templates" element={<Templates />} />
                   <Route path="/settings" element={<Settings />} />
+                  <Route path="/external-data" element={<ExternalData />} />
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
               </DashboardLayout>

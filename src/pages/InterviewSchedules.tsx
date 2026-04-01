@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Schedule, Candidate } from '../types';
 import { 
@@ -31,13 +31,33 @@ import ConfirmModal from '../components/ConfirmModal';
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
 
 export default function InterviewSchedules() {
+  const location = useLocation();
+  const highlightId = location.state?.highlightId;
+  const highlightStatus = location.state?.status;
+  const [blinkingId, setBlinkingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (highlightId) {
+      setBlinkingId(highlightId);
+      const timer = setTimeout(() => {
+        setBlinkingId(null);
+      }, 5000);
+      
+      setTimeout(() => {
+        document.getElementById(`schedule-${highlightId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [highlightId]);
+
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [activeTab, setActiveTab] = useState<'pending' | 'confirmed'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'confirmed'>(highlightStatus === 'confirmed' ? 'confirmed' : 'pending');
   const [previewSchedule, setPreviewSchedule] = useState<Schedule | null>(null);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [emailModalData, setEmailModalData] = useState<{ candidate: Candidate, schedule: Schedule } | null>(null);
@@ -478,7 +498,14 @@ export default function InterviewSchedules() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {schedules.map((schedule) => (
-                      <tr key={schedule.id} className="hover:bg-slate-50/50 transition-colors group">
+                      <tr 
+                        key={schedule.id} 
+                        id={`schedule-${schedule.id}`}
+                        className={cn(
+                          "hover:bg-slate-50/50 transition-colors group",
+                          blinkingId === schedule.id ? "animate-pulse bg-indigo-50/50 ring-2 ring-indigo-500 ring-inset" : ""
+                        )}
+                      >
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
                             <Link to={`/candidates/${schedule.candidate_id}`} className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-xs hover:bg-emerald-200 transition-colors">

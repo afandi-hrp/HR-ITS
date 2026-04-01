@@ -14,7 +14,8 @@ import {
   XCircle,
   Search,
   FileText,
-  Star
+  Star,
+  X
 } from 'lucide-react';
 import { cn, formatDate } from '../lib/utils';
 
@@ -34,6 +35,11 @@ export default function Dashboard() {
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [topCandidatesByPosition, setTopCandidatesByPosition] = useState<Record<string, any[]>>({});
   const [topCandidatesByDetailed, setTopCandidatesByDetailed] = useState<Record<string, any[]>>({});
+  const [newCandidatesList, setNewCandidatesList] = useState<any[]>([]);
+  const [dismissedNewCandidates, setDismissedNewCandidates] = useState<string[]>(() => {
+    const saved = localStorage.getItem('dismissedNewCandidates');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [loading, setLoading] = useState(true);
 
   // Filters
@@ -154,15 +160,17 @@ export default function Dashboard() {
           { data: recentInt },
           { data: allActiveCandidates },
           { data: upcomingPsiData },
-          { data: upcomingIntData }
+          { data: upcomingIntData },
+          { data: newCandidatesData }
         ] = await Promise.all([
           buildDataQuery('candidates', 'id, full_name, position, created_at').order('created_at', { ascending: false }).limit(10),
           buildDataQuery('candidate_logs', 'id, full_name, position, created_at, status_screening').order('created_at', { ascending: false }).limit(10),
           supabase.from('psikotes_schedules').select('id, created_at, candidates!inner(id, full_name, position)').order('created_at', { ascending: false }).limit(10),
           supabase.from('interview_schedules').select('id, created_at, candidates!inner(id, full_name, position)').order('created_at', { ascending: false }).limit(10),
           supabase.from('candidates').select('id, full_name, email, position, assessment_score, status_screening, technical_score, communication_score, problem_solving_score, teamwork_score, leadership_score, adaptability_score').not('status_screening', 'in', '("rejected","hired")'),
-          supabase.from('psikotes_schedules').select('id, schedule_date, candidates!inner(id, full_name, position)').gte('schedule_date', nowForQuery.toISOString()).lte('schedule_date', next24Hours.toISOString()),
-          supabase.from('interview_schedules').select('id, schedule_date, candidates!inner(id, full_name, position)').gte('schedule_date', nowForQuery.toISOString()).lte('schedule_date', next24Hours.toISOString())
+          supabase.from('psikotes_schedules').select('id, schedule_date, status, candidates!inner(id, full_name, position)').gte('schedule_date', nowForQuery.toISOString()).lte('schedule_date', next24Hours.toISOString()),
+          supabase.from('interview_schedules').select('id, schedule_date, status, candidates!inner(id, full_name, position)').gte('schedule_date', nowForQuery.toISOString()).lte('schedule_date', next24Hours.toISOString()),
+          buildDataQuery('candidates', 'id, full_name, position, created_at, status_screening').eq('status_screening', 'pending').order('created_at', { ascending: false }).limit(100)
         ]);
 
         // Process Top Candidates
@@ -207,26 +215,20 @@ export default function Dashboard() {
 
         let activities: any[] = [];
 
-        (recentCands || []).forEach((c: any) => {
-          activities.push({
-            id: `app-${c.id}`, type: 'application', title: 'Kandidat baru mendaftar',
-            name: c.full_name, position: c.position, date: new Date(c.created_at),
-            icon: Users, color: 'text-blue-500', bgColor: 'bg-blue-50', path: 'screening'
-          });
-        });
-
         (recentLogs || []).forEach((l: any) => {
           if (l.status_screening === 'hired') {
             activities.push({
               id: `log-${l.id}`, type: 'hired', title: 'Kandidat Direkrut',
               name: l.full_name, position: l.position, date: new Date(l.created_at),
-              icon: CheckCircle2, color: 'text-emerald-500', bgColor: 'bg-emerald-50', path: 'logs'
+              icon: CheckCircle2, color: 'text-emerald-500', bgColor: 'bg-emerald-50', path: 'logs',
+              recordId: l.id
             });
           } else if (l.status_screening === 'rejected') {
             activities.push({
               id: `log-${l.id}`, type: 'rejected', title: 'Kandidat Ditolak',
               name: l.full_name, position: l.position, date: new Date(l.created_at),
-              icon: XCircle, color: 'text-red-500', bgColor: 'bg-red-50', path: 'logs'
+              icon: XCircle, color: 'text-red-500', bgColor: 'bg-red-50', path: 'logs',
+              recordId: l.id
             });
           }
         });
@@ -236,7 +238,8 @@ export default function Dashboard() {
             activities.push({
               id: `psi-${p.id}`, type: 'psikotes', title: 'Jadwal Psikotes dibuat',
               name: p.candidates.full_name, position: p.candidates.position, date: new Date(p.created_at),
-              icon: FileText, color: 'text-amber-500', bgColor: 'bg-amber-50', path: 'psikotes'
+              icon: FileText, color: 'text-amber-500', bgColor: 'bg-amber-50', path: 'psikotes',
+              recordId: p.id
             });
           }
         });
@@ -246,7 +249,8 @@ export default function Dashboard() {
             activities.push({
               id: `int-${i.id}`, type: 'interview', title: 'Jadwal Interview dibuat',
               name: i.candidates.full_name, position: i.candidates.position, date: new Date(i.created_at),
-              icon: Calendar, color: 'text-purple-500', bgColor: 'bg-purple-50', path: 'interview'
+              icon: Calendar, color: 'text-purple-500', bgColor: 'bg-purple-50', path: 'interview',
+              recordId: i.id
             });
           }
         });
@@ -267,7 +271,9 @@ export default function Dashboard() {
               icon: FileText,
               color: 'text-amber-500',
               bgColor: 'bg-amber-50',
-              path: 'psikotes'
+              path: 'psikotes',
+              recordId: p.id,
+              status: p.status
             });
           }
         });
@@ -284,13 +290,35 @@ export default function Dashboard() {
               icon: Calendar,
               color: 'text-purple-500',
               bgColor: 'bg-purple-50',
-              path: 'interview'
+              path: 'interview',
+              recordId: i.id,
+              status: i.status
             });
           }
         });
 
         notifications.sort((a, b) => a.date.getTime() - b.date.getTime());
         setUpcomingNotifications(notifications);
+
+        let newCands: any[] = [];
+        (newCandidatesData || []).forEach((c: any) => {
+          if (!dismissedNewCandidates.includes(c.id)) {
+            newCands.push({
+              id: `new-cand-${c.id}`,
+              type: 'new_candidate',
+              title: 'Kandidat Baru',
+              name: c.full_name,
+              position: c.position,
+              date: new Date(c.created_at),
+              icon: Users,
+              color: 'text-blue-500',
+              bgColor: 'bg-blue-50',
+              path: 'screening',
+              recordId: c.id
+            });
+          }
+        });
+        setNewCandidatesList(newCands);
 
       } catch (error) {
         console.error('Error fetching stats:', error);
@@ -336,6 +364,14 @@ export default function Dashboard() {
       textColor: 'text-purple-600'
     }
   ];
+
+  const dismissNewCandidate = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    const updated = [...dismissedNewCandidates, id];
+    setDismissedNewCandidates(updated);
+    localStorage.setItem('dismissedNewCandidates', JSON.stringify(updated));
+    setNewCandidatesList(prev => prev.filter(cand => cand.recordId !== id));
+  };
 
   if (loading && stats.totalApplications === 0) {
     return (
@@ -558,7 +594,7 @@ export default function Dashboard() {
                   return (
                     <div 
                       key={notif.id} 
-                      onClick={() => navigate(`/${notif.path}`)}
+                      onClick={() => navigate(`/${notif.path}`, { state: { highlightId: notif.recordId, status: notif.status } })}
                       className="flex items-start gap-4 p-4 rounded-xl transition-all cursor-pointer border bg-white border-indigo-100 shadow-sm hover:border-indigo-300 hover:shadow-md"
                     >
                       <div className={cn("w-12 h-12 rounded-full flex items-center justify-center shrink-0", notif.bgColor)}>
@@ -605,7 +641,7 @@ export default function Dashboard() {
                 return (
                   <div 
                     key={activity.id} 
-                    onClick={() => navigate(`/${activity.path}`)}
+                    onClick={() => navigate(`/${activity.path}`, { state: { highlightId: activity.recordId } })}
                     className={cn(
                       "flex items-start gap-4 p-3 rounded-xl transition-all cursor-pointer border",
                       isHighlight 
@@ -637,6 +673,56 @@ export default function Dashboard() {
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      <div className="bg-white/70 backdrop-blur-md p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[400px]">
+        <div className="flex items-center justify-between mb-4 shrink-0">
+          <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <Users className="text-blue-500" size={20} />
+            Kandidat Baru
+          </h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto pr-2 flex-1 custom-scrollbar content-start">
+          {newCandidatesList.length > 0 ? (
+            newCandidatesList.map((cand) => (
+              <div 
+                key={cand.id} 
+                onClick={() => navigate(`/${cand.path}`, { state: { highlightId: cand.recordId } })}
+                className="flex items-start gap-4 p-4 rounded-xl transition-all cursor-pointer border bg-white border-blue-100 shadow-sm hover:border-blue-300 hover:shadow-md group h-fit"
+              >
+                <div className={cn("w-12 h-12 rounded-full flex items-center justify-center shrink-0", cand.bgColor)}>
+                  <cand.icon size={24} className={cand.color} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-slate-900 truncate">
+                    {cand.title}
+                  </p>
+                  <p className="text-sm text-slate-600 truncate mt-0.5">
+                    <span className="font-bold text-slate-800">{cand.name}</span> • {cand.position}
+                  </p>
+                </div>
+                <div className="flex flex-col items-end shrink-0 ml-4">
+                  <span className="text-[10px] font-medium text-slate-400 mt-1 mb-2">
+                    {formatDate(cand.date.toISOString())}
+                  </span>
+                  <button 
+                    onClick={(e) => dismissNewCandidate(e, cand.recordId)}
+                    className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md hover:bg-red-50 opacity-0 group-hover:opacity-100"
+                    title="Hapus aktivitas"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="col-span-full flex flex-col items-center justify-center h-full text-center text-slate-500 min-h-[200px]">
+              <Users size={40} className="text-slate-300 mb-3" />
+              <p className="font-medium text-slate-600">Tidak ada kandidat baru</p>
+              <p className="text-sm text-slate-400 mt-1">Semua kandidat baru sudah dilihat atau dihapus.</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

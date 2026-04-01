@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Candidate } from '../types';
 import { Search, Filter, RefreshCcw, Users, X, Calendar, Mail, Phone, Briefcase, Star, FileText, ChevronDown, Trash2, CheckSquare, Square } from 'lucide-react';
@@ -6,6 +7,25 @@ import { formatDate, cn } from '../lib/utils';
 import { useToast } from '../components/ui/use-toast';
 
 export default function Logs() {
+  const location = useLocation();
+  const highlightId = location.state?.highlightId;
+  const [blinkingId, setBlinkingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (highlightId) {
+      setBlinkingId(highlightId);
+      const timer = setTimeout(() => {
+        setBlinkingId(null);
+      }, 5000);
+      
+      setTimeout(() => {
+        document.getElementById(`log-${highlightId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [highlightId]);
+
   const [logs, setLogs] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -237,9 +257,11 @@ export default function Logs() {
         {logs.map((log) => (
           <div
             key={log.id}
+            id={`log-${log.id}`}
             className={cn(
               "bg-white/70 backdrop-blur-md rounded-2xl border shadow-sm overflow-hidden transition-all cursor-pointer hover:-translate-y-1 hover:shadow-md flex flex-col",
-              selectedIds.includes(log.id) ? "border-indigo-500 ring-2 ring-indigo-200" : "border-slate-200"
+              selectedIds.includes(log.id) ? "border-indigo-500 ring-2 ring-indigo-200" : "border-slate-200",
+              blinkingId === log.id ? "animate-pulse ring-2 ring-indigo-500 ring-inset" : ""
             )}
             onClick={() => {
               if (isBulkDeleteMode) {

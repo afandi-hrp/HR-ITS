@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Candidate } from '../types';
 import { 
@@ -36,6 +36,28 @@ import { useToast } from '../components/ui/use-toast';
 import SchedulingModal from '../components/SchedulingModal';
 
 export default function Screening() {
+  const location = useLocation();
+  const highlightId = location.state?.highlightId;
+  const [blinkingId, setBlinkingId] = useState<string | null>(null);
+  const [expandedCandidates, setExpandedCandidates] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (highlightId) {
+      setBlinkingId(highlightId);
+      setExpandedCandidates(prev => prev.includes(highlightId) ? prev : [...prev, highlightId]);
+      
+      const timer = setTimeout(() => {
+        setBlinkingId(null);
+      }, 5000);
+      
+      setTimeout(() => {
+        document.getElementById(`candidate-${highlightId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [highlightId]);
+
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -44,7 +66,6 @@ export default function Screening() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
-  const [expandedCandidates, setExpandedCandidates] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [schedulingData, setSchedulingData] = useState<{ candidate: Candidate, type: 'psikotes' | 'interview' } | null>(null);
@@ -537,7 +558,14 @@ export default function Screening() {
             
             if (viewMode === 'card') {
               return (
-                <div key={candidate.id} className="bg-white/70 backdrop-blur-md border border-slate-200 rounded-2xl overflow-hidden hover:border-indigo-300 hover:shadow-xl transition-all duration-300 flex flex-col">
+                <div 
+                  key={candidate.id} 
+                  id={`candidate-${candidate.id}`}
+                  className={cn(
+                    "bg-white/70 backdrop-blur-md border border-slate-200 rounded-2xl overflow-hidden hover:border-indigo-300 hover:shadow-xl transition-all duration-300 flex flex-col",
+                    blinkingId === candidate.id ? "animate-pulse ring-2 ring-indigo-500 ring-inset" : ""
+                  )}
+                >
                   <div className="p-5 border-b border-slate-100 flex items-start justify-between">
                     <div className="flex items-center gap-3 min-w-0">
                       <Link to={`/candidates/${candidate.id}`} className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0 text-indigo-700 font-bold hover:bg-indigo-200 transition-colors">
@@ -673,7 +701,14 @@ export default function Screening() {
                   }
 
                   return (
-                    <div id={`candidate-${candidate.id}`} key={candidate.id} className="group relative bg-white/70 backdrop-blur-md border border-slate-200 rounded-2xl overflow-hidden hover:border-indigo-300 hover:shadow-xl transition-all duration-300">
+                    <div 
+                      id={`candidate-${candidate.id}`} 
+                      key={candidate.id} 
+                      className={cn(
+                        "group relative bg-white/70 backdrop-blur-md border border-slate-200 rounded-2xl overflow-hidden hover:border-indigo-300 hover:shadow-xl transition-all duration-300",
+                        blinkingId === candidate.id ? "animate-pulse ring-2 ring-indigo-500 ring-inset" : ""
+                      )}
+                    >
                       {/* Accordion Header */}
                       <button 
                         onClick={() => toggleCandidate(candidate.id)}

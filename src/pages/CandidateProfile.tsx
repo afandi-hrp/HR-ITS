@@ -408,7 +408,7 @@ export default function CandidateProfile() {
                 ))}
               </div>
             ) : (
-              <div className="h-64 w-full -ml-4">
+              <div className="h-64 w-full -ml-4" style={{ minWidth: 0, minHeight: 0 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
                     <PolarGrid stroke="#e2e8f0" />

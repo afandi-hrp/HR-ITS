@@ -15,7 +15,8 @@ import {
   BarChart3,
   CalendarDays,
   ClipboardList,
-  Briefcase
+  Briefcase,
+  Database
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
@@ -85,6 +86,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
     { id: 'templates', label: 'Template Email', icon: FileText },
     { id: 'logs', label: 'Log Kandidat', icon: ClipboardList },
     { id: 'archive', label: 'Candidate Archive', icon: Archive },
+    { id: 'external-data', label: 'Data Eksternal', icon: Database },
     { id: 'settings', label: 'Pengaturan', icon: Settings },
   ];
 

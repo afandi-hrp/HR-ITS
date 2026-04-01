@@ -10,10 +10,15 @@ export default function RealtimeNotifications() {
   useEffect(() => {
     let isMounted = true;
     
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.warn('RealtimeNotifications session error:', error.message);
+      }
       if (isMounted && session?.user) {
         setUserId(session.user.id);
       }
+    }).catch((err) => {
+      console.warn('RealtimeNotifications failed to get session:', err);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -36,22 +41,19 @@ export default function RealtimeNotifications() {
     const channelName = `public-notifications-${userId}`;
     const channel = supabase.channel(channelName);
 
-    // Dengarkan SEMUA perubahan di schema public (lebih aman dari error spesifik tabel)
+    // Dengarkan perubahan spesifik pada tabel candidates saja
     channel.on(
       'postgres_changes',
-      { event: '*', schema: 'public' },
+      { event: 'UPDATE', schema: 'public', table: 'candidates' },
       async (payload) => {
         try {
-          // B. Handle candidates
-          if (payload.table === 'candidates' && payload.eventType === 'UPDATE') {
-            const newStatus = payload.new.status_screening;
-            const oldStatus = payload.old?.status_screening;
-            if (newStatus && oldStatus && newStatus !== oldStatus) {
-              toast({
-                title: 'Perubahan Status',
-                description: `Status kandidat ${payload.new.full_name} berubah menjadi ${newStatus}.`,
-              });
-            }
+          const newStatus = payload.new.status_screening;
+          const oldStatus = payload.old?.status_screening;
+          if (newStatus && oldStatus && newStatus !== oldStatus) {
+            toast({
+              title: 'Perubahan Status',
+              description: `Status kandidat ${payload.new.full_name} berubah menjadi ${newStatus}.`,
+            });
           }
         } catch (error) {
           console.error('Error processing realtime update:', error);
