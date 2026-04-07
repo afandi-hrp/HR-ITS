@@ -17,12 +17,6 @@ export default function ExternalData() {
   const [siteSettings, setSiteSettings] = useState<any>(null);
   const componentRef = useRef<HTMLDivElement>(null);
   
-  // Bulk Delete States
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [isBulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
-  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
-  const [isSelectionMode, setIsSelectionMode] = useState(false);
-  
   // Pagination & Search States
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
@@ -190,76 +184,6 @@ export default function ExternalData() {
 
   const handleRefresh = () => {
     fetchData();
-    setSelectedIds([]);
-  };
-
-  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) {
-      const allIds = paginatedData.map(row => row.uid_sheet).filter(Boolean);
-      setSelectedIds(allIds);
-    } else {
-      setSelectedIds([]);
-    }
-  };
-
-  const handleSelectRow = (id: string) => {
-    setSelectedIds(prev => 
-      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
-    );
-  };
-
-  const handleBulkDelete = async () => {
-    if (selectedIds.length === 0) return;
-    if (!webhookDeleteUrl) {
-      toast({ title: 'Peringatan', description: 'URL Webhook DELETE belum diatur di Pengaturan.', variant: 'destructive' });
-      return;
-    }
-
-    setIsBulkDeleting(true);
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      // Kirim Webhook ke n8n (Workflow B) via proxy
-      // Mengirimkan array uid_sheet untuk diproses n8n
-      const response = await fetchWithRetry('/api/n8n/trigger', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`
-        },
-        body: JSON.stringify({ 
-          type: 'external_data_bulk_delete',
-          payload: { uid_sheets: selectedIds }
-        }),
-        signal: controller.signal
-      }, 1);
-
-      clearTimeout(timeoutId);
-
-      if (response.ok) {
-        toast({ 
-          title: 'Berhasil', 
-          description: `Permintaan hapus ${selectedIds.length} data telah dikirim. Periksa notifikasi untuk status selanjutnya.`
-        });
-        setSelectedIds([]);
-        setBulkDeleteModalOpen(false);
-      } else {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.message || 'Gagal menghapus data masal di n8n');
-      }
-    } catch (err: any) {
-      clearTimeout(timeoutId);
-      if (err.name === 'AbortError') {
-        toast({ title: 'Waktu Habis', description: 'Server n8n terlalu lama merespons (lebih dari 30 detik).', variant: 'destructive' });
-      } else {
-        toast({ title: 'Gagal', description: err.message, variant: 'destructive' });
-      }
-    } finally {
-      setIsBulkDeleting(false);
-    }
   };
 
   const totalPages = Math.ceil(totalItems / itemsPerPage);
@@ -438,45 +362,14 @@ export default function ExternalData() {
         </div>
         
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          {!isSelectionMode ? (
-            <>
-              <button
-                onClick={() => setIsSelectionMode(true)}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-white/50 backdrop-blur-md border border-white/60 text-slate-700 rounded-xl hover:bg-white/80 hover:shadow-md transition-all shadow-sm font-medium text-sm"
-              >
-                <CheckSquare size={18} />
-                Hapus Masal
-              </button>
-              <button
-                onClick={handleRefresh}
-                disabled={isLoading}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-white/50 backdrop-blur-md border border-white/60 text-indigo-700 rounded-xl hover:bg-white/80 hover:shadow-md transition-all shadow-sm disabled:opacity-50 font-medium text-sm"
-              >
-                <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
-                Refresh Data
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={() => {
-                  setIsSelectionMode(false);
-                  setSelectedIds([]);
-                }}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-all font-medium text-sm"
-              >
-                Batal
-              </button>
-              <button
-                onClick={() => setBulkDeleteModalOpen(true)}
-                disabled={selectedIds.length === 0}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all font-medium text-sm disabled:opacity-50 shadow-sm"
-              >
-                <Trash2 size={18} />
-                Hapus ({selectedIds.length})
-              </button>
-            </>
-          )}
+          <button
+            onClick={handleRefresh}
+            disabled={isLoading}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-white/50 backdrop-blur-md border border-white/60 text-indigo-700 rounded-xl hover:bg-white/80 hover:shadow-md transition-all shadow-sm disabled:opacity-50 font-medium text-sm"
+          >
+            <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
+            Refresh Data
+          </button>
         </div>
       </div>
 
@@ -504,27 +397,8 @@ export default function ExternalData() {
             <div className="absolute -bottom-20 left-1/3 w-96 h-96 bg-blue-400/20 rounded-full blur-3xl pointer-events-none"></div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
-              {/* Select All Checkbox (Visible only when there's data and in selection mode) */}
-              {isSelectionMode && paginatedData.length > 0 && (
-                <div className="col-span-full flex justify-start mb-2">
-                  <div className="inline-flex items-center gap-3 bg-white/60 backdrop-blur-md px-5 py-3 rounded-xl border border-white/60 shadow-sm animate-in fade-in slide-in-from-top-2">
-                    <input
-                      type="checkbox"
-                      id="selectAll"
-                      checked={selectedIds.length === paginatedData.length && paginatedData.length > 0}
-                      onChange={handleSelectAll}
-                      className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                    />
-                    <label htmlFor="selectAll" className="text-sm font-medium text-slate-700 cursor-pointer select-none">
-                      Pilih Semua di Halaman Ini
-                    </label>
-                  </div>
-                </div>
-              )}
-
               {paginatedData.map((row, index) => {
               const rowId = row.uid_sheet || index;
-              const isSelected = selectedIds.includes(rowId);
               // Get entries for preview card
               const entries = Object.entries(row).filter(([key]) => !isExcludedKey(key));
               
@@ -550,23 +424,12 @@ export default function ExternalData() {
 
               return (
                 <div key={rowId} className={cn(
-                  "bg-white/60 backdrop-blur-md rounded-2xl border shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden group relative",
-                  isSelected ? "border-indigo-400 ring-2 ring-indigo-400/20" : "border-white/60"
+                  "bg-white/60 backdrop-blur-md rounded-2xl border shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden group relative border-white/60"
                 )}>
                   {/* Top Accent Line */}
                   <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-80"></div>
                   
                   <div className="p-6 border-b border-white/50 bg-white/40 flex items-start gap-3">
-                    {isSelectionMode && (
-                      <div className="pt-1 animate-in fade-in zoom-in duration-200">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => handleSelectRow(rowId)}
-                          className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                        />
-                      </div>
-                    )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="font-bold text-xl text-slate-900 truncate group-hover:text-indigo-600 transition-colors" title={String(titleEntry[1])}>
@@ -794,39 +657,6 @@ export default function ExternalData() {
                     Cetak / Simpan PDF
                   </>
                 )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Bulk Delete Confirm Modal */}
-      {isBulkDeleteModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-6 text-center">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Trash2 className="text-red-600" size={32} />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Hapus {selectedIds.length} Data?</h3>
-              <p className="text-slate-500 text-sm">
-                Apakah Anda yakin ingin menghapus {selectedIds.length} data yang dipilih? Tindakan ini akan mengirimkan permintaan ke n8n dan tidak dapat dibatalkan.
-              </p>
-            </div>
-            <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-3">
-              <button
-                onClick={() => setBulkDeleteModalOpen(false)}
-                disabled={isBulkDeleting}
-                className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-all disabled:opacity-50"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleBulkDelete}
-                disabled={isBulkDeleting}
-                className="flex-1 py-2.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-all shadow-sm shadow-red-200 disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {isBulkDeleting ? <RefreshCw size={18} className="animate-spin" /> : 'Ya, Hapus Semua'}
               </button>
             </div>
           </div>

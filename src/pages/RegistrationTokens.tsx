@@ -43,28 +43,29 @@ export default function RegistrationTokens() {
     }
   };
 
-  const generateToken = async () => {
+  const generateToken = async (count: number = 1) => {
     setGenerating(true);
     try {
-      // Generate format WRN-XXXXXXXX-XXXX
-      const randomString1 = Math.random().toString(36).substring(2, 10).toUpperCase().padEnd(8, '0');
-      const randomString2 = Math.random().toString(36).substring(2, 6).toUpperCase().padEnd(4, '0');
-      const newTokenStr = `WRN-${randomString1}-${randomString2}`;
-
       const { data: { user } } = await supabase.auth.getUser();
+
+      const newTokens = Array.from({ length: count }).map(() => {
+        const randomString1 = Math.random().toString(36).substring(2, 10).toUpperCase().padEnd(8, '0');
+        const randomString2 = Math.random().toString(36).substring(2, 6).toUpperCase().padEnd(4, '0');
+        return {
+          token: `WRN-${randomString1}-${randomString2}`,
+          created_by: user?.id
+        };
+      });
 
       const { error } = await supabase
         .from('registration_tokens')
-        .insert({
-          token: newTokenStr,
-          created_by: user?.id
-        });
+        .insert(newTokens);
 
       if (error) throw error;
 
       toast({
         title: 'Berhasil',
-        description: `Token ${newTokenStr} berhasil dibuat.`,
+        description: `${count} Token berhasil dibuat.`,
       });
 
       fetchTokens();
@@ -146,12 +147,20 @@ export default function RegistrationTokens() {
             Hapus Token Terpakai
           </button>
           <button
-            onClick={generateToken}
+            onClick={() => generateToken(10)}
             disabled={generating}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-70"
+            className="bg-indigo-100 text-indigo-700 px-4 py-2 rounded-xl hover:bg-indigo-200 transition-colors flex items-center gap-2 disabled:opacity-70 font-medium"
           >
             {generating ? <Loader2 size={20} className="animate-spin" /> : <Plus size={20} />}
-            Buat Token Baru
+            Buat 10 Token
+          </button>
+          <button
+            onClick={() => generateToken(1)}
+            disabled={generating}
+            className="bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-70 font-medium"
+          >
+            {generating ? <Loader2 size={20} className="animate-spin" /> : <Plus size={20} />}
+            Buat 1 Token
           </button>
         </div>
       </div>
@@ -196,6 +205,11 @@ export default function RegistrationTokens() {
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
                           <XCircle size={14} />
                           Sudah Terpakai
+                        </span>
+                      ) : token.used_at ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                          <CheckCircle2 size={14} />
+                          Terkirim
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">

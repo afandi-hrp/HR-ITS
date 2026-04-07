@@ -15,6 +15,7 @@ interface SendEmailModalProps {
 interface Token {
   id: string;
   token: string;
+  used_at: string | null;
 }
 
 export default function SendEmailModal({ candidate, schedule, type, onClose }: SendEmailModalProps) {
@@ -48,7 +49,7 @@ export default function SendEmailModal({ candidate, schedule, type, onClose }: S
     const fetchTokens = async () => {
       const { data, error } = await supabase
         .from('registration_tokens')
-        .select('id, token')
+        .select('id, token, used_at')
         .eq('is_used', false)
         .order('created_at', { ascending: false });
         
@@ -147,10 +148,10 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
         const tokenObj = tokens.find(t => t.id === selectedToken);
         if (tokenObj) {
           tokenValue = tokenObj.token;
-          // Mark token as used
+          // Mark token as sent by setting used_at, but keep is_used = false so candidate can still use it
           await supabase
             .from('registration_tokens')
-            .update({ is_used: true, used_at: new Date().toISOString() })
+            .update({ used_at: new Date().toISOString() })
             .eq('id', selectedToken);
         }
       }
@@ -224,6 +225,30 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
     }
   };
 
+  const handleTokenChange = (tokenId: string) => {
+    const oldTokenObj = tokens.find(t => t.id === selectedToken);
+    const newTokenObj = tokens.find(t => t.id === tokenId);
+    
+    let newBody = body;
+    
+    if (oldTokenObj && newBody.includes(oldTokenObj.token)) {
+       if (newTokenObj) {
+         newBody = newBody.replace(oldTokenObj.token, newTokenObj.token);
+       } else {
+         newBody = newBody.replace(`\n\nToken Akses: ${oldTokenObj.token}`, '');
+       }
+    } else if (newTokenObj) {
+       if (newBody.includes('[TOKEN]')) {
+         newBody = newBody.replace('[TOKEN]', newTokenObj.token);
+       } else {
+         newBody = newBody + `\n\nToken Akses: ${newTokenObj.token}`;
+       }
+    }
+    
+    setSelectedToken(tokenId);
+    setBody(newBody);
+  };
+
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200">
@@ -287,17 +312,17 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
               <div className="relative">
                 <select
                   value={selectedToken}
-                  onChange={(e) => setSelectedToken(e.target.value)}
+                  onChange={(e) => handleTokenChange(e.target.value)}
                   className="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none text-sm font-medium truncate"
                 >
                   <option value="">-- Tanpa Token --</option>
-                  {tokens.map(t => (
+                  {tokens.filter(t => !t.used_at || t.id === selectedToken).map(t => (
                     <option key={t.id} value={t.id}>{t.token}</option>
                   ))}
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
               </div>
-              <p className="text-xs text-slate-500">Token yang dipilih akan otomatis dikunci setelah email dikirim.</p>
+              <p className="text-xs text-slate-500">Token yang dipilih akan otomatis disisipkan ke dalam pesan email.</p>
             </div>
           )}
 

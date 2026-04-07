@@ -225,7 +225,7 @@ export default function CandidateProfile() {
         .from('candidates')
         .select('id')
         .eq('id', id)
-        .single();
+        .maybeSingle();
 
       const table = activeData ? 'candidates' : 'candidate_logs';
 
@@ -256,7 +256,7 @@ export default function CandidateProfile() {
         .from('candidates')
         .select('id')
         .eq('id', id)
-        .single();
+        .maybeSingle();
 
       const table = activeData ? 'candidates' : 'candidate_logs';
 
@@ -437,7 +437,7 @@ export default function CandidateProfile() {
         .from('candidates')
         .select('id')
         .eq('id', id)
-        .single();
+        .maybeSingle();
 
       const table = activeData ? 'candidates' : 'candidate_logs';
 
@@ -489,7 +489,7 @@ export default function CandidateProfile() {
         .from('candidates')
         .select('id')
         .eq('id', id)
-        .single();
+        .maybeSingle();
 
       const table = activeData ? 'candidates' : 'candidate_logs';
 

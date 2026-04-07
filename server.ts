@@ -644,7 +644,6 @@ app.use((req: any, res, next) => {
           candidate_name: candidateName,
           candidate_email: candidateEmail,
           position: candidatePosition,
-          source_info: sourceInfo,
           file_name: fileName || file.originalname,
           mime_type: mimeType || file.mimetype,
           uploaded_at: uploadedAt || new Date().toISOString(),

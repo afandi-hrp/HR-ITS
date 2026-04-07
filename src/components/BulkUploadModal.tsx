@@ -28,6 +28,7 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
 
   React.useEffect(() => {
     const fetchPositions = async () => {
+      setLoadingPositions(true);
       try {
         const { data, error } = await supabase
           .from('open_recruitment')
@@ -47,11 +48,8 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
       }
     };
 
-    fetchPositions();
-  }, []);
-
-  React.useEffect(() => {
     if (isOpen) {
+      fetchPositions();
       setRows(
         Array.from({ length: 5 }).map(() => ({
           id: Math.random().toString(36).substring(7),

@@ -136,10 +136,49 @@ export default function Logs() {
     fetchLogs();
   }, [currentPage, itemsPerPage, debouncedSearch, startDate, endDate, statusFilter]);
 
+  const extractStoragePath = (url: string | null) => {
+    if (!url) return null;
+    const parts = url.split('/candidate-documents/');
+    return parts.length > 1 ? parts[1] : null;
+  };
+
   const handleDelete = async () => {
     if (!deleteModalData) return;
     setIsDeleting(true);
     try {
+      // 1. Ambil data kandidat untuk mendapatkan URL file dan ID eksternal
+      const { data: candidate, error: fetchError } = await supabase
+        .from('candidate_logs')
+        .select('cv_url, photo_url, ktp_url, psikotes_result_url, ijazah_url, transcript_url, other_doc_url, signature_url, linked_external_id')
+        .eq('id', deleteModalData.id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      if (candidate) {
+        // 2. Hapus file fisik dari storage
+        const filesToDelete = [
+          extractStoragePath(candidate.cv_url),
+          extractStoragePath(candidate.photo_url),
+          extractStoragePath(candidate.ktp_url),
+          extractStoragePath(candidate.psikotes_result_url),
+          extractStoragePath(candidate.ijazah_url),
+          extractStoragePath(candidate.transcript_url),
+          extractStoragePath(candidate.other_doc_url),
+          extractStoragePath(candidate.signature_url)
+        ].filter(Boolean) as string[];
+
+        if (filesToDelete.length > 0) {
+          await supabase.storage.from('candidate-documents').remove(filesToDelete);
+        }
+
+        // 3. Hapus data eksternal yang tertaut
+        if (candidate.linked_external_id) {
+          await supabase.from('external_data').delete().eq('uid_sheet', candidate.linked_external_id);
+        }
+      }
+
+      // 4. Hapus baris kandidat dari tabel log
       const { error } = await supabase
         .from('candidate_logs')
         .delete()
@@ -147,7 +186,7 @@ export default function Logs() {
 
       if (error) throw error;
 
-      toast({ title: 'Berhasil', description: 'Kandidat berhasil dihapus dari arsip.' });
+      toast({ title: 'Berhasil', description: 'Kandidat beserta file dan data eksternal berhasil dihapus.' });
       setDeleteModalData(null);
       fetchLogs();
     } catch (error: any) {
@@ -161,6 +200,55 @@ export default function Logs() {
     if (selectedIds.length === 0) return;
     setIsDeleting(true);
     try {
+      // 1. Ambil data kandidat untuk mendapatkan URL file dan ID eksternal
+      const { data: candidates, error: fetchError } = await supabase
+        .from('candidate_logs')
+        .select('cv_url, photo_url, ktp_url, psikotes_result_url, ijazah_url, transcript_url, other_doc_url, signature_url, linked_external_id')
+        .in('id', selectedIds);
+
+      if (fetchError) throw fetchError;
+
+      if (candidates && candidates.length > 0) {
+        // 2. Kumpulkan semua file dan ID eksternal yang akan dihapus
+        const filesToDelete: string[] = [];
+        const externalIdsToDelete: string[] = [];
+
+        candidates.forEach(candidate => {
+          const cv = extractStoragePath(candidate.cv_url);
+          const photo = extractStoragePath(candidate.photo_url);
+          const ktp = extractStoragePath(candidate.ktp_url);
+          const psikotes = extractStoragePath(candidate.psikotes_result_url);
+          const ijazah = extractStoragePath(candidate.ijazah_url);
+          const transcript = extractStoragePath(candidate.transcript_url);
+          const otherDoc = extractStoragePath(candidate.other_doc_url);
+          const signature = extractStoragePath(candidate.signature_url);
+          
+          if (cv) filesToDelete.push(cv);
+          if (photo) filesToDelete.push(photo);
+          if (ktp) filesToDelete.push(ktp);
+          if (psikotes) filesToDelete.push(psikotes);
+          if (ijazah) filesToDelete.push(ijazah);
+          if (transcript) filesToDelete.push(transcript);
+          if (otherDoc) filesToDelete.push(otherDoc);
+          if (signature) filesToDelete.push(signature);
+
+          if (candidate.linked_external_id) {
+            externalIdsToDelete.push(candidate.linked_external_id);
+          }
+        });
+
+        // 3. Hapus file fisik dari storage
+        if (filesToDelete.length > 0) {
+          await supabase.storage.from('candidate-documents').remove(filesToDelete);
+        }
+
+        // 4. Hapus data eksternal yang tertaut
+        if (externalIdsToDelete.length > 0) {
+          await supabase.from('external_data').delete().in('uid_sheet', externalIdsToDelete);
+        }
+      }
+
+      // 5. Hapus baris kandidat dari tabel log
       const { error } = await supabase
         .from('candidate_logs')
         .delete()
@@ -168,7 +256,7 @@ export default function Logs() {
 
       if (error) throw error;
 
-      toast({ title: 'Berhasil', description: `${selectedIds.length} kandidat berhasil dihapus dari arsip.` });
+      toast({ title: 'Berhasil', description: `${selectedIds.length} kandidat beserta file dan data eksternal berhasil dihapus.` });
       setBulkDeleteModalOpen(false);
       setSelectedIds([]);
       setIsBulkDeleteMode(false);

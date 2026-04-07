@@ -40,9 +40,23 @@ export default function RecruitmentFunnel() {
   // Fetch unique positions once on mount
   useEffect(() => {
     const fetchPositions = async () => {
+      try {
+        // Try to use the RPC for efficient distinct querying
+        const { data: rpcData, error: rpcError } = await supabase.rpc('get_unique_positions');
+        
+        if (!rpcError && rpcData) {
+          const unique = rpcData.map((d: any) => d.position).filter(Boolean).sort();
+          setPositions(unique);
+          return;
+        }
+      } catch (e) {
+        console.warn("RPC get_unique_positions failed, falling back to manual fetch", e);
+      }
+
+      // Fallback if RPC doesn't exist yet
       const [ { data: cData }, { data: lData } ] = await Promise.all([
-        supabase.from('candidates').select('position').limit(1000),
-        supabase.from('candidate_logs').select('position').limit(1000)
+        supabase.from('candidates').select('position').limit(10000),
+        supabase.from('candidate_logs').select('position').limit(10000)
       ]);
       
       const allPositions = [...(cData || []), ...(lData || [])];
@@ -209,15 +223,16 @@ export default function RecruitmentFunnel() {
         .limit(1000);
 
       // Fetch schedules for efficiency calculation
-      const [psikotesSchedules, interviewSchedules, activeCandidates] = await Promise.all([
+      const [psikotesSchedules, interviewSchedules, activeSources, logSources] = await Promise.all([
         supabase.from('psikotes_schedules').select('candidate_id, created_at, schedule_date'),
         supabase.from('interview_schedules').select('candidate_id, created_at, schedule_date'),
-        supabase.from('candidates').select('id, created_at, source_info')
+        buildDataQuery('candidates', 'id, created_at, source_info').limit(10000),
+        buildDataQuery('candidate_logs', 'id, created_at, source_info').limit(10000)
       ]);
 
       // Calculate Source Distribution
       const sourceCounts: Record<string, number> = {};
-      (activeCandidates.data || []).forEach(c => {
+      [...(activeSources.data || []), ...(logSources.data || [])].forEach((c: any) => {
         const source = c.source_info || 'Tidak Diketahui';
         sourceCounts[source] = (sourceCounts[source] || 0) + 1;
       });
@@ -258,8 +273,8 @@ export default function RecruitmentFunnel() {
 
       // Pipeline Efficiency (Real-time Calculation)
       const candidateCreationMap = new Map();
-      (activeCandidates.data || []).forEach(c => candidateCreationMap.set(c.id, c.created_at));
-      (recentHired || []).forEach(c => candidateCreationMap.set(c.id, c.created_at));
+      (activeSources.data || []).forEach((c: any) => candidateCreationMap.set(c.id, c.created_at));
+      (recentHired || []).forEach((c: any) => candidateCreationMap.set(c.id, c.created_at));
 
       let totalScreeningDays = 0;
       let totalPsikotesDays = 0;

@@ -32,41 +32,62 @@ export function normalizeEmail(email: string | null | undefined): string {
   return email.toLowerCase().trim();
 }
 
-export async function fetchWithRetry(url: string, options?: RequestInit, maxRetries = 3) {
+export async function fetchWithRetry(url: string, options?: RequestInit, maxRetries = 5) {
   let retries = maxRetries;
   while (retries > 0) {
-    const response = await fetch(url, options);
-    
-    if (response.ok) {
+    try {
+      // Prevent caching of the "Please wait" page
+      const fetchOptions = {
+        ...options,
+        headers: {
+          ...options?.headers,
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+        cache: 'no-store' as RequestCache
+      };
+
+      const response = await fetch(url, fetchOptions);
+      
+      if (response.ok) {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") === -1) {
+          const text = await response.text();
+          if (text.includes('Please wait') || text.includes('<html')) {
+            console.warn(`Server is starting up. Retrying ${url}... (${retries} retries left)`);
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            retries--;
+            continue;
+          }
+          // If it's HTML but not "Please wait", maybe it's a real error page
+          throw new Error('API returned non-JSON response');
+        }
+        return response;
+      }
+      
+      // If not OK, check if it's a 502/504 (Gateway errors during restart)
+      if (response.status === 502 || response.status === 504) {
+        console.warn(`Gateway error ${response.status}. Retrying ${url}... (${retries} retries left)`);
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        retries--;
+        continue;
+      }
+      
       const contentType = response.headers.get("content-type");
       if (contentType && contentType.indexOf("application/json") === -1) {
-        const text = await response.text();
-        if (text.includes('Please wait') || text.includes('<html')) {
-          console.warn(`Server is starting up. Retrying ${url}...`);
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          retries--;
-          continue;
-        }
-        // If it's HTML but not "Please wait", maybe it's a real error page
-        throw new Error('API returned non-JSON response');
+        throw new Error(`API Error ${response.status}: ${response.statusText}`);
       }
+      
       return response;
-    }
-    
-    // If not OK, check if it's a 502/504 (Gateway errors during restart)
-    if (response.status === 502 || response.status === 504) {
-      console.warn(`Gateway error ${response.status}. Retrying ${url}...`);
-      await new Promise(resolve => setTimeout(resolve, 2000));
+    } catch (error: any) {
+      // Catch network errors (e.g. connection refused) and retry
+      console.warn(`Network error fetching ${url}: ${error.message}. Retrying... (${retries} retries left)`);
+      await new Promise(resolve => setTimeout(resolve, 3000));
       retries--;
-      continue;
+      if (retries === 0) {
+        throw error;
+      }
     }
-    
-    const contentType = response.headers.get("content-type");
-    if (contentType && contentType.indexOf("application/json") === -1) {
-      throw new Error(`API Error ${response.status}: ${response.statusText}`);
-    }
-    
-    return response;
   }
   throw new Error(`Failed to fetch ${url} after ${maxRetries} retries`);
 }
