@@ -182,8 +182,8 @@ app.use((req: any, res, next) => {
       return res.status(401).json({ error: "Unauthorized. Missing or invalid Authorization header." });
     }
 
-    if (!type || !['email', 'wa', 'test', 'sheet', 'external_data_delete'].includes(type)) {
-      return res.status(400).json({ error: "Valid type (email, wa, test, sheet, external_data_delete) is required" });
+    if (!type || !['email', 'wa', 'test', 'sheet', 'external_data_delete', 'ai_analysis', 'ai_psikotes_analysis'].includes(type)) {
+      return res.status(400).json({ error: "Valid type (email, wa, test, sheet, external_data_delete, ai_analysis, ai_psikotes_analysis) is required" });
     }
 
     let jobId = null;
@@ -209,6 +209,10 @@ app.use((req: any, res, next) => {
         webhookUrl = user.user_metadata?.sheet_webhook_url;
       } else if (type === 'external_data_delete') {
         webhookUrl = user.user_metadata?.external_data_delete_webhook_url;
+      } else if (type === 'ai_analysis') {
+        webhookUrl = user.user_metadata?.ai_analysis_webhook_url;
+      } else if (type === 'ai_psikotes_analysis') {
+        webhookUrl = user.user_metadata?.ai_psikotes_webhook_url;
       } else if (type === 'test') {
         const testType = payload?.type;
         webhookUrl = payload?.url; // Use URL from payload if provided
@@ -503,6 +507,7 @@ app.use((req: any, res, next) => {
       candidateEmail,
       candidatePhone,
       candidatePosition, 
+      sourceInfo,
       fileName,
       mimeType,
       uploadedAt,
@@ -607,6 +612,7 @@ app.use((req: any, res, next) => {
       form.append('candidateEmail', candidateEmail || '');
       form.append('candidatePhone', candidatePhone || '');
       form.append('candidatePosition', candidatePosition || '');
+      form.append('sourceInfo', sourceInfo || '');
       form.append('fileName', fileName || file.originalname);
       form.append('mimeType', mimeType || file.mimetype);
       form.append('uploadedAt', uploadedAt || new Date().toISOString());
@@ -638,6 +644,7 @@ app.use((req: any, res, next) => {
           candidate_name: candidateName,
           candidate_email: candidateEmail,
           position: candidatePosition,
+          source_info: sourceInfo,
           file_name: fileName || file.originalname,
           mime_type: mimeType || file.mimetype,
           uploaded_at: uploadedAt || new Date().toISOString(),

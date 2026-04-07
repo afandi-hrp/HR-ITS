@@ -176,11 +176,11 @@ export default function Templates() {
             onClick={() => handleOpenModal(template)}
             className="bg-white/70 backdrop-blur-md p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-indigo-500 hover:ring-2 hover:ring-indigo-200 hover:shadow-md transition-all group cursor-pointer flex flex-col"
           >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg shrink-0">
                 <Mail size={20} />
               </div>
-              <h3 className="font-bold text-slate-900 truncate">{template.name}</h3>
+              <h3 className="font-bold text-slate-900 break-words mt-0.5">{template.name}</h3>
             </div>
             <div className="space-y-2 mb-6 flex-1">
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Subjek</p>

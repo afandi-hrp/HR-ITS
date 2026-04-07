@@ -9,7 +9,9 @@ import Screening from './pages/Screening';
 import RecruitmentFunnel from './pages/RecruitmentFunnel';
 import Logs from './pages/Logs';
 import Templates from './pages/Templates';
+import EvaluationTemplates from './pages/EvaluationTemplates';
 import Settings from './pages/Settings';
+import RegistrationTokens from './pages/RegistrationTokens';
 import PsikotesSchedules from './pages/PsikotesSchedules';
 import InterviewSchedules from './pages/InterviewSchedules';
 import CandidateArchive from './pages/CandidateArchive';
@@ -17,6 +19,7 @@ import CandidateProfile from './pages/CandidateProfile';
 import UploadCV from './pages/UploadCV';
 import OpenRecruitment from './pages/OpenRecruitment';
 import PublicCareer from './pages/PublicCareer';
+import ApplicationForm from './pages/ApplicationForm';
 import ExternalData from './pages/ExternalData';
 import { Toaster } from './components/ui/Toaster';
 import RealtimeNotifications from './components/RealtimeNotifications';
@@ -29,8 +32,20 @@ export default function App() {
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
         console.warn('Session error:', error.message);
-        if (error.message.includes('Refresh Token Not Found') || error.message.includes('Invalid Refresh Token')) {
+        if (error.message.includes('Refresh Token Not Found') || error.message.includes('Invalid Refresh Token') || error.message.includes('refresh_token_not_found')) {
           supabase.auth.signOut().catch(() => {});
+          // Clear supabase auth tokens from local storage
+          let cleared = false;
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
+              localStorage.removeItem(key);
+              cleared = true;
+            }
+          }
+          if (cleared) {
+            window.location.reload();
+          }
         }
       }
       setSession(session);
@@ -41,7 +56,20 @@ export default function App() {
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        let cleared = false;
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
+            localStorage.removeItem(key);
+            cleared = true;
+          }
+        }
+        if (cleared) {
+          window.location.reload();
+        }
+      }
       setSession(session);
     });
 
@@ -77,6 +105,7 @@ export default function App() {
         <Routes>
           {/* Public Routes */}
           <Route path="/career" element={<PublicCareer />} />
+          <Route path="/form-pelamar" element={<ApplicationForm />} />
 
           {/* Protected Routes */}
           <Route path="/*" element={
@@ -97,6 +126,8 @@ export default function App() {
                   <Route path="/archive" element={<CandidateArchive />} />
                   <Route path="/upload-cv" element={<UploadCV />} />
                   <Route path="/templates" element={<Templates />} />
+                  <Route path="/evaluation-templates" element={<EvaluationTemplates />} />
+                  <Route path="/tokens" element={<RegistrationTokens />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/external-data" element={<ExternalData />} />
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />

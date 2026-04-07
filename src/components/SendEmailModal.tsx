@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Send, Mail, ChevronDown, Loader2 } from 'lucide-react';
+import { X, Send, Mail, ChevronDown, Loader2, KeyRound } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Candidate, EmailTemplate, Schedule } from '../types';
 import { useToast } from './ui/use-toast';
@@ -12,6 +12,11 @@ interface SendEmailModalProps {
   onClose: () => void;
 }
 
+interface Token {
+  id: string;
+  token: string;
+}
+
 export default function SendEmailModal({ candidate, schedule, type, onClose }: SendEmailModalProps) {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
@@ -19,6 +24,10 @@ export default function SendEmailModal({ candidate, schedule, type, onClose }: S
   const [body, setBody] = useState('');
   const [loading, setLoading] = useState(false);
   const [fetchingTemplates, setFetchingTemplates] = useState(true);
+  
+  const [tokens, setTokens] = useState<Token[]>([]);
+  const [selectedToken, setSelectedToken] = useState<string>('');
+  
   const { toast } = useToast();
 
   useEffect(() => {
@@ -36,7 +45,22 @@ export default function SendEmailModal({ candidate, schedule, type, onClose }: S
       setFetchingTemplates(false);
     };
 
+    const fetchTokens = async () => {
+      const { data, error } = await supabase
+        .from('registration_tokens')
+        .select('id, token')
+        .eq('is_used', false)
+        .order('created_at', { ascending: false });
+        
+      if (!error && data) {
+        setTokens(data);
+      }
+    };
+
     fetchTemplates();
+    if (type === 'psikotes') {
+      fetchTokens();
+    }
 
     // Auto-populate default body with schedule info
     const scheduleInfo = `Jadwal ${type === 'psikotes' ? 'Psikotes' : 'Interview'}:
@@ -67,7 +91,7 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
         : 'Belum dijadwalkan';
 
       const replaceVars = (text: string) => {
-        return text
+        let replaced = text
           .replace(/{{nama}}/g, candidate.full_name)
           .replace(/{{email_kandidat}}/g, candidate.email)
           .replace(/{{posisi}}/g, candidate.position)
@@ -76,6 +100,14 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
           .replace(/{{jadwal}}/g, scheduleStr)
           .replace(/{{jadwal_interview}}/g, interviewStr)
           .replace(/{{jadwal_psikotes}}/g, psikotesStr);
+          
+        if (selectedToken) {
+          const tokenObj = tokens.find(t => t.id === selectedToken);
+          if (tokenObj) {
+            replaced = replaced.replace(/{{token}}/g, tokenObj.token);
+          }
+        }
+        return replaced;
       };
       
       let processedSubject = replaceVars(template.subject);
@@ -109,6 +141,19 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
         setLoading(false);
         return;
       }
+      
+      let tokenValue = null;
+      if (selectedToken) {
+        const tokenObj = tokens.find(t => t.id === selectedToken);
+        if (tokenObj) {
+          tokenValue = tokenObj.token;
+          // Mark token as used
+          await supabase
+            .from('registration_tokens')
+            .update({ is_used: true, used_at: new Date().toISOString() })
+            .eq('id', selectedToken);
+        }
+      }
 
       const response = await fetchWithRetry('/api/n8n/trigger', {
         method: 'POST',
@@ -136,6 +181,7 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
               subject,
               body
             },
+            token: tokenValue,
             sender: {
               name: user?.user_metadata?.full_name,
               email: user?.email
@@ -163,8 +209,7 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
 
       toast({ 
         title: 'Berhasil Dikirim', 
-        description: 'Undangan Email telah dikirim, periksa notifikasi untuk cek status',
-        duration: 10000
+        description: 'Undangan Email telah dikirim, periksa notifikasi untuk cek status'
       });
       onClose();
     } catch (error: any) {
@@ -172,8 +217,7 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
       toast({ 
         title: 'Error', 
         description: 'Undangan Email gagal dikirim, coba beberapa saat lagi.', 
-        variant: 'destructive',
-        duration: 10000
+        variant: 'destructive'
       });
     } finally {
       setLoading(false);
@@ -233,6 +277,29 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
               </div>
             </div>
           </div>
+
+          {type === 'psikotes' && (
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <KeyRound size={14} />
+                Pilih Token Psikotes (Opsional)
+              </label>
+              <div className="relative">
+                <select
+                  value={selectedToken}
+                  onChange={(e) => setSelectedToken(e.target.value)}
+                  className="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none text-sm font-medium truncate"
+                >
+                  <option value="">-- Tanpa Token --</option>
+                  {tokens.map(t => (
+                    <option key={t.id} value={t.id}>{t.token}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+              </div>
+              <p className="text-xs text-slate-500">Token yang dipilih akan otomatis dikunci setelah email dikirim.</p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Subject Email</label>

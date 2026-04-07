@@ -1,0 +1,241 @@
+448:              <label className="block text-sm font-bold text-indigo-900 mb-2">Token Pendaftaran <span className="text-red-500">*</span></label>
+449-              <p className="text-xs text-indigo-700 mb-3">Masukkan token pendaftaran yang telah diberikan oleh tim rekrutmen kami.</p>
+450-              <input 
+451-                type="text" 
+452-                required
+453-                value={token}
+--
+465:                <label className="block text-sm font-semibold text-slate-700 mb-1">Posisi yang dilamar <span className="text-slate-400 font-normal italic">(Position applied)</span></label>
+466-                <input 
+467-                  type="text" 
+468-                  name="position"
+469-                  required
+470-                  value={formData.position}
+--
+477:                <label className="block text-sm font-semibold text-slate-700 mb-2">Info lowongan kerja <span className="text-slate-400 font-normal italic">(Job vacancy information)</span></label>
+478-                <div className="flex flex-wrap gap-4">
+479-                  {['Jobstreet', 'JobsDB', 'Linkedin', 'Instagram', 'Lainnya'].map(item => (
+480:                    <label key={item} className="flex items-center gap-2 cursor-pointer">
+481-                      <input 
+482-                        type="checkbox" 
+483-                        checked={formData.job_vacancy_info.includes(item)}
+484-                        onChange={(e) => handleCheckboxChange('job_vacancy_info', item, e.target.checked)}
+485-                        className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+--
+505:              <label className="block text-sm font-semibold text-slate-700 mb-1 text-center">Photo <span className="text-xs font-normal text-red-500">*Maks. 2MB</span></label>
+506-              <div className="relative w-full aspect-[3/4] border-2 border-dashed border-slate-300 rounded-xl overflow-hidden hover:border-indigo-500 transition-colors group cursor-pointer bg-slate-50">
+507-                {!readOnly && (
+508-                  <input 
+509-                    type="file" 
+510-                    accept="image/*"
+--
+536:                <label className="block text-sm font-semibold text-slate-700 mb-1">Nama Lengkap <span className="text-slate-400 font-normal italic">(Full Name)</span></label>
+537-                <input type="text" name="full_name" required value={formData.full_name} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+538-              </div>
+539-
+540-              <div>
+541:                <label className="block text-sm font-semibold text-slate-700 mb-2">Jenis Kelamin <span className="text-slate-400 font-normal italic">(Sex)</span></label>
+542-                <div className="flex gap-6">
+543:                  <label className="flex items-center gap-2 cursor-pointer">
+544-                    <input type="radio" name="sex" value="Laki-laki" checked={formData.sex === 'Laki-laki'} onChange={handleInputChange} className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500" />
+545-                    <span className="text-sm text-slate-700">Laki-laki</span>
+546-                  </label>
+547:                  <label className="flex items-center gap-2 cursor-pointer">
+548-                    <input type="radio" name="sex" value="Perempuan" checked={formData.sex === 'Perempuan'} onChange={handleInputChange} className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500" />
+549-                    <span className="text-sm text-slate-700">Perempuan</span>
+550-                  </label>
+551-                </div>
+552-              </div>
+--
+556:                  <label className="block text-sm font-semibold text-slate-700 mb-1">Tempat Lahir <span className="text-slate-400 font-normal italic">(Place of Birth)</span></label>
+557-                  <input type="text" name="place_of_birth" required value={formData.place_of_birth} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+558-                </div>
+559-                <div className="flex-1">
+560:                  <label className="block text-sm font-semibold text-slate-700 mb-1">Tanggal Lahir <span className="text-slate-400 font-normal italic">(Date of Birth)</span></label>
+561-                  <input type="date" name="date_of_birth" required value={formData.date_of_birth} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+562-                </div>
+563-              </div>
+564-
+565-              <div>
+566:                <label className="block text-sm font-semibold text-slate-700 mb-1">Agama <span className="text-slate-400 font-normal italic">(Religion)</span></label>
+567-                <input type="text" name="religion" value={formData.religion} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+568-              </div>
+569-
+570-              <div>
+571:                <label className="block text-sm font-semibold text-slate-700 mb-1">Kewarganegaraan <span className="text-slate-400 font-normal italic">(Nationality)</span></label>
+572-                <input type="text" name="nationality" value={formData.nationality} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+573-              </div>
+574-
+575-              <div>
+576:                <label className="block text-sm font-semibold text-slate-700 mb-1">Suku <span className="text-slate-400 font-normal italic">(Ethnic)</span></label>
+577-                <input type="text" name="ethnic" value={formData.ethnic} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+578-              </div>
+579-
+580-              <div>
+581:                <label className="block text-sm font-semibold text-slate-700 mb-1">Hoby <span className="text-slate-400 font-normal italic">(Hobby)</span></label>
+582-                <input type="text" name="hobby" value={formData.hobby} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+583-              </div>
+584-
+585-              <div className="md:col-span-2">
+586:                <label className="block text-sm font-semibold text-slate-700 mb-2">Status Perkawinan <span className="text-slate-400 font-normal italic">(Marital Status)</span></label>
+587-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+588:                  <label className="flex items-center gap-2 cursor-pointer">
+589-                    <input type="radio" name="marital_status" value="Belum Menikah" checked={formData.marital_status === 'Belum Menikah'} onChange={handleInputChange} className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500" />
+590-                    <span className="text-sm text-slate-700">Belum Menikah <span className="text-slate-400 italic">(Single)</span></span>
+591-                  </label>
+592-                  <div className="flex items-center gap-2">
+593:                    <label className="flex items-center gap-2 cursor-pointer">
+594-                      <input type="radio" name="marital_status" value="Menikah" checked={formData.marital_status === 'Menikah'} onChange={handleInputChange} className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500" />
+595-                      <span className="text-sm text-slate-700">Menikah <span className="text-slate-400 italic">(Married)</span></span>
+596-                    </label>
+597-                    {formData.marital_status === 'Menikah' && (
+598-                      <input type="text" name="marital_since_year" placeholder="Tahun" value={formData.marital_since_year} onChange={handleInputChange} className="w-20 px-2 py-1 bg-slate-50 border border-slate-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+--
+602:                    <label className="flex items-center gap-2 cursor-pointer">
+603-                      <input type="radio" name="marital_status" value="Janda/Duda" checked={formData.marital_status === 'Janda/Duda'} onChange={handleInputChange} className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500" />
+604-                      <span className="text-sm text-slate-700">Janda / Duda <span className="text-slate-400 italic">(Widow/er)</span></span>
+605-                    </label>
+606-                    {formData.marital_status === 'Janda/Duda' && (
+607-                      <input type="text" name="marital_since_year" placeholder="Tahun" value={formData.marital_since_year} onChange={handleInputChange} className="w-20 px-2 py-1 bg-slate-50 border border-slate-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+--
+614:                <label className="block text-sm font-semibold text-slate-700 mb-1">No. KTP/Passport <span className="text-slate-400 font-normal italic">(Identity Number)</span></label>
+615-                <input type="text" name="identity_number" required value={formData.identity_number} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+616-              </div>
+617-
+618-              <div className="md:col-span-2">
+619:                <label className="block text-sm font-semibold text-slate-700 mb-1">Alamat Sesuai KTP <span className="text-slate-400 font-normal italic">(Address Based Identity Card)</span></label>
+620-                <textarea name="address_ktp" rows={2} value={formData.address_ktp} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
+621-                <div className="flex justify-end mt-2 items-center gap-2">
+622-                  <span className="text-sm text-slate-600">Kode Pos <span className="text-slate-400 italic">(Postal Code)</span> :</span>
+623-                  <input type="text" name="postal_code_ktp" value={formData.postal_code_ktp} onChange={handleInputChange} className="w-32 px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+624-                </div>
+--
+628:                <label className="block text-sm font-semibold text-slate-700 mb-1">Alamat Saat Ini <span className="text-slate-400 font-normal italic">(Current Address)</span></label>
+629-                <textarea name="current_address" rows={2} value={formData.current_address} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
+630-                <div className="flex justify-end mt-2 items-center gap-2">
+631-                  <span className="text-sm text-slate-600">Kode Pos <span className="text-slate-400 italic">(Postal Code)</span> :</span>
+632-                  <input type="text" name="postal_code_current" value={formData.postal_code_current} onChange={handleInputChange} className="w-32 px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+633-                </div>
+--
+637:                <label className="block text-sm font-semibold text-slate-700 mb-2">Status Tempat Tinggal <span className="text-slate-400 font-normal italic">(Residential Status)</span></label>
+638-                <div className="flex flex-wrap gap-6">
+639-                  {['Own House', 'Rented House', 'Parents', 'Others'].map(status => (
+640:                    <label key={status} className="flex items-center gap-2 cursor-pointer">
+641-                      <input type="radio" name="residential_status" value={status} checked={formData.residential_status === status} onChange={handleInputChange} className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500" />
+642-                      <span className="text-sm text-slate-700">{status}</span>
+643-                    </label>
+644-                  ))}
+645-                </div>
+--
+649:                <label className="block text-sm font-semibold text-slate-700 mb-1">Handphone / Telp. Rumah <span className="text-slate-400 font-normal italic">(Mobile/Home)</span></label>
+650-                <div className="flex gap-2 items-center">
+651-                  <input type="text" name="mobile_phone" placeholder="Mobile" value={formData.mobile_phone} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+652-                  <span className="text-slate-400">/</span>
+653-                  <input type="text" name="home_phone" placeholder="Home" value={formData.home_phone} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+654-                </div>
+--
+658:                <label className="block text-sm font-semibold text-slate-700 mb-1">Tinggi / Berat Badan <span className="text-slate-400 font-normal italic">(Height/Weight)</span></label>
+659-                <div className="flex gap-2 items-center">
+660-                  <div className="relative flex-1">
+661-                    <input type="number" name="height" value={formData.height} onChange={handleInputChange} className="w-full pl-4 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+662-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">Cm</span>
+663-                  </div>
+--
+673:                <label className="block text-sm font-semibold text-slate-700 mb-1">Email <span className="text-slate-400 font-normal italic">(E-Mail)</span></label>
+674-                <input type="email" name="email" required value={formData.email} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+675-              </div>
+676-
+677-              <div>
+678:                <label className="block text-sm font-semibold text-slate-700 mb-1">Sosial Media <span className="text-slate-400 font-normal italic">(Social Media Account)</span></label>
+679-                <input type="text" name="social_media" value={formData.social_media} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+680-              </div>
+681-
+682-              <div className="md:col-span-2">
+683:                <label className="block text-sm font-semibold text-slate-700 mb-2">Surat Izin Mengemudi <span className="text-slate-400 font-normal italic">(Driver License)</span></label>
+684-                <div className="flex flex-wrap gap-6 items-center">
+685-                  {['SIM A', 'SIM B1', 'SIM B2', 'SIM C'].map(sim => (
+686:                    <label key={sim} className="flex items-center gap-2 cursor-pointer">
+687-                      <input 
+688-                        type="checkbox" 
+689-                        checked={formData.driver_license.includes(sim)}
+690-                        onChange={(e) => handleCheckboxChange('driver_license', sim, e.target.checked)}
+691-                        className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+--
+1088:                    <label className="flex items-center gap-2 cursor-pointer">
+1089-                      <input type="radio" name="hospitalized" value="Tidak" checked={formData.hospitalized === 'Tidak'} onChange={handleInputChange} className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500" />
+1090-                      <span className="text-sm text-slate-700">Tidak <span className="text-slate-400 italic">/ No</span></span>
+1091-                    </label>
+1092:                    <label className="flex items-center gap-2 cursor-pointer">
+1093-                      <input type="radio" name="hospitalized" value="Ya" checked={formData.hospitalized === 'Ya'} onChange={handleInputChange} className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500" />
+1094-                      <span className="text-sm text-slate-700">Ya <span className="text-slate-400 italic">/ Yes</span></span>
+1095-                    </label>
+1096-                  </div>
+1097-                  {formData.hospitalized === 'Ya' && (
+--
+1111:                    <label className="flex items-center gap-2 cursor-pointer">
+1112-                      <input type="radio" name="crime_involved" value="Tidak" checked={formData.crime_involved === 'Tidak'} onChange={handleInputChange} className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500" />
+1113-                      <span className="text-sm text-slate-700">Tidak <span className="text-slate-400 italic">/ No</span></span>
+1114-                    </label>
+1115:                    <label className="flex items-center gap-2 cursor-pointer">
+1116-                      <input type="radio" name="crime_involved" value="Ya" checked={formData.crime_involved === 'Ya'} onChange={handleInputChange} className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500" />
+1117-                      <span className="text-sm text-slate-700">Ya <span className="text-slate-400 italic">/ Yes</span></span>
+1118-                    </label>
+1119-                  </div>
+1120-                  {formData.crime_involved === 'Ya' && (
+--
+1134:                    <label className="flex items-center gap-2 cursor-pointer">
+1135-                      <input type="radio" name="worked_in_waruna" value="Tidak" checked={formData.worked_in_waruna === 'Tidak'} onChange={handleInputChange} className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500" />
+1136-                      <span className="text-sm text-slate-700">Tidak <span className="text-slate-400 italic">/ No</span></span>
+1137-                    </label>
+1138:                    <label className="flex items-center gap-2 cursor-pointer">
+1139-                      <input type="radio" name="worked_in_waruna" value="Ya" checked={formData.worked_in_waruna === 'Ya'} onChange={handleInputChange} className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500" />
+1140-                      <span className="text-sm text-slate-700">Ya <span className="text-slate-400 italic">/ Yes</span></span>
+1141-                    </label>
+1142-                  </div>
+1143-                  {formData.worked_in_waruna === 'Ya' && (
+--
+1163:                    <label className="flex items-center gap-2 cursor-pointer">
+1164-                      <input type="radio" name="applying_other_company" value="Tidak" checked={formData.applying_other_company === 'Tidak'} onChange={handleInputChange} className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500" />
+1165-                      <span className="text-sm text-slate-700">Tidak <span className="text-slate-400 italic">/ No</span></span>
+1166-                    </label>
+1167:                    <label className="flex items-center gap-2 cursor-pointer">
+1168-                      <input type="radio" name="applying_other_company" value="Ya" checked={formData.applying_other_company === 'Ya'} onChange={handleInputChange} className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500" />
+1169-                      <span className="text-sm text-slate-700">Ya <span className="text-slate-400 italic">/ Yes</span></span>
+1170-                    </label>
+1171-                  </div>
+1172-                  {formData.applying_other_company === 'Ya' && (
+--
+1323:                <label className="block text-sm font-medium text-slate-700">Scan KTP <span className="text-slate-400 italic">(ID Card)</span> {!readOnly && <span className="text-xs text-red-500">*Maks. 2MB</span>}</label>
+1324-                {readOnly ? (
+1325-                  renderAttachment(initialData?.ktp_url, "KTP")
+1326-                ) : (
+1327-                  <input 
+1328-                    type="file" 
+--
+1336:                <label className="block text-sm font-medium text-slate-700">Scan Ijazah <span className="text-slate-400 italic">(Certificate)</span> {!readOnly && <span className="text-xs text-red-500">*Maks. 2MB</span>}</label>
+1337-                {readOnly ? (
+1338-                  renderAttachment(initialData?.ijazah_url, "Ijazah")
+1339-                ) : (
+1340-                  <input 
+1341-                    type="file" 
+--
+1349:                <label className="block text-sm font-medium text-slate-700">Scan Transkrip Nilai <span className="text-slate-400 italic">(Transcript)</span> {!readOnly && <span className="text-xs text-red-500">*Maks. 2MB</span>}</label>
+1350-                {readOnly ? (
+1351-                  renderAttachment(initialData?.transcript_url, "Transkrip Nilai")
+1352-                ) : (
+1353-                  <input 
+1354-                    type="file" 
+--
+1362:                <label className="block text-sm font-medium text-slate-700">Dokumen Lainnya <span className="text-slate-400 italic">(Other Documents)</span> {!readOnly && <span className="text-xs text-red-500">*Maks. 2MB</span>}</label>
+1363-                {readOnly ? (
+1364-                  renderAttachment(initialData?.other_doc_url, "Dokumen Lainnya")
+1365-                ) : (
+1366-                  <input 
+1367-                    type="file" 
+--
+1399:                <label htmlFor="declaration_agreed" className="text-sm font-semibold text-slate-700 cursor-pointer select-none">
+1400-                  Saya menyetujui pernyataan di atas
+1401-                </label>
+1402-              </div>
+1403-
+1404-              <div className="text-center">

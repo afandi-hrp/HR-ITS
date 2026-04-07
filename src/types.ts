@@ -36,6 +36,12 @@ export interface Candidate {
   interview_status?: string;
   notes?: string;
   archived_at?: string;
+  linked_external_id?: string | null;
+  ai_biodata_summary?: any | null;
+  ai_psikotes_summary?: any | null;
+  psikotes_result_url?: string | null;
+  source_info?: string | null;
+  external_data?: { raw_data: any } | null;
 }
 
 export interface EmailTemplate {
@@ -54,6 +60,7 @@ export interface SiteSettings {
   sidebar_text: string | null;
   login_animation_url: string | null;
   favicon_url: string | null;
+  job_sources?: string[] | null;
   updated_at: string;
 }
 
@@ -68,4 +75,36 @@ export interface Schedule {
   created_at: string;
   updated_at: string;
   candidate?: Candidate;
+}
+
+export interface EvaluationTemplate {
+  id: string;
+  name: string;
+  type: 'HR' | 'USER';
+  form_schema: {
+    scale: { score: number; label: string }[];
+    categories: {
+      name: string;
+      criteria: { name: string; description: string }[];
+    }[];
+  };
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CandidateEvaluation {
+  id: string;
+  candidate_id: string;
+  template_id: string | null;
+  evaluation_type: 'HR' | 'USER';
+  interviewer_name: string;
+  evaluator_id: string | null;
+  evaluation_data: Record<string, any>;
+  total_score: number;
+  notes: string | null;
+  attachment_url: string | null;
+  created_at: string;
+  updated_at: string;
+  template?: EvaluationTemplate;
+  evaluator?: Profile;
 }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Candidate } from '../types';
+import { Candidate, CandidateEvaluation } from '../types';
 import { 
   ArrowLeft, 
   Mail, 
@@ -23,10 +23,19 @@ import {
   Edit2,
   Save,
   X,
-  Loader2
+  Loader2,
+  PlusCircle,
+  Database,
+  Sparkles,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
-import { cn, formatDate } from '../lib/utils';
+import { cn, formatDate, normalizeEmail, normalizeName, normalizePhone, fetchWithRetry, extractPhotoUrl } from '../lib/utils';
+import { waitForN8nJob } from '../lib/n8n';
 import { useToast } from '../components/ui/use-toast';
+import EvaluationModal from '../components/EvaluationModal';
+import JSONRenderer from '../components/JSONRenderer';
 import {
   ResponsiveContainer,
   Radar,
@@ -36,22 +45,76 @@ import {
   PolarRadiusAxis,
   Tooltip
 } from 'recharts';
+import ApplicationForm from './ApplicationForm';
 
 export default function CandidateProfile() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [candidate, setCandidate] = useState<Candidate | null>(null);
+  const [evaluations, setEvaluations] = useState<CandidateEvaluation[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editedCandidate, setEditedCandidate] = useState<Partial<Candidate>>({});
   const [saving, setSaving] = useState(false);
+  const [isEvaluationModalOpen, setIsEvaluationModalOpen] = useState(false);
+  const [externalData, setExternalData] = useState<any[]>([]);
+  const [linkedData, setLinkedData] = useState<any | null>(null);
+  const [isSearchingExternal, setIsSearchingExternal] = useState(false);
+  const [isLinking, setIsLinking] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isAnalyzingPsikotes, setIsAnalyzingPsikotes] = useState(false);
+  const [isUploadingPsikotes, setIsUploadingPsikotes] = useState(false);
+  const [isBiodataSummaryExpanded, setIsBiodataSummaryExpanded] = useState(false);
+  const [isPsikotesSummaryExpanded, setIsPsikotesSummaryExpanded] = useState(false);
+
+  const formatValue = (val: any): string => {
+    if (val === null || val === undefined || val === '') return '-';
+    if (typeof val === 'object') {
+      if (Array.isArray(val)) {
+        if (val.length === 0) return '-';
+        const nonEmptyItems = val.filter(item => {
+          if (typeof item === 'object' && item !== null) {
+            return Object.values(item).some(v => v !== '');
+          }
+          return true;
+        });
+        if (nonEmptyItems.length === 0) return '-';
+        return nonEmptyItems.map((item, idx) => {
+          if (typeof item === 'object' && item !== null) {
+            return `[${idx + 1}] ` + Object.entries(item)
+              .filter(([_, v]) => v !== '')
+              .map(([k, v]) => `${k}: ${v}`)
+              .join(', ');
+          }
+          return String(item);
+        }).join('\n');
+      }
+      const entries = Object.entries(val).filter(([_, v]) => v !== '');
+      if (entries.length === 0) return '-';
+      return entries.map(([k, v]) => `${k}: ${v}`).join('\n');
+    }
+    return String(val);
+  };
 
   useEffect(() => {
     if (id) {
       fetchCandidate(id);
+      fetchEvaluations(id);
     }
   }, [id]);
+
+  const fetchEvaluations = async (candidateId: string) => {
+    const { data, error } = await supabase
+      .from('candidate_evaluations')
+      .select('*, template:evaluation_templates(*)')
+      .eq('candidate_id', candidateId)
+      .order('created_at', { ascending: false });
+    
+    if (!error && data) {
+      setEvaluations(data);
+    }
+  };
 
   const fetchCandidate = async (candidateId: string) => {
     setLoading(true);
@@ -75,12 +138,326 @@ export default function CandidateProfile() {
       } else {
         setCandidate(logData);
         setEditedCandidate(logData);
+        fetchExternalData(logData);
       }
     } else {
       setCandidate(data);
       setEditedCandidate(data);
+      fetchExternalData(data);
     }
     setLoading(false);
+  };
+
+  const fetchExternalData = async (candidateData: Candidate) => {
+    setIsSearchingExternal(true);
+    try {
+      // If already linked, fetch that specific one
+      if (candidateData.linked_external_id) {
+        const { data, error } = await supabase
+          .from('external_data')
+          .select('*')
+          .eq('uid_sheet', candidateData.linked_external_id)
+          .single();
+        
+        if (data) {
+          setLinkedData({ uid_sheet: data.uid_sheet, ...data.raw_data });
+          setIsSearchingExternal(false);
+          return;
+        }
+      }
+
+      // Otherwise, auto-suggest
+      const normEmail = normalizeEmail(candidateData.email);
+      const normPhone = normalizePhone(candidateData.phone);
+      const normName = normalizeName(candidateData.full_name);
+
+      const { data, error } = await supabase
+        .from('external_data')
+        .select('*');
+
+      if (data) {
+        // Filter out data that is already linked to other candidates
+        const uids = data.map(d => d.uid_sheet);
+        
+        const [activeRes, logsRes] = await Promise.all([
+          supabase.from('candidates').select('linked_external_id').in('linked_external_id', uids).neq('id', candidateData.id),
+          supabase.from('candidate_logs').select('linked_external_id').in('linked_external_id', uids).neq('id', candidateData.id)
+        ]);
+
+        const usedUids = new Set([
+          ...(activeRes.data?.map(d => d.linked_external_id) || []),
+          ...(logsRes.data?.map(d => d.linked_external_id) || [])
+        ]);
+
+        const availableData = data.filter(d => !usedUids.has(d.uid_sheet));
+
+        const matches = availableData.filter(item => {
+          const raw = item.raw_data;
+          if (!raw) return false;
+          
+          let match = false;
+          Object.entries(raw).forEach(([key, val]) => {
+            if (typeof val !== 'string') return;
+            const lowerKey = key.toLowerCase();
+            const strVal = String(val);
+            
+            if (lowerKey.includes('email') && normalizeEmail(strVal) === normEmail) match = true;
+            if ((lowerKey.includes('phone') || lowerKey.includes('telepon') || lowerKey.includes('hp') || lowerKey.includes('whatsapp')) && normalizePhone(strVal) === normPhone && normPhone !== '') match = true;
+            if ((lowerKey.includes('name') || lowerKey.includes('nama')) && normalizeName(strVal) === normName) match = true;
+          });
+          return match;
+        });
+        
+        setExternalData(matches.map(m => ({ uid_sheet: m.uid_sheet, ...m.raw_data })));
+      }
+    } catch (err) {
+      console.error("Error fetching external data:", err);
+    } finally {
+      setIsSearchingExternal(false);
+    }
+  };
+
+  const handleLinkExternalData = async (uid_sheet: string) => {
+    if (!candidate || !id) return;
+    setIsLinking(true);
+    try {
+      const { data: activeData } = await supabase
+        .from('candidates')
+        .select('id')
+        .eq('id', id)
+        .single();
+
+      const table = activeData ? 'candidates' : 'candidate_logs';
+
+      const { error } = await supabase
+        .from(table)
+        .update({ linked_external_id: uid_sheet })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({ title: 'Berhasil', description: 'Data eksternal berhasil ditautkan.' });
+      
+      // Refresh
+      fetchCandidate(id);
+    } catch (err: any) {
+      console.error('Error linking data:', err);
+      toast({ title: 'Error', description: 'Gagal menautkan data.', variant: 'destructive' });
+    } finally {
+      setIsLinking(false);
+    }
+  };
+
+  const handleUnlinkExternalData = async () => {
+    if (!candidate || !id) return;
+    setIsLinking(true);
+    try {
+      const { data: activeData } = await supabase
+        .from('candidates')
+        .select('id')
+        .eq('id', id)
+        .single();
+
+      const table = activeData ? 'candidates' : 'candidate_logs';
+
+      const { error } = await supabase
+        .from(table)
+        .update({ linked_external_id: null })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({ title: 'Berhasil', description: 'Tautan data eksternal dilepas.' });
+      setLinkedData(null);
+      fetchCandidate(id);
+    } catch (err: any) {
+      console.error('Error unlinking data:', err);
+      toast({ title: 'Error', description: 'Gagal melepas tautan data.', variant: 'destructive' });
+    } finally {
+      setIsLinking(false);
+    }
+  };
+
+  const handleAnalyzeBiodata = async () => {
+    if (!candidate || !linkedData) return;
+    setIsAnalyzing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const aiWebhookUrl = user?.user_metadata?.ai_analysis_webhook_url;
+      if (!aiWebhookUrl) {
+        toast({ 
+          title: 'Konfigurasi Diperlukan', 
+          description: 'Silakan atur n8n AI Analysis Webhook URL di menu Pengaturan terlebih dahulu.',
+          variant: 'destructive' 
+        });
+        setIsAnalyzing(false);
+        return;
+      }
+
+      const response = await fetchWithRetry('/api/n8n/trigger', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({
+          type: 'ai_analysis',
+          payload: {
+            event: 'analyze_candidate_biodata',
+            candidate_id: candidate.id,
+            full_name: candidate.full_name,
+            position: candidate.position,
+            raw_data: linkedData,
+            timestamp: new Date().toISOString()
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Gagal memicu analisa AI: ${response.statusText}`);
+      }
+
+      const responseData = await response.json();
+      
+      toast({ 
+        title: 'Analisa Dimulai', 
+        description: 'AI sedang menganalisa biodata. Hasilnya akan muncul setelah proses selesai (silakan refresh halaman ini nanti).',
+      });
+    } catch (err: any) {
+      console.error('Error triggering AI analysis:', err);
+      toast({ title: 'Error', description: err.message || 'Gagal memulai analisa AI.', variant: 'destructive' });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleAnalyzePsikotes = async () => {
+    if (!candidate || !candidate.psikotes_result_url) return;
+    setIsAnalyzingPsikotes(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const aiPsikotesWebhookUrl = user?.user_metadata?.ai_psikotes_webhook_url;
+      if (!aiPsikotesWebhookUrl) {
+        toast({ 
+          title: 'Konfigurasi Diperlukan', 
+          description: 'Silakan atur n8n AI Psikotes Analysis Webhook URL di menu Pengaturan terlebih dahulu.',
+          variant: 'destructive' 
+        });
+        setIsAnalyzingPsikotes(false);
+        return;
+      }
+
+      const response = await fetchWithRetry('/api/n8n/trigger', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({
+          type: 'ai_psikotes_analysis',
+          payload: {
+            event: 'analyze_candidate_psikotes',
+            candidate_id: candidate.id,
+            full_name: candidate.full_name,
+            position: candidate.position,
+            psikotes_url: candidate.psikotes_result_url,
+            timestamp: new Date().toISOString()
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Gagal memicu analisa AI: ${response.statusText}`);
+      }
+
+      const responseData = await response.json();
+      
+      toast({ 
+        title: 'Analisa Dimulai', 
+        description: 'AI sedang menganalisa hasil psikotes. Hasilnya akan muncul setelah proses selesai (silakan refresh halaman ini nanti).',
+      });
+    } catch (err: any) {
+      console.error('Error triggering AI analysis:', err);
+      toast({ title: 'Error', description: err.message || 'Gagal memulai analisa AI.', variant: 'destructive' });
+    } finally {
+      setIsAnalyzingPsikotes(false);
+    }
+  };
+
+  const handleUploadPsikotes = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !candidate || !id) return;
+
+    if (file.type !== 'application/pdf') {
+      toast({ title: 'Error', description: 'Hanya file PDF yang diperbolehkan.', variant: 'destructive' });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: 'Error', description: 'Ukuran file maksimal 5MB.', variant: 'destructive' });
+      return;
+    }
+
+    setIsUploadingPsikotes(true);
+    try {
+      // Delete old file if exists to prevent accumulation
+      if (candidate.psikotes_result_url) {
+        try {
+          const urlParts = candidate.psikotes_result_url.split('/candidate-documents/');
+          if (urlParts.length > 1) {
+            const oldFilePath = urlParts[1];
+            await supabase.storage.from('candidate-documents').remove([oldFilePath]);
+          }
+        } catch (delErr) {
+          console.error('Failed to delete old file:', delErr);
+        }
+      }
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `psikotes/${id}_${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('candidate-documents')
+        .upload(fileName, file, { 
+          upsert: true,
+          contentType: 'application/pdf'
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('candidate-documents')
+        .getPublicUrl(fileName);
+
+      const { data: activeData } = await supabase
+        .from('candidates')
+        .select('id')
+        .eq('id', id)
+        .single();
+
+      const table = activeData ? 'candidates' : 'candidate_logs';
+
+      const { error: updateError } = await supabase
+        .from(table)
+        .update({ psikotes_result_url: publicUrl })
+        .eq('id', id);
+
+      if (updateError) throw updateError;
+
+      toast({ title: 'Berhasil', description: 'Hasil psikotes berhasil diunggah.' });
+      fetchCandidate(id);
+    } catch (err: any) {
+      console.error('Error uploading psikotes:', err);
+      toast({ title: 'Error', description: err.message || 'Gagal mengunggah hasil psikotes.', variant: 'destructive' });
+    } finally {
+      setIsUploadingPsikotes(false);
+      // Reset input
+      e.target.value = '';
+    }
   };
 
   const handleSave = async () => {
@@ -125,8 +502,7 @@ export default function CandidateProfile() {
 
       toast({
         title: 'Berhasil',
-        description: 'Profil kandidat berhasil diperbarui',
-        className: 'bg-emerald-500 text-white border-none',
+        description: 'Profil kandidat berhasil diperbarui'
       });
       
       setIsEditing(false);
@@ -277,8 +653,12 @@ export default function CandidateProfile() {
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="h-24 bg-gradient-to-r from-indigo-500 to-violet-500"></div>
             <div className="px-6 pb-6 relative">
-              <div className="w-20 h-20 bg-white rounded-2xl border-4 border-white shadow-md flex items-center justify-center text-3xl font-bold text-indigo-600 absolute -top-10 bg-gradient-to-br from-indigo-50 to-white">
-                {candidate.full_name.charAt(0)}
+              <div className="w-20 h-20 bg-white rounded-2xl border-4 border-white shadow-md flex items-center justify-center text-3xl font-bold text-indigo-600 absolute -top-10 bg-gradient-to-br from-indigo-50 to-white overflow-hidden">
+                {extractPhotoUrl(linkedData || candidate.source_info) ? (
+                  <img src={extractPhotoUrl(linkedData || candidate.source_info)!} alt={candidate.full_name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  candidate.full_name.charAt(0)
+                )}
               </div>
               <div className="pt-14">
                 {isEditing ? (
@@ -345,6 +725,14 @@ export default function CandidateProfile() {
                     <CalendarIcon size={16} className="text-slate-400" />
                     <span>Melamar pada {formatDate(candidate.date)}</span>
                   </div>
+                  {candidate.source_info && (
+                    <div className="flex items-center gap-3 text-slate-600">
+                      <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+                      </div>
+                      <span>Sumber: {candidate.source_info}</span>
+                    </div>
+                  )}
                 </div>
 
                 {candidate.resume_url && (
@@ -362,67 +750,6 @@ export default function CandidateProfile() {
                 )}
               </div>
             </div>
-          </div>
-
-          {/* Assessment Score Card */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-            <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <Star className="text-amber-500" size={20} />
-              Skor Asesmen
-            </h3>
-            
-            <div className="flex items-end gap-2 mb-6">
-              <span className="text-5xl font-black text-slate-900">{isEditing ? Math.round((
-                (editedCandidate.technical_score || 0) + 
-                (editedCandidate.communication_score || 0) + 
-                (editedCandidate.problem_solving_score || 0) + 
-                (editedCandidate.teamwork_score || 0) + 
-                (editedCandidate.leadership_score || 0) + 
-                (editedCandidate.adaptability_score || 0)
-              ) / 6) : averageScore}</span>
-              <span className="text-lg text-slate-500 font-medium mb-1">/ 100</span>
-            </div>
-
-            {isEditing ? (
-              <div className="space-y-4">
-                {[
-                  { key: 'technical_score', label: 'Technical' },
-                  { key: 'communication_score', label: 'Communication' },
-                  { key: 'problem_solving_score', label: 'Problem Solving' },
-                  { key: 'teamwork_score', label: 'Teamwork' },
-                  { key: 'leadership_score', label: 'Leadership' },
-                  { key: 'adaptability_score', label: 'Adaptability' }
-                ].map((score) => (
-                  <div key={score.key} className="flex items-center justify-between">
-                    <label className="text-sm font-medium text-slate-700">{score.label}</label>
-                    <input
-                      type="number"
-                      name={score.key}
-                      min="0"
-                      max="100"
-                      value={editedCandidate[score.key as keyof Candidate] || 0}
-                      onChange={handleInputChange}
-                      className="w-20 bg-white border border-slate-300 rounded-lg px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="h-64 w-full -ml-4" style={{ minWidth: 0, minHeight: 0 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
-                    <PolarGrid stroke="#e2e8f0" />
-                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 11 }} />
-                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                    <Radar name="Skor" dataKey="A" stroke="#6366f1" fill="#6366f1" fillOpacity={0.3} />
-                    <Tooltip 
-                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                      itemStyle={{ color: '#4f46e5', fontWeight: 'bold' }}
-                    />
-                  </RadarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
           </div>
         </div>
 
@@ -537,6 +864,287 @@ export default function CandidateProfile() {
                 {candidate.assessment_reason || <span className="italic opacity-70">Tidak ada alasan penilaian yang diberikan.</span>}
               </p>
             </div>
+
+            {candidate.ai_biodata_summary && (
+              <div className="mt-6 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border border-indigo-100 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                  <Sparkles size={64} className="text-indigo-600" />
+                </div>
+                <button 
+                  onClick={() => setIsBiodataSummaryExpanded(!isBiodataSummaryExpanded)}
+                  className="w-full p-5 flex items-center justify-between text-left relative z-10 focus:outline-none"
+                >
+                  <h4 className="font-bold text-indigo-900 flex items-center gap-2">
+                    <Sparkles size={18} className="text-indigo-600" />
+                    Ringkasan AI (Berdasarkan Biodata)
+                  </h4>
+                  {isBiodataSummaryExpanded ? (
+                    <ChevronUp size={20} className="text-indigo-600" />
+                  ) : (
+                    <ChevronDown size={20} className="text-indigo-600" />
+                  )}
+                </button>
+                {isBiodataSummaryExpanded && (
+                  <div className="px-5 pb-5 text-sm text-indigo-900/80 relative z-10 border-t border-indigo-100/50 pt-4">
+                    <JSONRenderer data={candidate.ai_biodata_summary} />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {candidate.ai_psikotes_summary && (
+              <div className="mt-4 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border border-indigo-100 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                  <Sparkles size={64} className="text-indigo-600" />
+                </div>
+                <button 
+                  onClick={() => setIsPsikotesSummaryExpanded(!isPsikotesSummaryExpanded)}
+                  className="w-full p-5 flex items-center justify-between text-left relative z-10 focus:outline-none"
+                >
+                  <h4 className="font-bold text-indigo-900 flex items-center gap-2">
+                    <Sparkles size={18} className="text-indigo-600" />
+                    Ringkasan AI (Berdasarkan Psikotes)
+                  </h4>
+                  {isPsikotesSummaryExpanded ? (
+                    <ChevronUp size={20} className="text-indigo-600" />
+                  ) : (
+                    <ChevronDown size={20} className="text-indigo-600" />
+                  )}
+                </button>
+                {isPsikotesSummaryExpanded && (
+                  <div className="px-5 pb-5 text-sm text-indigo-900/80 relative z-10 border-t border-indigo-100/50 pt-4">
+                    <JSONRenderer data={candidate.ai_psikotes_summary} />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Psikotes Eksternal */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <FileText className="text-indigo-500" size={20} />
+                Hasil Psikotes Eksternal
+              </h3>
+              <div>
+                <label className="cursor-pointer px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl transition-colors flex items-center gap-2 text-sm font-medium">
+                  {isUploadingPsikotes ? <Loader2 className="animate-spin" size={16} /> : <PlusCircle size={16} />}
+                  {isUploadingPsikotes ? 'Mengunggah...' : 'Upload PDF'}
+                  <input 
+                    type="file" 
+                    className="hidden" 
+                    accept="application/pdf"
+                    onChange={handleUploadPsikotes}
+                    disabled={isUploadingPsikotes}
+                  />
+                </label>
+              </div>
+            </div>
+
+            {candidate.psikotes_result_url ? (
+              <div className="space-y-4">
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={handleAnalyzePsikotes}
+                    disabled={isAnalyzingPsikotes}
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-bold rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all shadow-sm"
+                  >
+                    {isAnalyzingPsikotes ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
+                    {isAnalyzingPsikotes ? 'AI sedang menganalisa...' : 'Analisa Psikotes dengan AI'}
+                  </button>
+                  <a
+                    href={candidate.psikotes_result_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl transition-colors text-sm font-medium shadow-sm"
+                  >
+                    <ExternalLink size={16} />
+                    Buka di Tab Baru
+                  </a>
+                </div>
+
+                <div className="w-full h-[600px] border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
+                  <iframe 
+                    src={`https://docs.google.com/gview?url=${encodeURIComponent(candidate.psikotes_result_url)}&embedded=true`} 
+                    className="w-full h-full"
+                    title="Hasil Psikotes"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
+                <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                <p className="text-slate-500 font-medium">Belum ada hasil psikotes</p>
+                <p className="text-sm text-slate-400 mt-1">Klik tombol "Upload PDF" untuk menambahkan dokumen hasil psikotes eksternal.</p>
+              </div>
+            )}
+          </div>
+
+          {/* External Data Integration */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+            <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+              <Database className="text-indigo-500" size={20} />
+              Data Eksternal
+            </h3>
+            
+            {isSearchingExternal ? (
+              <div className="flex items-center justify-center py-6 text-slate-500">
+                <Loader2 size={24} className="animate-spin text-indigo-600" />
+              </div>
+            ) : linkedData ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 p-3 rounded-xl">
+                  <div className="flex items-center gap-2 text-emerald-700 text-sm font-medium">
+                    <CheckCircle size={16} />
+                    Data berhasil ditautkan
+                  </div>
+                  <button 
+                    onClick={handleUnlinkExternalData}
+                    disabled={isLinking}
+                    className="text-xs font-bold text-rose-600 hover:text-rose-700 disabled:opacity-50"
+                  >
+                    {isLinking ? 'Memproses...' : 'Lepas Tautan'}
+                  </button>
+                </div>
+                <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden max-h-[600px] overflow-y-auto custom-scrollbar">
+                  <ApplicationForm readOnly initialData={linkedData} />
+                </div>
+                <div className="flex justify-end mt-4">
+                  <button
+                    onClick={handleAnalyzeBiodata}
+                    disabled={isAnalyzing}
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-bold rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all shadow-sm"
+                  >
+                    {isAnalyzing ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
+                    {isAnalyzing ? 'AI sedang menganalisa...' : 'Analisa Biodata dengan AI'}
+                  </button>
+                </div>
+              </div>
+            ) : externalData.length > 0 ? (
+              <div className="space-y-4">
+                <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl flex items-start gap-3">
+                  <AlertTriangle className="text-amber-600 shrink-0 mt-0.5" size={16} />
+                  <div className="text-sm text-amber-800">
+                    <span className="font-bold">Ditemukan {externalData.length} data yang mungkin cocok.</span>
+                    <p className="mt-1 opacity-80">Pilih salah satu data di bawah ini untuk ditautkan ke profil ini.</p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  {externalData.map((data, idx) => (
+                    <div key={idx} className="border border-slate-200 rounded-xl p-4 hover:border-indigo-300 transition-colors">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-md">Opsi {idx + 1}</span>
+                        <button
+                          onClick={() => handleLinkExternalData(data.uid_sheet)}
+                          disabled={isLinking}
+                          className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                        >
+                          Tautkan Data Ini
+                        </button>
+                      </div>
+                      <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-2">
+                        {Object.entries(data).filter(([k]) => k !== 'uid_sheet').slice(0, 5).map(([key, val]) => (
+                          <div key={key} className="text-sm">
+                            <span className="font-medium text-slate-500 block text-xs uppercase tracking-wider mb-0.5">{key}</span>
+                            <span className="text-slate-800 whitespace-pre-wrap">{formatValue(val)}</span>
+                          </div>
+                        ))}
+                        {Object.keys(data).length > 6 && (
+                          <div className="text-xs text-indigo-600 font-medium italic mt-2">
+                            + {Object.keys(data).length - 6} field lainnya
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-6 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
+                <Database className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                <p className="text-sm text-slate-500 font-medium">Tidak ada data eksternal yang cocok</p>
+                <p className="text-xs text-slate-400 mt-1">Sistem tidak menemukan data dengan email, nomor telepon, atau nama yang sama.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Interview Evaluations */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <FileText className="text-indigo-500" size={20} />
+                Hasil Interview
+              </h3>
+              {['accepted', 'hired'].includes(candidate.status_screening) && (
+                <button
+                  onClick={() => setIsEvaluationModalOpen(true)}
+                  className="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl transition-colors flex items-center gap-2 text-sm font-medium"
+                >
+                  <PlusCircle size={16} />
+                  Input Hasil
+                </button>
+              )}
+            </div>
+
+            {evaluations.length === 0 ? (
+              <div className="text-center py-8 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
+                <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                <p className="text-slate-500 font-medium">Belum ada hasil interview</p>
+                {['accepted', 'hired'].includes(candidate.status_screening) ? (
+                  <p className="text-sm text-slate-400 mt-1">Klik tombol "Input Hasil" untuk menambahkan penilaian.</p>
+                ) : (
+                  <p className="text-sm text-slate-400 mt-1">Kandidat harus diterima (Lolos Screening) terlebih dahulu untuk mengisi evaluasi.</p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {evaluations.map((evalItem) => (
+                  <div key={evalItem.id} className="border border-slate-200 rounded-xl overflow-hidden">
+                    <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className={cn(
+                          "px-2.5 py-1 rounded-md text-xs font-bold tracking-wider",
+                          evalItem.evaluation_type === 'HR' ? "bg-blue-100 text-blue-700" : "bg-violet-100 text-violet-700"
+                        )}>
+                          {evalItem.evaluation_type}
+                        </span>
+                        <div>
+                          <p className="text-sm font-bold text-slate-900">{evalItem.template?.name}</p>
+                          <p className="text-xs text-slate-500">Oleh: {evalItem.interviewer_name} • {formatDate(evalItem.created_at)}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-0.5">Total Skor</p>
+                        <p className="text-lg font-black text-indigo-600">{evalItem.total_score}</p>
+                      </div>
+                    </div>
+                    <div className="p-4 bg-white">
+                      {/* Display Summary Fields if they exist */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {Object.entries(evalItem.evaluation_data)
+                          .filter(([key]) => key.startsWith('summary_'))
+                          .map(([key, value]) => {
+                            const fieldName = key.replace('summary_', '');
+                            return (
+                              <div key={key} className="space-y-1">
+                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{fieldName}</p>
+                                {Array.isArray(value) ? (
+                                  <ul className="list-disc list-inside text-sm text-slate-700">
+                                    {value.map((v, i) => <li key={i}>{v}</li>)}
+                                  </ul>
+                                ) : (
+                                  <p className="text-sm text-slate-700 whitespace-pre-wrap">{String(value) || '-'}</p>
+                                )}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Schedules */}
@@ -619,6 +1227,13 @@ export default function CandidateProfile() {
 
         </div>
       </div>
+
+      <EvaluationModal
+        isOpen={isEvaluationModalOpen}
+        onClose={() => setIsEvaluationModalOpen(false)}
+        candidateId={id!}
+        onSuccess={() => fetchEvaluations(id!)}
+      />
     </div>
   );
 }

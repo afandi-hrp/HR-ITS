@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Candidate } from '../types';
-import { Search, Filter, RefreshCcw, Users, X, Calendar, Mail, Phone, Briefcase, Star, FileText, ChevronDown, Trash2, CheckSquare, Square } from 'lucide-react';
-import { formatDate, cn } from '../lib/utils';
+import { Search, Filter, RefreshCcw, Users, X, Calendar, Mail, Phone, Briefcase, Star, FileText, ChevronDown, Trash2, CheckSquare, Square, Sparkles, Database } from 'lucide-react';
+import { formatDate, cn, extractPhotoUrl } from '../lib/utils';
 import { useToast } from '../components/ui/use-toast';
+import JSONRenderer from '../components/JSONRenderer';
 
 export default function Logs() {
   const location = useLocation();
@@ -59,7 +60,7 @@ export default function Logs() {
 
     let query = supabase
       .from('candidate_logs')
-      .select('*', { count: 'exact' });
+      .select('*, external_data(raw_data)', { count: 'exact' });
 
     if (debouncedSearch) {
       query = query.or(`full_name.ilike.%${debouncedSearch}%,position.ilike.%${debouncedSearch}%`);
@@ -77,9 +78,50 @@ export default function Logs() {
       query = query.eq('status_screening', statusFilter);
     }
 
-    const { data, error, count } = await query
+    let { data, error, count } = await query
       .order('archived_at', { ascending: false })
       .range(from, to);
+
+    // Fallback if foreign key doesn't exist
+    if (error && error.message.includes('relationship')) {
+      let fallbackQuery = supabase
+        .from('candidate_logs')
+        .select('*', { count: 'exact' });
+
+      if (debouncedSearch) {
+        fallbackQuery = fallbackQuery.or(`full_name.ilike.%${debouncedSearch}%,position.ilike.%${debouncedSearch}%`);
+      }
+      if (startDate) {
+        fallbackQuery = fallbackQuery.gte('date', `${startDate}T00:00:00`);
+      }
+      if (endDate) {
+        fallbackQuery = fallbackQuery.lte('date', `${endDate}T23:59:59`);
+      }
+      if (statusFilter !== 'all') {
+        fallbackQuery = fallbackQuery.eq('status_screening', statusFilter);
+      }
+
+      const fallbackResult = await fallbackQuery
+        .order('archived_at', { ascending: false })
+        .range(from, to);
+
+      data = fallbackResult.data;
+      error = fallbackResult.error;
+      count = fallbackResult.count;
+
+      if (data && data.length > 0) {
+        const linkedIds = data.map(d => d.linked_external_id).filter(Boolean);
+        if (linkedIds.length > 0) {
+           const { data: extData } = await supabase.from('external_data').select('uid_sheet, raw_data').in('uid_sheet', linkedIds);
+           if (extData) {
+             data = data.map(d => {
+               const ext = extData.find(e => e.uid_sheet === d.linked_external_id);
+               return { ...d, external_data: ext ? { raw_data: ext.raw_data } : null };
+             });
+           }
+        }
+      }
+    }
 
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -302,8 +344,12 @@ export default function Logs() {
                 </button>
               )}
 
-              <div className="w-20 h-20 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-3xl font-bold mb-4 shadow-inner">
-                {log.full_name[0]}
+              <div className="w-20 h-20 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-3xl font-bold mb-4 shadow-inner overflow-hidden">
+                {extractPhotoUrl(log.external_data?.raw_data || log.source_info) ? (
+                  <img src={extractPhotoUrl(log.external_data?.raw_data || log.source_info)!} alt={log.full_name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  log.full_name[0]
+                )}
               </div>
               <h3 className="text-lg font-bold text-slate-900 line-clamp-1">{log.full_name}</h3>
               <p className="text-sm text-slate-500 mt-1 line-clamp-1">{log.position}</p>
@@ -508,8 +554,12 @@ export default function Logs() {
             <div className="p-8 space-y-8 max-h-[70vh] overflow-y-auto">
               {/* Header Info */}
               <div className="flex items-start gap-6">
-                <div className="w-20 h-20 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-700 text-3xl font-bold">
-                  {selectedLog.full_name[0]}
+                <div className="w-20 h-20 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-700 text-3xl font-bold overflow-hidden shrink-0">
+                  {extractPhotoUrl(selectedLog.external_data?.raw_data || selectedLog.source_info) ? (
+                    <img src={extractPhotoUrl(selectedLog.external_data?.raw_data || selectedLog.source_info)!} alt={selectedLog.full_name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    selectedLog.full_name[0]
+                  )}
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
@@ -543,6 +593,20 @@ export default function Logs() {
                       <Phone size={16} className="text-slate-400" />
                       {selectedLog.phone}
                     </div>
+                    {selectedLog.source_info && (
+                      <div className="flex items-start gap-2 text-sm text-slate-600">
+                        <Database size={16} className="text-slate-400 mt-0.5 shrink-0" />
+                        <div className="max-w-xs overflow-hidden">
+                          {typeof selectedLog.source_info === 'string' ? (
+                            <span className="truncate">{selectedLog.source_info}</span>
+                          ) : (
+                            <div className="text-xs bg-slate-100 p-2 rounded-lg max-h-32 overflow-y-auto custom-scrollbar">
+                              <JSONRenderer data={selectedLog.source_info} />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -610,15 +674,6 @@ export default function Logs() {
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Catatan / Keterangan</h4>
                   <div className="p-4 bg-amber-50/50 rounded-xl border border-amber-100 text-sm text-slate-700 leading-relaxed">
                     {selectedLog.notes}
-                  </div>
-                </div>
-              )}
-
-              {selectedLog.assessment_summary && (
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Ringkasan Penilaian</h4>
-                  <div className="p-4 bg-indigo-50/50 rounded-xl border border-indigo-100 text-sm text-slate-700 leading-relaxed">
-                    {selectedLog.assessment_summary}
                   </div>
                 </div>
               )}

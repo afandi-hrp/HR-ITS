@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { fetchWithRetry, cn } from '../lib/utils';
-import { Database, CloudDownload, FileText, Trash2, X, Download, Loader2, Search, ChevronLeft, ChevronRight, RefreshCw, CheckSquare } from 'lucide-react';
+import { Database, CloudDownload, FileText, Trash2, X, Download, Loader2, Search, ChevronLeft, ChevronRight, RefreshCw, CheckSquare, Printer } from 'lucide-react';
 import { useToast } from '../components/ui/use-toast';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { useReactToPrint } from 'react-to-print';
+import ApplicationForm from './ApplicationForm';
 
 export default function ExternalData() {
   const [data, setData] = useState<any[]>([]);
@@ -15,6 +15,7 @@ export default function ExternalData() {
   const [webhookDeleteUrl, setWebhookDeleteUrl] = useState('');
   const [showConfirmDelete, setShowConfirmDelete] = useState<any | null>(null);
   const [siteSettings, setSiteSettings] = useState<any>(null);
+  const componentRef = useRef<HTMLDivElement>(null);
   
   // Bulk Delete States
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -25,8 +26,10 @@ export default function ExternalData() {
   // Pagination & Search States
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'hide_archived' | 'available' | 'active' | 'archived'>('hide_archived');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   
   const { toast } = useToast();
 
@@ -48,7 +51,7 @@ export default function ExternalData() {
 
   useEffect(() => {
     fetchData();
-  }, [currentPage, itemsPerPage, debouncedSearchTerm]);
+  }, [currentPage, itemsPerPage, debouncedSearchTerm, statusFilter]);
 
   const loadSiteSettings = async () => {
     try {
@@ -94,6 +97,37 @@ export default function ExternalData() {
         .from('external_data')
         .select('*', { count: 'exact' });
 
+      if (statusFilter !== 'all') {
+        const [activeRes, logsRes] = await Promise.all([
+          supabase.from('candidates').select('linked_external_id').not('linked_external_id', 'is', null),
+          supabase.from('candidate_logs').select('linked_external_id').not('linked_external_id', 'is', null)
+        ]);
+        
+        const activeUids = (activeRes.data || []).map(d => d.linked_external_id).filter(Boolean);
+        const archivedUids = (logsRes.data || []).map(d => d.linked_external_id).filter(Boolean);
+
+        if (statusFilter === 'hide_archived' && archivedUids.length > 0) {
+          query = query.not('uid_sheet', 'in', `(${archivedUids.join(',')})`);
+        } else if (statusFilter === 'available') {
+          const allUsed = [...activeUids, ...archivedUids];
+          if (allUsed.length > 0) {
+            query = query.not('uid_sheet', 'in', `(${allUsed.join(',')})`);
+          }
+        } else if (statusFilter === 'active') {
+          if (activeUids.length > 0) {
+            query = query.in('uid_sheet', activeUids);
+          } else {
+            query = query.in('uid_sheet', ['__EMPTY__']);
+          }
+        } else if (statusFilter === 'archived') {
+          if (archivedUids.length > 0) {
+            query = query.in('uid_sheet', archivedUids);
+          } else {
+            query = query.in('uid_sheet', ['__EMPTY__']);
+          }
+        }
+      }
+
       if (debouncedSearchTerm) {
         // Menggunakan textSearch bawaan Supabase untuk mencari di dalam JSONB.
         // Catatan: Jika ini error, Anda mungkin perlu membuat kolom text search khusus di Supabase
@@ -117,10 +151,33 @@ export default function ExternalData() {
       }
 
       // Flatten data agar sesuai dengan struktur UI yang sudah ada
-      const parsedData = (result || []).map(item => ({
+      let parsedData = (result || []).map(item => ({
         uid_sheet: item.uid_sheet,
         ...item.raw_data
       }));
+
+      // Check linked status
+      if (parsedData.length > 0) {
+        const uids = parsedData.map(d => d.uid_sheet);
+        const [activeRes, logsRes] = await Promise.all([
+          supabase.from('candidates').select('linked_external_id, full_name').in('linked_external_id', uids),
+          supabase.from('candidate_logs').select('linked_external_id, full_name, status_screening').in('linked_external_id', uids)
+        ]);
+
+        const activeMap = new Map((activeRes.data || []).map(d => [d.linked_external_id, d]));
+        const logsMap = new Map((logsRes.data || []).map(d => [d.linked_external_id, d]));
+
+        parsedData = parsedData.map(item => {
+          const active = activeMap.get(item.uid_sheet);
+          const log = logsMap.get(item.uid_sheet);
+          return {
+            ...item,
+            _link_status: active ? 'active' : log ? 'archived' : 'available',
+            _linked_to: active?.full_name || log?.full_name || null,
+            _log_status: log?.status_screening || null
+          };
+        });
+      }
       
       setData(parsedData);
     } catch (err: any) {
@@ -185,8 +242,7 @@ export default function ExternalData() {
       if (response.ok) {
         toast({ 
           title: 'Berhasil', 
-          description: `Permintaan hapus ${selectedIds.length} data telah dikirim. Periksa notifikasi untuk status selanjutnya.`,
-          duration: 10000
+          description: `Permintaan hapus ${selectedIds.length} data telah dikirim. Periksa notifikasi untuk status selanjutnya.`
         });
         setSelectedIds([]);
         setBulkDeleteModalOpen(false);
@@ -252,8 +308,7 @@ export default function ExternalData() {
       if (response.ok) {
         toast({ 
           title: 'Berhasil', 
-          description: 'Permintaan hapus data telah dikirim. Periksa notifikasi untuk status selanjutnya.',
-          duration: 10000
+          description: 'Permintaan hapus data telah dikirim. Periksa notifikasi untuk status selanjutnya.'
         });
         // We don't refresh data immediately since it's async now.
         // The user will get a notification when it's done.
@@ -274,158 +329,66 @@ export default function ExternalData() {
     }
   };
 
-  const generatePDF = async (row: any) => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    
-    const sidebarColorRgb = siteSettings?.sidebar_color ? hexToRgb(siteSettings.sidebar_color) : [79, 70, 229];
-
-    // Professional Color Palette (Plum Theme)
-    const colors = {
-      primary: [142, 69, 133] as [number, number, number], // Plum (#8E4585)
-      secondary: [142, 69, 133] as [number, number, number], // Plum
-      accent: [253, 244, 255] as [number, number, number], // fuchsia-50
-      text: [51, 65, 85] as [number, number, number], // slate-700
-      muted: [134, 25, 143] as [number, number, number], // fuchsia-800
-      border: [232, 121, 249] as [number, number, number], // fuchsia-300
-      bg: [253, 244, 255] as [number, number, number], // fuchsia-50
-    };
-
-    // --- HEADER ---
-    // Top accent bar
-    doc.setFillColor(colors.secondary[0], colors.secondary[1], colors.secondary[2]);
-    doc.rect(0, 0, pageWidth, 8, 'F');
-    
-    // Header Background
-    doc.setFillColor(colors.bg[0], colors.bg[1], colors.bg[2]);
-    doc.rect(0, 8, pageWidth, 35, 'F');
-
-    let textStartX = 14;
-
-    if (siteSettings?.sidebar_logo_url) {
-      try {
-        const response = await fetch(siteSettings.sidebar_logo_url);
-        const blob = await response.blob();
-        const base64data = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.readAsDataURL(blob);
-        });
-        
-        doc.addImage(base64data, 'PNG', 14, 12, 24, 24);
-        textStartX = 44; // Shift text to the right
-      } catch (e) {
-        console.error("Failed to load logo for PDF", e);
-      }
-    }
-
-    // Title
-    doc.setFontSize(22);
-    doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
-    doc.setFont('helvetica', 'bold');
-    doc.text('DETAIL DATA KANDIDAT', textStartX, 26);
-    
-    // Subtitle
-    doc.setFontSize(10);
-    doc.setTextColor(colors.muted[0], colors.muted[1], colors.muted[2]);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Sistem Informasi Rekrutmen - Waruna Group', textStartX, 34);
-
-    // --- INFO SECTION ---
-    const infoY = 55;
-    doc.setFontSize(10);
-    doc.setTextColor(colors.muted[0], colors.muted[1], colors.muted[2]);
-    doc.setFont('helvetica', 'bold');
-    doc.text('DICETAK PADA:', 14, infoY);
-    
-    doc.setFontSize(11);
-    doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
-    doc.text(new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' WIB', 14, infoY + 6);
-
-    // Line Separator
-    doc.setDrawColor(colors.border[0], colors.border[1], colors.border[2]);
-    doc.setLineWidth(0.5);
-    doc.line(14, infoY + 12, pageWidth - 14, infoY + 12);
-
-    // --- CONTENT TABLE ---
-    const tableData = Object.entries(row)
-      .filter(([key]) => !isExcludedKey(key))
-      .map(([key, value]) => [key.toUpperCase(), String(value || '-')]);
-
-    autoTable(doc, {
-      startY: infoY + 20,
-      head: [['INFORMASI', 'KETERANGAN']],
-      body: tableData,
-      theme: 'grid',
-      styles: {
-        font: 'helvetica',
-      },
-      headStyles: {
-        fillColor: colors.secondary,
-        textColor: 255,
-        fontStyle: 'bold',
-        fontSize: 9,
-        halign: 'left',
-        cellPadding: 4,
-        lineColor: colors.secondary,
-        lineWidth: 0.1
-      },
-      bodyStyles: {
-        textColor: colors.text,
-        fontSize: 9,
-        cellPadding: 4,
-        lineColor: colors.border,
-        lineWidth: 0.1
-      },
-      columnStyles: {
-        0: { fontStyle: 'bold', cellWidth: 60, textColor: colors.primary, fillColor: colors.bg },
-        1: { cellWidth: 'auto' }
-      },
-      alternateRowStyles: {
-        fillColor: [255, 255, 255]
-      },
-      margin: { top: 20, right: 14, bottom: 30, left: 14 }
-    });
-
-    // --- FOOTER ---
-    const pageCount = doc.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      
-      // Footer background
-      doc.setFillColor(colors.secondary[0], colors.secondary[1], colors.secondary[2]);
-      doc.rect(0, pageHeight - 20, pageWidth, 20, 'F');
-
-      doc.setFontSize(9);
-      doc.setTextColor(255, 255, 255);
-      doc.setFont('helvetica', 'normal');
-      doc.text(
-        'Dokumen ini dihasilkan secara otomatis oleh sistem.',
-        14,
-        pageHeight - 8
-      );
-      doc.text(
-        `Halaman ${i} dari ${pageCount}`,
-        pageWidth - 14,
-        pageHeight - 8,
-        { align: 'right' }
-      );
-    }
-
-    doc.save(`Data_Eksternal_${new Date().getTime()}.pdf`);
-  };
-
   const handlePreview = (row: any) => {
     setPreviewData(row);
   };
 
-  const handleDownloadPdf = async () => {
-    if (previewData) {
-      await generatePDF(previewData);
-      setPreviewData(null);
+  const formatValue = (val: any): string => {
+    if (val === null || val === undefined || val === '') return '-';
+    if (typeof val === 'object') {
+      if (Array.isArray(val)) {
+        if (val.length === 0) return '-';
+        // Filter out empty objects
+        const nonEmptyItems = val.filter(item => {
+          if (typeof item === 'object' && item !== null) {
+            return Object.values(item).some(v => v !== '');
+          }
+          return true;
+        });
+        if (nonEmptyItems.length === 0) return '-';
+        
+        return nonEmptyItems.map((item, idx) => {
+          if (typeof item === 'object' && item !== null) {
+            return `[${idx + 1}] ` + Object.entries(item)
+              .filter(([_, v]) => v !== '')
+              .map(([k, v]) => `${k}: ${v}`)
+              .join(', ');
+          }
+          return String(item);
+        }).join('\n');
+      }
+      // Plain object
+      const entries = Object.entries(val).filter(([_, v]) => v !== '');
+      if (entries.length === 0) return '-';
+      return entries.map(([k, v]) => `${k}: ${v}`).join('\n');
     }
+    return String(val);
   };
+
+  const handleDownloadPdf = useReactToPrint({
+    contentRef: componentRef,
+    documentTitle: `Data_Pelamar_${previewData?.full_name || 'Kandidat'}`,
+    onBeforePrint: () => {
+      setIsGeneratingPdf(true);
+      return Promise.resolve();
+    },
+    onAfterPrint: () => {
+      setIsGeneratingPdf(false);
+      toast({
+        title: "Berhasil",
+        description: "Dokumen berhasil dicetak/diunduh.",
+      });
+    },
+    onPrintError: (error) => {
+      setIsGeneratingPdf(false);
+      console.error("Print Error:", error);
+      toast({
+        title: "Gagal",
+        description: "Terjadi kesalahan saat mencetak dokumen.",
+        variant: "destructive"
+      });
+    }
+  });
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
@@ -455,6 +418,23 @@ export default function ExternalData() {
             }}
             className="pl-10 pr-4 py-2.5 border border-white/60 bg-white/50 backdrop-blur-md rounded-xl w-full focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-sm"
           />
+        </div>
+
+        <div className="w-full sm:w-auto">
+          <select
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value as any);
+              setCurrentPage(1);
+            }}
+            className="w-full sm:w-auto px-4 py-2.5 border border-white/60 bg-white/50 backdrop-blur-md rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-sm text-slate-700 font-medium"
+          >
+            <option value="all">Semua Data</option>
+            <option value="hide_archived">Sembunyikan Arsip</option>
+            <option value="available">Belum Ditautkan</option>
+            <option value="active">Ditautkan (Aktif)</option>
+            <option value="archived">Diarsipkan</option>
+          </select>
         </div>
         
         <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -588,9 +568,21 @@ export default function ExternalData() {
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-xl text-slate-900 truncate group-hover:text-indigo-600 transition-colors" title={String(titleEntry[1])}>
-                        {String(titleEntry[1]) || 'Tanpa Judul'}
-                      </h3>
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-bold text-xl text-slate-900 truncate group-hover:text-indigo-600 transition-colors" title={String(titleEntry[1])}>
+                          {String(titleEntry[1]) || 'Tanpa Judul'}
+                        </h3>
+                        {row._link_status === 'active' && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-800 whitespace-nowrap shrink-0" title={`Ditautkan ke: ${row._linked_to}`}>
+                            Ditautkan
+                          </span>
+                        )}
+                        {row._link_status === 'archived' && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 whitespace-nowrap shrink-0" title={`Diarsipkan: ${row._linked_to} (${row._log_status})`}>
+                            Diarsipkan
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-indigo-600 font-semibold uppercase tracking-wider mt-1.5 flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
                         {titleEntry[0]}
@@ -602,7 +594,7 @@ export default function ExternalData() {
                     {previewEntries.map(([key, value]) => (
                       <div key={key} className="text-sm">
                         <span className="font-medium text-slate-500 block text-xs uppercase tracking-wider mb-1">{key}</span>
-                        <span className="text-slate-800 font-medium line-clamp-2">{String(value || '-')}</span>
+                        <span className="text-slate-800 font-medium line-clamp-2">{formatValue(value)}</span>
                       </div>
                     ))}
                     {entries.length > 4 && (
@@ -622,8 +614,9 @@ export default function ExternalData() {
                     </button>
                     <button
                       onClick={() => setShowConfirmDelete(row)}
-                      className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50/50 rounded-xl transition-all border border-transparent hover:border-red-200/50"
-                      title="Hapus Data"
+                      disabled={row._link_status === 'active' || row._link_status === 'archived'}
+                      className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50/50 rounded-xl transition-all border border-transparent hover:border-red-200/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={row._link_status === 'active' ? "Tidak dapat menghapus data yang sedang ditautkan ke kandidat aktif" : row._link_status === 'archived' ? "Tidak dapat menghapus data yang sudah diarsipkan" : "Hapus Data"}
                     >
                       <Trash2 size={18} />
                     </button>
@@ -771,80 +764,36 @@ export default function ExternalData() {
               </button>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-8 bg-slate-100/80 flex justify-center custom-scrollbar">
-              {/* High-Fidelity Visual Preview (HTML) */}
-              <div className="w-full max-w-[800px] bg-white shadow-2xl min-h-[1100px] flex flex-col font-sans text-slate-900 shrink-0">
-                {/* PDF Header Mockup */}
-                <div className="w-full h-[24px]" style={{ backgroundColor: '#8E4585' }}></div>
-                <div className="w-full bg-fuchsia-50 px-12 py-8 flex items-center gap-6">
-                  {siteSettings?.sidebar_logo_url && (
-                    <img src={siteSettings.sidebar_logo_url} alt="Logo" className="h-16 w-auto object-contain" />
-                  )}
-                  <div>
-                    <h1 className="text-[28px] leading-none font-bold text-[#8E4585] tracking-tight">DETAIL DATA KANDIDAT</h1>
-                    <p className="text-[13px] text-fuchsia-800 mt-2">Sistem Informasi Rekrutmen - Waruna Group</p>
-                  </div>
-                </div>
-
-                <div className="px-12 py-8 flex-1 space-y-6">
-                  {/* Info Section */}
-                  <div className="space-y-1">
-                    <p className="text-[12px] font-bold text-slate-500">DICETAK PADA:</p>
-                    <p className="text-[14px] font-medium text-slate-900">
-                      {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })} WIB
-                    </p>
-                  </div>
-                  
-                  <div className="w-full h-px bg-slate-200"></div>
-
-                  {/* Table Mockup */}
-                  <div className="border border-fuchsia-200 rounded-sm overflow-hidden">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="text-white text-[11px] font-bold uppercase tracking-wider" style={{ backgroundColor: '#8E4585' }}>
-                          <th className="p-2.5 border w-[35%]" style={{ borderColor: '#8E4585' }}>Informasi</th>
-                          <th className="p-2.5 border w-[65%]" style={{ borderColor: '#8E4585' }}>Keterangan</th>
-                        </tr>
-                      </thead>
-                      <tbody className="text-[11px]">
-                        {Object.entries(previewData)
-                          .filter(([key]) => !isExcludedKey(key))
-                          .map(([key, value], i) => (
-                            <tr key={key} className="bg-white">
-                              <td className="p-2.5 font-bold text-[#8E4585] bg-fuchsia-50 border border-fuchsia-200 uppercase w-[35%] break-words">
-                                {key}
-                              </td>
-                              <td className="p-2.5 text-slate-700 border border-fuchsia-200 w-[65%] break-words whitespace-pre-wrap">
-                                {String(value || '-')}
-                              </td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* PDF Footer Mockup */}
-                <div className="w-full bg-[#8E4585] px-12 py-6 mt-auto flex justify-between items-center text-[10px] text-white">
-                  <p>Dokumen ini dihasilkan secara otomatis oleh sistem.</p>
-                  <p>Halaman 1 dari 1</p>
-                </div>
+            <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-100/80 flex justify-center items-start custom-scrollbar">
+              <div ref={componentRef} className="w-full max-w-4xl bg-white shadow-2xl shrink-0 rounded-2xl overflow-hidden print:shadow-none print:rounded-none">
+                <ApplicationForm readOnly initialData={previewData} />
               </div>
             </div>
             
             <div className="p-5 border-t border-slate-200 bg-white flex items-center justify-end gap-3 shrink-0">
               <button 
                 onClick={() => setPreviewData(null)}
-                className="px-6 py-2.5 text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all"
+                disabled={isGeneratingPdf}
+                className="px-6 py-2.5 text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all disabled:opacity-50"
               >
                 Batal
               </button>
               <button 
                 onClick={handleDownloadPdf}
-                className="px-8 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center gap-2"
+                disabled={isGeneratingPdf}
+                className="px-8 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                <Download size={18} />
-                Konfirmasi & Download PDF
+                {isGeneratingPdf ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    Menyiapkan Cetak...
+                  </>
+                ) : (
+                  <>
+                    <Printer size={18} />
+                    Cetak / Simpan PDF
+                  </>
+                )}
               </button>
             </div>
           </div>

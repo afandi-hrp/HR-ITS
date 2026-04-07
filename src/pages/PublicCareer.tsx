@@ -25,6 +25,7 @@ export default function PublicCareer() {
   const [candidateEmail, setCandidateEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [position, setPosition] = useState('');
+  const [sourceInfo, setSourceInfo] = useState('');
   
   // OTP Data
   const [otpInput, setOtpInput] = useState('');
@@ -41,6 +42,7 @@ export default function PublicCareer() {
   
   // Positions
   const [availablePositions, setAvailablePositions] = useState<string[]>([]);
+  const [availableJobSources, setAvailableJobSources] = useState<string[]>([]);
   const [jobs, setJobs] = useState<OpenRecruitment[]>([]);
   const [loadingPositions, setLoadingPositions] = useState(true);
 
@@ -137,8 +139,39 @@ export default function PublicCareer() {
   }, [captchaText, step]);
 
   useEffect(() => {
-    supabase.from('site_settings').select('*').eq('id', 1).single().then(({ data }) => {
-      if (data) setSettings(data);
+    supabase.from('site_settings').select('*').eq('id', 1).single().then(({ data, error }) => {
+      if (data) {
+        setSettings(data);
+        if (data.job_sources && data.job_sources.length > 0) {
+          setAvailableJobSources(data.job_sources);
+        } else {
+          setAvailableJobSources([
+            'Campus Hiring',
+            'Email',
+            'Instagram',
+            'Jobstreet',
+            'LinkedIn',
+            'Referensi',
+            'Walk In',
+            'TGT Program',
+            'Head Hunter',
+            'Others'
+          ]);
+        }
+      } else if (error) {
+        setAvailableJobSources([
+          'Campus Hiring',
+          'Email',
+          'Instagram',
+          'Jobstreet',
+          'LinkedIn',
+          'Referensi',
+          'Walk In',
+          'TGT Program',
+          'Head Hunter',
+          'Others'
+        ]);
+      }
     });
 
     const fetchPositions = async () => {
@@ -295,6 +328,7 @@ export default function PublicCareer() {
       formData.append('candidateEmail', candidateEmail);
       formData.append('candidatePhone', phoneNumber);
       formData.append('candidatePosition', position);
+      formData.append('sourceInfo', sourceInfo);
       formData.append('fileName', file.name);
       formData.append('mimeType', file.type);
       formData.append('uploadedAt', new Date().toISOString());
@@ -644,6 +678,22 @@ export default function PublicCareer() {
                         className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium"
                       />
                     )}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Info Sumber Lowongan</label>
+                  <div className="relative">
+                    <select
+                      value={sourceInfo}
+                      onChange={(e) => setSourceInfo(e.target.value)}
+                      className="w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium appearance-none"
+                    >
+                      <option value="" disabled>Pilih Sumber Lowongan</option>
+                      {availableJobSources.map((source, idx) => (
+                        <option key={idx} value={source}>{source}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 

@@ -23,15 +23,19 @@ export default function Settings() {
   const [otpWebhookUrl, setOtpWebhookUrl] = useState('');
   const [waWebhookUrl, setWaWebhookUrl] = useState('');
   const [externalDataDeleteWebhookUrl, setExternalDataDeleteWebhookUrl] = useState('');
+  const [aiAnalysisWebhookUrl, setAiAnalysisWebhookUrl] = useState('');
+  const [aiPsikotesWebhookUrl, setAiPsikotesWebhookUrl] = useState('');
   const [loginLogoUrl, setLoginLogoUrl] = useState('');
   const [careerLogoUrl, setCareerLogoUrl] = useState('');
   const [sidebarLogoUrl, setSidebarLogoUrl] = useState('');
   const [sidebarText, setSidebarText] = useState('');
   const [loginAnimationUrl, setLoginAnimationUrl] = useState('');
   const [faviconUrl, setFaviconUrl] = useState('');
+  const [jobSources, setJobSources] = useState<string[]>([]);
+  const [newJobSource, setNewJobSource] = useState('');
   const [loading, setLoading] = useState(false);
   const [uploadingAssets, setUploadingAssets] = useState<Record<string, boolean>>({});
-  const [testingWebhook, setTestingWebhook] = useState<'email' | 'cv' | 'public_cv' | 'sheet' | 'otp' | 'wa' | 'external_data_delete' | null>(null);
+  const [testingWebhook, setTestingWebhook] = useState<'email' | 'cv' | 'public_cv' | 'sheet' | 'otp' | 'wa' | 'external_data_delete' | 'ai_analysis' | 'ai_psikotes' | null>(null);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -60,6 +64,8 @@ export default function Settings() {
       setOtpWebhookUrl(user?.user_metadata.otp_webhook_url || '');
       setWaWebhookUrl(user?.user_metadata.wa_webhook_url || '');
       setExternalDataDeleteWebhookUrl(user?.user_metadata.external_data_delete_webhook_url || '');
+      setAiAnalysisWebhookUrl(user?.user_metadata.ai_analysis_webhook_url || '');
+      setAiPsikotesWebhookUrl(user?.user_metadata.ai_psikotes_webhook_url || '');
       if (user?.user_metadata.webhook_pin) setWebhookPin(user.user_metadata.webhook_pin);
       if (user?.user_metadata.display_pin) setDisplayPin(user.user_metadata.display_pin);
     }).catch((err) => {
@@ -74,6 +80,18 @@ export default function Settings() {
         setSidebarText(data.sidebar_text || '');
         setLoginAnimationUrl(data.login_animation_url || '');
         setFaviconUrl(data.favicon_url || '');
+        setJobSources(data.job_sources && data.job_sources.length > 0 ? data.job_sources : [
+          'Campus Hiring',
+          'Email',
+          'Instagram',
+          'Jobstreet',
+          'LinkedIn',
+          'Referensi',
+          'Walk In',
+          'TGT Program',
+          'Head Hunter',
+          'Others'
+        ]);
       }
     });
   }, []);
@@ -100,6 +118,8 @@ export default function Settings() {
         otp_webhook_url: otpWebhookUrl.trim(),
         wa_webhook_url: waWebhookUrl.trim(),
         external_data_delete_webhook_url: externalDataDeleteWebhookUrl.trim(),
+        ai_analysis_webhook_url: aiAnalysisWebhookUrl.trim(),
+        ai_psikotes_webhook_url: aiPsikotesWebhookUrl.trim(),
         webhook_pin: newWebhookPin || webhookPin,
         display_pin: newDisplayPin || displayPin
       }
@@ -122,6 +142,7 @@ export default function Settings() {
       sidebar_text: sidebarText.trim(),
       login_animation_url: loginAnimationUrl.trim(),
       favicon_url: faviconUrl.trim(),
+      job_sources: jobSources,
       updated_at: new Date().toISOString()
     });
 
@@ -133,8 +154,8 @@ export default function Settings() {
     setLoading(false);
   };
 
-  const testWebhook = async (type: 'email' | 'cv' | 'public_cv' | 'sheet' | 'otp' | 'wa' | 'external_data_delete') => {
-    const url = type === 'email' ? n8nWebhookUrl : type === 'cv' ? cvWebhookUrl : type === 'public_cv' ? publicCvWebhookUrl : type === 'sheet' ? sheetWebhookUrl : type === 'otp' ? otpWebhookUrl : type === 'wa' ? waWebhookUrl : externalDataDeleteWebhookUrl;
+  const testWebhook = async (type: 'email' | 'cv' | 'public_cv' | 'sheet' | 'otp' | 'wa' | 'external_data_delete' | 'ai_analysis' | 'ai_psikotes') => {
+    const url = type === 'email' ? n8nWebhookUrl : type === 'cv' ? cvWebhookUrl : type === 'public_cv' ? publicCvWebhookUrl : type === 'sheet' ? sheetWebhookUrl : type === 'otp' ? otpWebhookUrl : type === 'wa' ? waWebhookUrl : type === 'external_data_delete' ? externalDataDeleteWebhookUrl : type === 'ai_analysis' ? aiAnalysisWebhookUrl : aiPsikotesWebhookUrl;
     if (!url) {
       toast({ title: 'Peringatan', description: 'Silakan masukkan URL webhook terlebih dahulu.', variant: 'destructive' });
       return;
@@ -563,6 +584,50 @@ export default function Settings() {
                     </button>
                   </div>
                   <div className="pt-4 border-t border-slate-200">
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">n8n AI Analysis Webhook URL</label>
+                    <input
+                      type="url"
+                      value={aiAnalysisWebhookUrl}
+                      onChange={(e) => setAiAnalysisWebhookUrl(e.target.value)}
+                      className="block w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                      placeholder="https://n8n.your-domain.com/webhook/..."
+                    />
+                    <p className="mt-2 text-xs text-slate-500 italic">
+                      URL ini akan dipicu saat Anda mengklik tombol "Analisa Biodata dengan AI" di Profil Kandidat.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => testWebhook('ai_analysis')}
+                      disabled={testingWebhook === 'ai_analysis'}
+                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
+                    >
+                      {testingWebhook === 'ai_analysis' ? <Loader2 className="animate-spin" size={16} /> : null}
+                      Test Koneksi AI Analysis Webhook
+                    </button>
+                  </div>
+                  <div className="pt-4 border-t border-slate-200">
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">n8n AI Psikotes Analysis Webhook URL</label>
+                    <input
+                      type="url"
+                      value={aiPsikotesWebhookUrl}
+                      onChange={(e) => setAiPsikotesWebhookUrl(e.target.value)}
+                      className="block w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                      placeholder="https://n8n.your-domain.com/webhook/..."
+                    />
+                    <p className="mt-2 text-xs text-slate-500 italic">
+                      URL ini akan dipicu saat Anda mengklik tombol "Analisa Psikotes dengan AI" di Profil Kandidat.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => testWebhook('ai_psikotes')}
+                      disabled={testingWebhook === 'ai_psikotes'}
+                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
+                    >
+                      {testingWebhook === 'ai_psikotes' ? <Loader2 className="animate-spin" size={16} /> : null}
+                      Test Koneksi AI Psikotes Webhook
+                    </button>
+                  </div>
+                  <div className="pt-4 border-t border-slate-200">
                     <label className="block text-sm font-semibold text-slate-700 mb-2">Ubah PIN Webhook</label>
                     <input
                       type="password"
@@ -737,6 +802,47 @@ export default function Settings() {
                       </div>
                       <p className="mt-2 text-xs text-slate-500 italic">
                         Upload file gambar (PNG/JPG/GIF) atau video (MP4) untuk animasi di halaman login.
+                      </p>
+                    </div>
+                    <div className="pt-4 border-t border-slate-200">
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Sumber Lowongan</label>
+                      <div className="flex gap-2 mb-4">
+                        <input
+                          type="text"
+                          value={newJobSource}
+                          onChange={(e) => setNewJobSource(e.target.value)}
+                          placeholder="Tambah sumber baru..."
+                          className="flex-1 px-4 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (newJobSource.trim() && !jobSources.includes(newJobSource.trim())) {
+                              setJobSources([...jobSources, newJobSource.trim()]);
+                              setNewJobSource('');
+                            }
+                          }}
+                          className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all text-sm font-medium"
+                        >
+                          Tambah
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {jobSources.map((source, idx) => (
+                          <div key={idx} className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg text-sm text-slate-700">
+                            <span>{source}</span>
+                            <button
+                              type="button"
+                              onClick={() => setJobSources(jobSources.filter((_, i) => i !== idx))}
+                              className="text-slate-400 hover:text-red-500 transition-colors"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="mt-2 text-xs text-slate-500 italic">
+                        Daftar ini akan muncul sebagai pilihan di halaman Upload CV dan Karir Publik.
                       </p>
                     </div>
                     <div className="pt-4 border-t border-slate-200">

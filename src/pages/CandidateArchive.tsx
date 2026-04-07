@@ -16,10 +16,13 @@ import {
   CheckCircle, 
   Calendar as CalendarIcon,
   ChevronDown,
-  X
+  X,
+  Sparkles,
+  Database
 } from 'lucide-react';
-import { cn, formatDate } from '../lib/utils';
+import { cn, formatDate, extractPhotoUrl } from '../lib/utils';
 import { useToast } from '../components/ui/use-toast';
+import JSONRenderer from '../components/JSONRenderer';
 
 export default function CandidateArchive() {
   const [logs, setLogs] = useState<Candidate[]>([]);
@@ -48,7 +51,7 @@ export default function CandidateArchive() {
 
     let query = supabase
       .from('candidate_logs')
-      .select('*', { count: 'exact' });
+      .select('*, external_data(raw_data)', { count: 'exact' });
 
     if (debouncedSearch) {
       query = query.or(`full_name.ilike.%${debouncedSearch}%,position.ilike.%${debouncedSearch}%`);
@@ -58,9 +61,44 @@ export default function CandidateArchive() {
       query = query.gte('date', `${dateFilter}T00:00:00`).lte('date', `${dateFilter}T23:59:59`);
     }
 
-    const { data, error, count } = await query
+    let { data, error, count } = await query
       .order('archived_at', { ascending: false })
       .range(from, to);
+
+    // Fallback if foreign key doesn't exist
+    if (error && error.message.includes('relationship')) {
+      let fallbackQuery = supabase
+        .from('candidate_logs')
+        .select('*', { count: 'exact' });
+
+      if (debouncedSearch) {
+        fallbackQuery = fallbackQuery.or(`full_name.ilike.%${debouncedSearch}%,position.ilike.%${debouncedSearch}%`);
+      }
+      if (dateFilter) {
+        fallbackQuery = fallbackQuery.gte('date', `${dateFilter}T00:00:00`).lte('date', `${dateFilter}T23:59:59`);
+      }
+
+      const fallbackResult = await fallbackQuery
+        .order('archived_at', { ascending: false })
+        .range(from, to);
+
+      data = fallbackResult.data;
+      error = fallbackResult.error;
+      count = fallbackResult.count;
+
+      if (data && data.length > 0) {
+        const linkedIds = data.map(d => d.linked_external_id).filter(Boolean);
+        if (linkedIds.length > 0) {
+           const { data: extData } = await supabase.from('external_data').select('uid_sheet, raw_data').in('uid_sheet', linkedIds);
+           if (extData) {
+             data = data.map(d => {
+               const ext = extData.find(e => e.uid_sheet === d.linked_external_id);
+               return { ...d, external_data: ext ? { raw_data: ext.raw_data } : null };
+             });
+           }
+        }
+      }
+    }
 
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -157,8 +195,12 @@ export default function CandidateArchive() {
                 <div className="lg:w-1/3 space-y-5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <Link to={`/candidates/${log.id}`} className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0 text-indigo-700 font-bold text-xl hover:bg-indigo-200 transition-colors">
-                        {log.full_name[0]}
+                      <Link to={`/candidates/${log.id}`} className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0 text-indigo-700 font-bold text-xl hover:bg-indigo-200 transition-colors overflow-hidden">
+                        {extractPhotoUrl(log.external_data?.raw_data || log.source_info) ? (
+                          <img src={extractPhotoUrl(log.external_data?.raw_data || log.source_info)!} alt={log.full_name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                          log.full_name[0]
+                        )}
                       </Link>
                       <div className="min-w-0">
                         <h3 className="text-lg font-bold text-slate-900 truncate">
@@ -282,6 +324,42 @@ export default function CandidateArchive() {
                       <p className="text-sm text-slate-600 leading-relaxed bg-white p-4 rounded-xl border border-slate-100">
                         {log.notes}
                       </p>
+                    </div>
+                  )}
+
+                  {isExpanded && log.source_info && (
+                    <div className="pt-4 border-t border-slate-200">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                        <Database size={14} />
+                        Sumber Info / Data Eksternal
+                      </p>
+                      <div className="text-sm text-slate-600 leading-relaxed bg-white p-4 rounded-xl border border-slate-100">
+                        <JSONRenderer data={log.source_info} />
+                      </div>
+                    </div>
+                  )}
+
+                  {isExpanded && log.ai_biodata_summary && (
+                    <div className="pt-4 border-t border-slate-200">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                        <Sparkles size={14} className="text-indigo-500" />
+                        Ringkasan AI (Berdasarkan Biodata)
+                      </p>
+                      <div className="text-sm text-indigo-900/80 bg-gradient-to-br from-indigo-50 to-purple-50 p-4 rounded-xl border border-indigo-100">
+                        <JSONRenderer data={log.ai_biodata_summary} />
+                      </div>
+                    </div>
+                  )}
+
+                  {isExpanded && log.ai_psikotes_summary && (
+                    <div className="pt-4 border-t border-slate-200">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                        <Sparkles size={14} className="text-indigo-500" />
+                        Ringkasan AI (Berdasarkan Psikotes)
+                      </p>
+                      <div className="text-sm text-indigo-900/80 bg-gradient-to-br from-indigo-50 to-purple-50 p-4 rounded-xl border border-indigo-100">
+                        <JSONRenderer data={log.ai_psikotes_summary} />
+                      </div>
                     </div>
                   )}
                 </div>

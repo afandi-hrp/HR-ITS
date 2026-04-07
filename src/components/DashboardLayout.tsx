@@ -10,13 +10,15 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Archive,
   Upload,
   BarChart3,
   CalendarDays,
   ClipboardList,
   Briefcase,
-  Database
+  Database,
+  KeyRound
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
@@ -34,6 +36,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [settings, setSettings] = useState<SiteSettings | null>(null);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -78,17 +81,52 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'funnel', label: 'Recruitment Funnel', icon: BarChart3 },
-    { id: 'screening', label: 'Screening Awal', icon: Users },
-    { id: 'psikotes', label: 'Jadwal Psikotes', icon: FileText },
-    { id: 'interview', label: 'Jadwal Interview', icon: CalendarDays },
-    { id: 'open-recruitment', label: 'Open Recruitment', icon: Briefcase },
-    { id: 'upload-cv', label: 'Upload CV', icon: Upload },
-    { id: 'templates', label: 'Template Email', icon: FileText },
-    { id: 'logs', label: 'Log Kandidat', icon: ClipboardList },
-    { id: 'archive', label: 'Candidate Archive', icon: Archive },
-    { id: 'external-data', label: 'Data Eksternal', icon: Database },
-    { id: 'settings', label: 'Pengaturan', icon: Settings },
+    {
+      title: 'Tahapan Seleksi',
+      icon: Users,
+      items: [
+        { id: 'screening', label: 'Screening Awal', icon: Users },
+        { id: 'psikotes', label: 'Jadwal Psikotes', icon: FileText },
+        { id: 'interview', label: 'Jadwal Interview', icon: CalendarDays },
+      ]
+    },
+    {
+      title: 'Talent Acquisition',
+      icon: Briefcase,
+      items: [
+        { id: 'open-recruitment', label: 'Open Recruitment', icon: Briefcase },
+        { id: 'upload-cv', label: 'Upload CV', icon: Upload },
+        { id: 'tokens', label: 'Token Pelamar', icon: KeyRound },
+      ]
+    },
+    {
+      title: 'Database Kandidat',
+      icon: Database,
+      items: [
+        { id: 'external-data', label: 'Data Eksternal', icon: Database },
+        { id: 'archive', label: 'Candidate Archive', icon: Archive },
+        { id: 'logs', label: 'Log Kandidat', icon: ClipboardList },
+      ]
+    },
+    {
+      title: 'Template',
+      icon: FileText,
+      items: [
+        { id: 'templates', label: 'Template Email', icon: FileText },
+        { id: 'evaluation-templates', label: 'Template Evaluasi', icon: FileText },
+      ]
+    },
+    { id: 'settings', label: 'Pengaturan', icon: Settings }
   ];
+
+  // Initialize expanded groups based on current path
+  useEffect(() => {
+    navItems.forEach(group => {
+      if ('items' in group && group.items.some(item => item.id === currentPath)) {
+        setExpandedGroups(prev => ({ ...prev, [group.title]: true }));
+      }
+    });
+  }, [currentPath]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -135,34 +173,100 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-2 overflow-y-auto relative [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          {navItems.map((item) => (
-            <Link
-              key={item.id}
-              to={`/${item.id}`}
-              onClick={() => setIsMobileMenuOpen(false)}
-              className={cn(
-                "flex items-center w-full px-3 py-3 rounded-2xl transition-all duration-300 group relative",
-                currentPath === item.id 
-                  ? "text-slate-900 shadow-lg shadow-black/10 translate-x-1" 
-                  : "text-white/60 hover:bg-white/5 hover:text-white hover:translate-x-1"
-              )}
-            >
-              {currentPath === item.id && (
-                <motion.div
-                  layoutId="activeNav"
-                  className="absolute inset-0 bg-white rounded-2xl"
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                />
-              )}
-              <div className="relative z-10 flex items-center w-full">
-                <item.icon className={cn(
-                  "w-5 h-5 shrink-0 transition-transform duration-300",
-                  currentPath === item.id ? "text-slate-900 scale-110" : "text-white/40 group-hover:text-white/60 group-hover:scale-110"
-                )} />
-                {isSidebarOpen && <span className="ml-3 font-medium">{item.label}</span>}
-              </div>
-            </Link>
-          ))}
+          {navItems.map((item, index) => {
+            if ('items' in item) {
+              const isExpanded = expandedGroups[item.title];
+              const isActiveGroup = item.items.some(sub => sub.id === currentPath);
+              
+              return (
+                <div key={item.title} className="space-y-1">
+                  <button
+                    onClick={() => {
+                      if (!isSidebarOpen) setIsSidebarOpen(true);
+                      setExpandedGroups(prev => ({ ...prev, [item.title]: !isExpanded }));
+                    }}
+                    className={cn(
+                      "w-full flex items-center justify-between px-3 py-3 rounded-2xl transition-all duration-300 group",
+                      isActiveGroup && !isExpanded ? "bg-white/10 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"
+                    )}
+                  >
+                    <div className="flex items-center">
+                      <item.icon className={cn(
+                        "w-5 h-5 shrink-0 transition-transform duration-300",
+                        isActiveGroup && !isExpanded ? "text-white scale-110" : "text-white/40 group-hover:text-white/60 group-hover:scale-110"
+                      )} />
+                      {isSidebarOpen && <span className="ml-3 font-medium text-[15px]">{item.title}</span>}
+                    </div>
+                    {isSidebarOpen && (
+                      <ChevronDown size={16} className={cn("transition-transform duration-300", isExpanded ? "rotate-180" : "")} />
+                    )}
+                  </button>
+                  
+                  {isExpanded && isSidebarOpen && (
+                    <div className="pl-4 pr-1 space-y-1 mt-1">
+                      {item.items.map(subItem => (
+                        <Link
+                          key={subItem.id}
+                          to={`/${subItem.id}`}
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className={cn(
+                            "flex items-center w-full px-3 py-2.5 rounded-xl transition-all duration-300 group relative",
+                            currentPath === subItem.id 
+                              ? "text-slate-900 shadow-lg shadow-black/10 translate-x-1" 
+                              : "text-white/60 hover:bg-white/5 hover:text-white hover:translate-x-1"
+                          )}
+                        >
+                          {currentPath === subItem.id && (
+                            <motion.div
+                              layoutId="activeNav"
+                              className="absolute inset-0 bg-white rounded-xl"
+                              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                            />
+                          )}
+                          <div className="relative z-10 flex items-center w-full">
+                            <div className={cn(
+                              "w-1.5 h-1.5 rounded-full mr-3 transition-colors",
+                              currentPath === subItem.id ? "bg-slate-900" : "bg-white/20 group-hover:bg-white/60"
+                            )} />
+                            <span className="font-medium text-[15px]">{subItem.label}</span>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            return (
+              <Link
+                key={item.id}
+                to={`/${item.id}`}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={cn(
+                  "flex items-center w-full px-3 py-3 rounded-2xl transition-all duration-300 group relative",
+                  currentPath === item.id 
+                    ? "text-slate-900 shadow-lg shadow-black/10 translate-x-1" 
+                    : "text-white/60 hover:bg-white/5 hover:text-white hover:translate-x-1"
+                )}
+              >
+                {currentPath === item.id && (
+                  <motion.div
+                    layoutId="activeNav"
+                    className="absolute inset-0 bg-white rounded-2xl"
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  />
+                )}
+                <div className="relative z-10 flex items-center w-full">
+                  <item.icon className={cn(
+                    "w-5 h-5 shrink-0 transition-transform duration-300",
+                    currentPath === item.id ? "text-slate-900 scale-110" : "text-white/40 group-hover:text-white/60 group-hover:scale-110"
+                  )} />
+                  {isSidebarOpen && <span className="ml-3 font-medium text-[15px]">{item.label}</span>}
+                </div>
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="p-4 border-t border-white/5">
@@ -191,7 +295,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
             )}
           >
             <LogOut className="w-5 h-5 shrink-0" />
-            {isSidebarOpen && <span className="ml-3 font-medium">Keluar</span>}
+            {isSidebarOpen && <span className="ml-3 font-medium text-[15px]">Keluar</span>}
           </button>
         </div>
       </aside>

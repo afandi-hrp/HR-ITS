@@ -28,6 +28,7 @@ export default function RecruitmentFunnel() {
   const [pdfDataUri, setPdfDataUri] = useState<string | null>(null);
   const [showEfficiencyInfo, setShowEfficiencyInfo] = useState(false);
   const [monthlyMetrics, setMonthlyMetrics] = useState<{label: string, count: number, avgDaysToHire: number}[]>([]);
+  const [sourceDistribution, setSourceDistribution] = useState<{source: string, count: number}[]>([]);
   const [pipelineEfficiency, setPipelineEfficiency] = useState<{stage: string, days: number}[]>([]);
   const [stats, setStats] = useState({
     total: 0,
@@ -211,8 +212,19 @@ export default function RecruitmentFunnel() {
       const [psikotesSchedules, interviewSchedules, activeCandidates] = await Promise.all([
         supabase.from('psikotes_schedules').select('candidate_id, created_at, schedule_date'),
         supabase.from('interview_schedules').select('candidate_id, created_at, schedule_date'),
-        supabase.from('candidates').select('id, created_at')
+        supabase.from('candidates').select('id, created_at, source_info')
       ]);
+
+      // Calculate Source Distribution
+      const sourceCounts: Record<string, number> = {};
+      (activeCandidates.data || []).forEach(c => {
+        const source = c.source_info || 'Tidak Diketahui';
+        sourceCounts[source] = (sourceCounts[source] || 0) + 1;
+      });
+      const distribution = Object.entries(sourceCounts)
+        .map(([source, count]) => ({ source, count }))
+        .sort((a, b) => b.count - a.count);
+      setSourceDistribution(distribution);
 
       const months: {label: string, month: number, year: number, count: number, totalDays: number}[] = [];
       const now = new Date();
@@ -797,7 +809,7 @@ export default function RecruitmentFunnel() {
       </div>
 
       {/* New Metrics Panels */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Monthly Metrics */}
         <div className="bg-white/40 backdrop-blur-xl p-6 sm:p-8 rounded-3xl border border-white/60 shadow-2xl overflow-hidden flex flex-col">
           <div className="flex items-center justify-between mb-6">
@@ -916,6 +928,48 @@ export default function RecruitmentFunnel() {
                 </div>
               );
             })}
+          </div>
+        </div>
+
+        {/* Source Distribution */}
+        <div className="bg-white/40 backdrop-blur-xl p-6 sm:p-8 rounded-3xl border border-white/60 shadow-2xl overflow-hidden flex flex-col">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-600"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+              Sumber Lowongan
+            </h2>
+            <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-full border border-indigo-100">
+              Total Kandidat
+            </span>
+          </div>
+          
+          <div className="flex-1 flex flex-col justify-center gap-4 overflow-y-auto pr-2 max-h-[300px]">
+            {sourceDistribution.map((item, index) => {
+              const maxCount = Math.max(...sourceDistribution.map(s => s.count), 1);
+              const countWidth = Math.max((item.count / maxCount) * 100, 0);
+              
+              return (
+                <div key={index} className="flex items-center gap-3">
+                  <div className="w-24 text-xs font-bold text-slate-600 text-right shrink-0 leading-tight truncate" title={item.source}>
+                    {item.source}
+                  </div>
+                  <div className="flex-1 flex items-center gap-2">
+                    <div className="flex-1 bg-white/40 border border-white/60 h-2.5 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-indigo-500 rounded-full transition-all duration-500" 
+                        style={{ width: `${countWidth}%` }} 
+                      />
+                    </div>
+                    <span className="text-[10px] font-bold text-indigo-600 w-6">{item.count}</span>
+                  </div>
+                </div>
+              );
+            })}
+            {sourceDistribution.length === 0 && (
+              <div className="text-center text-slate-500 text-sm py-4">
+                Belum ada data sumber lowongan
+              </div>
+            )}
           </div>
         </div>
       </div>

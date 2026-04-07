@@ -13,6 +13,25 @@ export function formatDate(date: string | Date) {
   });
 }
 
+export function normalizePhone(phone: string | null | undefined): string {
+  if (!phone) return '';
+  let cleaned = phone.replace(/\D/g, '');
+  if (cleaned.startsWith('62')) {
+    cleaned = '0' + cleaned.substring(2);
+  }
+  return cleaned;
+}
+
+export function normalizeName(name: string | null | undefined): string {
+  if (!name) return '';
+  return name.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+export function normalizeEmail(email: string | null | undefined): string {
+  if (!email) return '';
+  return email.toLowerCase().trim();
+}
+
 export async function fetchWithRetry(url: string, options?: RequestInit, maxRetries = 3) {
   let retries = maxRetries;
   while (retries > 0) {
@@ -50,4 +69,41 @@ export async function fetchWithRetry(url: string, options?: RequestInit, maxRetr
     return response;
   }
   throw new Error(`Failed to fetch ${url} after ${maxRetries} retries`);
+}
+
+export function extractPhotoUrl(sourceInfo: any): string | null {
+  if (!sourceInfo) return null;
+  
+  let data = sourceInfo;
+  if (typeof data === 'string') {
+    try {
+      data = JSON.parse(data);
+    } catch (e) {
+      return null;
+    }
+  }
+  
+  if (typeof data !== 'object' || data === null) return null;
+
+  const photoKeys = ['foto', 'photo', 'avatar', 'image_url', 'picture', 'url_foto', 'profile_picture'];
+  
+  // Recursive search for photo URL
+  const searchPhoto = (obj: any): string | null => {
+    if (typeof obj !== 'object' || obj === null) return null;
+    
+    for (const key of Object.keys(obj)) {
+      const lowerKey = key.toLowerCase();
+      if (photoKeys.some(pk => lowerKey.includes(pk)) && typeof obj[key] === 'string' && obj[key].startsWith('http')) {
+        return obj[key];
+      }
+      
+      if (typeof obj[key] === 'object') {
+        const found = searchPhoto(obj[key]);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  return searchPhoto(data);
 }

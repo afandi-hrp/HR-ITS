@@ -600,6 +600,14 @@ export default function Screening() {
                       <Briefcase size={14} className="text-slate-400 shrink-0" />
                       <span className="font-medium text-indigo-600 truncate">{candidate.position}</span>
                     </div>
+                    {candidate.source_info && (
+                      <div className="flex items-center gap-2 text-xs text-slate-600">
+                        <div className="w-3.5 h-3.5 flex items-center justify-center shrink-0">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+                        </div>
+                        <span className="truncate">Sumber: {candidate.source_info}</span>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2 text-xs text-slate-600">
                       <Phone size={14} className="text-slate-400 shrink-0" />
                             <span className="truncate">{candidate.phone || '-'}</span>
@@ -827,6 +835,14 @@ export default function Screening() {
                                   </div>
                                   {candidate.work_experience || '-'}
                                 </div>
+                                {candidate.source_info && (
+                                  <div className="flex items-center gap-3 text-sm text-slate-600">
+                                    <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+                                    </div>
+                                    Sumber: {candidate.source_info}
+                                  </div>
+                                )}
                                 {candidate.resume_url && (
                                   <div className="pt-2">
                                     <a 

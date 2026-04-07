@@ -23,7 +23,9 @@ export default function UploadCV() {
   const [candidateName, setCandidateName] = useState('');
   const [candidateEmail, setCandidateEmail] = useState('');
   const [position, setPosition] = useState('');
+  const [sourceInfo, setSourceInfo] = useState('');
   const [availablePositions, setAvailablePositions] = useState<string[]>([]);
+  const [availableJobSources, setAvailableJobSources] = useState<string[]>([]);
   const [loadingPositions, setLoadingPositions] = useState(true);
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
@@ -123,21 +125,58 @@ export default function UploadCV() {
   }, [currentPage, itemsPerPage, debouncedSearch]);
 
   useEffect(() => {
-    const fetchPositions = async () => {
+    const fetchPositionsAndSources = async () => {
       try {
-        const { data, error } = await supabase
+        const { data: positionsData, error: positionsError } = await supabase
           .from('open_recruitment')
           .select('position')
           .order('created_at', { ascending: false });
 
-        if (error) {
-          console.error('Error fetching positions:', error);
-        } else if (data) {
-          const positions = Array.from(new Set(data.map(item => item.position)));
+        if (positionsError) {
+          console.error('Error fetching positions:', positionsError);
+        } else if (positionsData) {
+          const positions = Array.from(new Set(positionsData.map(item => item.position)));
           setAvailablePositions(positions);
           if (positions.length > 0 && !position) {
             setPosition(positions[0]);
           }
+        }
+
+        const { data: settingsData, error: settingsError } = await supabase
+          .from('site_settings')
+          .select('job_sources')
+          .eq('id', 1)
+          .single();
+
+        if (settingsError) {
+          console.error('Error fetching job sources:', settingsError);
+          setAvailableJobSources([
+            'Campus Hiring',
+            'Email',
+            'Instagram',
+            'Jobstreet',
+            'LinkedIn',
+            'Referensi',
+            'Walk In',
+            'TGT Program',
+            'Head Hunter',
+            'Others'
+          ]);
+        } else if (settingsData && settingsData.job_sources && settingsData.job_sources.length > 0) {
+          setAvailableJobSources(settingsData.job_sources);
+        } else {
+          setAvailableJobSources([
+            'Campus Hiring',
+            'Email',
+            'Instagram',
+            'Jobstreet',
+            'LinkedIn',
+            'Referensi',
+            'Walk In',
+            'TGT Program',
+            'Head Hunter',
+            'Others'
+          ]);
         }
       } catch (err) {
         console.error(err);
@@ -146,7 +185,7 @@ export default function UploadCV() {
       }
     };
 
-    fetchPositions();
+    fetchPositionsAndSources();
   }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -214,6 +253,7 @@ export default function UploadCV() {
         formData.append('candidateName', candidateName);
         formData.append('candidateEmail', candidateEmail);
         formData.append('candidatePosition', position);
+        formData.append('sourceInfo', sourceInfo);
         formData.append('fileName', file.name);
         formData.append('mimeType', file.type);
         formData.append('uploadedAt', new Date().toISOString());
@@ -355,6 +395,19 @@ export default function UploadCV() {
                       className="w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium"
                     />
                   )}
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Info Sumber Lowongan</label>
+                  <select
+                    value={sourceInfo}
+                    onChange={(e) => setSourceInfo(e.target.value)}
+                    className="block w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium appearance-none"
+                  >
+                    <option value="" disabled>Pilih Sumber Lowongan</option>
+                    {availableJobSources.map((source, idx) => (
+                      <option key={idx} value={source}>{source}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
