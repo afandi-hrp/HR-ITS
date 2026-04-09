@@ -602,10 +602,6 @@ export default function Screening() {
                         <span className="text-[10px] font-bold text-indigo-400 uppercase">CV</span>
                         <span className="text-xs font-bold text-indigo-700">{candidate.assessment_score || 0}</span>
                       </div>
-                      <div className="flex items-center gap-1.5 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100" title="Skor Asesmen (Manual)">
-                        <span className="text-[10px] font-bold text-emerald-500 uppercase">Asesmen</span>
-                        <span className="text-xs font-bold text-emerald-700">{getManualAssessmentScore(candidate)}</span>
-                      </div>
                     </div>
                   </div>
                   <div className="p-5 flex-1 space-y-3">
@@ -705,25 +701,6 @@ export default function Screening() {
                               )}
                             </>
                           )}
-                          {candidate.status_screening === 'accepted' && (
-                            <button 
-                              onClick={() => {
-                                setAssessmentScores({
-                                  technical_score: candidate.technical_score || 0,
-                                  communication_score: candidate.communication_score || 0,
-                                  problem_solving_score: candidate.problem_solving_score || 0,
-                                  teamwork_score: candidate.teamwork_score || 0,
-                                  leadership_score: candidate.leadership_score || 0,
-                                  adaptability_score: candidate.adaptability_score || 0,
-                                });
-                                setAssessmentModalData(candidate);
-                              }}
-                              title="Rincian Skor Asesmen"
-                              className="p-2 bg-sky-500 text-white rounded-xl hover:bg-sky-600 transition-all"
-                            >
-                              <Star size={16} />
-                            </button>
-                          )}
                         </div>
                       </div>
                     );
@@ -813,10 +790,6 @@ export default function Screening() {
                             <div className="flex items-center gap-2 bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100" title="Skor CV (AI)">
                               <span className="text-[10px] font-bold text-indigo-400 uppercase">CV</span>
                               <span className="text-sm font-bold text-indigo-700">{candidate.assessment_score || 0}</span>
-                            </div>
-                            <div className="flex items-center gap-2 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100" title="Skor Asesmen (Manual)">
-                              <span className="text-[10px] font-bold text-emerald-500 uppercase">Asesmen</span>
-                              <span className="text-sm font-bold text-emerald-700">{getManualAssessmentScore(candidate)}</span>
                             </div>
                           </div>
                           <div className={cn("p-2 rounded-lg bg-slate-100 text-slate-400 transition-transform duration-300", isExpanded && "rotate-180")}>
@@ -1021,25 +994,6 @@ export default function Screening() {
                                     </button>
                                   )}
                                 </>
-                              )}
-                              {candidate.status_screening === 'accepted' && (
-                                <button 
-                                  onClick={() => {
-                                    setAssessmentScores({
-                                      technical_score: candidate.technical_score || 0,
-                                      communication_score: candidate.communication_score || 0,
-                                      problem_solving_score: candidate.problem_solving_score || 0,
-                                      teamwork_score: candidate.teamwork_score || 0,
-                                      leadership_score: candidate.leadership_score || 0,
-                                      adaptability_score: candidate.adaptability_score || 0,
-                                    });
-                                    setAssessmentModalData(candidate);
-                                  }}
-                                  title="Rincian Skor Asesmen"
-                                  className="p-3.5 bg-sky-500 text-white rounded-2xl hover:bg-sky-600 shadow-lg shadow-sky-100 transition-all hover:-translate-y-0.5"
-                                >
-                                  <Star size={22} />
-                                </button>
                               )}
                             </div>
                           </div>

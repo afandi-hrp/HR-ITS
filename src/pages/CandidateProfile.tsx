@@ -83,6 +83,13 @@ export default function CandidateProfile() {
   const [newNote, setNewNote] = useState('');
   const [loadingNotes, setLoadingNotes] = useState(false);
   const [isAddingNote, setIsAddingNote] = useState(false);
+  const [expandedEvaluations, setExpandedEvaluations] = useState<string[]>([]);
+
+  const toggleEvaluation = (id: string) => {
+    setExpandedEvaluations(prev => 
+      prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id]
+    );
+  };
 
   const [isPrinting, setIsPrinting] = useState(false);
   const [isZipping, setIsZipping] = useState(false);
@@ -1616,18 +1623,60 @@ export default function CandidateProfile() {
                           <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-0.5">Total Skor</p>
                           <p className="text-lg font-black text-indigo-600">{evalItem.total_score}</p>
                         </div>
-                        <button
-                          onClick={() => {
-                            setExistingEvaluation(evalItem);
-                            setIsEvaluationModalOpen(true);
-                          }}
-                          className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                          title="Edit Penilaian"
-                        >
-                          <Edit2 size={16} />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => toggleEvaluation(evalItem.id)}
+                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                            title={expandedEvaluations.includes(evalItem.id) ? "Tutup Preview" : "Buka Preview"}
+                          >
+                            {expandedEvaluations.includes(evalItem.id) ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setExistingEvaluation(evalItem);
+                              setIsEvaluationModalOpen(true);
+                            }}
+                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                            title="Edit Penilaian"
+                          >
+                            <Edit2 size={18} />
+                          </button>
+                        </div>
                       </div>
                     </div>
+                    {expandedEvaluations.includes(evalItem.id) && (
+                      <div className="p-4 bg-white border-b border-slate-100">
+                        {evalItem.template?.form_schema?.categories?.map((category, catIdx) => (
+                          <div key={catIdx} className="mb-6 last:mb-0">
+                            <h4 className="font-bold text-slate-800 mb-3 pb-2 border-b border-slate-100">{category.name}</h4>
+                            <div className="space-y-3">
+                              {category.criteria.map((crit, critIdx) => {
+                                const score = evalItem.evaluation_data[`cat_${catIdx}_crit_${critIdx}`];
+                                const scaleItem = evalItem.template?.form_schema?.scale?.find(s => s.score === score);
+                                return (
+                                  <div key={critIdx} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-sm bg-slate-50 p-3 rounded-lg">
+                                    <span className="text-slate-700 font-medium">{crit.name}</span>
+                                    <div className="flex items-center gap-3 shrink-0">
+                                      {scaleItem && <span className="text-xs text-slate-500 bg-white border border-slate-200 px-2 py-1 rounded-md">{scaleItem.label}</span>}
+                                      <span className="font-bold text-indigo-700 bg-indigo-50 px-3 py-1 rounded-md min-w-[40px] text-center">{score || '-'}</span>
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                        {evalItem.notes && (
+                          <div className="mt-6 pt-4 border-t border-slate-200">
+                            <h4 className="font-bold text-slate-800 mb-2 text-sm flex items-center gap-2">
+                              <FileText size={16} className="text-slate-400" />
+                              Catatan Tambahan
+                            </h4>
+                            <p className="text-sm text-slate-600 whitespace-pre-wrap bg-amber-50 p-4 rounded-xl border border-amber-100">{evalItem.notes}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <div className="p-4 bg-white">
                       {/* Display Summary Fields if they exist */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
