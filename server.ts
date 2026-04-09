@@ -97,6 +97,52 @@ app.use((req: any, res, next) => {
     });
   });
 
+  // Feature: Update User Role (Admin Only)
+  app.post("/api/users/update-role", async (req, res) => {
+    const { userId, role, department } = req.body;
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    try {
+      const supabaseAdmin = getSupabaseAdmin();
+      const token = authHeader.replace('Bearer ', '');
+      
+      // Verify token
+      const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+      if (authError || !user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      // Verify HR_ADMIN role
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      if (profile?.role !== 'HR_ADMIN') {
+        return res.status(403).json({ error: "Forbidden: Only HR Admin can update roles" });
+      }
+
+      // Update target user
+      const { data, error } = await supabaseAdmin
+        .from('profiles')
+        .update({ role, department: department || null })
+        .eq('id', userId)
+        .select();
+
+      if (error) throw error;
+
+      res.json({ success: true, data });
+    } catch (error: any) {
+      console.error("Error updating user role:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Feature: Move Candidate to Log
   app.post("/api/candidates/move-to-log", async (req, res) => {
     const { candidateId, notes } = req.body;

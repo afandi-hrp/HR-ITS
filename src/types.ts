@@ -2,6 +2,8 @@ export interface Profile {
   id: string;
   full_name: string | null;
   avatar_url: string | null;
+  role?: 'HR_ADMIN' | 'USER_MANAGER' | string;
+  department?: string | null;
 }
 
 export interface Candidate {
@@ -42,6 +44,8 @@ export interface Candidate {
   psikotes_result_url?: string | null;
   source_info?: string | null;
   external_data?: { raw_data: any } | null;
+  assigned_to?: string | null;
+  assignee?: Profile | null;
 }
 
 export interface EmailTemplate {

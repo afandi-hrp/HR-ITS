@@ -642,7 +642,7 @@ export default function ExternalData() {
                 Batal
               </button>
               <button 
-                onClick={handleDownloadPdf}
+                onClick={() => handleDownloadPdf()}
                 disabled={isGeneratingPdf}
                 className="px-8 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
               >

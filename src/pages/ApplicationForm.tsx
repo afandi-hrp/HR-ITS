@@ -4,11 +4,12 @@ import { useToast } from '../components/ui/use-toast';
 import { Loader2, Upload, CheckCircle2, Plus, Trash2, Eraser, FileText } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import SignatureCanvas from 'react-signature-canvas';
-import { cn } from '../lib/utils';
+import { cn, getEmbedUrl } from '../lib/utils';
 
 interface ApplicationFormProps {
   readOnly?: boolean;
   initialData?: any;
+  hideSalary?: boolean;
 }
 
 const renderAttachment = (url: string | undefined | null, label: string) => {
@@ -32,7 +33,7 @@ const renderAttachment = (url: string | undefined | null, label: string) => {
   );
 };
 
-export default function ApplicationForm({ readOnly = false, initialData = null }: ApplicationFormProps) {
+export default function ApplicationForm({ readOnly = false, initialData = null, hideSalary = false }: ApplicationFormProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -44,9 +45,11 @@ export default function ApplicationForm({ readOnly = false, initialData = null }
   const [ijazahFile, setIjazahFile] = useState<File | null>(null);
   const [transcriptFile, setTranscriptFile] = useState<File | null>(null);
   const [otherDocFile, setOtherDocFile] = useState<File | null>(null);
+  const [payslipFile, setPayslipFile] = useState<File | null>(null);
   const [token, setToken] = useState('');
 
   const sigCanvas = useRef<SignatureCanvas>(null);
+  const remunerationSigCanvas = useRef<SignatureCanvas>(null);
 
   useEffect(() => {
     loadSiteSettings();
@@ -192,7 +195,13 @@ export default function ApplicationForm({ readOnly = false, initialData = null }
       salary_benefit: ''
     },
     join_date: '',
-    declaration_agreed: false
+    declaration_agreed: false,
+    
+    // Remuneration fields
+    current_salary: '',
+    expected_salary: '',
+    remuneration_signature_name: '',
+    remuneration_signature_date: new Date().toISOString().split('T')[0],
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -352,9 +361,17 @@ export default function ApplicationForm({ readOnly = false, initialData = null }
       if (transcriptFile) transcriptUrl = await uploadFile(transcriptFile, 'transcript');
       if (otherDocFile) otherDocUrl = await uploadFile(otherDocFile, 'other');
 
+      let payslipUrl = '';
+      if (payslipFile) payslipUrl = await uploadFile(payslipFile, 'payslip');
+
       let signatureDataUrl = '';
       if (sigCanvas.current && !sigCanvas.current.isEmpty()) {
         signatureDataUrl = sigCanvas.current.getCanvas().toDataURL('image/png');
+      }
+
+      let remunerationSignatureDataUrl = '';
+      if (remunerationSigCanvas.current && !remunerationSigCanvas.current.isEmpty()) {
+        remunerationSignatureDataUrl = remunerationSigCanvas.current.getCanvas().toDataURL('image/png');
       }
 
       // Prepare data to save
@@ -365,7 +382,9 @@ export default function ApplicationForm({ readOnly = false, initialData = null }
         ijazah_url: ijazahUrl,
         transcript_url: transcriptUrl,
         other_doc_url: otherDocUrl,
+        payslip_url: payslipUrl,
         signature_url: signatureDataUrl,
+        remuneration_signature_url: remunerationSignatureDataUrl,
         job_vacancy_info: formData.job_vacancy_info.includes('Lainnya') 
           ? [...formData.job_vacancy_info.filter(i => i !== 'Lainnya'), `Lainnya: ${formData.job_vacancy_other}`].join(', ')
           : formData.job_vacancy_info.join(', '),
@@ -427,20 +446,21 @@ export default function ApplicationForm({ readOnly = false, initialData = null }
   }
 
   return (
-    <div className={cn("bg-slate-50", readOnly ? "py-0" : "min-h-screen py-12 px-4 sm:px-6 lg:px-8")} id="application-form-container">
-      <div className={cn("mx-auto bg-white overflow-hidden", readOnly ? "w-full" : "max-w-4xl rounded-2xl shadow-xl")}>
-        <div className="bg-[#8E4585] px-8 py-6 text-white flex items-center gap-4">
-          {siteSettings?.career_logo_url && (
-            <img src={siteSettings.career_logo_url} alt="Logo" className="w-12 h-12 sm:w-16 sm:h-16 object-contain bg-white rounded-xl p-1.5 shadow-sm shrink-0" />
-          )}
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold">Formulir Data Pribadi Calon Karyawan</h1>
-            <p className="text-fuchsia-100 mt-1 text-sm sm:text-base">Harap isi data berikut dengan lengkap dan benar.</p>
+    <div className={cn("bg-slate-50", readOnly ? "py-0 bg-transparent flex flex-col gap-6" : "min-h-screen py-12 px-4 sm:px-6 lg:px-8")} id="application-form-container">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className={cn("mx-auto bg-white overflow-hidden print:overflow-visible print:shadow-none print:border-none", readOnly ? "w-full rounded-2xl shadow-sm border border-slate-200" : "max-w-4xl rounded-2xl shadow-xl")}>
+          <div className="bg-[#8E4585] px-8 py-6 text-white flex items-center gap-4">
+            {siteSettings?.career_logo_url && (
+              <img src={siteSettings.career_logo_url} alt="Logo" className="w-12 h-12 sm:w-16 sm:h-16 object-contain bg-white rounded-xl p-1.5 shadow-sm shrink-0" />
+            )}
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold">Formulir Data Pribadi Calon Karyawan</h1>
+              <p className="text-fuchsia-100 mt-1 text-sm sm:text-base">Harap isi data berikut dengan lengkap dan benar.</p>
+            </div>
           </div>
-        </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-8">
-          <fieldset disabled={readOnly} className="space-y-8">
+          <div className="p-8">
+            <fieldset disabled={readOnly} className="space-y-8">
           
           {/* Token Section */}
           {!readOnly && (
@@ -1296,10 +1316,12 @@ export default function ApplicationForm({ readOnly = false, initialData = null }
                       <input type="number" min="1" max="6" value={formData.motivation_priority.working_environment} onChange={(e) => handleMotivationPriorityChange('working_environment', e.target.value)} className="w-12 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
                       <span className="text-sm text-slate-700">Lingkungan Kerja <span className="text-slate-400 italic">(Social Working Environment)</span></span>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <input type="number" min="1" max="6" value={formData.motivation_priority.salary_benefit} onChange={(e) => handleMotivationPriorityChange('salary_benefit', e.target.value)} className="w-12 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
-                      <span className="text-sm text-slate-700">Salary & Benefit <span className="text-slate-400 italic">(Compensation & Benefit)</span></span>
-                    </div>
+                    {!hideSalary && (
+                      <div className="flex items-center gap-3">
+                        <input type="number" min="1" max="6" value={formData.motivation_priority.salary_benefit} onChange={(e) => handleMotivationPriorityChange('salary_benefit', e.target.value)} className="w-12 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+                        <span className="text-sm text-slate-700">Salary & Benefit <span className="text-slate-400 italic">(Compensation & Benefit)</span></span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1442,22 +1464,176 @@ export default function ApplicationForm({ readOnly = false, initialData = null }
               </div>
             </div>
           </div>
-
-          <div className="pt-6 border-t border-slate-200 flex justify-end">
-            {!readOnly && (
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
-              >
-                {loading ? <Loader2 className="animate-spin" size={20} /> : null}
-                {loading ? 'Menyimpan...' : 'Kirim Formulir'}
-              </button>
-            )}
-          </div>
           </fieldset>
-        </form>
+        </div>
       </div>
+
+        {/* Remuneration Section */}
+        {(!readOnly || !hideSalary) && (
+          <div className={cn("mx-auto bg-white overflow-hidden print:overflow-visible print:shadow-none print:border-none print:mt-8", readOnly ? "w-full rounded-2xl shadow-sm border border-slate-200" : "max-w-4xl rounded-2xl shadow-xl")}>
+            <div className="bg-indigo-600 px-8 py-4 text-white flex items-center justify-between">
+              <h2 className="text-lg font-bold">LEMBARAN PAKET REMUNERASI</h2>
+              <span className="text-indigo-200 text-sm">FORM-HC/PST/1114/RO/006</span>
+            </div>
+            <div className="p-8">
+              <fieldset disabled={readOnly} className="space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-slate-700">Gaji Sekarang / Gaji terakhir saat bekerja <span className="text-slate-400 font-normal italic">*Diisi jika ada</span></label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-medium">Rp.</span>
+                      <input 
+                        type="text" 
+                        name="current_salary"
+                        value={formData.current_salary}
+                        onChange={handleInputChange}
+                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-slate-700">Gaji Yang Diharapkan <span className="text-red-500">*</span></label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-medium">Rp.</span>
+                      <input 
+                        type="text" 
+                        name="expected_salary"
+                        required
+                        value={formData.expected_salary}
+                        onChange={handleInputChange}
+                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-bold text-slate-700">Upload Slip Gaji Terakhir <span className="text-slate-400 font-normal italic">*Diisi jika ada</span> {!readOnly && <span className="text-xs text-red-500">*Maks. 2MB</span>}</label>
+                  {readOnly ? (
+                    initialData?.payslip_url ? (
+                      initialData.payslip_url.toLowerCase().includes('.pdf') ? (
+                        <div className="w-full h-[400px] border border-slate-200 rounded-xl overflow-hidden bg-slate-50 mt-2">
+                          <iframe 
+                            src={getEmbedUrl(initialData.payslip_url)} 
+                            className="w-full h-full"
+                            title="Preview Slip Gaji"
+                          />
+                        </div>
+                      ) : (
+                        <div className="mt-2">
+                          <a href={initialData.payslip_url} target="_blank" rel="noopener noreferrer" className="block border border-slate-200 rounded-lg overflow-hidden hover:border-indigo-300 transition-colors max-w-md bg-slate-50 p-1">
+                            <img src={initialData.payslip_url} alt="Slip Gaji" className="w-full h-auto object-contain max-h-96 rounded" />
+                          </a>
+                        </div>
+                      )
+                    ) : (
+                      <span className="text-sm text-slate-500">-</span>
+                    )
+                  ) : (
+                    <input 
+                      type="file" 
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileChange(e, setPayslipFile, 'Slip Gaji')}
+                      className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                    />
+                  )}
+                </div>
+
+                <div className="border border-slate-200 rounded-xl overflow-hidden">
+                  <div className="bg-slate-50 px-4 py-3 border-b border-slate-200">
+                    <h3 className="font-bold text-slate-700 text-center">Dibuat Oleh,</h3>
+                  </div>
+                  <div className="p-6 flex flex-col items-center justify-center border-b border-slate-200">
+                    <div className="w-full max-w-sm mb-2 border-2 border-dashed border-slate-300 rounded-xl bg-white overflow-hidden relative group">
+                      {readOnly ? (
+                        initialData?.remuneration_signature_url ? (
+                          <img src={initialData.remuneration_signature_url} alt="Signature" className="w-full h-40 object-contain" />
+                        ) : (
+                          <div className="w-full h-40 flex items-center justify-center text-slate-400 text-sm">
+                            Tidak ada tanda tangan
+                          </div>
+                        )
+                      ) : (
+                        <>
+                          <SignatureCanvas 
+                            ref={remunerationSigCanvas}
+                            penColor="black"
+                            canvasProps={{className: 'w-full h-40 cursor-crosshair'}}
+                          />
+                          <button 
+                            type="button"
+                            onClick={() => remunerationSigCanvas.current?.clear()}
+                            className="absolute top-2 right-2 p-1.5 bg-slate-100 text-slate-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 hover:text-red-600"
+                            title="Hapus Tanda Tangan"
+                          >
+                            <Eraser size={16} />
+                          </button>
+                          {!remunerationSigCanvas.current || remunerationSigCanvas.current.isEmpty() ? (
+                            <div className="absolute inset-0 pointer-events-none flex items-center justify-center text-slate-300 text-sm font-medium">
+                              Tanda Tangan Disini
+                            </div>
+                          ) : null}
+                        </>
+                      )}
+                    </div>
+                    <p className="text-sm font-semibold text-slate-500">Tanda Tangan</p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-200">
+                    <div className="p-4 flex items-center justify-between sm:justify-center gap-4">
+                      <span className="text-sm font-bold text-slate-500 sm:hidden">Nama:</span>
+                      {readOnly ? (
+                        <span className="font-medium text-slate-900 text-center w-full">{initialData?.remuneration_signature_name || '-'}</span>
+                      ) : (
+                        <input 
+                          type="text" 
+                          name="remuneration_signature_name"
+                          value={formData.remuneration_signature_name}
+                          onChange={handleInputChange}
+                          placeholder="Nama Lengkap"
+                          required
+                          className="w-full bg-transparent border-none focus:ring-0 text-center font-medium text-slate-900 placeholder-slate-400"
+                        />
+                      )}
+                    </div>
+                    <div className="p-4 flex items-center justify-between sm:justify-center gap-4 bg-slate-50">
+                      <span className="text-sm font-bold text-slate-500 sm:hidden">Jabatan:</span>
+                      <span className="font-medium text-slate-700 text-center w-full">Calon Karyawan</span>
+                    </div>
+                    <div className="p-4 flex items-center justify-between sm:justify-center gap-4">
+                      <span className="text-sm font-bold text-slate-500 sm:hidden">Tanggal:</span>
+                      {readOnly ? (
+                        <span className="font-medium text-slate-900 text-center w-full">{initialData?.remuneration_signature_date || '-'}</span>
+                      ) : (
+                        <input 
+                          type="date" 
+                          name="remuneration_signature_date"
+                          value={formData.remuneration_signature_date}
+                          onChange={handleInputChange}
+                          required
+                          className="w-full bg-transparent border-none focus:ring-0 text-center font-medium text-slate-900"
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </fieldset>
+            </div>
+          </div>
+        )}
+
+        {!readOnly && (
+          <div className="max-w-4xl mx-auto flex justify-end">
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg"
+            >
+              {loading ? <Loader2 className="animate-spin" size={20} /> : null}
+              {loading ? 'Menyimpan...' : 'Kirim Formulir'}
+            </button>
+          </div>
+        )}
+      </form>
     </div>
   );
 }

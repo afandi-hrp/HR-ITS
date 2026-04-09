@@ -11,6 +11,7 @@ import Logs from './pages/Logs';
 import Templates from './pages/Templates';
 import EvaluationTemplates from './pages/EvaluationTemplates';
 import Settings from './pages/Settings';
+import UserManagement from './pages/UserManagement';
 import RegistrationTokens from './pages/RegistrationTokens';
 import PsikotesSchedules from './pages/PsikotesSchedules';
 import InterviewSchedules from './pages/InterviewSchedules';
@@ -26,6 +27,7 @@ import RealtimeNotifications from './components/RealtimeNotifications';
 
 export default function App() {
   const [session, setSession] = useState<AuthSession | null>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,20 +38,31 @@ export default function App() {
           supabase.auth.signOut().catch(() => {});
           // Clear supabase auth tokens from local storage
           let cleared = false;
+          const keysToRemove: string[] = [];
           for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
             if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
-              localStorage.removeItem(key);
-              cleared = true;
+              keysToRemove.push(key);
             }
           }
+          keysToRemove.forEach(key => {
+            localStorage.removeItem(key);
+            cleared = true;
+          });
           if (cleared) {
             window.location.reload();
           }
         }
       }
       setSession(session);
-      setLoading(false);
+      if (session?.user) {
+        supabase.from('profiles').select('*').eq('id', session.user.id).single().then(({ data }) => {
+          setProfile(data);
+          setLoading(false);
+        });
+      } else {
+        setLoading(false);
+      }
     }).catch((err) => {
       console.warn('Failed to get session:', err);
       setSession(null);
@@ -59,18 +72,29 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
         let cleared = false;
+        const keysToRemove: string[] = [];
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
           if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
-            localStorage.removeItem(key);
-            cleared = true;
+            keysToRemove.push(key);
           }
         }
+        keysToRemove.forEach(key => {
+          localStorage.removeItem(key);
+          cleared = true;
+        });
         if (cleared) {
           window.location.reload();
         }
       }
       setSession(session);
+      if (session?.user) {
+        supabase.from('profiles').select('*').eq('id', session.user.id).single().then(({ data }) => {
+          setProfile(data);
+        });
+      } else {
+        setProfile(null);
+      }
     });
 
     // Fetch site settings for favicon
@@ -114,23 +138,36 @@ export default function App() {
             ) : (
               <DashboardLayout user={session.user}>
                 <Routes>
-                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/open-recruitment" element={<OpenRecruitment />} />
-                  <Route path="/screening" element={<Screening />} />
-                  <Route path="/candidates/:id" element={<CandidateProfile />} />
-                  <Route path="/funnel" element={<RecruitmentFunnel />} />
-                  <Route path="/psikotes" element={<PsikotesSchedules />} />
-                  <Route path="/interview" element={<InterviewSchedules />} />
-                  <Route path="/logs" element={<Logs />} />
-                  <Route path="/archive" element={<CandidateArchive />} />
-                  <Route path="/upload-cv" element={<UploadCV />} />
-                  <Route path="/templates" element={<Templates />} />
-                  <Route path="/evaluation-templates" element={<EvaluationTemplates />} />
-                  <Route path="/tokens" element={<RegistrationTokens />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/external-data" element={<ExternalData />} />
-                  <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                  {profile?.role === 'USER_MANAGER' ? (
+                    <>
+                      <Route path="/" element={<Navigate to="/screening" replace />} />
+                      <Route path="/screening" element={<Screening />} />
+                      <Route path="/candidates/:id" element={<CandidateProfile />} />
+                      <Route path="/settings" element={<Settings />} />
+                      <Route path="*" element={<Navigate to="/screening" replace />} />
+                    </>
+                  ) : (
+                    <>
+                      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                      <Route path="/dashboard" element={<Dashboard />} />
+                      <Route path="/open-recruitment" element={<OpenRecruitment />} />
+                      <Route path="/screening" element={<Screening />} />
+                      <Route path="/candidates/:id" element={<CandidateProfile />} />
+                      <Route path="/funnel" element={<RecruitmentFunnel />} />
+                      <Route path="/psikotes" element={<PsikotesSchedules />} />
+                      <Route path="/interview" element={<InterviewSchedules />} />
+                      <Route path="/logs" element={<Logs />} />
+                      <Route path="/archive" element={<CandidateArchive />} />
+                      <Route path="/upload-cv" element={<UploadCV />} />
+                      <Route path="/templates" element={<Templates />} />
+                      <Route path="/evaluation-templates" element={<EvaluationTemplates />} />
+                      <Route path="/tokens" element={<RegistrationTokens />} />
+                      <Route path="/users" element={<UserManagement />} />
+                      <Route path="/settings" element={<Settings />} />
+                      <Route path="/external-data" element={<ExternalData />} />
+                      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                    </>
+                  )}
                 </Routes>
               </DashboardLayout>
             )

@@ -128,3 +128,27 @@ export function extractPhotoUrl(sourceInfo: any): string | null {
 
   return searchPhoto(data);
 }
+
+export function getEmbedUrl(url: string | null | undefined): string {
+  if (!url) return '';
+  
+  // Check if it's a Google Docs link
+  const docsMatch = url.match(/docs\.google\.com\/document\/d\/([^/]+)/);
+  if (docsMatch) {
+    return `https://docs.google.com/document/d/${docsMatch[1]}/preview`;
+  }
+
+  // Check if it's a Google Drive link
+  const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+  if (driveMatch) {
+    return `https://drive.google.com/file/d/${driveMatch[1]}/preview`;
+  }
+  
+  // Check if it's already a Google Drive preview or view link
+  if (url.includes('drive.google.com') && (url.includes('/preview') || url.includes('/view'))) {
+    return url.replace('/view', '/preview');
+  }
+
+  // Otherwise, use Google Docs Viewer for standard files (PDF, Word, etc.)
+  return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
+}

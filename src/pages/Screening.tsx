@@ -94,6 +94,17 @@ export default function Screening() {
 
   const [viewMode, setViewMode] = useState<'list' | 'card'>('card');
   const [totalItems, setTotalItems] = useState(0);
+  const [profile, setProfile] = useState<any>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        supabase.from('profiles').select('*').eq('id', user.id).single().then(({ data }) => {
+          if (data) setProfile(data);
+        });
+      }
+    });
+  }, []);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -104,11 +115,17 @@ export default function Screening() {
   }, [search]);
 
   const fetchCandidates = async () => {
+    if (!profile) return; // Wait for profile to load
+
     setLoading(true);
     let query = supabase
       .from('candidates')
       .select('*, psikotes_schedules(id, is_confirmed, schedule_date), interview_schedules(id, is_confirmed, schedule_date)', { count: 'exact' })
       .order('created_at', { ascending: false });
+
+    if (profile.role === 'USER_MANAGER') {
+      query = query.eq('assigned_to', profile.id);
+    }
 
     if (debouncedSearch) {
       query = query.or(`full_name.ilike.%${debouncedSearch}%,position.ilike.%${debouncedSearch}%`);
@@ -144,7 +161,7 @@ export default function Screening() {
 
   useEffect(() => {
     fetchCandidates();
-  }, [startDate, endDate, debouncedSearch, currentPage, itemsPerPage, statusFilter]);
+  }, [startDate, endDate, debouncedSearch, currentPage, itemsPerPage, statusFilter, profile]);
 
   const confirmReject = async () => {
     if (!rejectModalData) return;
@@ -645,44 +662,48 @@ export default function Screening() {
                           </div>
                         </div>
                         <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2 flex-wrap">
-                          <button 
-                            onClick={() => handleUpdateStatus(candidate.id, 'accepted')}
-                            title="Terima Kandidat (Lolos Screening)"
-                            className="p-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all"
-                          >
-                            <ThumbsUp size={16} />
-                          </button>
-                          <button 
-                            onClick={() => handleUpdateStatus(candidate.id, 'hired')}
-                            title="Rekrut Kandidat (Hired)"
-                            className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all"
-                          >
-                            <Briefcase size={16} />
-                          </button>
-                          <button 
-                            onClick={() => handleUpdateStatus(candidate.id, 'rejected')}
-                            title="Tolak Kandidat"
-                            className="p-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all"
-                          >
-                            <ThumbsDown size={16} />
-                          </button>
-                          {candidate.status_screening === 'accepted' && (!candidate.psikotes_schedules || candidate.psikotes_schedules.length === 0) && (
-                            <button 
-                              onClick={() => setSchedulingData({ candidate, type: 'psikotes' })}
-                              title="Jadwalkan Psikotes"
-                              className="p-2 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-all"
-                            >
-                              <FileText size={16} />
-                            </button>
-                          )}
-                          {candidate.status_screening === 'accepted' && (!candidate.interview_schedules || candidate.interview_schedules.length === 0 || candidate.interview_schedules.every(s => s.is_confirmed)) && (
-                            <button 
-                              onClick={() => setSchedulingData({ candidate, type: 'interview' })}
-                              title="Jadwalkan Interview"
-                              className="p-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-all"
-                            >
-                              <Users size={16} />
-                            </button>
+                          {profile?.role !== 'USER_MANAGER' && (
+                            <>
+                              <button 
+                                onClick={() => handleUpdateStatus(candidate.id, 'accepted')}
+                                title="Terima Kandidat (Lolos Screening)"
+                                className="p-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all"
+                              >
+                                <ThumbsUp size={16} />
+                              </button>
+                              <button 
+                                onClick={() => handleUpdateStatus(candidate.id, 'hired')}
+                                title="Rekrut Kandidat (Hired)"
+                                className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all"
+                              >
+                                <Briefcase size={16} />
+                              </button>
+                              <button 
+                                onClick={() => handleUpdateStatus(candidate.id, 'rejected')}
+                                title="Tolak Kandidat"
+                                className="p-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all"
+                              >
+                                <ThumbsDown size={16} />
+                              </button>
+                              {candidate.status_screening === 'accepted' && (!candidate.psikotes_schedules || candidate.psikotes_schedules.length === 0) && (
+                                <button 
+                                  onClick={() => setSchedulingData({ candidate, type: 'psikotes' })}
+                                  title="Jadwalkan Psikotes"
+                                  className="p-2 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-all"
+                                >
+                                  <FileText size={16} />
+                                </button>
+                              )}
+                              {candidate.status_screening === 'accepted' && (!candidate.interview_schedules || candidate.interview_schedules.length === 0 || candidate.interview_schedules.every(s => s.is_confirmed)) && (
+                                <button 
+                                  onClick={() => setSchedulingData({ candidate, type: 'interview' })}
+                                  title="Jadwalkan Interview"
+                                  className="p-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-all"
+                                >
+                                  <Users size={16} />
+                                </button>
+                              )}
+                            </>
                           )}
                           {candidate.status_screening === 'accepted' && (
                             <button 
@@ -957,45 +978,49 @@ export default function Screening() {
 
                             {/* Actions */}
                             <div className="flex lg:flex-col gap-3 justify-end lg:justify-start">
-                              <button 
-                                onClick={() => handleUpdateStatus(candidate.id, 'accepted')}
-                                title="Terima Kandidat (Lolos Screening)"
-                                className="p-3.5 bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all hover:-translate-y-0.5"
-                              >
-                                <ThumbsUp size={22} />
-                              </button>
-                              <button 
-                                onClick={() => handleUpdateStatus(candidate.id, 'hired')}
-                                title="Rekrut Kandidat (Hired)"
-                                className="p-3.5 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all hover:-translate-y-0.5"
-                              >
-                                <Briefcase size={22} />
-                              </button>
-                              <button 
-                                onClick={() => handleUpdateStatus(candidate.id, 'rejected')}
-                                title="Tolak Kandidat"
-                                className="p-3.5 bg-red-600 text-white rounded-2xl hover:bg-red-700 shadow-lg shadow-red-100 transition-all hover:-translate-y-0.5"
-                              >
-                                <ThumbsDown size={22} />
-                              </button>
-                              <div className="h-px bg-slate-200 my-2 hidden lg:block" />
-                              {candidate.status_screening === 'accepted' && (!candidate.psikotes_schedules || candidate.psikotes_schedules.length === 0) && (
-                                <button 
-                                  onClick={() => setSchedulingData({ candidate, type: 'psikotes' })}
-                                  title="Jadwalkan Psikotes"
-                                  className="p-3.5 bg-amber-500 text-white rounded-2xl hover:bg-amber-600 shadow-lg shadow-amber-100 transition-all hover:-translate-y-0.5"
-                                >
-                                  <FileText size={22} />
-                                </button>
-                              )}
-                              {candidate.status_screening === 'accepted' && (!candidate.interview_schedules || candidate.interview_schedules.length === 0 || candidate.interview_schedules.every(s => s.is_confirmed)) && (
-                                <button 
-                                  onClick={() => setSchedulingData({ candidate, type: 'interview' })}
-                                  title="Jadwalkan Interview"
-                                  className="p-3.5 bg-emerald-500 text-white rounded-2xl hover:bg-emerald-600 shadow-lg shadow-emerald-100 transition-all hover:-translate-y-0.5"
-                                >
-                                  <Users size={22} />
-                                </button>
+                              {profile?.role !== 'USER_MANAGER' && (
+                                <>
+                                  <button 
+                                    onClick={() => handleUpdateStatus(candidate.id, 'accepted')}
+                                    title="Terima Kandidat (Lolos Screening)"
+                                    className="p-3.5 bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all hover:-translate-y-0.5"
+                                  >
+                                    <ThumbsUp size={22} />
+                                  </button>
+                                  <button 
+                                    onClick={() => handleUpdateStatus(candidate.id, 'hired')}
+                                    title="Rekrut Kandidat (Hired)"
+                                    className="p-3.5 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all hover:-translate-y-0.5"
+                                  >
+                                    <Briefcase size={22} />
+                                  </button>
+                                  <button 
+                                    onClick={() => handleUpdateStatus(candidate.id, 'rejected')}
+                                    title="Tolak Kandidat"
+                                    className="p-3.5 bg-red-600 text-white rounded-2xl hover:bg-red-700 shadow-lg shadow-red-100 transition-all hover:-translate-y-0.5"
+                                  >
+                                    <ThumbsDown size={22} />
+                                  </button>
+                                  <div className="h-px bg-slate-200 my-2 hidden lg:block" />
+                                  {candidate.status_screening === 'accepted' && (!candidate.psikotes_schedules || candidate.psikotes_schedules.length === 0) && (
+                                    <button 
+                                      onClick={() => setSchedulingData({ candidate, type: 'psikotes' })}
+                                      title="Jadwalkan Psikotes"
+                                      className="p-3.5 bg-amber-500 text-white rounded-2xl hover:bg-amber-600 shadow-lg shadow-amber-100 transition-all hover:-translate-y-0.5"
+                                    >
+                                      <FileText size={22} />
+                                    </button>
+                                  )}
+                                  {candidate.status_screening === 'accepted' && (!candidate.interview_schedules || candidate.interview_schedules.length === 0 || candidate.interview_schedules.every(s => s.is_confirmed)) && (
+                                    <button 
+                                      onClick={() => setSchedulingData({ candidate, type: 'interview' })}
+                                      title="Jadwalkan Interview"
+                                      className="p-3.5 bg-emerald-500 text-white rounded-2xl hover:bg-emerald-600 shadow-lg shadow-emerald-100 transition-all hover:-translate-y-0.5"
+                                    >
+                                      <Users size={22} />
+                                    </button>
+                                  )}
+                                </>
                               )}
                               {candidate.status_screening === 'accepted' && (
                                 <button 

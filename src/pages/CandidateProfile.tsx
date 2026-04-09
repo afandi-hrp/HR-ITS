@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Candidate, CandidateEvaluation } from '../types';
@@ -31,7 +31,7 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
-import { cn, formatDate, normalizeEmail, normalizeName, normalizePhone, fetchWithRetry, extractPhotoUrl } from '../lib/utils';
+import { cn, formatDate, normalizeEmail, normalizeName, normalizePhone, fetchWithRetry, extractPhotoUrl, getEmbedUrl } from '../lib/utils';
 import { waitForN8nJob } from '../lib/n8n';
 import { useToast } from '../components/ui/use-toast';
 import EvaluationModal from '../components/EvaluationModal';
@@ -46,6 +46,7 @@ import {
   Tooltip
 } from 'recharts';
 import ApplicationForm from './ApplicationForm';
+import { useReactToPrint } from 'react-to-print';
 
 export default function CandidateProfile() {
   const { id } = useParams<{ id: string }>();
@@ -67,6 +68,30 @@ export default function CandidateProfile() {
   const [isUploadingPsikotes, setIsUploadingPsikotes] = useState(false);
   const [isBiodataSummaryExpanded, setIsBiodataSummaryExpanded] = useState(false);
   const [isPsikotesSummaryExpanded, setIsPsikotesSummaryExpanded] = useState(false);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [managers, setManagers] = useState<any[]>([]);
+  const [selectedManager, setSelectedManager] = useState('');
+  const [assigning, setAssigning] = useState(false);
+  const [profile, setProfile] = useState<any>(null);
+  const [fullScreenPdf, setFullScreenPdf] = useState<string | null>(null);
+  const [fullScreenData, setFullScreenData] = useState<any | null>(null);
+  const [existingEvaluation, setExistingEvaluation] = useState<CandidateEvaluation | null>(null);
+
+  const printRef = useRef<HTMLDivElement>(null);
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: `Form_Lamaran_${linkedData?.full_name?.replace(/\s+/g, '_') || 'Kandidat'}`,
+  });
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        supabase.from('profiles').select('*').eq('id', user.id).single().then(({ data }) => {
+          if (data) setProfile(data);
+        });
+      }
+    });
+  }, []);
 
   const formatValue = (val: any): string => {
     if (val === null || val === undefined || val === '') return '-';
@@ -98,11 +123,11 @@ export default function CandidateProfile() {
   };
 
   useEffect(() => {
-    if (id) {
+    if (id && profile) {
       fetchCandidate(id);
       fetchEvaluations(id);
     }
-  }, [id]);
+  }, [id, profile]);
 
   const fetchEvaluations = async (candidateId: string) => {
     const { data, error } = await supabase
@@ -120,32 +145,93 @@ export default function CandidateProfile() {
     setLoading(true);
     const { data, error } = await supabase
       .from('candidates')
-      .select('*, psikotes_schedules(id, is_confirmed, schedule_date), interview_schedules(id, is_confirmed, schedule_date)')
+      .select('*, psikotes_schedules(id, is_confirmed, schedule_date), interview_schedules(id, is_confirmed, schedule_date), assignee:profiles(id, full_name, role, department)')
       .eq('id', candidateId)
       .single();
+
+    let candidateData = data;
 
     if (error || !data) {
       // Try fetching from candidate_logs if not found in active candidates
       const { data: logData, error: logError } = await supabase
         .from('candidate_logs')
-        .select('*')
+        .select('*, assignee:profiles(id, full_name, role, department)')
         .eq('id', candidateId)
         .single();
 
       if (logError || !logData) {
         toast({ title: 'Error', description: 'Gagal memuat profil kandidat', variant: 'destructive' });
         navigate('/screening');
-      } else {
-        setCandidate(logData);
-        setEditedCandidate(logData);
-        fetchExternalData(logData);
+        setLoading(false);
+        return;
       }
-    } else {
-      setCandidate(data);
-      setEditedCandidate(data);
-      fetchExternalData(data);
+      candidateData = logData;
     }
+
+    // Access Control Check
+    if (profile?.role === 'USER_MANAGER' && candidateData.assigned_to !== profile.id) {
+      toast({ title: 'Akses Ditolak', description: 'Anda tidak memiliki akses ke kandidat ini.', variant: 'destructive' });
+      navigate('/screening');
+      setLoading(false);
+      return;
+    }
+
+    setCandidate(candidateData);
+    setEditedCandidate(candidateData);
+    fetchExternalData(candidateData);
     setLoading(false);
+  };
+
+  const fetchManagers = async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, full_name, role, department')
+      .in('role', ['USER_MANAGER', 'HR_ADMIN'])
+      .order('full_name');
+    
+    if (data) {
+      setManagers(data);
+    }
+  };
+
+  const handleAssign = async () => {
+    if (!id || !selectedManager) return;
+    
+    try {
+      setAssigning(true);
+      
+      const { data: activeData } = await supabase
+        .from('candidates')
+        .select('id')
+        .eq('id', id)
+        .maybeSingle();
+
+      const table = activeData ? 'candidates' : 'candidate_logs';
+
+      const { error } = await supabase
+        .from(table)
+        .update({ assigned_to: selectedManager })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Berhasil",
+        description: "Kandidat berhasil di-assign ke user.",
+      });
+      
+      setIsAssignModalOpen(false);
+      fetchCandidate(id);
+    } catch (error: any) {
+      console.error('Error assigning candidate:', error);
+      toast({
+        title: "Gagal",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setAssigning(false);
+    }
   };
 
   const fetchExternalData = async (candidateData: Candidate) => {
@@ -632,19 +718,47 @@ export default function CandidateProfile() {
               </button>
             </>
           ) : (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="px-4 py-2 bg-white border border-slate-200 text-indigo-600 rounded-xl hover:bg-indigo-50 transition-colors flex items-center gap-2 text-sm font-medium"
-            >
-              <Edit2 size={16} />
-              Edit Profil
-            </button>
+            <>
+              {profile?.role !== 'USER_MANAGER' && (
+                <>
+                  <button
+                    onClick={() => {
+                      fetchManagers();
+                      setIsAssignModalOpen(true);
+                    }}
+                    className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-2 text-sm font-medium"
+                  >
+                    <Users size={16} />
+                    Assign User
+                  </button>
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="px-4 py-2 bg-white border border-slate-200 text-indigo-600 rounded-xl hover:bg-indigo-50 transition-colors flex items-center gap-2 text-sm font-medium"
+                  >
+                    <Edit2 size={16} />
+                    Edit Profil
+                  </button>
+                </>
+              )}
+            </>
           )}
           <div className={cn("px-4 py-1.5 rounded-full border text-sm font-bold uppercase tracking-wider", getStatusColor(candidate.status_screening))}>
             {getStatusText(candidate.status_screening)}
           </div>
         </div>
       </div>
+
+      {candidate.assignee && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
+          <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
+            <Users size={20} />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-blue-900">Kandidat ini sedang di-review oleh:</p>
+            <p className="text-sm text-blue-700">{candidate.assignee.full_name} ({candidate.assignee.department || 'User Manager'})</p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Basic Info */}
@@ -737,15 +851,37 @@ export default function CandidateProfile() {
 
                 {candidate.resume_url && (
                   <div className="mt-6 pt-6 border-t border-slate-100">
-                    <a 
-                      href={candidate.resume_url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 w-full py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl font-medium transition-colors"
-                    >
-                      <Download size={18} />
-                      Unduh CV / Resume
-                    </a>
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-bold text-slate-900 flex items-center gap-2 text-sm">
+                        <FileText size={16} className="text-indigo-500" />
+                        Preview CV / Resume
+                      </h4>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setFullScreenPdf(candidate.resume_url!)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors text-xs font-medium"
+                        >
+                          <ExternalLink size={14} />
+                          Full Screen
+                        </button>
+                        <a 
+                          href={candidate.resume_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg transition-colors text-xs font-medium"
+                        >
+                          <Download size={14} />
+                          Unduh
+                        </a>
+                      </div>
+                    </div>
+                    <div className="w-full h-[400px] border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
+                      <iframe 
+                        src={getEmbedUrl(candidate.resume_url)} 
+                        className="w-full h-full"
+                        title="Preview CV"
+                      />
+                    </div>
                   </div>
                 )}
               </div>
@@ -927,31 +1063,42 @@ export default function CandidateProfile() {
                 <FileText className="text-indigo-500" size={20} />
                 Hasil Psikotes Eksternal
               </h3>
-              <div>
-                <label className="cursor-pointer px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl transition-colors flex items-center gap-2 text-sm font-medium">
-                  {isUploadingPsikotes ? <Loader2 className="animate-spin" size={16} /> : <PlusCircle size={16} />}
-                  {isUploadingPsikotes ? 'Mengunggah...' : 'Upload PDF'}
-                  <input 
-                    type="file" 
-                    className="hidden" 
-                    accept="application/pdf"
-                    onChange={handleUploadPsikotes}
-                    disabled={isUploadingPsikotes}
-                  />
-                </label>
-              </div>
+              {profile?.role !== 'USER_MANAGER' && (
+                <div>
+                  <label className="cursor-pointer px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl transition-colors flex items-center gap-2 text-sm font-medium">
+                    {isUploadingPsikotes ? <Loader2 className="animate-spin" size={16} /> : <PlusCircle size={16} />}
+                    {isUploadingPsikotes ? 'Mengunggah...' : 'Upload PDF'}
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      accept="application/pdf"
+                      onChange={handleUploadPsikotes}
+                      disabled={isUploadingPsikotes}
+                    />
+                  </label>
+                </div>
+              )}
             </div>
 
             {candidate.psikotes_result_url ? (
               <div className="space-y-4">
                 <div className="flex justify-end gap-2">
+                  {profile?.role !== 'USER_MANAGER' && (
+                    <button
+                      onClick={handleAnalyzePsikotes}
+                      disabled={isAnalyzingPsikotes}
+                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-bold rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all shadow-sm"
+                    >
+                      {isAnalyzingPsikotes ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
+                      {isAnalyzingPsikotes ? 'AI sedang menganalisa...' : 'Analisa Psikotes dengan AI'}
+                    </button>
+                  )}
                   <button
-                    onClick={handleAnalyzePsikotes}
-                    disabled={isAnalyzingPsikotes}
-                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-bold rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all shadow-sm"
+                    onClick={() => setFullScreenPdf(candidate.psikotes_result_url!)}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors text-sm font-medium shadow-sm"
                   >
-                    {isAnalyzingPsikotes ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
-                    {isAnalyzingPsikotes ? 'AI sedang menganalisa...' : 'Analisa Psikotes dengan AI'}
+                    <ExternalLink size={16} />
+                    Full Screen
                   </button>
                   <a
                     href={candidate.psikotes_result_url}
@@ -959,14 +1106,14 @@ export default function CandidateProfile() {
                     rel="noopener noreferrer"
                     className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl transition-colors text-sm font-medium shadow-sm"
                   >
-                    <ExternalLink size={16} />
-                    Buka di Tab Baru
+                    <Download size={16} />
+                    Unduh
                   </a>
                 </div>
 
                 <div className="w-full h-[600px] border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
                   <iframe 
-                    src={`https://docs.google.com/gview?url=${encodeURIComponent(candidate.psikotes_result_url)}&embedded=true`} 
+                    src={getEmbedUrl(candidate.psikotes_result_url)} 
                     className="w-full h-full"
                     title="Hasil Psikotes"
                   />
@@ -994,31 +1141,52 @@ export default function CandidateProfile() {
               </div>
             ) : linkedData ? (
               <div className="space-y-4">
+                <div className="flex justify-end gap-2">
+                  {profile?.role !== 'USER_MANAGER' && (
+                    <button
+                      onClick={handleAnalyzeBiodata}
+                      disabled={isAnalyzing}
+                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-bold rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all shadow-sm"
+                    >
+                      {isAnalyzing ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
+                      {isAnalyzing ? 'AI sedang menganalisa...' : 'Analisa Biodata dengan AI'}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setFullScreenData(linkedData)}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors text-sm font-medium shadow-sm"
+                  >
+                    <ExternalLink size={16} />
+                    Full Screen
+                  </button>
+                  <button
+                    onClick={() => handlePrint()}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl transition-colors text-sm font-medium shadow-sm"
+                  >
+                    <Download size={16} />
+                    Unduh PDF
+                  </button>
+                  {profile?.role !== 'USER_MANAGER' && (
+                    <button 
+                      onClick={handleUnlinkExternalData}
+                      disabled={isLinking}
+                      className="flex items-center gap-2 px-4 py-2 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-xl transition-colors text-sm font-medium shadow-sm disabled:opacity-50"
+                    >
+                      {isLinking ? <Loader2 className="animate-spin" size={16} /> : <X size={16} />}
+                      {isLinking ? 'Memproses...' : 'Lepas Tautan'}
+                    </button>
+                  )}
+                </div>
                 <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 p-3 rounded-xl">
                   <div className="flex items-center gap-2 text-emerald-700 text-sm font-medium">
                     <CheckCircle size={16} />
                     Data berhasil ditautkan
                   </div>
-                  <button 
-                    onClick={handleUnlinkExternalData}
-                    disabled={isLinking}
-                    className="text-xs font-bold text-rose-600 hover:text-rose-700 disabled:opacity-50"
-                  >
-                    {isLinking ? 'Memproses...' : 'Lepas Tautan'}
-                  </button>
                 </div>
-                <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden max-h-[600px] overflow-y-auto custom-scrollbar">
-                  <ApplicationForm readOnly initialData={linkedData} />
-                </div>
-                <div className="flex justify-end mt-4">
-                  <button
-                    onClick={handleAnalyzeBiodata}
-                    disabled={isAnalyzing}
-                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-bold rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all shadow-sm"
-                  >
-                    {isAnalyzing ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
-                    {isAnalyzing ? 'AI sedang menganalisa...' : 'Analisa Biodata dengan AI'}
-                  </button>
+                <div className="max-h-[600px] overflow-y-auto custom-scrollbar -mx-2 px-2">
+                  <div ref={printRef} className="print:p-8 print:bg-white print:w-[210mm] print:mx-auto">
+                    <ApplicationForm readOnly initialData={linkedData} hideSalary={profile?.role === 'USER_MANAGER'} />
+                  </div>
                 </div>
               </div>
             ) : externalData.length > 0 ? (
@@ -1035,13 +1203,15 @@ export default function CandidateProfile() {
                     <div key={idx} className="border border-slate-200 rounded-xl p-4 hover:border-indigo-300 transition-colors">
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-md">Opsi {idx + 1}</span>
-                        <button
-                          onClick={() => handleLinkExternalData(data.uid_sheet)}
-                          disabled={isLinking}
-                          className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 disabled:opacity-50"
-                        >
-                          Tautkan Data Ini
-                        </button>
+                        {profile?.role !== 'USER_MANAGER' && (
+                          <button
+                            onClick={() => handleLinkExternalData(data.uid_sheet)}
+                            disabled={isLinking}
+                            className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                          >
+                            Tautkan Data Ini
+                          </button>
+                        )}
                       </div>
                       <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-2">
                         {Object.entries(data).filter(([k]) => k !== 'uid_sheet').slice(0, 5).map(([key, val]) => (
@@ -1078,7 +1248,10 @@ export default function CandidateProfile() {
               </h3>
               {['accepted', 'hired'].includes(candidate.status_screening) && (
                 <button
-                  onClick={() => setIsEvaluationModalOpen(true)}
+                  onClick={() => {
+                    setExistingEvaluation(null);
+                    setIsEvaluationModalOpen(true);
+                  }}
                   className="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl transition-colors flex items-center gap-2 text-sm font-medium"
                 >
                   <PlusCircle size={16} />
@@ -1114,9 +1287,21 @@ export default function CandidateProfile() {
                           <p className="text-xs text-slate-500">Oleh: {evalItem.interviewer_name} • {formatDate(evalItem.created_at)}</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-0.5">Total Skor</p>
-                        <p className="text-lg font-black text-indigo-600">{evalItem.total_score}</p>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-0.5">Total Skor</p>
+                          <p className="text-lg font-black text-indigo-600">{evalItem.total_score}</p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setExistingEvaluation(evalItem);
+                            setIsEvaluationModalOpen(true);
+                          }}
+                          className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                          title="Edit Penilaian"
+                        >
+                          <Edit2 size={16} />
+                        </button>
                       </div>
                     </div>
                     <div className="p-4 bg-white">
@@ -1230,10 +1415,121 @@ export default function CandidateProfile() {
 
       <EvaluationModal
         isOpen={isEvaluationModalOpen}
-        onClose={() => setIsEvaluationModalOpen(false)}
+        onClose={() => {
+          setIsEvaluationModalOpen(false);
+          setExistingEvaluation(null);
+        }}
         candidateId={id!}
         onSuccess={() => fetchEvaluations(id!)}
+        existingEvaluation={existingEvaluation}
       />
+
+      {/* Full Screen PDF Modal */}
+      {fullScreenPdf && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-sm flex flex-col">
+          <div className="flex items-center justify-between p-4 bg-slate-900 border-b border-white/10">
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <FileText className="text-indigo-400" size={20} />
+              Preview Dokumen
+            </h3>
+            <button 
+              onClick={() => setFullScreenPdf(null)}
+              className="text-white/70 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-colors"
+            >
+              <X size={24} />
+            </button>
+          </div>
+          <div className="flex-1 w-full h-full p-4 md:p-8">
+            <div className="w-full h-full bg-white rounded-xl overflow-hidden shadow-2xl">
+              <iframe 
+                src={getEmbedUrl(fullScreenPdf)} 
+                className="w-full h-full"
+                title="Preview Dokumen"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full Screen Data Modal */}
+      {fullScreenData && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-sm flex flex-col">
+          <div className="flex items-center justify-between p-4 bg-slate-900 border-b border-white/10">
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <Database className="text-indigo-400" size={20} />
+              Preview Data Eksternal
+            </h3>
+            <button 
+              onClick={() => setFullScreenData(null)}
+              className="text-white/70 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-colors"
+            >
+              <X size={24} />
+            </button>
+          </div>
+          <div className="flex-1 w-full h-full p-4 md:p-8 overflow-hidden">
+            <div className="w-full h-full bg-slate-50 rounded-xl overflow-y-auto shadow-2xl p-6 custom-scrollbar">
+              <ApplicationForm readOnly initialData={fullScreenData} hideSalary={profile?.role === 'USER_MANAGER'} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isAssignModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-slate-900">Assign Kandidat ke User</h3>
+              <button 
+                onClick={() => setIsAssignModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-slate-600">
+                Pilih User Manager untuk me-review kandidat ini. User yang dipilih akan dapat melihat profil kandidat ini di halaman mereka.
+              </p>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Pilih User / Divisi
+                </label>
+                <select
+                  value={selectedManager}
+                  onChange={(e) => setSelectedManager(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value="">-- Pilih User --</option>
+                  {managers.map(manager => (
+                    <option key={manager.id} value={manager.id}>
+                      {manager.full_name} {manager.department ? `(${manager.department})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-slate-200 bg-slate-50 flex justify-end gap-3">
+              <button
+                onClick={() => setIsAssignModalOpen(false)}
+                className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-200 rounded-xl transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleAssign}
+                disabled={assigning || !selectedManager}
+                className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                {assigning ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                Assign Kandidat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -36,6 +36,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [settings, setSettings] = useState<SiteSettings | null>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const location = useLocation();
   const navigate = useNavigate();
@@ -47,7 +48,13 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
     supabase.from('site_settings').select('*').eq('id', 1).single().then(({ data }) => {
       if (data) setSettings(data);
     });
-  }, []);
+    
+    if (user) {
+      supabase.from('profiles').select('*').eq('id', user.id).single().then(({ data }) => {
+        if (data) setProfile(data);
+      });
+    }
+  }, [user]);
 
   // Auto-logout after 10 minutes of inactivity
   useEffect(() => {
@@ -78,7 +85,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
     };
   }, [navigate]);
 
-  const navItems = [
+  const allNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'funnel', label: 'Recruitment Funnel', icon: BarChart3 },
     {
@@ -116,8 +123,16 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
         { id: 'evaluation-templates', label: 'Template Evaluasi', icon: FileText },
       ]
     },
+    { id: 'users', label: 'Manajemen Pengguna', icon: Users },
     { id: 'settings', label: 'Pengaturan', icon: Settings }
   ];
+
+  const userManagerNavItems = [
+    { id: 'screening', label: 'Kandidat Saya', icon: Users },
+    { id: 'settings', label: 'Pengaturan', icon: Settings }
+  ];
+
+  const navItems = profile?.role === 'USER_MANAGER' ? userManagerNavItems : allNavItems;
 
   // Initialize expanded groups based on current path
   useEffect(() => {

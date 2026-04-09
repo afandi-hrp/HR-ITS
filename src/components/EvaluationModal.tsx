@@ -9,9 +9,10 @@ interface EvaluationModalProps {
   onClose: () => void;
   candidateId: string;
   onSuccess: () => void;
+  existingEvaluation?: CandidateEvaluation | null;
 }
 
-export default function EvaluationModal({ isOpen, onClose, candidateId, onSuccess }: EvaluationModalProps) {
+export default function EvaluationModal({ isOpen, onClose, candidateId, onSuccess, existingEvaluation }: EvaluationModalProps) {
   const { toast } = useToast();
   const [templates, setTemplates] = useState<EvaluationTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
@@ -23,11 +24,17 @@ export default function EvaluationModal({ isOpen, onClose, candidateId, onSucces
   useEffect(() => {
     if (isOpen) {
       fetchTemplates();
-      setEvaluationData({});
-      setInterviewerName('');
-      setSelectedTemplateId('');
+      if (existingEvaluation) {
+        setSelectedTemplateId(existingEvaluation.template_id);
+        setInterviewerName(existingEvaluation.interviewer_name || '');
+        setEvaluationData(existingEvaluation.evaluation_data || {});
+      } else {
+        setEvaluationData({});
+        setInterviewerName('');
+        setSelectedTemplateId('');
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, existingEvaluation]);
 
   const fetchTemplates = async () => {
     setLoading(true);
@@ -95,21 +102,37 @@ export default function EvaluationModal({ isOpen, onClose, candidateId, onSucces
         }
       });
 
-      const { error } = await supabase
-        .from('candidate_evaluations')
-        .insert({
-          candidate_id: candidateId,
-          template_id: selectedTemplate.id,
-          evaluation_type: selectedTemplate.type,
-          interviewer_name: selectedTemplate.type === 'USER' ? interviewerName : (userData.user?.email || 'HR'),
-          evaluator_id: userData.user?.id,
-          evaluation_data: evaluationData,
-          total_score: totalScore
-        });
+      if (existingEvaluation) {
+        const { error } = await supabase
+          .from('candidate_evaluations')
+          .update({
+            template_id: selectedTemplate.id,
+            evaluation_type: selectedTemplate.type,
+            interviewer_name: selectedTemplate.type === 'USER' ? interviewerName : (userData.user?.email || 'HR'),
+            evaluation_data: evaluationData,
+            total_score: totalScore
+          })
+          .eq('id', existingEvaluation.id);
 
-      if (error) throw error;
+        if (error) throw error;
+        toast({ title: 'Berhasil', description: 'Hasil evaluasi berhasil diperbarui' });
+      } else {
+        const { error } = await supabase
+          .from('candidate_evaluations')
+          .insert({
+            candidate_id: candidateId,
+            template_id: selectedTemplate.id,
+            evaluation_type: selectedTemplate.type,
+            interviewer_name: selectedTemplate.type === 'USER' ? interviewerName : (userData.user?.email || 'HR'),
+            evaluator_id: userData.user?.id,
+            evaluation_data: evaluationData,
+            total_score: totalScore
+          });
 
-      toast({ title: 'Berhasil', description: 'Hasil evaluasi berhasil disimpan' });
+        if (error) throw error;
+        toast({ title: 'Berhasil', description: 'Hasil evaluasi berhasil disimpan' });
+      }
+
       onSuccess();
       onClose();
     } catch (error: any) {

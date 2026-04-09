@@ -276,3 +276,23 @@
   --sidebar-border: hsl(240, 3.7%, 15.9%);
   --sidebar-ring: hsl(217.2, 91.2%, 59.8%);
 }
+
+@media print {
+  html, body {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .pdf-avoid-break {
+    break-inside: avoid;
+  }
+  /* Ensure the print container expands fully */
+  .print-source {
+    height: auto !important;
+    overflow: visible !important;
+    max-height: none !important;
+  }
+}
