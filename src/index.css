@@ -278,9 +278,25 @@
 }
 
 @media print {
+  body.is-printing > #root {
+    display: none !important;
+  }
+  
+  #print-mount {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background: white;
+  }
+
   html, body {
     height: auto !important;
     overflow: visible !important;
+    background: white !important;
   }
   * {
     -webkit-print-color-adjust: exact !important;
@@ -289,10 +305,15 @@
   .pdf-avoid-break {
     break-inside: avoid;
   }
-  /* Ensure the print container expands fully */
   .print-source {
     height: auto !important;
     overflow: visible !important;
     max-height: none !important;
+  }
+}
+
+@media screen {
+  #print-mount {
+    display: none !important;
   }
 }

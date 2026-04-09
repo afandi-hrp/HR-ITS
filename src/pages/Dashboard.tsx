@@ -16,7 +16,8 @@ import {
   FileText,
   Star,
   X,
-  RefreshCcw
+  RefreshCcw,
+  BarChart3
 } from 'lucide-react';
 import { cn, formatDate } from '../lib/utils';
 
@@ -391,7 +392,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-2 mb-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
         <div className="space-y-1">
           <h1 className="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">
             Dashboard
@@ -400,6 +401,13 @@ export default function Dashboard() {
             Ringkasan aktivitas rekrutmen dan status kandidat.
           </p>
         </div>
+        <button
+          onClick={() => navigate('/funnel')}
+          className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:shadow-xl hover:shadow-indigo-300 hover:-translate-y-1 transition-all flex items-center gap-2 group"
+        >
+          <BarChart3 size={20} className="group-hover:scale-110 transition-transform" />
+          Recruitment Funnel
+        </button>
       </div>
 
       {/* Panel Pencarian & Filter */}

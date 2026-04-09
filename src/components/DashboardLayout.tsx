@@ -87,7 +87,6 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
 
   const allNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'funnel', label: 'Recruitment Funnel', icon: BarChart3 },
     {
       title: 'Tahapan Seleksi',
       icon: Users,

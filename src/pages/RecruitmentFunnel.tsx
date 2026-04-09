@@ -550,6 +550,46 @@ export default function RecruitmentFunnel() {
       });
     }
 
+    // 7. Source Distribution
+    const finalYAfterMonthly = (doc as any).lastAutoTable.finalY;
+    if (pageHeight - finalYAfterMonthly < 80) {
+      doc.addPage();
+      doc.setFontSize(14);
+      doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
+      doc.text('SUMBER LOWONGAN', 14, 25);
+      autoTable(doc, {
+        startY: 32,
+        head: [['SUMBER', 'JUMLAH KANDIDAT']],
+        body: sourceDistribution.map(item => [
+          item.source,
+          item.count.toString()
+        ]),
+        theme: 'striped',
+        headStyles: { fillColor: colors.secondary },
+        columnStyles: {
+          1: { halign: 'center' }
+        },
+        margin: { left: 14, right: 14 }
+      });
+    } else {
+      doc.setFontSize(14);
+      doc.text('SUMBER LOWONGAN', 14, finalYAfterMonthly + 15);
+      autoTable(doc, {
+        startY: finalYAfterMonthly + 20,
+        head: [['SUMBER', 'JUMLAH KANDIDAT']],
+        body: sourceDistribution.map(item => [
+          item.source,
+          item.count.toString()
+        ]),
+        theme: 'striped',
+        headStyles: { fillColor: colors.secondary },
+        columnStyles: {
+          1: { halign: 'center' }
+        },
+        margin: { left: 14, right: 14 }
+      });
+    }
+
     // Footer with Page Numbers
     const pageCount = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
@@ -1148,15 +1188,30 @@ export default function RecruitmentFunnel() {
                     </table>
                   </div>
 
-                  {/* Additional Analytics Placeholder */}
-                  <div className="p-8 border-2 border-dashed border-slate-100 rounded-3xl flex flex-col items-center justify-center text-center space-y-3">
-                    <div className="p-4 bg-slate-50 rounded-full text-slate-300">
-                      <TrendingUp size={32} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-slate-400">Analisa Lanjutan</p>
-                      <p className="text-xs text-slate-300 max-w-[200px]">Data tren bulanan membantu dalam perencanaan kapasitas rekrutmen di masa mendatang.</p>
-                    </div>
+                  {/* Table Mockup: Source Distribution */}
+                  <div className="space-y-4">
+                    <h2 className="text-sm font-bold text-slate-900 border-l-4 border-indigo-600 pl-3 uppercase tracking-wider">Sumber Lowongan</h2>
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-wider">
+                          <th className="p-3">Sumber</th>
+                          <th className="p-3 text-center">Jumlah Kandidat</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-xs divide-y divide-slate-100">
+                        {sourceDistribution.map((item, i) => (
+                          <tr key={i} className={i % 2 === 1 ? 'bg-indigo-50/30' : ''}>
+                            <td className="p-3 font-medium">{item.source}</td>
+                            <td className="p-3 text-center font-bold text-indigo-600">{item.count}</td>
+                          </tr>
+                        ))}
+                        {sourceDistribution.length === 0 && (
+                          <tr>
+                            <td colSpan={2} className="p-3 text-center text-slate-500">Belum ada data sumber lowongan</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
 

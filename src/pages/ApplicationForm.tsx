@@ -5,6 +5,7 @@ import { Loader2, Upload, CheckCircle2, Plus, Trash2, Eraser, FileText } from 'l
 import { v4 as uuidv4 } from 'uuid';
 import SignatureCanvas from 'react-signature-canvas';
 import { cn, getEmbedUrl } from '../lib/utils';
+import { PdfToImages } from '../components/PdfToImages';
 
 interface ApplicationFormProps {
   readOnly?: boolean;
@@ -15,7 +16,7 @@ interface ApplicationFormProps {
 const renderAttachment = (url: string | undefined | null, label: string) => {
   if (!url) return <span className="text-sm text-slate-500">-</span>;
   
-  const isPdf = url.toLowerCase().includes('.pdf');
+  const isPdf = url.split('?')[0].toLowerCase().endsWith('.pdf');
   
   return (
     <div className="mt-2 pdf-avoid-break">
@@ -25,9 +26,14 @@ const renderAttachment = (url: string | undefined | null, label: string) => {
           Lihat Dokumen PDF
         </a>
       ) : (
-        <a href={url} target="_blank" rel="noopener noreferrer" className="block border border-slate-200 rounded-lg overflow-hidden hover:border-indigo-300 transition-colors max-w-xs bg-slate-50 p-1">
+        <a href={url} target="_blank" rel="noopener noreferrer" className="block border border-slate-200 rounded-lg overflow-hidden hover:border-indigo-300 transition-colors max-w-xs bg-slate-50 p-1 no-print">
           <img src={url} alt={label} className="w-full h-auto object-contain max-h-48 rounded" />
         </a>
+      )}
+      {!isPdf && (
+        <div className="block text-sm text-slate-600 italic mt-1">
+          (Lihat gambar ukuran penuh di bagian bawah)
+        </div>
       )}
     </div>
   );
@@ -1622,7 +1628,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
         )}
 
         {!readOnly && (
-          <div className="max-w-4xl mx-auto flex justify-end">
+          <div className="max-w-4xl mx-auto flex justify-end no-print">
             <button
               type="submit"
               disabled={loading}
@@ -1631,6 +1637,58 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               {loading ? <Loader2 className="animate-spin" size={20} /> : null}
               {loading ? 'Menyimpan...' : 'Kirim Formulir'}
             </button>
+          </div>
+        )}
+
+        {readOnly && (
+          <div className="block max-w-4xl mx-auto bg-white p-8 mt-8 border-t-4 border-slate-100 print:border-none" style={{ pageBreakBefore: 'always' }}>
+            <h2 className="text-xl font-bold text-slate-900 mb-6 border-b pb-2">LAMPIRAN DOKUMEN</h2>
+            <div className="space-y-12">
+              {initialData?.ktp_url && (
+                <div className="pdf-avoid-break">
+                  <h3 className="font-bold text-slate-700 mb-4">Scan KTP</h3>
+                  {initialData.ktp_url.split('?')[0].toLowerCase().endsWith('.pdf') ? (
+                    <PdfToImages url={initialData.ktp_url} title="KTP" />
+                  ) : (
+                    <img src={initialData.ktp_url} alt="KTP" className="max-w-full h-auto max-h-[800px] object-contain border border-slate-200 p-2 rounded-lg" />
+                  )}
+                </div>
+              )}
+              {initialData?.ijazah_url && (
+                <div className="pdf-avoid-break">
+                  <h3 className="font-bold text-slate-700 mb-4">Scan Ijazah</h3>
+                  {initialData.ijazah_url.split('?')[0].toLowerCase().endsWith('.pdf') ? (
+                    <PdfToImages url={initialData.ijazah_url} title="Ijazah" />
+                  ) : (
+                    <img src={initialData.ijazah_url} alt="Ijazah" className="max-w-full h-auto max-h-[800px] object-contain border border-slate-200 p-2 rounded-lg" />
+                  )}
+                </div>
+              )}
+              {initialData?.transcript_url && (
+                <div className="pdf-avoid-break">
+                  <h3 className="font-bold text-slate-700 mb-4">Scan Transkrip Nilai</h3>
+                  {initialData.transcript_url.split('?')[0].toLowerCase().endsWith('.pdf') ? (
+                    <PdfToImages url={initialData.transcript_url} title="Transkrip Nilai" />
+                  ) : (
+                    <img src={initialData.transcript_url} alt="Transkrip" className="max-w-full h-auto max-h-[800px] object-contain border border-slate-200 p-2 rounded-lg" />
+                  )}
+                </div>
+              )}
+              {initialData?.other_doc_url && (
+                <div className="pdf-avoid-break">
+                  <h3 className="font-bold text-slate-700 mb-4">Dokumen Lainnya</h3>
+                  {initialData.other_doc_url.split('?')[0].toLowerCase().endsWith('.pdf') ? (
+                    <PdfToImages url={initialData.other_doc_url} title="Dokumen Lainnya" />
+                  ) : (
+                    <img src={initialData.other_doc_url} alt="Lainnya" className="max-w-full h-auto max-h-[800px] object-contain border border-slate-200 p-2 rounded-lg" />
+                  )}
+                </div>
+              )}
+              
+              {!initialData?.ktp_url && !initialData?.ijazah_url && !initialData?.transcript_url && !initialData?.other_doc_url && (
+                <div className="text-slate-500 italic">Tidak ada lampiran dokumen.</div>
+              )}
+            </div>
           </div>
         )}
       </form>

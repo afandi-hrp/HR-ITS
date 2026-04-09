@@ -96,6 +96,15 @@ export interface EvaluationTemplate {
   updated_at: string;
 }
 
+export interface InternalNote {
+  id: string;
+  candidate_id: string;
+  author_id: string;
+  note_text: string;
+  created_at: string;
+  author?: Profile;
+}
+
 export interface CandidateEvaluation {
   id: string;
   candidate_id: string;

@@ -46,7 +46,8 @@ import {
   Tooltip
 } from 'recharts';
 import ApplicationForm from './ApplicationForm';
-import { useReactToPrint } from 'react-to-print';
+import { printElement, generatePdfBlob } from '../lib/print';
+import JSZip from 'jszip';
 
 export default function CandidateProfile() {
   const { id } = useParams<{ id: string }>();
@@ -76,12 +77,208 @@ export default function CandidateProfile() {
   const [fullScreenPdf, setFullScreenPdf] = useState<string | null>(null);
   const [fullScreenData, setFullScreenData] = useState<any | null>(null);
   const [existingEvaluation, setExistingEvaluation] = useState<CandidateEvaluation | null>(null);
+  
+  // Internal Notes State
+  const [notes, setNotes] = useState<any[]>([]);
+  const [newNote, setNewNote] = useState('');
+  const [loadingNotes, setLoadingNotes] = useState(false);
+  const [isAddingNote, setIsAddingNote] = useState(false);
 
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [isZipping, setIsZipping] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: `Form_Lamaran_${linkedData?.full_name?.replace(/\s+/g, '_') || 'Kandidat'}`,
-  });
+  
+  const handlePrint = async () => {
+    setIsPrinting(true);
+    try {
+      await printElement(printRef.current, `Form_Lamaran_${linkedData?.full_name?.replace(/\s+/g, '_') || 'Kandidat'}`);
+      toast({
+        title: "Berhasil",
+        description: "Dokumen berhasil disiapkan untuk dicetak.",
+      });
+    } catch (error: any) {
+      if (error.message === 'POPUP_BLOCKED') {
+        toast({
+          title: "Popup Diblokir",
+          description: "Browser Anda memblokir popup. Silakan izinkan popup (pop-up blocker) untuk situs ini agar dapat mencetak PDF.",
+          variant: "destructive",
+          duration: 7000,
+        });
+      } else {
+        toast({
+          title: "Gagal",
+          description: "Terjadi kesalahan saat menyiapkan dokumen.",
+          variant: "destructive"
+        });
+      }
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
+  const handleSecureDownload = async (url: string, prefix: string, candidateName: string) => {
+    try {
+      toast({
+        title: "Mengunduh...",
+        description: "Sedang menyiapkan file untuk diunduh.",
+      });
+
+      const cleanName = candidateName.replace(/[^a-zA-Z0-9]/g, '_');
+
+      // 1. Handle Google Docs links (Auto-convert to PDF)
+      const docsMatch = url.match(/docs\.google\.com\/document\/d\/([^/]+)/);
+      if (docsMatch) {
+        const exportUrl = `https://docs.google.com/document/d/${docsMatch[1]}/export?format=pdf`;
+        const a = document.createElement('a');
+        a.href = exportUrl;
+        a.download = `${prefix}_${cleanName}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        return;
+      }
+
+      // 2. Handle Google Drive links (Direct download)
+      const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+      if (driveMatch) {
+        const exportUrl = `https://drive.google.com/uc?export=download&id=${driveMatch[1]}`;
+        const a = document.createElement('a');
+        a.href = exportUrl;
+        a.download = `${prefix}_${cleanName}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        return;
+      }
+
+      // 3. Handle standard files (Supabase, etc.) via secure blob to hide URL
+      let ext = 'pdf';
+      try {
+        const urlWithoutQuery = url.split('?')[0];
+        const parts = urlWithoutQuery.split('.');
+        if (parts.length > 1) {
+          ext = parts[parts.length - 1].toLowerCase();
+        }
+      } catch (e) {
+        console.error('Gagal mengekstrak ekstensi:', e);
+      }
+
+      const filename = `${prefix}_${cleanName}.${ext}`;
+
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Network response was not ok');
+      const blob = await response.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(objectUrl);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Download failed:', error);
+      toast({
+        title: "Gagal Mengunduh",
+        description: "Terjadi kesalahan saat mengunduh file. Pastikan dokumen masih tersedia.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDownloadZip = async () => {
+    setIsZipping(true);
+    try {
+      toast({
+        title: "Menyiapkan ZIP...",
+        description: "Sedang mengumpulkan dan mengompres dokumen. Mohon tunggu.",
+      });
+
+      const zip = new JSZip();
+      const cleanName = candidate?.full_name?.replace(/[^a-zA-Z0-9]/g, '_') || 'Kandidat';
+
+      // 1. Generate PDF Biodata
+      if (printRef.current) {
+        const biodataBlob = await generatePdfBlob(printRef.current, `Biodata_${cleanName}`);
+        if (biodataBlob) {
+          zip.file(`Biodata_${cleanName}.pdf`, biodataBlob);
+        }
+      }
+
+      // Helper function to fetch file blob
+      const fetchFileBlob = async (url: string): Promise<{ blob: Blob, ext: string } | null> => {
+        try {
+          // Handle Google Docs
+          const docsMatch = url.match(/docs\.google\.com\/document\/d\/([^/]+)/);
+          if (docsMatch) {
+            const exportUrl = `https://docs.google.com/document/d/${docsMatch[1]}/export?format=pdf`;
+            const res = await fetch(exportUrl);
+            if (res.ok) return { blob: await res.blob(), ext: 'pdf' };
+          }
+          // Handle Google Drive
+          const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+          if (driveMatch) {
+            const exportUrl = `https://drive.google.com/uc?export=download&id=${driveMatch[1]}`;
+            const res = await fetch(exportUrl);
+            if (res.ok) return { blob: await res.blob(), ext: 'pdf' };
+          }
+          
+          // Handle standard files
+          let ext = 'pdf';
+          const urlWithoutQuery = url.split('?')[0];
+          const parts = urlWithoutQuery.split('.');
+          if (parts.length > 1) ext = parts[parts.length - 1].toLowerCase();
+          
+          const res = await fetch(url);
+          if (res.ok) return { blob: await res.blob(), ext };
+        } catch (e) {
+          console.error('Failed to fetch file for zip:', url, e);
+        }
+        return null;
+      };
+
+      // 2. Fetch CV
+      if (candidate?.resume_url) {
+        const cvData = await fetchFileBlob(candidate.resume_url);
+        if (cvData) {
+          zip.file(`CV_${cleanName}.${cvData.ext}`, cvData.blob);
+        }
+      }
+
+      // 3. Fetch Psikotes
+      if (candidate?.psikotes_result_url) {
+        const psikotesData = await fetchFileBlob(candidate.psikotes_result_url);
+        if (psikotesData) {
+          zip.file(`Psikotes_${cleanName}.${psikotesData.ext}`, psikotesData.blob);
+        }
+      }
+
+      // Generate ZIP and download
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const objectUrl = window.URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = `Berkas_${cleanName}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(objectUrl);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Berhasil",
+        description: "File ZIP berhasil diunduh.",
+      });
+    } catch (error) {
+      console.error('ZIP generation failed:', error);
+      toast({
+        title: "Gagal Mengunduh",
+        description: "Terjadi kesalahan saat membuat file ZIP.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsZipping(false);
+    }
+  };
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -126,8 +323,52 @@ export default function CandidateProfile() {
     if (id && profile) {
       fetchCandidate(id);
       fetchEvaluations(id);
+      fetchNotes(id);
     }
   }, [id, profile]);
+
+  const fetchNotes = async (candidateId: string) => {
+    setLoadingNotes(true);
+    try {
+      const { data, error } = await supabase
+        .from('internal_notes')
+        .select('*, author:profiles(*)')
+        .eq('candidate_id', candidateId)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      if (data) setNotes(data);
+    } catch (err) {
+      console.error('Error fetching notes:', err);
+    } finally {
+      setLoadingNotes(false);
+    }
+  };
+
+  const handleAddNote = async () => {
+    if (!id || !profile || !newNote.trim()) return;
+    setIsAddingNote(true);
+    try {
+      const { error } = await supabase
+        .from('internal_notes')
+        .insert({
+          candidate_id: id,
+          author_id: profile.id,
+          note_text: newNote.trim()
+        });
+      
+      if (error) throw error;
+      
+      toast({ title: 'Berhasil', description: 'Catatan internal ditambahkan.' });
+      setNewNote('');
+      fetchNotes(id);
+    } catch (err: any) {
+      console.error('Error adding note:', err);
+      toast({ title: 'Error', description: 'Gagal menambahkan catatan.', variant: 'destructive' });
+    } finally {
+      setIsAddingNote(false);
+    }
+  };
 
   const fetchEvaluations = async (candidateId: string) => {
     const { data, error } = await supabase
@@ -745,6 +986,14 @@ export default function CandidateProfile() {
           <div className={cn("px-4 py-1.5 rounded-full border text-sm font-bold uppercase tracking-wider", getStatusColor(candidate.status_screening))}>
             {getStatusText(candidate.status_screening)}
           </div>
+          <button
+            onClick={handleDownloadZip}
+            disabled={isZipping}
+            className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-colors flex items-center gap-2 text-sm font-medium shadow-sm disabled:opacity-50"
+          >
+            {isZipping ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+            {isZipping ? 'Memproses...' : 'Download Semua (ZIP)'}
+          </button>
         </div>
       </div>
 
@@ -864,15 +1113,13 @@ export default function CandidateProfile() {
                           <ExternalLink size={14} />
                           Full Screen
                         </button>
-                        <a 
-                          href={candidate.resume_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
+                        <button 
+                          onClick={() => handleSecureDownload(candidate.resume_url!, 'CV', candidate.full_name)}
                           className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg transition-colors text-xs font-medium"
                         >
                           <Download size={14} />
                           Unduh
-                        </a>
+                        </button>
                       </div>
                     </div>
                     <div className="w-full h-[400px] border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
@@ -1100,15 +1347,13 @@ export default function CandidateProfile() {
                     <ExternalLink size={16} />
                     Full Screen
                   </button>
-                  <a
-                    href={candidate.psikotes_result_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    onClick={() => handleSecureDownload(candidate.psikotes_result_url!, 'Psikotes', candidate.full_name)}
                     className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl transition-colors text-sm font-medium shadow-sm"
                   >
                     <Download size={16} />
                     Unduh
-                  </a>
+                  </button>
                 </div>
 
                 <div className="w-full h-[600px] border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
@@ -1161,10 +1406,20 @@ export default function CandidateProfile() {
                   </button>
                   <button
                     onClick={() => handlePrint()}
-                    className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl transition-colors text-sm font-medium shadow-sm"
+                    disabled={isPrinting}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl transition-colors text-sm font-medium shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
                   >
-                    <Download size={16} />
-                    Unduh PDF
+                    {isPrinting ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        Mengunduh...
+                      </>
+                    ) : (
+                      <>
+                        <Download size={16} />
+                        Unduh PDF
+                      </>
+                    )}
                   </button>
                   {profile?.role !== 'USER_MANAGER' && (
                     <button 
@@ -1237,6 +1492,75 @@ export default function CandidateProfile() {
                 <p className="text-xs text-slate-400 mt-1">Sistem tidak menemukan data dengan email, nomor telepon, atau nama yang sama.</p>
               </div>
             )}
+          </div>
+
+          {/* Internal Notes */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <FileText className="text-indigo-500" size={20} />
+                Catatan Internal
+              </h3>
+            </div>
+            
+            <div className="space-y-4">
+              {/* Note input area */}
+              <div className="flex gap-3">
+                <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
+                  <User size={20} className="text-indigo-600" />
+                </div>
+                <div className="flex-1">
+                  <textarea
+                    value={newNote}
+                    onChange={(e) => setNewNote(e.target.value)}
+                    placeholder="Tambahkan catatan internal untuk kandidat ini..."
+                    className="w-full p-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none min-h-[100px] text-sm"
+                  />
+                  <div className="flex justify-end mt-2">
+                    <button
+                      onClick={handleAddNote}
+                      disabled={!newNote.trim() || isAddingNote}
+                      className="px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+                    >
+                      {isAddingNote ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                      Simpan Catatan
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes list */}
+              <div className="space-y-4 mt-6">
+                {loadingNotes ? (
+                  <div className="flex justify-center py-4">
+                    <Loader2 size={24} className="animate-spin text-indigo-600" />
+                  </div>
+                ) : notes.length === 0 ? (
+                  <div className="text-center py-6 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
+                    <p className="text-slate-500 font-medium">Belum ada catatan internal</p>
+                  </div>
+                ) : (
+                  notes.map((note) => (
+                    <div key={note.id} className="flex gap-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                      <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center shrink-0 overflow-hidden">
+                        {note.author?.avatar_url ? (
+                          <img src={note.author.avatar_url} alt={note.author.full_name || 'User'} className="w-full h-full object-cover" />
+                        ) : (
+                          <User size={20} className="text-slate-500" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="font-bold text-slate-900 text-sm">{note.author?.full_name || 'Unknown User'}</p>
+                          <p className="text-xs text-slate-500">{formatDate(note.created_at)}</p>
+                        </div>
+                        <p className="text-sm text-slate-700 whitespace-pre-wrap">{note.note_text}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Interview Evaluations */}

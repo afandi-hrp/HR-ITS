@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { fetchWithRetry, cn } from '../lib/utils';
 import { Database, CloudDownload, FileText, Trash2, X, Download, Loader2, Search, ChevronLeft, ChevronRight, RefreshCw, CheckSquare, Printer } from 'lucide-react';
 import { useToast } from '../components/ui/use-toast';
-import { useReactToPrint } from 'react-to-print';
+import { printElement } from '../lib/print';
 import ApplicationForm from './ApplicationForm';
 
 export default function ExternalData() {
@@ -289,30 +289,34 @@ export default function ExternalData() {
     return String(val);
   };
 
-  const handleDownloadPdf = useReactToPrint({
-    contentRef: componentRef,
-    documentTitle: `Data_Pelamar_${previewData?.full_name || 'Kandidat'}`,
-    onBeforePrint: () => {
-      setIsGeneratingPdf(true);
-      return Promise.resolve();
-    },
-    onAfterPrint: () => {
-      setIsGeneratingPdf(false);
+  const handleDownloadPdf = async () => {
+    setIsGeneratingPdf(true);
+    try {
+      await printElement(componentRef.current, `Data_Pelamar_${previewData?.full_name || 'Kandidat'}`);
       toast({
         title: "Berhasil",
-        description: "Dokumen berhasil dicetak/diunduh.",
+        description: "Dokumen berhasil disiapkan untuk dicetak.",
       });
-    },
-    onPrintError: (error) => {
-      setIsGeneratingPdf(false);
+    } catch (error: any) {
       console.error("Print Error:", error);
-      toast({
-        title: "Gagal",
-        description: "Terjadi kesalahan saat mencetak dokumen.",
-        variant: "destructive"
-      });
+      if (error.message === 'POPUP_BLOCKED') {
+        toast({
+          title: "Popup Diblokir",
+          description: "Browser Anda memblokir popup. Silakan izinkan popup (pop-up blocker) untuk situs ini agar dapat mencetak PDF.",
+          variant: "destructive",
+          duration: 7000,
+        });
+      } else {
+        toast({
+          title: "Gagal",
+          description: "Terjadi kesalahan saat menyiapkan dokumen.",
+          variant: "destructive"
+        });
+      }
+    } finally {
+      setIsGeneratingPdf(false);
     }
-  });
+  };
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
