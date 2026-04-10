@@ -50,7 +50,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
   const [ktpFile, setKtpFile] = useState<File | null>(null);
   const [ijazahFile, setIjazahFile] = useState<File | null>(null);
   const [transcriptFile, setTranscriptFile] = useState<File | null>(null);
-  const [otherDocFile, setOtherDocFile] = useState<File | null>(null);
+  const [otherDocFiles, setOtherDocFiles] = useState<File[]>([]);
   const [payslipFile, setPayslipFile] = useState<File | null>(null);
   const [token, setToken] = useState('');
 
@@ -364,6 +364,36 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
     }
   };
 
+  const handleMultipleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<File[]>>, label: string, maxFiles: number) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      
+      if (files.length > maxFiles) {
+        toast({
+          title: 'Terlalu Banyak File',
+          description: `Maksimal ${maxFiles} file untuk ${label}.`,
+          variant: 'destructive'
+        });
+        e.target.value = '';
+        return;
+      }
+
+      const validFiles: File[] = [];
+      for (const file of files) {
+        if (file.size > 2 * 1024 * 1024) {
+          toast({
+            title: 'Ukuran File Terlalu Besar',
+            description: `File ${file.name} melebihi 2MB.`,
+            variant: 'destructive'
+          });
+        } else {
+          validFiles.push(file);
+        }
+      }
+      setter(validFiles);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -399,7 +429,14 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
       if (ktpFile) ktpUrl = await uploadFile(ktpFile, 'ktp');
       if (ijazahFile) ijazahUrl = await uploadFile(ijazahFile, 'ijazah');
       if (transcriptFile) transcriptUrl = await uploadFile(transcriptFile, 'transcript');
-      if (otherDocFile) otherDocUrl = await uploadFile(otherDocFile, 'other');
+      
+      let otherDocUrls: string[] = [];
+      if (otherDocFiles.length > 0) {
+        for (const file of otherDocFiles) {
+          otherDocUrls.push(await uploadFile(file, 'other'));
+        }
+      }
+      otherDocUrl = otherDocUrls.join(',');
 
       let payslipUrl = '';
       if (payslipFile) payslipUrl = await uploadFile(payslipFile, 'payslip');
@@ -488,8 +525,8 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
   return (
     <div className={cn("bg-slate-50", readOnly ? "py-0 bg-transparent flex flex-col gap-6" : "min-h-screen py-12 px-4 sm:px-6 lg:px-8")} id="application-form-container">
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className={cn("mx-auto bg-white overflow-hidden print:overflow-visible print:shadow-none print:border-none", readOnly ? "w-full rounded-2xl shadow-sm border border-slate-200" : "max-w-4xl rounded-2xl shadow-xl")}>
-          <div className="bg-[#8E4585] px-8 py-6 text-white flex items-center gap-4">
+        <div className={cn("mx-auto bg-white overflow-hidden print:overflow-visible print:shadow-none print:border-none", readOnly ? "w-full rounded-2xl shadow-sm border border-slate-200" : "w-full max-w-4xl rounded-2xl shadow-xl")}>
+          <div className="bg-[#8E4585] px-4 sm:px-8 py-4 sm:py-6 text-white flex items-center gap-4">
             {siteSettings?.career_logo_url && (
               <img src={siteSettings.career_logo_url} alt="Logo" className="w-12 h-12 sm:w-16 sm:h-16 object-contain bg-white rounded-xl p-1.5 shadow-sm shrink-0" />
             )}
@@ -499,8 +536,8 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
             </div>
           </div>
 
-          <div className="p-8">
-            <fieldset disabled={readOnly} className="space-y-8">
+          <div className="p-4 sm:p-8">
+            <fieldset disabled={readOnly} className="space-y-8 min-w-0">
           
           {/* Token Section */}
           {!readOnly && (
@@ -774,7 +811,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               <div>
                 <h3 className="text-sm font-semibold text-slate-800 mb-3">1. Susunan Anggota Keluarga <span className="text-slate-500 italic font-normal">(Family Member)</span>, Termasuk Anda <span className="text-slate-500 italic font-normal">(Including You)</span></h3>
                 <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full text-sm text-left">
+                  <table className="w-full min-w-[800px] text-sm text-left">
                     <thead className="bg-indigo-50 text-indigo-900 border-b border-indigo-100">
                       <tr>
                         <th className="px-4 py-3 font-semibold w-1/4">Anggota Keluarga <br/><span className="text-xs font-normal italic">(Family Member)</span></th>
@@ -803,7 +840,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               <div>
                 <h3 className="text-sm font-semibold text-slate-800 mb-3">2. Isilah kolom ini bila sudah menikah <span className="text-slate-500 italic font-normal">(Fill this columns if you are married)</span></h3>
                 <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full text-sm text-left">
+                  <table className="w-full min-w-[800px] text-sm text-left">
                     <thead className="bg-indigo-50 text-indigo-900 border-b border-indigo-100">
                       <tr>
                         <th className="px-4 py-3 font-semibold w-1/4">Anggota Keluarga <br/><span className="text-xs font-normal italic">(Family Member)</span></th>
@@ -842,7 +879,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               <div>
                 <h3 className="text-sm font-semibold text-slate-800 mb-3">1. Pendidikan Formal <span className="text-slate-500 italic font-normal">(Formal Education)</span></h3>
                 <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full text-sm text-left">
+                  <table className="w-full min-w-[800px] text-sm text-left">
                     <thead className="bg-indigo-50 text-indigo-900 border-b border-indigo-100">
                       <tr>
                         <th className="px-4 py-3 font-semibold w-1/5">Tingkat <br/><span className="text-xs font-normal italic">(Level)</span></th>
@@ -871,7 +908,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               <div>
                 <h3 className="text-sm font-semibold text-slate-800 mb-3">2. Pendidikan Non Formal <span className="text-slate-500 italic font-normal">(Non Formal Education)</span></h3>
                 <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full text-sm text-left">
+                  <table className="w-full min-w-[800px] text-sm text-left">
                     <thead className="bg-indigo-50 text-indigo-900 border-b border-indigo-100">
                       <tr>
                         <th className="px-4 py-3 font-semibold w-12 text-center">No</th>
@@ -898,7 +935,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               <div>
                 <h3 className="text-sm font-semibold text-slate-800 mb-3">3. Organisasi yang pernah Anda ikuti <span className="text-slate-500 italic font-normal">(Organizations you have Joined)</span></h3>
                 <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full text-sm text-left">
+                  <table className="w-full min-w-[800px] text-sm text-left">
                     <thead className="bg-indigo-50 text-indigo-900 border-b border-indigo-100">
                       <tr>
                         <th className="px-4 py-3 font-semibold w-12 text-center">No</th>
@@ -938,7 +975,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                   )}
                 </div>
                 <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full text-sm text-left relative">
+                  <table className="w-full min-w-[800px] text-sm text-left relative">
                     <thead className="bg-indigo-50 text-indigo-900 border-b border-indigo-100">
                       <tr>
                         <th className="px-4 py-3 font-semibold w-12 text-center">No</th>
@@ -1006,7 +1043,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                   )}
                 </div>
                 <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full text-sm text-left relative">
+                  <table className="w-full min-w-[800px] text-sm text-left relative">
                     <thead className="bg-indigo-50 text-indigo-900 border-b border-indigo-100">
                       <tr>
                         <th className="px-4 py-3 font-semibold w-12 text-center" rowSpan={2}>No</th>
@@ -1071,7 +1108,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                 
                 <div className="space-y-8">
                   {formData.work_experience.map((exp, index) => (
-                    <div key={index} className="border border-slate-200 rounded-xl overflow-hidden relative">
+                    <div key={index} className="border border-slate-200 rounded-xl overflow-x-auto relative">
                       {formData.work_experience.length > 1 && (
                         <button 
                           type="button" 
@@ -1083,19 +1120,19 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                         </button>
                       )}
                       
-                      <table className="w-full text-sm text-left">
+                      <table className="w-full min-w-[800px] text-sm text-left">
                         <tbody className="divide-y divide-slate-200">
                           <tr className="bg-purple-50">
                             <td className="px-4 py-3 font-semibold text-slate-800 w-1/3 border-r border-slate-200">
                               Masa Kerja <span className="text-xs font-normal italic">(Work Period)</span>
                             </td>
                             <td className="px-4 py-2">
-                              <div className="flex items-center gap-4">
+                              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
                                 <div className="flex items-center gap-2">
                                   <span className="text-slate-500">Dari:</span>
                                   <input type="date" value={exp.period_start} onChange={(e) => handleWorkExperienceChange(index, 'period_start', e.target.value)} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
                                 </div>
-                                <span className="text-slate-400">s/d</span>
+                                <span className="text-slate-400 hidden sm:inline">s/d</span>
                                 <div className="flex items-center gap-2">
                                   <span className="text-slate-500">Sampai:</span>
                                   <input type="date" value={exp.period_end} onChange={(e) => handleWorkExperienceChange(index, 'period_end', e.target.value)} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
@@ -1290,7 +1327,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               <div>
                 <h3 className="text-sm font-semibold text-slate-800 mb-3">5. Apakah ada karyawan/karyawati yang Anda kenal di Waruna Group? <span className="text-slate-500 italic font-normal">Are there any employees that you know at Waruna Group?</span></h3>
                 <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full text-sm text-left">
+                  <table className="w-full min-w-[800px] text-sm text-left">
                     <thead className="bg-purple-50 text-indigo-900 border-b border-indigo-100">
                       <tr>
                         <th className="px-4 py-3 font-semibold w-1/3 text-center">Nama Lengkap <span className="text-xs font-normal italic">(Full Name)</span></th>
@@ -1315,7 +1352,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               <div>
                 <h3 className="text-sm font-semibold text-slate-800 mb-3">6. Sebutkan 3 kenalan mis. mantan atasan (tidak ada hubungan keluarga) yg dapat memberikan keterangan tentang kinerja Anda / <span className="text-slate-500 italic font-normal">Please attach 3 references from the people (not family member) that might give the information about you?</span></h3>
                 <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full text-sm text-left">
+                  <table className="w-full min-w-[800px] text-sm text-left">
                     <thead className="bg-purple-50 text-indigo-900 border-b border-indigo-100">
                       <tr>
                         <th className="px-4 py-3 font-semibold w-1/5 text-center">Nama Lengkap <br/><span className="text-xs font-normal italic">(Full Name)</span></th>
@@ -1344,7 +1381,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               <div>
                 <h3 className="text-sm font-semibold text-slate-800 mb-3">7. Referensi keluarga yang dapat dihubungi ketika keadaan darurat <span className="text-slate-500 italic font-normal">(Family member that available to contact in emergency)?</span></h3>
                 <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full text-sm text-left">
+                  <table className="w-full min-w-[800px] text-sm text-left">
                     <thead className="bg-purple-50 text-indigo-900 border-b border-indigo-100">
                       <tr>
                         <th className="px-4 py-3 font-semibold w-1/4 text-center">Nama <span className="text-xs font-normal italic">(Name)</span></th>
@@ -1469,14 +1506,19 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                 )}
               </div>
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-slate-700">Dokumen Lainnya <span className="text-slate-400 italic">(Other Documents)</span> {!readOnly && <span className="text-xs text-red-500">*Maks. 2MB</span>}</label>
+                <label className="block text-sm font-medium text-slate-700">Dokumen Lainnya <span className="text-slate-400 italic">(Other Documents)</span> {!readOnly && <span className="text-xs text-red-500">*Maks. 3 File, masing-masing 2MB</span>}</label>
                 {readOnly ? (
-                  renderAttachment(initialData?.other_doc_url, "Dokumen Lainnya")
+                  <div className="flex flex-col gap-2">
+                    {initialData?.other_doc_url ? initialData.other_doc_url.split(',').map((url: string, index: number) => (
+                      <div key={index}>{renderAttachment(url.trim(), `Dokumen Lainnya ${index + 1}`)}</div>
+                    )) : <span className="text-sm text-slate-500">-</span>}
+                  </div>
                 ) : (
                   <input 
                     type="file" 
+                    multiple
                     accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                    onChange={(e) => handleFileChange(e, setOtherDocFile, 'Dokumen Lainnya')}
+                    onChange={(e) => handleMultipleFileChange(e, setOtherDocFiles, 'Dokumen Lainnya', 3)}
                     className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
                   />
                 )}
@@ -1534,7 +1576,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                       <button 
                         type="button"
                         onClick={() => sigCanvas.current?.clear()}
-                        className="absolute top-2 right-2 p-1.5 bg-slate-100 text-slate-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 hover:text-red-600"
+                        className="absolute top-2 right-2 p-1.5 bg-slate-100 text-slate-500 rounded-lg transition-colors hover:bg-red-50 hover:text-red-600 shadow-sm"
                         title="Hapus Tanda Tangan"
                       >
                         <Eraser size={16} />
@@ -1558,13 +1600,13 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
 
         {/* Remuneration Section */}
         {(!readOnly || !hideSalary) && (
-          <div className={cn("mx-auto bg-white overflow-hidden print:overflow-visible print:shadow-none print:border-none print:mt-8", readOnly ? "w-full rounded-2xl shadow-sm border border-slate-200" : "max-w-4xl rounded-2xl shadow-xl")}>
-            <div className="bg-indigo-600 px-8 py-4 text-white flex items-center justify-between">
+          <div className={cn("mx-auto bg-white overflow-hidden print:overflow-visible print:shadow-none print:border-none print:mt-8", readOnly ? "w-full rounded-2xl shadow-sm border border-slate-200" : "w-full max-w-4xl rounded-2xl shadow-xl")}>
+            <div className="bg-indigo-600 px-4 sm:px-8 py-4 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
               <h2 className="text-lg font-bold">LEMBARAN PAKET REMUNERASI</h2>
               <span className="text-indigo-200 text-sm">FORM-HC/PST/1114/RO/006</span>
             </div>
-            <div className="p-8">
-              <fieldset disabled={readOnly} className="space-y-8">
+            <div className="p-4 sm:p-8">
+              <fieldset disabled={readOnly} className="space-y-8 min-w-0">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-2">
                     <label className="block text-sm font-bold text-slate-700">Gaji Sekarang / Gaji terakhir saat bekerja <span className="text-slate-400 font-normal italic">*Diisi jika ada</span></label>
@@ -1651,7 +1693,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                           <button 
                             type="button"
                             onClick={() => remunerationSigCanvas.current?.clear()}
-                            className="absolute top-2 right-2 p-1.5 bg-slate-100 text-slate-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 hover:text-red-600"
+                            className="absolute top-2 right-2 p-1.5 bg-slate-100 text-slate-500 rounded-lg transition-colors hover:bg-red-50 hover:text-red-600 shadow-sm"
                             title="Hapus Tanda Tangan"
                           >
                             <Eraser size={16} />
@@ -1710,7 +1752,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
         )}
 
         {!readOnly && (
-          <div className="max-w-4xl mx-auto flex justify-end no-print">
+          <div className="w-full max-w-4xl mx-auto flex justify-end no-print">
             <button
               type="submit"
               disabled={loading}
@@ -1723,7 +1765,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
         )}
 
         {readOnly && (
-          <div className="block max-w-4xl mx-auto bg-white p-8 mt-8 border-t-4 border-slate-100 print:border-none" style={{ pageBreakBefore: 'always' }}>
+          <div className="w-full block max-w-4xl mx-auto bg-white p-4 sm:p-8 mt-8 border-t-4 border-slate-100 print:border-none" style={{ pageBreakBefore: 'always' }}>
             <h2 className="text-xl font-bold text-slate-900 mb-6 border-b pb-2">LAMPIRAN DOKUMEN</h2>
             <div className="space-y-12">
               {initialData?.ktp_url && (
@@ -1759,11 +1801,20 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               {initialData?.other_doc_url && (
                 <div className="pdf-avoid-break">
                   <h3 className="font-bold text-slate-700 mb-4">Dokumen Lainnya</h3>
-                  {initialData.other_doc_url.split('?')[0].toLowerCase().endsWith('.pdf') ? (
-                    <PdfToImages url={initialData.other_doc_url} title="Dokumen Lainnya" />
-                  ) : (
-                    <img src={initialData.other_doc_url} alt="Lainnya" className="max-w-full h-auto max-h-[800px] object-contain border border-slate-200 p-2 rounded-lg" />
-                  )}
+                  <div className="space-y-8">
+                    {initialData.other_doc_url.split(',').map((url: string, index: number) => {
+                      const trimmedUrl = url.trim();
+                      return (
+                        <div key={index}>
+                          {trimmedUrl.split('?')[0].toLowerCase().endsWith('.pdf') ? (
+                            <PdfToImages url={trimmedUrl} title={`Dokumen Lainnya ${index + 1}`} />
+                          ) : (
+                            <img src={trimmedUrl} alt={`Lainnya ${index + 1}`} className="max-w-full h-auto max-h-[800px] object-contain border border-slate-200 p-2 rounded-lg" />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
               

@@ -464,23 +464,25 @@ export default function Screening() {
 
       {/* Filter Bar */}
       <div className="bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col xl:flex-row gap-4">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-          <input 
-            type="text" 
-            placeholder="Cari nama atau posisi..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
-          />
+        <div className="flex-1 min-w-[200px]">
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <input 
+              type="text" 
+              placeholder="Cari nama atau posisi..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+            />
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1">
-            <Filter size={16} className="text-slate-400" />
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
+            <Filter size={16} className="text-slate-400 shrink-0" />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-transparent text-sm focus:outline-none text-slate-700"
+              className="bg-transparent text-sm focus:outline-none text-slate-700 w-full"
             >
               <option value="all">Semua Status</option>
               <option value="pending">Pending</option>
@@ -490,29 +492,26 @@ export default function Screening() {
               <option value="hired">Hired</option>
             </select>
           </div>
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1">
-            <CalendarIcon size={16} className="text-slate-400" />
-            <input 
-              type="date" 
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="bg-transparent text-sm focus:outline-none"
-            />
-            <span className="text-slate-400">-</span>
-            <input 
-              type="date" 
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="bg-transparent text-sm focus:outline-none"
-            />
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 sm:py-2.5 w-full sm:w-auto">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <CalendarIcon size={16} className="text-slate-400 shrink-0" />
+              <input 
+                type="date" 
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="bg-transparent text-sm focus:outline-none w-full sm:w-auto"
+              />
+            </div>
+            <span className="text-slate-400 hidden sm:inline">-</span>
+            <div className="flex items-center gap-2 w-full sm:w-auto pl-6 sm:pl-0">
+              <input 
+                type="date" 
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="bg-transparent text-sm focus:outline-none w-full sm:w-auto"
+              />
+            </div>
           </div>
-          <button 
-            onClick={() => setStatusFilter('all')}
-            className="px-4 py-2 text-sm font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm whitespace-nowrap"
-            title="Tampilkan semua kandidat terlepas dari filter status"
-          >
-            Semua Kandidat
-          </button>
           <button 
             onClick={() => {
               setSearch('');
@@ -520,7 +519,7 @@ export default function Screening() {
               setEndDate('');
               setStatusFilter('all');
             }}
-            className="px-4 py-2 text-sm font-bold text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm"
+            className="px-4 py-2.5 text-sm font-bold text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm"
           >
             Reset
           </button>
@@ -531,11 +530,11 @@ export default function Screening() {
           >
             <RefreshCcw size={20} className={loading ? 'animate-spin' : ''} />
           </button>
-          <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl p-1">
+          <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl p-1 h-[42px]">
             <button
               onClick={() => setViewMode('list')}
               className={cn(
-                "p-1.5 rounded-lg transition-all",
+                "p-1.5 rounded-lg transition-all h-full flex items-center justify-center",
                 viewMode === 'list' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
               )}
               title="Tampilan Daftar"
@@ -545,7 +544,7 @@ export default function Screening() {
             <button
               onClick={() => setViewMode('card')}
               className={cn(
-                "p-1.5 rounded-lg transition-all",
+                "p-1.5 rounded-lg transition-all h-full flex items-center justify-center",
                 viewMode === 'card' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
               )}
               title="Tampilan Kartu"

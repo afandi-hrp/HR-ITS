@@ -33,8 +33,9 @@ interface DashboardLayoutProps {
 }
 
 export default function DashboardLayout({ children, user }: DashboardLayoutProps) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isHovered, setIsHovered] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const showFullSidebar = isMobileMenuOpen || isHovered;
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
@@ -156,28 +157,32 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
         />
       )}
 
+      {/* Sidebar Spacer for Desktop */}
+      <div className="hidden lg:block w-[112px] shrink-0" />
+
       {/* Sidebar */}
       <aside 
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex flex-col bg-[#3D2C44] transition-all duration-300 lg:static",
-          "lg:m-4 lg:rounded-3xl lg:shadow-2xl lg:h-[calc(100vh-2rem)]",
-          isSidebarOpen ? "w-64" : "w-20",
+          "fixed inset-y-0 left-0 z-50 flex flex-col bg-[#3D2C44] transition-all duration-300 overflow-hidden",
+          "lg:m-4 lg:rounded-3xl lg:h-[calc(100vh-2rem)]",
+          showFullSidebar ? "w-64 lg:shadow-2xl" : "w-64 lg:w-20 lg:shadow-lg",
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
         <div className="flex items-center justify-between h-16 px-6 border-b border-white/5">
-          <div className={cn("flex items-center gap-3", !isSidebarOpen && "lg:hidden")}>
+          <div className={cn("flex items-center gap-3", !showFullSidebar && "lg:justify-center w-full")}>
             {settings?.sidebar_logo_url && (
-              <img src={settings.sidebar_logo_url} alt="Logo" className="w-12 h-12 object-contain" referrerPolicy="no-referrer" />
+              <img src={settings.sidebar_logo_url} alt="Logo" className="w-12 h-12 object-contain shrink-0" referrerPolicy="no-referrer" />
             )}
-            <span className="font-bold text-xl tracking-tight text-white">{settings?.sidebar_text || 'Waruna'}</span>
+            <div className={cn(
+              "overflow-hidden transition-all duration-300 whitespace-nowrap",
+              showFullSidebar ? "max-w-[200px] opacity-100" : "max-w-0 opacity-0"
+            )}>
+              <span className="font-bold text-xl tracking-tight text-white">{settings?.sidebar_text || 'Waruna'}</span>
+            </div>
           </div>
-          <button 
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="hidden lg:flex items-center justify-center w-8 h-8 rounded-md hover:bg-white/10 text-white/70"
-          >
-            {isSidebarOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
-          </button>
           <button 
             onClick={() => setIsMobileMenuOpen(false)}
             className="lg:hidden text-white/70"
@@ -196,7 +201,6 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
                 <div key={item.title} className="space-y-1">
                   <button
                     onClick={() => {
-                      if (!isSidebarOpen) setIsSidebarOpen(true);
                       setExpandedGroups(prev => ({ ...prev, [item.title]: !isExpanded }));
                     }}
                     className={cn(
@@ -209,14 +213,22 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
                         "w-5 h-5 shrink-0 transition-transform duration-300",
                         isActiveGroup && !isExpanded ? "text-white scale-110" : "text-white/40 group-hover:text-white/60 group-hover:scale-110"
                       )} />
-                      {isSidebarOpen && <span className="ml-3 font-medium text-[15px]">{item.title}</span>}
+                      <div className={cn(
+                        "overflow-hidden transition-all duration-300 whitespace-nowrap",
+                        showFullSidebar ? "max-w-[200px] opacity-100 ml-3" : "max-w-0 opacity-0 ml-0"
+                      )}>
+                        <span className="font-medium text-[15px]">{item.title}</span>
+                      </div>
                     </div>
-                    {isSidebarOpen && (
-                      <ChevronDown size={16} className={cn("transition-transform duration-300", isExpanded ? "rotate-180" : "")} />
-                    )}
+                    <div className={cn(
+                      "overflow-hidden transition-all duration-300 flex items-center",
+                      showFullSidebar ? "max-w-[20px] opacity-100" : "max-w-0 opacity-0"
+                    )}>
+                      <ChevronDown size={16} className={cn("shrink-0 transition-transform duration-300", isExpanded ? "rotate-180" : "")} />
+                    </div>
                   </button>
                   
-                  {isExpanded && isSidebarOpen && (
+                  {isExpanded && showFullSidebar && (
                     <div className="pl-4 pr-1 space-y-1 mt-1">
                       {item.items.map(subItem => (
                         <Link
@@ -239,10 +251,10 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
                           )}
                           <div className="relative z-10 flex items-center w-full">
                             <div className={cn(
-                              "w-1.5 h-1.5 rounded-full mr-3 transition-colors",
+                              "w-1.5 h-1.5 rounded-full mr-3 shrink-0 transition-colors",
                               currentPath === subItem.id ? "bg-slate-900" : "bg-white/20 group-hover:bg-white/60"
                             )} />
-                            <span className="font-medium text-[15px]">{subItem.label}</span>
+                            <span className="font-medium text-[15px] whitespace-nowrap">{subItem.label}</span>
                           </div>
                         </Link>
                       ))}
@@ -276,7 +288,12 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
                     "w-5 h-5 shrink-0 transition-transform duration-300",
                     currentPath === item.id ? "text-slate-900 scale-110" : "text-white/40 group-hover:text-white/60 group-hover:scale-110"
                   )} />
-                  {isSidebarOpen && <span className="ml-3 font-medium text-[15px]">{item.label}</span>}
+                  <div className={cn(
+                    "overflow-hidden transition-all duration-300 whitespace-nowrap",
+                    showFullSidebar ? "max-w-[200px] opacity-100 ml-3" : "max-w-0 opacity-0 ml-0"
+                  )}>
+                    <span className="font-medium text-[15px]">{item.label}</span>
+                  </div>
                 </div>
               </Link>
             );
@@ -284,7 +301,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
         </nav>
 
         <div className="p-4 border-t border-white/5">
-          <div className={cn("flex items-center gap-3 mb-4", !isSidebarOpen && "lg:justify-center")}>
+          <div className={cn("flex items-center gap-3 mb-4", !showFullSidebar && "lg:justify-center")}>
             <div className="w-10 h-10 rounded-full bg-white/10 overflow-hidden shrink-0">
               {user.user_metadata.avatar_url ? (
                 <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
@@ -294,22 +311,28 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
                 </div>
               )}
             </div>
-            {isSidebarOpen && (
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-white truncate">{user.user_metadata.full_name || 'User'}</p>
-                <p className="text-xs text-white/60 truncate">{user.email}</p>
-              </div>
-            )}
+            <div className={cn(
+              "overflow-hidden transition-all duration-300 whitespace-nowrap flex flex-col justify-center",
+              showFullSidebar ? "max-w-[200px] opacity-100" : "max-w-0 opacity-0"
+            )}>
+              <p className="text-sm font-semibold text-white truncate">{user.user_metadata.full_name || 'User'}</p>
+              <p className="text-xs text-white/60 truncate">{user.email}</p>
+            </div>
           </div>
           <button 
             onClick={handleLogout}
             className={cn(
               "flex items-center w-full px-3 py-2 rounded-lg text-red-400 hover:bg-red-400/10 transition-colors",
-              !isSidebarOpen && "lg:justify-center"
+              !showFullSidebar && "lg:justify-center"
             )}
           >
             <LogOut className="w-5 h-5 shrink-0" />
-            {isSidebarOpen && <span className="ml-3 font-medium text-[15px]">Keluar</span>}
+            <div className={cn(
+              "overflow-hidden transition-all duration-300 whitespace-nowrap",
+              showFullSidebar ? "max-w-[200px] opacity-100 ml-3" : "max-w-0 opacity-0 ml-0"
+            )}>
+              <span className="font-medium text-[15px]">Keluar</span>
+            </div>
           </button>
         </div>
       </aside>

@@ -344,7 +344,10 @@ export default function CandidateProfile() {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      if (data) setNotes(data);
+      if (data) {
+        const filteredNotes = data.filter(note => note.author?.role === profile?.role);
+        setNotes(filteredNotes);
+      }
     } catch (err) {
       console.error('Error fetching notes:', err);
     } finally {

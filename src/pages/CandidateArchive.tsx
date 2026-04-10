@@ -137,24 +137,26 @@ export default function CandidateArchive() {
 
       {/* Filter Bar */}
       <div className="bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-          <input 
-            type="text" 
-            placeholder="Cari nama atau posisi..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
-          />
+        <div className="flex-1">
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <input 
+              type="text" 
+              placeholder="Cari nama atau posisi..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+            />
+          </div>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1">
-            <CalendarIcon size={16} className="text-slate-400" />
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 w-full sm:w-auto">
+            <CalendarIcon size={16} className="text-slate-400 shrink-0" />
             <input 
               type="date" 
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
-              className="bg-transparent text-sm focus:outline-none"
+              className="bg-transparent text-sm focus:outline-none w-full sm:w-auto"
             />
           </div>
           <button 
@@ -163,7 +165,7 @@ export default function CandidateArchive() {
               setDateFilter('');
               setCurrentPage(1);
             }}
-            className="px-4 py-2 text-sm font-bold text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm"
+            className="px-4 py-2.5 text-sm font-bold text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm"
           >
             Reset
           </button>

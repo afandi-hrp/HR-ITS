@@ -149,36 +149,55 @@ export default function Logs() {
       // 1. Ambil data kandidat untuk mendapatkan URL file dan ID eksternal
       const { data: candidate, error: fetchError } = await supabase
         .from('candidate_logs')
-        .select('cv_url, photo_url, ktp_url, psikotes_result_url, ijazah_url, transcript_url, other_doc_url, signature_url, linked_external_id')
+        .select('resume_url, psikotes_result_url, linked_external_id')
         .eq('id', deleteModalData.id)
         .single();
 
       if (fetchError) throw fetchError;
 
       if (candidate) {
-        // 2. Hapus file fisik dari storage
-        const filesToDelete = [
-          extractStoragePath(candidate.cv_url),
-          extractStoragePath(candidate.photo_url),
-          extractStoragePath(candidate.ktp_url),
-          extractStoragePath(candidate.psikotes_result_url),
-          extractStoragePath(candidate.ijazah_url),
-          extractStoragePath(candidate.transcript_url),
-          extractStoragePath(candidate.other_doc_url),
-          extractStoragePath(candidate.signature_url)
+        let filesToDelete = [
+          extractStoragePath(candidate.resume_url),
+          extractStoragePath(candidate.psikotes_result_url)
         ].filter(Boolean) as string[];
 
+        // 2. Ambil data eksternal jika ada untuk mendapatkan URL file tambahan
+        if (candidate.linked_external_id) {
+          const { data: externalData } = await supabase
+            .from('external_data')
+            .select('raw_data')
+            .eq('uid_sheet', candidate.linked_external_id)
+            .single();
+
+          if (externalData?.raw_data) {
+            const raw = externalData.raw_data;
+            const externalFiles = [
+              extractStoragePath(raw.photo_url),
+              extractStoragePath(raw.ktp_url),
+              extractStoragePath(raw.ijazah_url),
+              extractStoragePath(raw.transcript_url),
+              extractStoragePath(raw.other_doc_url),
+              extractStoragePath(raw.payslip_url),
+              extractStoragePath(raw.signature_url),
+              extractStoragePath(raw.remuneration_signature_url)
+            ].filter(Boolean) as string[];
+            
+            filesToDelete = [...filesToDelete, ...externalFiles];
+          }
+        }
+
+        // 3. Hapus file fisik dari storage
         if (filesToDelete.length > 0) {
           await supabase.storage.from('candidate-documents').remove(filesToDelete);
         }
 
-        // 3. Hapus data eksternal yang tertaut
+        // 4. Hapus data eksternal yang tertaut
         if (candidate.linked_external_id) {
           await supabase.from('external_data').delete().eq('uid_sheet', candidate.linked_external_id);
         }
       }
 
-      // 4. Hapus baris kandidat dari tabel log
+      // 5. Hapus baris kandidat dari tabel log
       const { error } = await supabase
         .from('candidate_logs')
         .delete()
@@ -203,39 +222,60 @@ export default function Logs() {
       // 1. Ambil data kandidat untuk mendapatkan URL file dan ID eksternal
       const { data: candidates, error: fetchError } = await supabase
         .from('candidate_logs')
-        .select('cv_url, photo_url, ktp_url, psikotes_result_url, ijazah_url, transcript_url, other_doc_url, signature_url, linked_external_id')
+        .select('resume_url, psikotes_result_url, linked_external_id')
         .in('id', selectedIds);
 
       if (fetchError) throw fetchError;
 
       if (candidates && candidates.length > 0) {
         // 2. Kumpulkan semua file dan ID eksternal yang akan dihapus
-        const filesToDelete: string[] = [];
+        let filesToDelete: string[] = [];
         const externalIdsToDelete: string[] = [];
 
         candidates.forEach(candidate => {
-          const cv = extractStoragePath(candidate.cv_url);
-          const photo = extractStoragePath(candidate.photo_url);
-          const ktp = extractStoragePath(candidate.ktp_url);
+          const cv = extractStoragePath(candidate.resume_url);
           const psikotes = extractStoragePath(candidate.psikotes_result_url);
-          const ijazah = extractStoragePath(candidate.ijazah_url);
-          const transcript = extractStoragePath(candidate.transcript_url);
-          const otherDoc = extractStoragePath(candidate.other_doc_url);
-          const signature = extractStoragePath(candidate.signature_url);
           
           if (cv) filesToDelete.push(cv);
-          if (photo) filesToDelete.push(photo);
-          if (ktp) filesToDelete.push(ktp);
           if (psikotes) filesToDelete.push(psikotes);
-          if (ijazah) filesToDelete.push(ijazah);
-          if (transcript) filesToDelete.push(transcript);
-          if (otherDoc) filesToDelete.push(otherDoc);
-          if (signature) filesToDelete.push(signature);
 
           if (candidate.linked_external_id) {
             externalIdsToDelete.push(candidate.linked_external_id);
           }
         });
+
+        // Ambil data eksternal jika ada untuk mendapatkan URL file tambahan
+        if (externalIdsToDelete.length > 0) {
+          const { data: externalDataList } = await supabase
+            .from('external_data')
+            .select('raw_data')
+            .in('uid_sheet', externalIdsToDelete);
+
+          if (externalDataList) {
+            externalDataList.forEach(ext => {
+              if (ext.raw_data) {
+                const raw = ext.raw_data;
+                const photo = extractStoragePath(raw.photo_url);
+                const ktp = extractStoragePath(raw.ktp_url);
+                const ijazah = extractStoragePath(raw.ijazah_url);
+                const transcript = extractStoragePath(raw.transcript_url);
+                const otherDoc = extractStoragePath(raw.other_doc_url);
+                const payslip = extractStoragePath(raw.payslip_url);
+                const signature = extractStoragePath(raw.signature_url);
+                const remunSignature = extractStoragePath(raw.remuneration_signature_url);
+
+                if (photo) filesToDelete.push(photo);
+                if (ktp) filesToDelete.push(ktp);
+                if (ijazah) filesToDelete.push(ijazah);
+                if (transcript) filesToDelete.push(transcript);
+                if (otherDoc) filesToDelete.push(otherDoc);
+                if (payslip) filesToDelete.push(payslip);
+                if (signature) filesToDelete.push(signature);
+                if (remunSignature) filesToDelete.push(remunSignature);
+              }
+            });
+          }
+        }
 
         // 3. Hapus file fisik dari storage
         if (filesToDelete.length > 0) {
