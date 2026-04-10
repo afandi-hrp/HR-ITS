@@ -447,7 +447,7 @@ export default function Logs() {
             <div className="p-6 flex-1 flex flex-col gap-4">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-slate-500 flex items-center gap-1"><Calendar size={14} /> Arsip</span>
-                <span className="font-medium text-slate-700">{formatDate(log.date)}</span>
+                <span className="font-medium text-slate-700">{log.archived_at ? formatDate(log.archived_at) : formatDate(log.created_at)}</span>
               </div>
 
               <div className="space-y-2">
@@ -497,12 +497,6 @@ export default function Logs() {
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Skor Screening</span>
                 <span className="text-lg font-black text-indigo-600">{log.assessment_score || 0}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Skor Asesmen</span>
-                <span className="text-lg font-black text-indigo-600">
-                  {Math.round(((log.technical_score || 0) + (log.communication_score || 0) + (log.problem_solving_score || 0) + (log.teamwork_score || 0) + (log.leadership_score || 0) + (log.adaptability_score || 0)) / 6)}
-                </span>
               </div>
             </div>
           </div>

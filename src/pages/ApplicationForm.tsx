@@ -293,6 +293,40 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
     }));
   };
 
+  const addLanguage = () => {
+    setFormData(prev => ({
+      ...prev,
+      languages: [
+        ...prev.languages,
+        { language: '', writing: '', reading: '', speaking: '' }
+      ]
+    }));
+  };
+
+  const removeLanguage = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      languages: prev.languages.filter((_, i) => i !== index)
+    }));
+  };
+
+  const addSkill = () => {
+    setFormData(prev => ({
+      ...prev,
+      skills: [
+        ...prev.skills,
+        { ability: '', level: '', certificate: '' }
+      ]
+    }));
+  };
+
+  const removeSkill = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      skills: prev.skills.filter((_, i) => i !== index)
+    }));
+  };
+
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -891,9 +925,20 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
 
               {/* 4. Penguasaan Bahasa Asing */}
               <div>
-                <h3 className="text-sm font-semibold text-slate-800 mb-3">4. Penguasaan Bahasa Asing <span className="text-slate-500 italic font-normal">(Non Mother Tongue Language Ability) Poor / Fair / Good</span></h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-slate-800">4. Penguasaan Bahasa Asing <span className="text-slate-500 italic font-normal">(Non Mother Tongue Language Ability) Poor / Fair / Good</span></h3>
+                  {!readOnly && (
+                    <button 
+                      type="button" 
+                      onClick={addLanguage}
+                      className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors flex items-center gap-1"
+                    >
+                      <Plus size={14} /> Tambah Bahasa
+                    </button>
+                  )}
+                </div>
                 <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full text-sm text-left">
+                  <table className="w-full text-sm text-left relative">
                     <thead className="bg-indigo-50 text-indigo-900 border-b border-indigo-100">
                       <tr>
                         <th className="px-4 py-3 font-semibold w-12 text-center">No</th>
@@ -901,13 +946,20 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                         <th className="px-4 py-3 font-semibold w-1/4 text-center">Menulis <br/><span className="text-xs font-normal italic">(Writing)</span></th>
                         <th className="px-4 py-3 font-semibold w-1/4 text-center">Membaca <br/><span className="text-xs font-normal italic">(Reading)</span></th>
                         <th className="px-4 py-3 font-semibold w-1/4 text-center">Berbicara <br/><span className="text-xs font-normal italic">(Speaking)</span></th>
+                        {!readOnly && <th className="w-10"></th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
                       {formData.languages.map((lang, index) => (
-                        <tr key={index} className="hover:bg-slate-50">
+                        <tr key={index} className="hover:bg-slate-50 group">
                           <td className="px-4 py-2 font-medium text-slate-700 bg-slate-50 border-r border-slate-200 text-center">{index + 1}</td>
-                          <td className="px-4 py-2 font-medium text-slate-700 bg-slate-50 border-r border-slate-200">{lang.language}</td>
+                          <td className="p-0 border-r border-slate-200">
+                            {index < 2 ? (
+                              <div className="px-4 py-2 font-medium text-slate-700 bg-slate-50 h-full flex items-center">{lang.language}</div>
+                            ) : (
+                              <input type="text" value={lang.language} onChange={(e) => handleTableChange('languages', index, 'language', e.target.value)} placeholder={index === 2 ? "Lainnya (Jika ada)" : "Nama Bahasa"} className="w-full h-full px-4 py-2 bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500" />
+                            )}
+                          </td>
                           <td className="p-0 border-r border-slate-200">
                             <select value={lang.writing} onChange={(e) => handleTableChange('languages', index, 'writing', e.target.value)} className="w-full h-full px-4 py-2 bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 text-center appearance-none cursor-pointer">
                               <option value=""></option><option value="Poor">Poor</option><option value="Fair">Fair</option><option value="Good">Good</option>
@@ -923,6 +975,15 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                               <option value=""></option><option value="Poor">Poor</option><option value="Fair">Fair</option><option value="Good">Good</option>
                             </select>
                           </td>
+                          {!readOnly && (
+                            <td className="p-0 text-center align-middle">
+                              {index >= 3 && (
+                                <button type="button" onClick={() => removeLanguage(index)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
+                                  <Trash2 size={16} />
+                                </button>
+                              )}
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
@@ -932,15 +993,27 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
 
               {/* 5. Penguasaan Keterampilan Tambahan */}
               <div>
-                <h3 className="text-sm font-semibold text-slate-800 mb-3">5. Penguasaan Keterampilan Tambahan <span className="text-slate-500 italic font-normal">(Skill Abilities)</span> <span className="text-xs text-slate-400 font-normal">*Level 1 - 4 menunjukkan rendah ke tinggi</span></h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-slate-800">5. Penguasaan Keterampilan Tambahan <span className="text-slate-500 italic font-normal">(Skill Abilities)</span> <span className="text-xs text-slate-400 font-normal">*Level 1 - 4 menunjukkan rendah ke tinggi</span></h3>
+                  {!readOnly && (
+                    <button 
+                      type="button" 
+                      onClick={addSkill}
+                      className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors flex items-center gap-1"
+                    >
+                      <Plus size={14} /> Tambah Keterampilan
+                    </button>
+                  )}
+                </div>
                 <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full text-sm text-left">
+                  <table className="w-full text-sm text-left relative">
                     <thead className="bg-indigo-50 text-indigo-900 border-b border-indigo-100">
                       <tr>
                         <th className="px-4 py-3 font-semibold w-12 text-center" rowSpan={2}>No</th>
                         <th className="px-4 py-3 font-semibold w-1/2" rowSpan={2}>Keterampilan <span className="text-xs font-normal italic">(Abilities)</span></th>
                         <th className="px-4 py-2 font-semibold text-center border-b border-indigo-100" colSpan={4}>Tingkat Penguasaan <span className="text-xs font-normal italic">(level)</span></th>
                         <th className="px-4 py-3 font-semibold w-1/5 text-center" rowSpan={2}>Sertifikat <br/><span className="text-xs font-normal italic">(Certificate)</span></th>
+                        {!readOnly && <th className="w-10" rowSpan={2}></th>}
                       </tr>
                       <tr>
                         <th className="px-2 py-1 font-semibold text-center border-r border-indigo-100 w-12">1</th>
@@ -951,7 +1024,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                     </thead>
                     <tbody className="divide-y divide-slate-200">
                       {formData.skills.map((skill, index) => (
-                        <tr key={index} className="hover:bg-slate-50">
+                        <tr key={index} className="hover:bg-slate-50 group">
                           <td className="px-4 py-2 font-medium text-slate-700 bg-slate-50 border-r border-slate-200 text-center">{index + 1}</td>
                           <td className="p-0 border-r border-slate-200"><input type="text" value={skill.ability} onChange={(e) => handleTableChange('skills', index, 'ability', e.target.value)} className="w-full h-full px-4 py-2 bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500" /></td>
                           <td className="p-0 border-r border-slate-200 text-center">
@@ -967,6 +1040,15 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                             <input type="radio" name={`skill_level_${index}`} value="4" checked={skill.level === '4'} onChange={(e) => handleTableChange('skills', index, 'level', e.target.value)} className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500 cursor-pointer" />
                           </td>
                           <td className="p-0"><input type="text" value={skill.certificate} onChange={(e) => handleTableChange('skills', index, 'certificate', e.target.value)} className="w-full h-full px-4 py-2 bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 text-center" /></td>
+                          {!readOnly && (
+                            <td className="p-0 text-center align-middle">
+                              {index >= 3 && (
+                                <button type="button" onClick={() => removeSkill(index)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
+                                  <Trash2 size={16} />
+                                </button>
+                              )}
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
@@ -1431,7 +1513,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
 
               <div className="text-center">
                 <p className="text-sm text-slate-600 mb-4">
-                  Medan, {new Date().getFullYear()}
+                  Medan, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                 </p>
                 <div className="mb-2 border-2 border-dashed border-slate-300 rounded-xl bg-white overflow-hidden relative group">
                   {readOnly ? (

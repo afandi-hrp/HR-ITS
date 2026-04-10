@@ -211,15 +211,25 @@ export default function CandidateArchive() {
                         <p className="text-sm text-slate-500 font-medium">{log.position}</p>
                       </div>
                     </div>
-                    <div className={cn(
-                      "p-2 rounded-lg bg-slate-100 text-slate-400 transition-transform duration-300 lg:hidden",
-                      isExpanded && "rotate-180"
-                    )}>
-                      <ChevronDown size={18} />
+                    <div className="flex items-center gap-4">
+                      <div className="text-right hidden sm:block">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Diarsipkan pada</p>
+                        <p className="text-xs font-medium text-slate-600">{log.archived_at ? formatDate(log.archived_at) : formatDate(log.created_at)}</p>
+                      </div>
+                      <div className={cn(
+                        "p-2 rounded-lg bg-slate-100 text-slate-400 transition-transform duration-300 lg:hidden",
+                        isExpanded && "rotate-180"
+                      )}>
+                        <ChevronDown size={18} />
+                      </div>
                     </div>
                   </div>
 
                   <div className={cn("space-y-3", !isExpanded && "hidden lg:block")}>
+                    <div className="flex items-center gap-3 text-sm text-slate-600 sm:hidden">
+                      <CalendarIcon size={16} className="text-slate-400" />
+                      <span className="truncate">Diarsipkan: {log.archived_at ? formatDate(log.archived_at) : formatDate(log.created_at)}</span>
+                    </div>
                     <div className="flex items-center gap-3 text-sm text-slate-600">
                       <Mail size={16} className="text-slate-400" />
                       <span className="truncate">{log.email}</span>
