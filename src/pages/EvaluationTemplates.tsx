@@ -39,6 +39,9 @@ export default function EvaluationTemplates() {
   // Basic Info State
   const [name, setName] = useState('');
   const [type, setType] = useState<'HR' | 'USER'>('HR');
+  const [targetRole, setTargetRole] = useState<'ALL' | 'HR_ADMIN' | 'USER_MANAGER' | string>('ALL');
+  const [targetDepartment, setTargetDepartment] = useState('ALL');
+  const [departments, setDepartments] = useState<string[]>([]);
   
   // Builder State
   const [scales, setScales] = useState<ScaleItem[]>([]);
@@ -55,6 +58,22 @@ export default function EvaluationTemplates() {
     }, 500);
     return () => clearTimeout(timer);
   }, [search]);
+
+  const fetchDepartments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('department')
+        .not('department', 'is', null);
+      
+      if (!error && data) {
+        const uniqueDepts = Array.from(new Set(data.map(d => d.department).filter(Boolean)));
+        setDepartments(uniqueDepts as string[]);
+      }
+    } catch (err) {
+      console.error("Error fetching departments:", err);
+    }
+  };
 
   const fetchTemplates = async () => {
     setLoading(true);
@@ -78,6 +97,7 @@ export default function EvaluationTemplates() {
 
   useEffect(() => {
     fetchTemplates();
+    fetchDepartments();
   }, [debouncedSearch]);
 
   const handleOpenModal = (template?: EvaluationTemplate) => {
@@ -85,6 +105,8 @@ export default function EvaluationTemplates() {
       setEditingTemplate(template);
       setName(template.name);
       setType(template.type);
+      setTargetRole(template.target_role || 'ALL');
+      setTargetDepartment(template.target_department || 'ALL');
       
       const schema = template.form_schema as any;
       setScales(schema.scale || []);
@@ -94,6 +116,8 @@ export default function EvaluationTemplates() {
       setEditingTemplate(null);
       setName('');
       setType('HR');
+      setTargetRole('ALL');
+      setTargetDepartment('ALL');
       setScales([{ score: 1, label: 'Kurang' }, { score: 2, label: 'Cukup' }, { score: 3, label: 'Baik' }]);
       setCategories([{ name: 'Kriteria Penilaian', criteria: [{ name: '', description: '' }] }]);
       setSummaryFields([{ name: 'Catatan', type: 'textarea', placeholder: 'Masukkan catatan...' }]);
@@ -121,6 +145,8 @@ export default function EvaluationTemplates() {
     const payload = {
       name,
       type,
+      target_role: targetRole,
+      target_department: targetDepartment,
       form_schema: {
         scale: scales,
         categories: categories,
@@ -345,7 +371,7 @@ export default function EvaluationTemplates() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">Digunakan Oleh</label>
+                      <label className="text-sm font-bold text-slate-700">Jenis Template</label>
                       <select
                         value={type}
                         onChange={(e) => setType(e.target.value as 'HR' | 'USER')}
@@ -353,6 +379,31 @@ export default function EvaluationTemplates() {
                       >
                         <option value="HR">HR (Human Resources)</option>
                         <option value="USER">USER (User / Manager)</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700">Akses Role</label>
+                      <select
+                        value={targetRole}
+                        onChange={(e) => setTargetRole(e.target.value)}
+                        className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+                      >
+                        <option value="ALL">Semua Role</option>
+                        <option value="HR_ADMIN">Hanya HR Admin</option>
+                        <option value="USER_MANAGER">Hanya User Manager</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700">Akses Departemen</label>
+                      <select
+                        value={targetDepartment}
+                        onChange={(e) => setTargetDepartment(e.target.value)}
+                        className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+                      >
+                        <option value="ALL">Semua Departemen</option>
+                        {departments.map((dept, idx) => (
+                          <option key={idx} value={dept}>{dept}</option>
+                        ))}
                       </select>
                     </div>
                   </div>

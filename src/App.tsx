@@ -70,7 +70,7 @@ export default function App() {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT') {
+      if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESH_FAILED') {
         let cleared = false;
         const keysToRemove: string[] = [];
         for (let i = 0; i < localStorage.length; i++) {

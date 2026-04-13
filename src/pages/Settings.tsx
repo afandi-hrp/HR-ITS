@@ -25,6 +25,7 @@ export default function Settings() {
   const [externalDataDeleteWebhookUrl, setExternalDataDeleteWebhookUrl] = useState('');
   const [aiAnalysisWebhookUrl, setAiAnalysisWebhookUrl] = useState('');
   const [aiPsikotesWebhookUrl, setAiPsikotesWebhookUrl] = useState('');
+  const [aiInterviewWebhookUrl, setAiInterviewWebhookUrl] = useState('');
   const [loginLogoUrl, setLoginLogoUrl] = useState('');
   const [careerLogoUrl, setCareerLogoUrl] = useState('');
   const [sidebarLogoUrl, setSidebarLogoUrl] = useState('');
@@ -35,7 +36,7 @@ export default function Settings() {
   const [newJobSource, setNewJobSource] = useState('');
   const [loading, setLoading] = useState(false);
   const [uploadingAssets, setUploadingAssets] = useState<Record<string, boolean>>({});
-  const [testingWebhook, setTestingWebhook] = useState<'email' | 'cv' | 'public_cv' | 'sheet' | 'otp' | 'wa' | 'external_data_delete' | 'ai_analysis' | 'ai_psikotes' | null>(null);
+  const [testingWebhook, setTestingWebhook] = useState<'email' | 'cv' | 'public_cv' | 'sheet' | 'otp' | 'wa' | 'external_data_delete' | 'ai_analysis' | 'ai_psikotes' | 'ai_interview' | null>(null);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -66,6 +67,7 @@ export default function Settings() {
       setExternalDataDeleteWebhookUrl(user?.user_metadata.external_data_delete_webhook_url || '');
       setAiAnalysisWebhookUrl(user?.user_metadata.ai_analysis_webhook_url || '');
       setAiPsikotesWebhookUrl(user?.user_metadata.ai_psikotes_webhook_url || '');
+      setAiInterviewWebhookUrl(user?.user_metadata.ai_interview_webhook_url || '');
       if (user?.user_metadata.webhook_pin) setWebhookPin(user.user_metadata.webhook_pin);
       if (user?.user_metadata.display_pin) setDisplayPin(user.user_metadata.display_pin);
     }).catch((err) => {
@@ -120,6 +122,7 @@ export default function Settings() {
         external_data_delete_webhook_url: externalDataDeleteWebhookUrl.trim(),
         ai_analysis_webhook_url: aiAnalysisWebhookUrl.trim(),
         ai_psikotes_webhook_url: aiPsikotesWebhookUrl.trim(),
+        ai_interview_webhook_url: aiInterviewWebhookUrl.trim(),
         webhook_pin: newWebhookPin || webhookPin,
         display_pin: newDisplayPin || displayPin
       }
@@ -154,8 +157,8 @@ export default function Settings() {
     setLoading(false);
   };
 
-  const testWebhook = async (type: 'email' | 'cv' | 'public_cv' | 'sheet' | 'otp' | 'wa' | 'external_data_delete' | 'ai_analysis' | 'ai_psikotes') => {
-    const url = type === 'email' ? n8nWebhookUrl : type === 'cv' ? cvWebhookUrl : type === 'public_cv' ? publicCvWebhookUrl : type === 'sheet' ? sheetWebhookUrl : type === 'otp' ? otpWebhookUrl : type === 'wa' ? waWebhookUrl : type === 'external_data_delete' ? externalDataDeleteWebhookUrl : type === 'ai_analysis' ? aiAnalysisWebhookUrl : aiPsikotesWebhookUrl;
+  const testWebhook = async (type: 'email' | 'cv' | 'public_cv' | 'sheet' | 'otp' | 'wa' | 'external_data_delete' | 'ai_analysis' | 'ai_psikotes' | 'ai_interview') => {
+    const url = type === 'email' ? n8nWebhookUrl : type === 'cv' ? cvWebhookUrl : type === 'public_cv' ? publicCvWebhookUrl : type === 'sheet' ? sheetWebhookUrl : type === 'otp' ? otpWebhookUrl : type === 'wa' ? waWebhookUrl : type === 'external_data_delete' ? externalDataDeleteWebhookUrl : type === 'ai_analysis' ? aiAnalysisWebhookUrl : type === 'ai_psikotes' ? aiPsikotesWebhookUrl : aiInterviewWebhookUrl;
     if (!url) {
       toast({ title: 'Peringatan', description: 'Silakan masukkan URL webhook terlebih dahulu.', variant: 'destructive' });
       return;
@@ -625,6 +628,28 @@ export default function Settings() {
                     >
                       {testingWebhook === 'ai_psikotes' ? <Loader2 className="animate-spin" size={16} /> : null}
                       Test Koneksi AI Psikotes Webhook
+                    </button>
+                  </div>
+                  <div className="pt-4 border-t border-slate-200">
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">n8n AI Interview Question Generator Webhook URL</label>
+                    <input
+                      type="url"
+                      value={aiInterviewWebhookUrl}
+                      onChange={(e) => setAiInterviewWebhookUrl(e.target.value)}
+                      className="block w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                      placeholder="https://n8n.your-domain.com/webhook/..."
+                    />
+                    <p className="mt-2 text-xs text-slate-500 italic">
+                      URL ini akan dipicu saat Anda mengklik tombol "Generate Pertanyaan Interview (AI)" di Profil Kandidat.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => testWebhook('ai_interview')}
+                      disabled={testingWebhook === 'ai_interview'}
+                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
+                    >
+                      {testingWebhook === 'ai_interview' ? <Loader2 className="animate-spin" size={16} /> : null}
+                      Test Koneksi AI Interview Webhook
                     </button>
                   </div>
                   <div className="pt-4 border-t border-slate-200">

@@ -29,7 +29,8 @@ import {
   Sparkles,
   ExternalLink,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Trash2
 } from 'lucide-react';
 import { cn, formatDate, normalizeEmail, normalizeName, normalizePhone, fetchWithRetry, extractPhotoUrl, getEmbedUrl } from '../lib/utils';
 import { waitForN8nJob } from '../lib/n8n';
@@ -66,9 +67,13 @@ export default function CandidateProfile() {
   const [isLinking, setIsLinking] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isAnalyzingPsikotes, setIsAnalyzingPsikotes] = useState(false);
+  const [isGeneratingInterview, setIsGeneratingInterview] = useState(false);
+  const [showInterviewModal, setShowInterviewModal] = useState(false);
+  const [generatedQuestions, setGeneratedQuestions] = useState<any[]>([]);
   const [isUploadingPsikotes, setIsUploadingPsikotes] = useState(false);
   const [isBiodataSummaryExpanded, setIsBiodataSummaryExpanded] = useState(false);
   const [isPsikotesSummaryExpanded, setIsPsikotesSummaryExpanded] = useState(false);
+  const [isInterviewQuestionsExpanded, setIsInterviewQuestionsExpanded] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [managers, setManagers] = useState<any[]>([]);
   const [selectedManager, setSelectedManager] = useState('');
@@ -108,8 +113,7 @@ export default function CandidateProfile() {
         toast({
           title: "Popup Diblokir",
           description: "Browser Anda memblokir popup. Silakan izinkan popup (pop-up blocker) untuk situs ini agar dapat mencetak PDF.",
-          variant: "destructive",
-          duration: 7000,
+          variant: "destructive"
         });
       } else {
         toast({
@@ -725,6 +729,87 @@ export default function CandidateProfile() {
     }
   };
 
+  const handleGenerateInterviewQuestions = async () => {
+    if (!candidate) return;
+    setIsGeneratingInterview(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const aiInterviewWebhookUrl = user?.user_metadata?.ai_interview_webhook_url;
+      if (!aiInterviewWebhookUrl) {
+        toast({ 
+          title: 'Konfigurasi Diperlukan', 
+          description: 'Silakan atur n8n AI Interview Question Generator Webhook URL di menu Pengaturan terlebih dahulu.',
+          variant: 'destructive' 
+        });
+        setIsGeneratingInterview(false);
+        return;
+      }
+
+      const response = await fetchWithRetry('/api/n8n/trigger', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({
+          type: 'ai_interview',
+          payload: {
+            candidate_id: candidate.id,
+            action: 'generate_interview_questions',
+            ai_biodata_summary: candidate.ai_biodata_summary
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        let errorMsg = response.statusText || `HTTP ${response.status}`;
+        try {
+          const errData = await response.json();
+          if (errData.error) errorMsg = errData.error;
+          else if (errData.message) errorMsg = errData.message;
+          else if (typeof errData === 'string') errorMsg = errData;
+          else errorMsg = JSON.stringify(errData);
+        } catch (e) {
+          // ignore
+        }
+        throw new Error(`Gagal generate pertanyaan: ${errorMsg}`);
+      }
+
+      const responseData = await response.json();
+      
+      toast({ 
+        title: 'Proses Dimulai', 
+        description: 'Data berhasil dikirim untuk diproses, silahkan refresh halaman ini kembali.',
+      });
+    } catch (err: any) {
+      console.error('Error generating interview questions:', err);
+      toast({ title: 'Error', description: err.message || 'Gagal generate pertanyaan interview.', variant: 'destructive' });
+    } finally {
+      setIsGeneratingInterview(false);
+    }
+  };
+
+  const handleSaveInterviewQuestions = async () => {
+    if (!candidate) return;
+    try {
+      const { error } = await supabase
+        .from('candidates')
+        .update({ ai_interview_questions: generatedQuestions })
+        .eq('id', candidate.id);
+
+      if (error) throw error;
+
+      setCandidate({ ...candidate, ai_interview_questions: generatedQuestions });
+      setShowInterviewModal(false);
+      toast({ title: 'Berhasil', description: 'Pertanyaan interview berhasil disimpan.' });
+    } catch (err: any) {
+      console.error('Error saving interview questions:', err);
+      toast({ title: 'Error', description: err.message || 'Gagal menyimpan pertanyaan.', variant: 'destructive' });
+    }
+  };
+
   const handleUploadPsikotes = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !candidate || !id) return;
@@ -802,24 +887,11 @@ export default function CandidateProfile() {
     setSaving(true);
 
     try {
-      // Calculate new average score
-      const techScore = editedCandidate.technical_score || 0;
-      const commScore = editedCandidate.communication_score || 0;
-      const probScore = editedCandidate.problem_solving_score || 0;
-      const teamScore = editedCandidate.teamwork_score || 0;
-      const leadScore = editedCandidate.leadership_score || 0;
-      const adaptScore = editedCandidate.adaptability_score || 0;
-      const totalScore = techScore + commScore + probScore + teamScore + leadScore + adaptScore;
-      const averageScore = Math.round(totalScore / 6);
-
       const updateData = {
-        ...editedCandidate,
-        assessment_score: averageScore
+        full_name: editedCandidate.full_name,
+        email: editedCandidate.email,
+        phone: editedCandidate.phone,
       };
-
-      // Remove joined tables before update
-      delete updateData.psikotes_schedules;
-      delete updateData.interview_schedules;
 
       // Check if candidate is in active candidates or logs
       const { data: activeData } = await supabase
@@ -1313,6 +1385,89 @@ export default function CandidateProfile() {
             )}
           </div>
 
+          {/* AI Interview Questions Section */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <Sparkles className="text-indigo-500" size={20} />
+                Pertanyaan Interview (AI)
+              </h3>
+              {profile?.role !== 'USER_MANAGER' && (
+                <button
+                  onClick={handleGenerateInterviewQuestions}
+                  disabled={isGeneratingInterview}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-bold rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all shadow-sm"
+                >
+                  {isGeneratingInterview ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
+                  {isGeneratingInterview ? 'AI sedang menyusun...' : 'Generate Pertanyaan (AI)'}
+                </button>
+              )}
+            </div>
+
+            {(() => {
+              let questions: any[] = [];
+              if (candidate.ai_interview_questions) {
+                try {
+                  const parsed = typeof candidate.ai_interview_questions === 'string' 
+                    ? JSON.parse(candidate.ai_interview_questions) 
+                    : candidate.ai_interview_questions;
+                  
+                  if (Array.isArray(parsed)) {
+                    questions = parsed;
+                  } else if (parsed && Array.isArray(parsed.interview_questions)) {
+                    questions = parsed.interview_questions;
+                  }
+                } catch (e) {
+                  console.error("Failed to parse ai_interview_questions", e);
+                }
+              }
+
+              if (questions.length > 0) {
+                return (
+                  <div className="space-y-4">
+                    {questions.map((q: any, index: number) => (
+                      <div key={index} className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="px-2.5 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-md">
+                            {q.category || 'General'}
+                          </span>
+                        </div>
+                        <p className="text-slate-800 font-medium mb-2">{q.question}</p>
+                        {q.reasoning && (
+                          <div className="flex gap-2 text-sm text-slate-500 bg-white p-3 rounded-lg border border-slate-100">
+                            <Sparkles size={16} className="text-indigo-400 shrink-0 mt-0.5" />
+                            <p className="italic">{q.reasoning}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {profile?.role !== 'USER_MANAGER' && (
+                      <div className="flex justify-end mt-4">
+                        <button
+                          onClick={() => {
+                            setGeneratedQuestions(questions);
+                            setShowInterviewModal(true);
+                          }}
+                          className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                        >
+                          Edit Daftar Pertanyaan
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              return (
+                <div className="text-center py-8 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
+                  <Sparkles className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                  <p className="text-slate-500 font-medium">Belum ada pertanyaan interview</p>
+                  <p className="text-sm text-slate-400 mt-1">Klik tombol "Generate Pertanyaan (AI)" untuk membuat daftar pertanyaan yang terpersonalisasi.</p>
+                </div>
+              );
+            })()}
+          </div>
+
           {/* Psikotes Eksternal */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
             <div className="flex items-center justify-between mb-6">
@@ -1594,7 +1749,12 @@ export default function CandidateProfile() {
               )}
             </div>
 
-            {evaluations.length === 0 ? (
+            {evaluations.filter(evalItem => {
+              if (profile?.role === 'USER_MANAGER' && evalItem.evaluation_type === 'HR') {
+                return false;
+              }
+              return true;
+            }).length === 0 ? (
               <div className="text-center py-8 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
                 <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
                 <p className="text-slate-500 font-medium">Belum ada hasil interview</p>
@@ -1606,7 +1766,12 @@ export default function CandidateProfile() {
               </div>
             ) : (
               <div className="space-y-4">
-                {evaluations.map((evalItem) => (
+                {evaluations.filter(evalItem => {
+                  if (profile?.role === 'USER_MANAGER' && evalItem.evaluation_type === 'HR') {
+                    return false;
+                  }
+                  return true;
+                }).map((evalItem) => (
                   <div key={evalItem.id} className="border border-slate-200 rounded-xl overflow-hidden">
                     <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -1798,7 +1963,115 @@ export default function CandidateProfile() {
         candidateId={id!}
         onSuccess={() => fetchEvaluations(id!)}
         existingEvaluation={existingEvaluation}
+        userProfile={profile}
       />
+
+      {/* AI Interview Questions Modal */}
+      {showInterviewModal && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50">
+              <div>
+                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                  <Sparkles className="text-indigo-600" size={24} />
+                  Kurasi Pertanyaan Interview
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">Review, edit, atau hapus pertanyaan yang dihasilkan AI sebelum disimpan.</p>
+              </div>
+              <button 
+                onClick={() => setShowInterviewModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-2 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {generatedQuestions.map((q, index) => (
+                <div key={index} className="p-4 bg-white border border-slate-200 rounded-xl shadow-sm relative group">
+                  <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => {
+                        const newQuestions = [...generatedQuestions];
+                        newQuestions.splice(index, 1);
+                        setGeneratedQuestions(newQuestions);
+                      }}
+                      className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                      title="Hapus Pertanyaan"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                  
+                  <div className="mb-3">
+                    <select
+                      value={q.category}
+                      onChange={(e) => {
+                        const newQuestions = [...generatedQuestions];
+                        newQuestions[index].category = e.target.value;
+                        setGeneratedQuestions(newQuestions);
+                      }}
+                      className="text-xs font-bold px-2 py-1 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="Technical">Technical</option>
+                      <option value="Behavioral">Behavioral</option>
+                      <option value="Risk Mitigation">Risk Mitigation</option>
+                    </select>
+                  </div>
+                  
+                  <textarea
+                    value={q.question}
+                    onChange={(e) => {
+                      const newQuestions = [...generatedQuestions];
+                      newQuestions[index].question = e.target.value;
+                      setGeneratedQuestions(newQuestions);
+                    }}
+                    className="w-full text-slate-800 font-medium bg-transparent border-none focus:ring-0 p-0 resize-none"
+                    rows={2}
+                    placeholder="Tulis pertanyaan di sini..."
+                  />
+                  
+                  {q.reasoning && (
+                    <div className="mt-3 flex gap-2 text-sm text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                      <Sparkles size={16} className="text-indigo-400 shrink-0 mt-0.5" />
+                      <p className="italic">{q.reasoning}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              <button
+                onClick={() => {
+                  setGeneratedQuestions([
+                    ...generatedQuestions,
+                    { category: 'Technical', question: '', reasoning: 'Ditambahkan manual oleh HR.' }
+                  ]);
+                }}
+                className="w-full py-4 border-2 border-dashed border-slate-200 rounded-xl text-slate-500 font-medium hover:bg-slate-50 hover:border-indigo-300 hover:text-indigo-600 transition-all flex items-center justify-center gap-2"
+              >
+                <PlusCircle size={18} />
+                Tambah Pertanyaan Manual
+              </button>
+            </div>
+            
+            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+              <button
+                onClick={() => setShowInterviewModal(false)}
+                className="px-6 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleSaveInterviewQuestions}
+                className="px-6 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors shadow-sm flex items-center gap-2"
+              >
+                <Save size={18} />
+                Simpan Daftar Pertanyaan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Full Screen PDF Modal */}
       {fullScreenPdf && (

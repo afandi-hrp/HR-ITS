@@ -303,8 +303,7 @@ export default function ExternalData() {
         toast({
           title: "Popup Diblokir",
           description: "Browser Anda memblokir popup. Silakan izinkan popup (pop-up blocker) untuk situs ini agar dapat mencetak PDF.",
-          variant: "destructive",
-          duration: 7000,
+          variant: "destructive"
         });
       } else {
         toast({

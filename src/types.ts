@@ -41,11 +41,14 @@ export interface Candidate {
   linked_external_id?: string | null;
   ai_biodata_summary?: any | null;
   ai_psikotes_summary?: any | null;
+  ai_interview_questions?: any | null;
   psikotes_result_url?: string | null;
   source_info?: string | null;
   external_data?: { raw_data: any } | null;
   assigned_to?: string | null;
   assignee?: Profile | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface EmailTemplate {
@@ -65,6 +68,7 @@ export interface SiteSettings {
   login_animation_url: string | null;
   favicon_url: string | null;
   job_sources?: string[] | null;
+  n8n_webhook_url_interview?: string | null;
   updated_at: string;
 }
 
@@ -85,6 +89,8 @@ export interface EvaluationTemplate {
   id: string;
   name: string;
   type: 'HR' | 'USER';
+  target_role?: 'ALL' | 'HR_ADMIN' | 'USER_MANAGER' | string;
+  target_department?: string;
   form_schema: {
     scale: { score: number; label: string }[];
     categories: {

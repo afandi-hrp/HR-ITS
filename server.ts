@@ -228,8 +228,8 @@ app.use((req: any, res, next) => {
       return res.status(401).json({ error: "Unauthorized. Missing or invalid Authorization header." });
     }
 
-    if (!type || !['email', 'wa', 'test', 'sheet', 'external_data_delete', 'ai_analysis', 'ai_psikotes_analysis'].includes(type)) {
-      return res.status(400).json({ error: "Valid type (email, wa, test, sheet, external_data_delete, ai_analysis, ai_psikotes_analysis) is required" });
+    if (!type || !['email', 'wa', 'test', 'sheet', 'external_data_delete', 'ai_analysis', 'ai_psikotes_analysis', 'ai_interview'].includes(type)) {
+      return res.status(400).json({ error: "Valid type (email, wa, test, sheet, external_data_delete, ai_analysis, ai_psikotes_analysis, ai_interview) is required" });
     }
 
     let jobId = null;
@@ -259,6 +259,8 @@ app.use((req: any, res, next) => {
         webhookUrl = user.user_metadata?.ai_analysis_webhook_url;
       } else if (type === 'ai_psikotes_analysis') {
         webhookUrl = user.user_metadata?.ai_psikotes_webhook_url;
+      } else if (type === 'ai_interview') {
+        webhookUrl = user.user_metadata?.ai_interview_webhook_url;
       } else if (type === 'test') {
         const testType = payload?.type;
         webhookUrl = payload?.url; // Use URL from payload if provided

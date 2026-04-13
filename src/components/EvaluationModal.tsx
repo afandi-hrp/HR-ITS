@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Loader2, Save } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useToast } from './ui/use-toast';
-import { EvaluationTemplate } from '../types';
+import { EvaluationTemplate, CandidateEvaluation, Profile } from '../types';
 
 interface EvaluationModalProps {
   isOpen: boolean;
@@ -10,9 +10,10 @@ interface EvaluationModalProps {
   candidateId: string;
   onSuccess: () => void;
   existingEvaluation?: CandidateEvaluation | null;
+  userProfile?: Profile | null;
 }
 
-export default function EvaluationModal({ isOpen, onClose, candidateId, onSuccess, existingEvaluation }: EvaluationModalProps) {
+export default function EvaluationModal({ isOpen, onClose, candidateId, onSuccess, existingEvaluation, userProfile }: EvaluationModalProps) {
   const { toast } = useToast();
   const [templates, setTemplates] = useState<EvaluationTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
@@ -30,22 +31,54 @@ export default function EvaluationModal({ isOpen, onClose, candidateId, onSucces
         setEvaluationData(existingEvaluation.evaluation_data || {});
       } else {
         setEvaluationData({});
-        setInterviewerName('');
+        setInterviewerName(userProfile?.full_name || '');
         setSelectedTemplateId('');
       }
     }
-  }, [isOpen, existingEvaluation]);
+  }, [isOpen, existingEvaluation, userProfile]);
 
   const fetchTemplates = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('evaluation_templates')
         .select('*')
         .order('name');
       
+      const { data, error } = await query;
+      
       if (error) throw error;
-      setTemplates(data || []);
+
+      let filteredTemplates = data || [];
+
+      // Filter based on role and department
+      if (userProfile?.role === 'USER_MANAGER') {
+        filteredTemplates = filteredTemplates.filter(t => {
+          // If target_role is specified and not ALL, it must match USER_MANAGER
+          if (t.target_role && t.target_role !== 'ALL' && t.target_role !== 'USER_MANAGER') {
+            return false;
+          }
+          // If target_department is specified and not ALL, it must match user's department
+          if (t.target_department && t.target_department !== 'ALL' && userProfile.department) {
+            // Simple case-insensitive match
+            const targetDepts = t.target_department.toLowerCase().split(',').map((d: string) => d.trim());
+            const userDept = userProfile.department.toLowerCase();
+            if (!targetDepts.includes(userDept)) {
+              return false;
+            }
+          }
+          return true;
+        });
+      } else if (userProfile?.role === 'HR_ADMIN') {
+        filteredTemplates = filteredTemplates.filter(t => {
+          if (t.target_role && t.target_role !== 'ALL' && t.target_role !== 'HR_ADMIN') {
+            return false;
+          }
+          return true;
+        });
+      }
+
+      setTemplates(filteredTemplates);
     } catch (error: any) {
       toast({ title: 'Error', description: 'Gagal memuat template', variant: 'destructive' });
     } finally {
