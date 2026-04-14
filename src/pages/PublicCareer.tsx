@@ -235,7 +235,18 @@ export default function PublicCareer() {
       setStep(2);
     } catch (error: any) {
       console.error('Error requesting OTP:', error);
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      
+      let errorMessage = error.message || 'Gagal terhubung ke server, silakan coba kembali';
+      if (
+        errorMessage.includes('Failed to fetch') || 
+        errorMessage.includes('ECONNREFUSED') ||
+        errorMessage.includes('timeout') ||
+        errorMessage.includes('NetworkError')
+      ) {
+        errorMessage = 'Gagal terhubung ke server, silakan periksa koneksi Anda dan coba kembali.';
+      }
+
+      toast({ title: 'Error', description: errorMessage, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -279,7 +290,18 @@ export default function PublicCareer() {
       setStep(3);
     } catch (error: any) {
       console.error('Error verifying OTP:', error);
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      
+      let errorMessage = error.message || 'Gagal memverifikasi OTP, silakan coba kembali';
+      if (
+        errorMessage.includes('Failed to fetch') || 
+        errorMessage.includes('ECONNREFUSED') ||
+        errorMessage.includes('timeout') ||
+        errorMessage.includes('NetworkError')
+      ) {
+        errorMessage = 'Gagal terhubung ke server, silakan periksa koneksi Anda dan coba kembali.';
+      }
+
+      toast({ title: 'Error', description: errorMessage, variant: 'destructive' });
     } finally {
       setLoading(false);
     }

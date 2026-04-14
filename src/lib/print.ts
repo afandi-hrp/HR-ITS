@@ -76,6 +76,7 @@ export const printElement = async (element: HTMLElement | null, title: string = 
           * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
+            box-sizing: border-box !important;
           }
           /* Hide UI elements not meant for print */
           button, .no-print { display: none !important; }
@@ -87,6 +88,19 @@ export const printElement = async (element: HTMLElement | null, title: string = 
             padding: 0 !important;
             box-shadow: none !important;
             border: none !important;
+          }
+          /* Prevent any element from overflowing the page width */
+          body {
+            max-width: 100% !important;
+            overflow-x: hidden !important;
+          }
+          img, svg, canvas, video, iframe {
+            max-width: 100% !important;
+            height: auto !important;
+          }
+          .grid {
+            /* Sometimes grid causes overflow in print, fallback to block or ensure it fits */
+            max-width: 100% !important;
           }
         }
       </style>
@@ -173,7 +187,7 @@ export const generatePdfBlob = async (element: HTMLElement | null, title: string
     container.style.position = 'absolute';
     container.style.left = '-9999px';
     container.style.top = '0';
-    container.style.width = '1024px'; // Fixed width for consistent rendering
+    container.style.width = '794px'; // A4 width at 96 DPI (210mm) to prevent right margin cutoff
     container.appendChild(clone);
     document.body.appendChild(container);
 
@@ -181,7 +195,7 @@ export const generatePdfBlob = async (element: HTMLElement | null, title: string
       margin:       10,
       filename:     `${title}.pdf`,
       image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true, logging: false },
+      html2canvas:  { scale: 2, useCORS: true, logging: false, windowWidth: 794 },
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 

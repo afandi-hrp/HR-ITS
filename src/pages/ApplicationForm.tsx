@@ -492,9 +492,31 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
 
     } catch (error: any) {
       console.error('Submit error:', error);
+      
+      let errorMessage = error.message || 'Terjadi kesalahan saat mengirim formulir.';
+      
+      // Sanitasi pesan error teknis
+      if (
+        errorMessage.includes('Failed to fetch') || 
+        errorMessage.includes('ECONNREFUSED') ||
+        errorMessage.includes('timeout') ||
+        errorMessage.includes('NetworkError')
+      ) {
+        errorMessage = 'Gagal terhubung ke server, silakan periksa koneksi Anda dan coba kembali.';
+      } else if (errorMessage.includes('Gagal mengunggah')) {
+        errorMessage = 'Gagal mengunggah dokumen. Silakan periksa koneksi Anda atau coba file lain.';
+      } else if (errorMessage.includes('Token')) {
+        // Biarkan pesan terkait token (misal: "Token tidak valid atau sudah digunakan")
+      } else {
+        // Jika error tidak dikenali dan berpotensi teknis (mengandung bahasa Inggris atau kode), samarkan
+        if (/^[a-zA-Z0-9_]+$/.test(errorMessage) || errorMessage.includes('relation') || errorMessage.includes('syntax') || errorMessage.includes('database')) {
+           errorMessage = 'Terjadi kesalahan sistem saat memproses formulir Anda. Silakan coba beberapa saat lagi.';
+        }
+      }
+
       toast({
         title: 'Error',
-        description: error.message || 'Terjadi kesalahan saat mengirim formulir.',
+        description: errorMessage,
         variant: 'destructive'
       });
     } finally {
@@ -810,8 +832,8 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               {/* Table 1: Susunan Anggota Keluarga */}
               <div>
                 <h3 className="text-sm font-semibold text-slate-800 mb-3">1. Susunan Anggota Keluarga <span className="text-slate-500 italic font-normal">(Family Member)</span>, Termasuk Anda <span className="text-slate-500 italic font-normal">(Including You)</span></h3>
-                <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full min-w-[800px] text-sm text-left">
+                <div className="overflow-x-auto print:overflow-visible border border-slate-200 rounded-xl">
+                  <table className="w-full min-w-[800px] print:min-w-0 text-sm text-left">
                     <thead className="bg-indigo-50 text-indigo-900 border-b border-indigo-100">
                       <tr>
                         <th className="px-4 py-3 font-semibold w-1/4">Anggota Keluarga <br/><span className="text-xs font-normal italic">(Family Member)</span></th>
@@ -839,8 +861,8 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               {/* Table 2: Isilah kolom ini bila sudah menikah */}
               <div>
                 <h3 className="text-sm font-semibold text-slate-800 mb-3">2. Isilah kolom ini bila sudah menikah <span className="text-slate-500 italic font-normal">(Fill this columns if you are married)</span></h3>
-                <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full min-w-[800px] text-sm text-left">
+                <div className="overflow-x-auto print:overflow-visible border border-slate-200 rounded-xl">
+                  <table className="w-full min-w-[800px] print:min-w-0 text-sm text-left">
                     <thead className="bg-indigo-50 text-indigo-900 border-b border-indigo-100">
                       <tr>
                         <th className="px-4 py-3 font-semibold w-1/4">Anggota Keluarga <br/><span className="text-xs font-normal italic">(Family Member)</span></th>
@@ -878,8 +900,8 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               {/* 1. Pendidikan Formal */}
               <div>
                 <h3 className="text-sm font-semibold text-slate-800 mb-3">1. Pendidikan Formal <span className="text-slate-500 italic font-normal">(Formal Education)</span></h3>
-                <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full min-w-[800px] text-sm text-left">
+                <div className="overflow-x-auto print:overflow-visible border border-slate-200 rounded-xl">
+                  <table className="w-full min-w-[800px] print:min-w-0 text-sm text-left">
                     <thead className="bg-indigo-50 text-indigo-900 border-b border-indigo-100">
                       <tr>
                         <th className="px-4 py-3 font-semibold w-1/5">Tingkat <br/><span className="text-xs font-normal italic">(Level)</span></th>
@@ -907,8 +929,8 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               {/* 2. Pendidikan Non Formal */}
               <div>
                 <h3 className="text-sm font-semibold text-slate-800 mb-3">2. Pendidikan Non Formal <span className="text-slate-500 italic font-normal">(Non Formal Education)</span></h3>
-                <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full min-w-[800px] text-sm text-left">
+                <div className="overflow-x-auto print:overflow-visible border border-slate-200 rounded-xl">
+                  <table className="w-full min-w-[800px] print:min-w-0 text-sm text-left">
                     <thead className="bg-indigo-50 text-indigo-900 border-b border-indigo-100">
                       <tr>
                         <th className="px-4 py-3 font-semibold w-12 text-center">No</th>
@@ -934,8 +956,8 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               {/* 3. Organisasi */}
               <div>
                 <h3 className="text-sm font-semibold text-slate-800 mb-3">3. Organisasi yang pernah Anda ikuti <span className="text-slate-500 italic font-normal">(Organizations you have Joined)</span></h3>
-                <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full min-w-[800px] text-sm text-left">
+                <div className="overflow-x-auto print:overflow-visible border border-slate-200 rounded-xl">
+                  <table className="w-full min-w-[800px] print:min-w-0 text-sm text-left">
                     <thead className="bg-indigo-50 text-indigo-900 border-b border-indigo-100">
                       <tr>
                         <th className="px-4 py-3 font-semibold w-12 text-center">No</th>
@@ -974,8 +996,8 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                     </button>
                   )}
                 </div>
-                <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full min-w-[800px] text-sm text-left relative">
+                <div className="overflow-x-auto print:overflow-visible border border-slate-200 rounded-xl">
+                  <table className="w-full min-w-[800px] print:min-w-0 text-sm text-left relative">
                     <thead className="bg-indigo-50 text-indigo-900 border-b border-indigo-100">
                       <tr>
                         <th className="px-4 py-3 font-semibold w-12 text-center">No</th>
@@ -1042,8 +1064,8 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                     </button>
                   )}
                 </div>
-                <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full min-w-[800px] text-sm text-left relative">
+                <div className="overflow-x-auto print:overflow-visible border border-slate-200 rounded-xl">
+                  <table className="w-full min-w-[800px] print:min-w-0 text-sm text-left relative">
                     <thead className="bg-indigo-50 text-indigo-900 border-b border-indigo-100">
                       <tr>
                         <th className="px-4 py-3 font-semibold w-12 text-center" rowSpan={2}>No</th>
@@ -1108,7 +1130,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                 
                 <div className="space-y-8">
                   {formData.work_experience.map((exp, index) => (
-                    <div key={index} className="border border-slate-200 rounded-xl overflow-x-auto relative">
+                    <div key={index} className="border border-slate-200 rounded-xl overflow-x-auto print:overflow-visible relative">
                       {formData.work_experience.length > 1 && (
                         <button 
                           type="button" 
@@ -1120,7 +1142,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                         </button>
                       )}
                       
-                      <table className="w-full min-w-[800px] text-sm text-left">
+                      <table className="w-full min-w-[800px] print:min-w-0 print:min-w-0 text-sm text-left">
                         <tbody className="divide-y divide-slate-200">
                           <tr className="bg-purple-50">
                             <td className="px-4 py-3 font-semibold text-slate-800 w-1/3 border-r border-slate-200">
@@ -1326,8 +1348,8 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               {/* 5. Karyawan yang dikenal */}
               <div>
                 <h3 className="text-sm font-semibold text-slate-800 mb-3">5. Apakah ada karyawan/karyawati yang Anda kenal di Waruna Group? <span className="text-slate-500 italic font-normal">Are there any employees that you know at Waruna Group?</span></h3>
-                <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full min-w-[800px] text-sm text-left">
+                <div className="overflow-x-auto print:overflow-visible border border-slate-200 rounded-xl">
+                  <table className="w-full min-w-[800px] print:min-w-0 text-sm text-left">
                     <thead className="bg-purple-50 text-indigo-900 border-b border-indigo-100">
                       <tr>
                         <th className="px-4 py-3 font-semibold w-1/3 text-center">Nama Lengkap <span className="text-xs font-normal italic">(Full Name)</span></th>
@@ -1351,8 +1373,8 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               {/* 6. Referensi */}
               <div>
                 <h3 className="text-sm font-semibold text-slate-800 mb-3">6. Sebutkan 3 kenalan mis. mantan atasan (tidak ada hubungan keluarga) yg dapat memberikan keterangan tentang kinerja Anda / <span className="text-slate-500 italic font-normal">Please attach 3 references from the people (not family member) that might give the information about you?</span></h3>
-                <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full min-w-[800px] text-sm text-left">
+                <div className="overflow-x-auto print:overflow-visible border border-slate-200 rounded-xl">
+                  <table className="w-full min-w-[800px] print:min-w-0 text-sm text-left">
                     <thead className="bg-purple-50 text-indigo-900 border-b border-indigo-100">
                       <tr>
                         <th className="px-4 py-3 font-semibold w-1/5 text-center">Nama Lengkap <br/><span className="text-xs font-normal italic">(Full Name)</span></th>
@@ -1380,8 +1402,8 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               {/* 7. Referensi Keluarga Darurat */}
               <div>
                 <h3 className="text-sm font-semibold text-slate-800 mb-3">7. Referensi keluarga yang dapat dihubungi ketika keadaan darurat <span className="text-slate-500 italic font-normal">(Family member that available to contact in emergency)?</span></h3>
-                <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full min-w-[800px] text-sm text-left">
+                <div className="overflow-x-auto print:overflow-visible border border-slate-200 rounded-xl">
+                  <table className="w-full min-w-[800px] print:min-w-0 text-sm text-left">
                     <thead className="bg-purple-50 text-indigo-900 border-b border-indigo-100">
                       <tr>
                         <th className="px-4 py-3 font-semibold w-1/4 text-center">Nama <span className="text-xs font-normal italic">(Name)</span></th>

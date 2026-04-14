@@ -82,6 +82,7 @@ export default function CandidateProfile() {
   const [fullScreenPdf, setFullScreenPdf] = useState<string | null>(null);
   const [fullScreenData, setFullScreenData] = useState<any | null>(null);
   const [existingEvaluation, setExistingEvaluation] = useState<CandidateEvaluation | null>(null);
+  const [isArchived, setIsArchived] = useState(false);
   
   // Internal Notes State
   const [notes, setNotes] = useState<any[]>([]);
@@ -421,6 +422,9 @@ export default function CandidateProfile() {
         return;
       }
       candidateData = logData;
+      setIsArchived(true);
+    } else {
+      setIsArchived(false);
     }
 
     // Access Control Check
@@ -1042,7 +1046,7 @@ export default function CandidateProfile() {
             </>
           ) : (
             <>
-              {profile?.role !== 'USER_MANAGER' && (
+              {profile?.role !== 'USER_MANAGER' && !isArchived && (
                 <>
                   <button
                     onClick={() => {
@@ -1392,7 +1396,7 @@ export default function CandidateProfile() {
                 <Sparkles className="text-indigo-500" size={20} />
                 Pertanyaan Interview (AI)
               </h3>
-              {profile?.role !== 'USER_MANAGER' && (
+              {profile?.role !== 'USER_MANAGER' && !isArchived && (
                 <button
                   onClick={handleGenerateInterviewQuestions}
                   disabled={isGeneratingInterview}
@@ -1441,7 +1445,7 @@ export default function CandidateProfile() {
                         )}
                       </div>
                     ))}
-                    {profile?.role !== 'USER_MANAGER' && (
+                    {profile?.role !== 'USER_MANAGER' && !isArchived && (
                       <div className="flex justify-end mt-4">
                         <button
                           onClick={() => {
@@ -1475,7 +1479,7 @@ export default function CandidateProfile() {
                 <FileText className="text-indigo-500" size={20} />
                 Hasil Psikotes Eksternal
               </h3>
-              {profile?.role !== 'USER_MANAGER' && (
+              {profile?.role !== 'USER_MANAGER' && !isArchived && (
                 <div>
                   <label className="cursor-pointer px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl transition-colors flex items-center gap-2 text-sm font-medium">
                     {isUploadingPsikotes ? <Loader2 className="animate-spin" size={16} /> : <PlusCircle size={16} />}
@@ -1495,7 +1499,7 @@ export default function CandidateProfile() {
             {candidate.psikotes_result_url ? (
               <div className="space-y-4">
                 <div className="flex justify-end gap-2">
-                  {profile?.role !== 'USER_MANAGER' && (
+                  {profile?.role !== 'USER_MANAGER' && !isArchived && (
                     <button
                       onClick={handleAnalyzePsikotes}
                       disabled={isAnalyzingPsikotes}
@@ -1552,7 +1556,7 @@ export default function CandidateProfile() {
             ) : linkedData ? (
               <div className="space-y-4">
                 <div className="flex justify-end gap-2">
-                  {profile?.role !== 'USER_MANAGER' && (
+                  {profile?.role !== 'USER_MANAGER' && !isArchived && (
                     <button
                       onClick={handleAnalyzeBiodata}
                       disabled={isAnalyzing}
@@ -1586,7 +1590,7 @@ export default function CandidateProfile() {
                       </>
                     )}
                   </button>
-                  {profile?.role !== 'USER_MANAGER' && (
+                  {profile?.role !== 'USER_MANAGER' && !isArchived && (
                     <button 
                       onClick={handleUnlinkExternalData}
                       disabled={isLinking}
@@ -1604,7 +1608,7 @@ export default function CandidateProfile() {
                   </div>
                 </div>
                 <div className="max-h-[600px] overflow-y-auto custom-scrollbar -mx-2 px-2">
-                  <div ref={printRef} className="print:p-8 print:bg-white print:w-[210mm] print:mx-auto">
+                  <div ref={printRef} className="print:p-0 print:bg-white print:w-full">
                     <ApplicationForm readOnly initialData={linkedData} hideSalary={profile?.role === 'USER_MANAGER'} />
                   </div>
                 </div>
@@ -1623,7 +1627,7 @@ export default function CandidateProfile() {
                     <div key={idx} className="border border-slate-200 rounded-xl p-4 hover:border-indigo-300 transition-colors">
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-md">Opsi {idx + 1}</span>
-                        {profile?.role !== 'USER_MANAGER' && (
+                        {profile?.role !== 'USER_MANAGER' && !isArchived && (
                           <button
                             onClick={() => handleLinkExternalData(data.uid_sheet)}
                             disabled={isLinking}
@@ -1670,29 +1674,31 @@ export default function CandidateProfile() {
             
             <div className="space-y-4">
               {/* Note input area */}
-              <div className="flex gap-3">
-                <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
-                  <User size={20} className="text-indigo-600" />
-                </div>
-                <div className="flex-1">
-                  <textarea
-                    value={newNote}
-                    onChange={(e) => setNewNote(e.target.value)}
-                    placeholder="Tambahkan catatan internal untuk kandidat ini..."
-                    className="w-full p-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none min-h-[100px] text-sm"
-                  />
-                  <div className="flex justify-end mt-2">
-                    <button
-                      onClick={handleAddNote}
-                      disabled={!newNote.trim() || isAddingNote}
-                      className="px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center gap-2"
-                    >
-                      {isAddingNote ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                      Simpan Catatan
-                    </button>
+              {!isArchived && (
+                <div className="flex gap-3">
+                  <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
+                    <User size={20} className="text-indigo-600" />
+                  </div>
+                  <div className="flex-1">
+                    <textarea
+                      value={newNote}
+                      onChange={(e) => setNewNote(e.target.value)}
+                      placeholder="Tambahkan catatan internal untuk kandidat ini..."
+                      className="w-full p-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none min-h-[100px] text-sm"
+                    />
+                    <div className="flex justify-end mt-2">
+                      <button
+                        onClick={handleAddNote}
+                        disabled={!newNote.trim() || isAddingNote}
+                        className="px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+                      >
+                        {isAddingNote ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                        Simpan Catatan
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Notes list */}
               <div className="space-y-4 mt-6">
@@ -1735,7 +1741,7 @@ export default function CandidateProfile() {
                 <FileText className="text-indigo-500" size={20} />
                 Hasil Interview
               </h3>
-              {['accepted', 'hired'].includes(candidate.status_screening) && (
+              {['accepted', 'hired'].includes(candidate.status_screening) && !isArchived && (
                 <button
                   onClick={() => {
                     setExistingEvaluation(null);
@@ -1799,16 +1805,18 @@ export default function CandidateProfile() {
                           >
                             {expandedEvaluations.includes(evalItem.id) ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                           </button>
-                          <button
-                            onClick={() => {
-                              setExistingEvaluation(evalItem);
-                              setIsEvaluationModalOpen(true);
-                            }}
-                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                            title="Edit Penilaian"
-                          >
-                            <Edit2 size={18} />
-                          </button>
+                          {!isArchived && (
+                            <button
+                              onClick={() => {
+                                setExistingEvaluation(evalItem);
+                                setIsEvaluationModalOpen(true);
+                              }}
+                              className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                              title="Edit Penilaian"
+                            >
+                              <Edit2 size={18} />
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>

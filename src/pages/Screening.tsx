@@ -1180,14 +1180,10 @@ export default function Screening() {
                 Status kandidat akan diubah menjadi Lolos Screening.
               </p>
               
-              <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 grid grid-cols-2 gap-4 text-left">
+              <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 text-left">
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Skor Screening</p>
                   <p className="text-sm font-bold text-indigo-600">{acceptModalData.assessment_score || 0}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Skor Assessment</p>
-                  <p className="text-sm font-bold text-emerald-600">{getManualAssessmentScore(acceptModalData)}</p>
                 </div>
               </div>
             </div>
@@ -1282,7 +1278,7 @@ export default function Screening() {
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                 <h4 className="font-bold text-slate-900">{hireModalData.full_name}</h4>
                 <p className="text-sm text-slate-500">{hireModalData.email}</p>
-                <div className="mt-3 pt-3 border-t border-slate-200 grid grid-cols-3 gap-4">
+                <div className="mt-3 pt-3 border-t border-slate-200 grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Posisi</p>
                     <p className="text-sm font-medium text-slate-700">{hireModalData.position}</p>
@@ -1290,10 +1286,6 @@ export default function Screening() {
                   <div>
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Skor Screening</p>
                     <p className="text-sm font-bold text-indigo-600">{hireModalData.assessment_score || 0}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Skor Assessment</p>
-                    <p className="text-sm font-bold text-emerald-600">{getManualAssessmentScore(hireModalData)}</p>
                   </div>
                 </div>
                 {(hireModalData.strengths || hireModalData.risk_factors) && (
