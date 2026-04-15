@@ -1015,24 +1015,38 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                           <td className="p-0 border-r border-slate-200">
                             {index < 2 ? (
                               <div className="px-4 py-2 font-medium text-slate-700 bg-slate-50 h-full flex items-center">{lang.language}</div>
+                            ) : readOnly ? (
+                              <div className="px-4 py-2 text-slate-700 h-full flex items-center">{lang.language || '-'}</div>
                             ) : (
                               <input type="text" value={lang.language} onChange={(e) => handleTableChange('languages', index, 'language', e.target.value)} placeholder={index === 2 ? "Lainnya (Jika ada)" : "Nama Bahasa"} className="w-full h-full px-4 py-2 bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500" />
                             )}
                           </td>
                           <td className="p-0 border-r border-slate-200">
-                            <select value={lang.writing} onChange={(e) => handleTableChange('languages', index, 'writing', e.target.value)} className="w-full h-full px-4 py-2 bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 text-center appearance-none cursor-pointer">
-                              <option value=""></option><option value="Poor">Poor</option><option value="Fair">Fair</option><option value="Good">Good</option>
-                            </select>
+                            {readOnly ? (
+                              <div className="px-4 py-2 text-slate-700 text-center h-full flex items-center justify-center">{lang.writing || '-'}</div>
+                            ) : (
+                              <select value={lang.writing} onChange={(e) => handleTableChange('languages', index, 'writing', e.target.value)} className="w-full h-full px-4 py-2 bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 text-center appearance-none cursor-pointer">
+                                <option value=""></option><option value="Poor">Poor</option><option value="Fair">Fair</option><option value="Good">Good</option>
+                              </select>
+                            )}
                           </td>
                           <td className="p-0 border-r border-slate-200">
-                            <select value={lang.reading} onChange={(e) => handleTableChange('languages', index, 'reading', e.target.value)} className="w-full h-full px-4 py-2 bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 text-center appearance-none cursor-pointer">
-                              <option value=""></option><option value="Poor">Poor</option><option value="Fair">Fair</option><option value="Good">Good</option>
-                            </select>
+                            {readOnly ? (
+                              <div className="px-4 py-2 text-slate-700 text-center h-full flex items-center justify-center">{lang.reading || '-'}</div>
+                            ) : (
+                              <select value={lang.reading} onChange={(e) => handleTableChange('languages', index, 'reading', e.target.value)} className="w-full h-full px-4 py-2 bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 text-center appearance-none cursor-pointer">
+                                <option value=""></option><option value="Poor">Poor</option><option value="Fair">Fair</option><option value="Good">Good</option>
+                              </select>
+                            )}
                           </td>
                           <td className="p-0">
-                            <select value={lang.speaking} onChange={(e) => handleTableChange('languages', index, 'speaking', e.target.value)} className="w-full h-full px-4 py-2 bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 text-center appearance-none cursor-pointer">
-                              <option value=""></option><option value="Poor">Poor</option><option value="Fair">Fair</option><option value="Good">Good</option>
-                            </select>
+                            {readOnly ? (
+                              <div className="px-4 py-2 text-slate-700 text-center h-full flex items-center justify-center">{lang.speaking || '-'}</div>
+                            ) : (
+                              <select value={lang.speaking} onChange={(e) => handleTableChange('languages', index, 'speaking', e.target.value)} className="w-full h-full px-4 py-2 bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 text-center appearance-none cursor-pointer">
+                                <option value=""></option><option value="Poor">Poor</option><option value="Fair">Fair</option><option value="Good">Good</option>
+                              </select>
+                            )}
                           </td>
                           {!readOnly && (
                             <td className="p-0 text-center align-middle">
