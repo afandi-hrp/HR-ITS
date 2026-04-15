@@ -125,7 +125,7 @@ export default function Login() {
               <img src={settings.login_logo_url} alt="Logo" className="h-24 mx-auto mb-4 object-contain drop-shadow-sm" referrerPolicy="no-referrer" />
             )}
             <h1 className="text-2xl font-bold text-slate-900">Welcome</h1>
-            <p className="text-slate-500 mt-2">Login to ITS Waruna Group Dashboard</p>
+            <p className="text-slate-500 mt-2">Login to ATS Waruna Group Dashboard</p>
           </div>
 
           {error && (
@@ -228,7 +228,7 @@ export default function Login() {
           </form>
 
           <div className="mt-8 text-center text-sm text-slate-500">
-            <p>© 2026 ITS Waruna Group App.</p>
+            <p>© 2026 ATS Waruna Group App.</p>
           </div>
         </div>
       </div>

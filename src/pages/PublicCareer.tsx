@@ -1000,7 +1000,7 @@ export default function PublicCareer() {
         
         <div className="max-w-7xl mx-auto mt-8 pt-6 border-t border-white/10 text-center flex flex-col items-center gap-4">
           <p className="text-sm text-slate-500">
-            &copy; {new Date().getFullYear()} Waruna Group. All rights reserved.
+            &copy; {new Date().getFullYear()} Waruna Group. Shipyard - Shipping.
           </p>
         </div>
       </footer>
