@@ -78,41 +78,6 @@ export default function CandidateArchive() {
       });
     }
 
-    // Fallback if foreign key doesn't exist
-    if (error && error.message.includes('relationship')) {
-      let fallbackQuery = supabase
-        .from('candidate_logs')
-        .select('*', { count: 'exact' });
-
-      if (debouncedSearch) {
-        fallbackQuery = fallbackQuery.or(`full_name.ilike.%${debouncedSearch}%,position.ilike.%${debouncedSearch}%`);
-      }
-      if (dateFilter) {
-        fallbackQuery = fallbackQuery.gte('date', `${dateFilter}T00:00:00`).lte('date', `${dateFilter}T23:59:59`);
-      }
-
-      const fallbackResult = await fallbackQuery
-        .order('archived_at', { ascending: false })
-        .range(from, to);
-
-      data = fallbackResult.data;
-      error = fallbackResult.error;
-      count = fallbackResult.count;
-
-      if (data && data.length > 0) {
-        const linkedIds = data.map(d => d.linked_external_id).filter(Boolean);
-        if (linkedIds.length > 0) {
-           const { data: extData } = await supabase.from('external_data').select('uid_sheet, raw_data').in('uid_sheet', linkedIds);
-           if (extData) {
-             data = data.map(d => {
-               const ext = extData.find(e => e.uid_sheet === d.linked_external_id);
-               return { ...d, external_data: ext ? { raw_data: ext.raw_data } : null };
-             });
-           }
-        }
-      }
-    }
-
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {

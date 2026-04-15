@@ -82,45 +82,14 @@ export default function Logs() {
       .order('archived_at', { ascending: false })
       .range(from, to);
 
-    // Fallback if foreign key doesn't exist
-    if (error && error.message.includes('relationship')) {
-      let fallbackQuery = supabase
-        .from('candidate_logs')
-        .select('*', { count: 'exact' });
-
-      if (debouncedSearch) {
-        fallbackQuery = fallbackQuery.or(`full_name.ilike.%${debouncedSearch}%,position.ilike.%${debouncedSearch}%`);
-      }
-      if (startDate) {
-        fallbackQuery = fallbackQuery.gte('date', `${startDate}T00:00:00`);
-      }
-      if (endDate) {
-        fallbackQuery = fallbackQuery.lte('date', `${endDate}T23:59:59`);
-      }
-      if (statusFilter !== 'all') {
-        fallbackQuery = fallbackQuery.eq('status_screening', statusFilter);
-      }
-
-      const fallbackResult = await fallbackQuery
-        .order('archived_at', { ascending: false })
-        .range(from, to);
-
-      data = fallbackResult.data;
-      error = fallbackResult.error;
-      count = fallbackResult.count;
-
-      if (data && data.length > 0) {
-        const linkedIds = data.map(d => d.linked_external_id).filter(Boolean);
-        if (linkedIds.length > 0) {
-           const { data: extData } = await supabase.from('external_data').select('uid_sheet, raw_data').in('uid_sheet', linkedIds);
-           if (extData) {
-             data = data.map(d => {
-               const ext = extData.find(e => e.uid_sheet === d.linked_external_id);
-               return { ...d, external_data: ext ? { raw_data: ext.raw_data } : null };
-             });
-           }
+    // Handle array case if relationship returns an array
+    if (data && !error) {
+      data = data.map(d => {
+        if (Array.isArray(d.external_data) && d.external_data.length > 0) {
+          return { ...d, external_data: d.external_data[0] };
         }
-      }
+        return d;
+      });
     }
 
     if (error) {

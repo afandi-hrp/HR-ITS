@@ -157,50 +157,6 @@ export default function Screening() {
       });
     }
 
-    if (error && error.message.includes('relationship')) {
-      console.warn("Failed to fetch with external_data, falling back to standard query", error);
-      // Fallback query without external_data
-      let fallbackQuery = supabase
-        .from('candidates')
-        .select('*, psikotes_schedules(id, is_confirmed, schedule_date), interview_schedules(id, is_confirmed, schedule_date)', { count: 'exact' })
-        .order('created_at', { ascending: false });
-
-      if (profile.role === 'USER_MANAGER') {
-        fallbackQuery = fallbackQuery.eq('assigned_to', profile.id);
-      }
-      if (debouncedSearch) {
-        fallbackQuery = fallbackQuery.or(`full_name.ilike.%${debouncedSearch}%,position.ilike.%${debouncedSearch}%`);
-      }
-      if (startDate) {
-        fallbackQuery = fallbackQuery.gte('date', `${startDate}T00:00:00`);
-      }
-      if (endDate) {
-        fallbackQuery = fallbackQuery.lte('date', `${endDate}T23:59:59`);
-      }
-      if (statusFilter !== 'all') {
-        fallbackQuery = fallbackQuery.eq('status_screening', statusFilter);
-      }
-      fallbackQuery = fallbackQuery.range(from, to);
-
-      const fallbackResult = await fallbackQuery;
-      data = fallbackResult.data;
-      count = fallbackResult.count;
-      error = fallbackResult.error;
-
-      if (data && data.length > 0) {
-        const linkedIds = data.map(d => d.linked_external_id).filter(Boolean);
-        if (linkedIds.length > 0) {
-           const { data: extData } = await supabase.from('external_data').select('uid_sheet, raw_data').in('uid_sheet', linkedIds);
-           if (extData) {
-             data = data.map(d => {
-               const ext = extData.find(e => e.uid_sheet === d.linked_external_id);
-               return { ...d, external_data: ext ? { raw_data: ext.raw_data } : null };
-             });
-           }
-        }
-      }
-    }
-
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
