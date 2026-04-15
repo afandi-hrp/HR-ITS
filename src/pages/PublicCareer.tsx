@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { Upload, FileText, CheckCircle2, Loader2, File, AlertCircle, Phone, User, Mail, Briefcase, KeyRound, ChevronRight, X, ArrowLeft, ClipboardList, GraduationCap, RefreshCw, MessageCircle, Heart, TrendingUp, Users, Zap, HelpCircle, ChevronDown, ChevronUp, Quote, Star } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, Loader2, File, AlertCircle, Phone, User, Mail, Briefcase, KeyRound, ChevronRight, X, ArrowLeft, ClipboardList, GraduationCap, RefreshCw, MessageCircle, Heart, TrendingUp, Users, Zap, HelpCircle, ChevronDown, ChevronUp, Quote, Star, MapPin, Linkedin, Instagram, Globe, Youtube } from 'lucide-react';
 import { useToast } from '../components/ui/use-toast';
 import { cn, fetchWithRetry } from '../lib/utils';
 import { SiteSettings } from '../types';
@@ -12,6 +12,14 @@ interface OpenRecruitment {
   kualifikasi: string;
   created_at: string;
 }
+
+const formatListText = (text: string) => {
+  if (!text) return [];
+  return text.split('\n')
+    .map(line => line.trim())
+    .filter(line => line.length > 0)
+    .map(line => line.replace(/^(\s*[-*•]\s*|\s*\d+[\.\)]\s*)/, '').trim());
+};
 
 export default function PublicCareer() {
   const [view, setView] = useState<'listing' | 'form'>('listing');
@@ -408,7 +416,7 @@ export default function PublicCareer() {
   };
 
   return (
-    <div className="min-h-screen bg-transparent py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-transparent">
       <style>{`
         body {
           -ms-overflow-style: none;
@@ -418,19 +426,63 @@ export default function PublicCareer() {
           display: none;
         }
       `}</style>
-      <div className={cn("mx-auto", view === 'listing' ? "max-w-6xl" : "max-w-xl")}>
-        <div className="text-center mb-10">
-          {settings?.career_logo_url && (
-            <img src={settings.career_logo_url} alt="Logo" className="h-24 mx-auto mb-4 object-contain mix-blend-multiply contrast-125" referrerPolicy="no-referrer" />
-          )}
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
-            Waruna Group Career
-          </h1>
-          <p className="mt-2 text-sm text-slate-500">
-            Bergabunglah Bersama Waruna Group dan Menjadi Bagian Dari Tim Yang Luar Biasa.
-          </p>
-        </div>
 
+      {/* Hero Section */}
+      <div 
+        className="relative w-full bg-cover bg-center bg-no-repeat pt-24 pb-32 px-6 md:px-16 lg:px-24"
+        style={{ 
+          backgroundImage: `linear-gradient(to right, rgba(4, 28, 50, 0.95) 0%, rgba(4, 28, 50, 0.8) 50%, rgba(4, 28, 50, 0.2) 100%), url('https://waruna-group.com/cfind/source/thumb/images/banner2/cover_w2401_h2026_bannerpage-career.jpg')`,
+          minHeight: '600px'
+        }}
+      >
+        <div className="max-w-7xl mx-auto">
+          <div className="w-full">
+            <h3 className="text-white font-bold tracking-[0.2em] uppercase text-sm mb-6 border-b-2 border-white/30 inline-block pb-2">
+              Career
+            </h3>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif text-white leading-tight mb-12 w-full">
+              Working with us can be a great adventure – like sailing the oceans themselves
+            </h1>
+            
+            <div className="grid md:grid-cols-2 gap-8 lg:gap-16 text-slate-300 text-sm md:text-base leading-relaxed text-justify">
+              <div>
+                <p>
+                  Our long-term success is fully depended on team. We are in a constant search for talented, skilled and self-motivated personnel. We have a team of dynamic, varied background, supporting company's growth and sustainable business. While learning the processes and systems of our business, you'll benefit to access into a diverse professional job opportunity in many areas of fleets within the group. If you are inspired to develop shore-shipping career, and having relevant experience or education, you may fit as one of our future generations in one of many jobs we offer. We always open for your passion and enthusiasm.
+                </p>
+              </div>
+              <div>
+                <p>
+                  It's more than a job, it's a journey. This exposure makes you are more knowledgeable and enabled you to grow career easily. You may also have opportunity to explore, ask for challenges and expose to so many adventures. The company's competencies and portfolios would be one of the advantages for learning and succeeding. The individual who shows their ambition and agility to grow may have the benefits of career expansion. The leaders and team of human resource would assist your development journey from the beginning of your employment.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Vacancies Header Section */}
+      <div className="py-16 px-6 md:px-16 lg:px-24">
+        <div className="max-w-7xl mx-auto">
+          <h3 className="text-[#041c32] font-bold tracking-[0.2em] uppercase text-sm mb-8 border-b-2 border-[#041c32] inline-block pb-2">
+            Vacancies
+          </h3>
+          
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div>
+              <h2 className="text-4xl md:text-5xl font-serif text-[#041c32] leading-tight">
+                Find your passion and interest here!
+              </h2>
+            </div>
+            <div className="border-l border-[#041c32] pl-8">
+              <p className="text-slate-600 text-lg leading-relaxed">
+                There are numerous opportunities available to you with a broad concept existing in our business, such as building your self-development in terms of competence and pursuing a career
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className={cn("mx-auto py-12 px-4 sm:px-6 lg:px-8", view === 'listing' ? "max-w-7xl" : "max-w-xl")}>
         {view === 'listing' ? (
           <div className="space-y-8">
             {loadingPositions ? (
@@ -465,126 +517,6 @@ export default function PublicCareer() {
                 ))}
               </div>
             )}
-
-            {/* 1. Hero Banner / Life at Waruna */}
-            <div className="mt-20 relative rounded-3xl overflow-hidden shadow-2xl">
-              <div className="absolute inset-0 bg-gradient-to-r from-indigo-900/90 to-slate-900/80 z-10"></div>
-              <img 
-                src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80" 
-                alt="Tim Waruna" 
-                className="w-full h-80 object-cover"
-                referrerPolicy="no-referrer"
-              />
-              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center text-center p-8">
-                <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-4">Membangun Masa Depan Bersama</h2>
-                <p className="text-lg text-indigo-100 max-w-2xl">
-                  Kami mencari individu yang bersemangat, inovatif, dan siap memberikan dampak positif. 
-                  Jadilah bagian dari perjalanan luar biasa kami.
-                </p>
-              </div>
-            </div>
-
-            {/* 2. Why Join Us */}
-            <div className="mt-24">
-              <div className="text-center mb-12">
-                <h2 className="text-3xl font-bold text-slate-900">Mengapa Bergabung Bersama Kami?</h2>
-                <p className="mt-4 text-slate-500">Kami memberikan lingkungan terbaik agar Anda dapat berkembang secara maksimal.</p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {benefits.map((benefit, idx) => (
-                  <div key={idx} className="bg-white/60 backdrop-blur-lg rounded-3xl p-6 border border-white/80 shadow-lg hover:-translate-y-2 transition-transform duration-300">
-                    <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center shadow-sm mb-6">
-                      {benefit.icon}
-                    </div>
-                    <h3 className="text-lg font-bold text-slate-800 mb-2">{benefit.title}</h3>
-                    <p className="text-sm text-slate-600 leading-relaxed">{benefit.desc}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* 3. Hiring Process */}
-            <div className="mt-24">
-              <div className="text-center mb-12">
-                <h2 className="text-3xl font-bold text-slate-900">Alur Rekrutmen</h2>
-                <p className="mt-4 text-slate-500">Langkah-langkah transparan menuju karir impian Anda.</p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 relative">
-                <div className="hidden md:block absolute top-1/2 left-0 w-full h-0.5 bg-indigo-100 -translate-y-1/2 z-0"></div>
-                {processSteps.map((step, idx) => (
-                  <div key={idx} className="relative z-10 flex flex-col items-center text-center">
-                    <div className="w-16 h-16 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xl font-bold border-4 border-white shadow-xl mb-6">
-                      {step.step}
-                    </div>
-                    <h3 className="text-lg font-bold text-slate-800 mb-2">{step.title}</h3>
-                    <p className="text-sm text-slate-600">{step.desc}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* 4. Employee Testimonial */}
-            <div className="mt-24 bg-indigo-900 rounded-3xl p-8 md:p-12 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 -mt-10 -mr-10 text-indigo-800 opacity-50">
-                <Quote size={200} />
-              </div>
-              <div className="relative z-10 max-w-3xl mx-auto text-center">
-                <div className="flex justify-center mb-6">
-                  {[...Array(5)].map((_, i) => <Star key={i} className="text-amber-400 fill-amber-400 mx-1" size={24} />)}
-                </div>
-                <p className="text-xl md:text-2xl font-medium text-white leading-relaxed mb-8">
-                  "Bekerja di sini memberikan saya ruang untuk terus berinovasi. Lingkungan yang kolaboratif dan suportif membuat setiap tantangan terasa lebih mudah diselesaikan bersama."
-                </p>
-                <div className="flex items-center justify-center gap-4">
-                  <img 
-                    src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80" 
-                    alt="Employee" 
-                    className="w-14 h-14 rounded-full border-2 border-indigo-400 object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="text-left">
-                    <p className="font-bold text-white">Sarah Anindya</p>
-                    <p className="text-sm text-indigo-300">Senior Software Engineer</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 5. FAQ */}
-            <div className="mt-24 mb-12 max-w-3xl mx-auto">
-              <div className="text-center mb-12">
-                <h2 className="text-3xl font-bold text-slate-900">Pertanyaan Umum (FAQ)</h2>
-                <p className="mt-4 text-slate-500">Informasi yang sering ditanyakan seputar proses rekrutmen.</p>
-              </div>
-              <div className="space-y-4">
-                {faqs.map((faq, idx) => (
-                  <div 
-                    key={idx} 
-                    className="bg-white/60 backdrop-blur-sm border border-white/80 rounded-2xl overflow-hidden shadow-sm transition-all duration-200"
-                  >
-                    <button
-                      onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
-                      className="w-full px-6 py-5 flex items-center justify-between text-left focus:outline-none"
-                    >
-                      <span className="font-bold text-slate-800">{faq.q}</span>
-                      {openFaq === idx ? (
-                        <ChevronUp className="text-indigo-600 flex-shrink-0" size={20} />
-                      ) : (
-                        <ChevronDown className="text-slate-400 flex-shrink-0" size={20} />
-                      )}
-                    </button>
-                    <div 
-                      className={cn(
-                        "px-6 overflow-hidden transition-all duration-300 ease-in-out",
-                        openFaq === idx ? "max-h-40 pb-5 opacity-100" : "max-h-0 opacity-0"
-                      )}
-                    >
-                      <p className="text-slate-600 text-sm leading-relaxed">{faq.a}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         ) : (
           <div className="bg-white/40 backdrop-blur-xl rounded-3xl border border-white/60 shadow-xl overflow-hidden">
@@ -908,21 +840,35 @@ export default function PublicCareer() {
             
             <div className="p-6 overflow-y-auto flex-1 space-y-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               <div className="bg-blue-50/60 border border-blue-100/60 rounded-2xl p-6 shadow-sm">
-                <h3 className="text-sm font-bold text-blue-800 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <h3 className="text-sm font-bold text-blue-800 uppercase tracking-widest mb-4 flex items-center gap-2">
                   <ClipboardList size={16} className="text-blue-600" /> Deskripsi Pekerjaan (Jobdesk)
                 </h3>
-                <div className="prose prose-sm prose-slate max-w-none">
-                  <p className="whitespace-pre-wrap text-slate-800 leading-relaxed">{selectedJob.jobdesk}</p>
-                </div>
+                <ul className="space-y-3">
+                  {formatListText(selectedJob.jobdesk).map((item, idx) => (
+                    <li key={idx} className="flex items-start gap-3">
+                      <div className="mt-0.5 shrink-0">
+                        <CheckCircle2 size={18} className="text-blue-500" />
+                      </div>
+                      <span className="text-slate-700 leading-relaxed text-sm">{item}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
               
               <div className="bg-emerald-50/60 border border-emerald-100/60 rounded-2xl p-6 shadow-sm">
-                <h3 className="text-sm font-bold text-emerald-800 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <h3 className="text-sm font-bold text-emerald-800 uppercase tracking-widest mb-4 flex items-center gap-2">
                   <GraduationCap size={16} className="text-emerald-600" /> Kualifikasi
                 </h3>
-                <div className="prose prose-sm prose-slate max-w-none">
-                  <p className="whitespace-pre-wrap text-slate-800 leading-relaxed">{selectedJob.kualifikasi}</p>
-                </div>
+                <ul className="space-y-3">
+                  {formatListText(selectedJob.kualifikasi).map((item, idx) => (
+                    <li key={idx} className="flex items-start gap-3">
+                      <div className="mt-0.5 shrink-0">
+                        <CheckCircle2 size={18} className="text-emerald-500" />
+                      </div>
+                      <span className="text-slate-700 leading-relaxed text-sm">{item}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
             
@@ -1025,6 +971,39 @@ export default function PublicCareer() {
           </div>
         </div>
       )}
+
+      {/* Footer */}
+      <footer className="bg-[#041c32] text-slate-300 py-10 px-6 md:px-16 lg:px-24 mt-12">
+        <div className="max-w-4xl mx-auto flex flex-col items-center text-center space-y-6">
+          <div className="space-y-2">
+            <h3 className="text-white text-xl font-bold tracking-wider uppercase">Shipyard and Shipping Company</h3>
+            <p className="text-sm leading-relaxed text-slate-400 max-w-2xl mx-auto">
+              Waruna Group is dedicated to prioritizing safety and integrity when working closely with our partners.
+            </p>
+          </div>
+          
+          <div className="flex space-x-4 pt-2">
+            <a href="https://www.linkedin.com/company/waruna-group/" target="_blank" rel="noopener noreferrer" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
+              <Linkedin size={24} className="text-white" />
+            </a>
+            <a href="https://www.instagram.com/lifeinwaruna" target="_blank" rel="noopener noreferrer" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
+              <Instagram size={24} className="text-white" />
+            </a>
+            <a href="https://www.youtube.com/@lifeinwaruna" target="_blank" rel="noopener noreferrer" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
+              <Youtube size={24} className="text-white" />
+            </a>
+            <a href="https://waruna-group.com/" target="_blank" rel="noopener noreferrer" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
+              <Globe size={24} className="text-white" />
+            </a>
+          </div>
+        </div>
+        
+        <div className="max-w-7xl mx-auto mt-8 pt-6 border-t border-white/10 text-center flex flex-col items-center gap-4">
+          <p className="text-sm text-slate-500">
+            &copy; {new Date().getFullYear()} Waruna Group. All rights reserved.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }

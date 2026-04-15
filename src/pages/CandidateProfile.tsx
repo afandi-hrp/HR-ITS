@@ -1638,15 +1638,40 @@ export default function CandidateProfile() {
                         )}
                       </div>
                       <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-2">
-                        {Object.entries(data).filter(([k]) => k !== 'uid_sheet').slice(0, 5).map(([key, val]) => (
-                          <div key={key} className="text-sm">
-                            <span className="font-medium text-slate-500 block text-xs uppercase tracking-wider mb-0.5">{key}</span>
-                            <span className="text-slate-800 whitespace-pre-wrap">{formatValue(val)}</span>
-                          </div>
-                        ))}
-                        {Object.keys(data).length > 6 && (
+                        {(() => {
+                          let nama = '-';
+                          let email = '-';
+                          let telepon = '-';
+                          let posisi = '-';
+
+                          Object.entries(data).forEach(([key, val]) => {
+                            if (typeof val !== 'string' && typeof val !== 'number') return;
+                            const lowerKey = key.toLowerCase();
+                            const strVal = String(val);
+
+                            if ((lowerKey.includes('nama') || lowerKey.includes('name')) && nama === '-') nama = strVal;
+                            else if ((lowerKey.includes('email') || lowerKey.includes('e-mail')) && email === '-') email = strVal;
+                            else if ((lowerKey.includes('telepon') || lowerKey.includes('phone') || lowerKey.includes('hp') || lowerKey.includes('whatsapp')) && telepon === '-') telepon = strVal;
+                            else if ((lowerKey.includes('posisi') || lowerKey.includes('position') || lowerKey.includes('jabatan') || lowerKey.includes('melamar')) && posisi === '-') posisi = strVal;
+                          });
+
+                          const previewFields = [
+                            { label: 'Nama', value: nama },
+                            { label: 'Email', value: email },
+                            { label: 'Nomor Telepon', value: telepon },
+                            { label: 'Posisi yang Dilamar', value: posisi }
+                          ];
+
+                          return previewFields.map((field, i) => (
+                            <div key={i} className="text-sm">
+                              <span className="font-medium text-slate-500 block text-xs uppercase tracking-wider mb-0.5">{field.label}</span>
+                              <span className="text-slate-800 whitespace-pre-wrap">{field.value}</span>
+                            </div>
+                          ));
+                        })()}
+                        {Object.keys(data).filter(k => k !== 'uid_sheet').length > 4 && (
                           <div className="text-xs text-indigo-600 font-medium italic mt-2">
-                            + {Object.keys(data).length - 6} field lainnya
+                            + {Object.keys(data).filter(k => k !== 'uid_sheet').length - 4} field lainnya
                           </div>
                         )}
                       </div>

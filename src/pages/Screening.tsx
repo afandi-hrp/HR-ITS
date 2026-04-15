@@ -30,7 +30,7 @@ import {
   LayoutGrid,
   Loader2
 } from 'lucide-react';
-import { cn, formatDate, fetchWithRetry } from '../lib/utils';
+import { cn, formatDate, fetchWithRetry, extractPhotoUrl } from '../lib/utils';
 import { useToast } from '../components/ui/use-toast';
 
 import SchedulingModal from '../components/SchedulingModal';
@@ -120,7 +120,7 @@ export default function Screening() {
     setLoading(true);
     let query = supabase
       .from('candidates')
-      .select('*, psikotes_schedules(id, is_confirmed, schedule_date), interview_schedules(id, is_confirmed, schedule_date)', { count: 'exact' })
+      .select('*, psikotes_schedules(id, is_confirmed, schedule_date), interview_schedules(id, is_confirmed, schedule_date), external_data(raw_data)', { count: 'exact' })
       .order('created_at', { ascending: false });
 
     if (profile.role === 'USER_MANAGER') {
@@ -145,7 +145,61 @@ export default function Screening() {
     const to = from + itemsPerPage - 1;
     query = query.range(from, to);
 
-    const { data, count, error } = await query;
+    let { data, count, error } = await query;
+
+    // Handle array case if relationship returns an array
+    if (data && !error) {
+      data = data.map(d => {
+        if (Array.isArray(d.external_data) && d.external_data.length > 0) {
+          return { ...d, external_data: d.external_data[0] };
+        }
+        return d;
+      });
+    }
+
+    if (error && error.message.includes('relationship')) {
+      console.warn("Failed to fetch with external_data, falling back to standard query", error);
+      // Fallback query without external_data
+      let fallbackQuery = supabase
+        .from('candidates')
+        .select('*, psikotes_schedules(id, is_confirmed, schedule_date), interview_schedules(id, is_confirmed, schedule_date)', { count: 'exact' })
+        .order('created_at', { ascending: false });
+
+      if (profile.role === 'USER_MANAGER') {
+        fallbackQuery = fallbackQuery.eq('assigned_to', profile.id);
+      }
+      if (debouncedSearch) {
+        fallbackQuery = fallbackQuery.or(`full_name.ilike.%${debouncedSearch}%,position.ilike.%${debouncedSearch}%`);
+      }
+      if (startDate) {
+        fallbackQuery = fallbackQuery.gte('date', `${startDate}T00:00:00`);
+      }
+      if (endDate) {
+        fallbackQuery = fallbackQuery.lte('date', `${endDate}T23:59:59`);
+      }
+      if (statusFilter !== 'all') {
+        fallbackQuery = fallbackQuery.eq('status_screening', statusFilter);
+      }
+      fallbackQuery = fallbackQuery.range(from, to);
+
+      const fallbackResult = await fallbackQuery;
+      data = fallbackResult.data;
+      count = fallbackResult.count;
+      error = fallbackResult.error;
+
+      if (data && data.length > 0) {
+        const linkedIds = data.map(d => d.linked_external_id).filter(Boolean);
+        if (linkedIds.length > 0) {
+           const { data: extData } = await supabase.from('external_data').select('uid_sheet, raw_data').in('uid_sheet', linkedIds);
+           if (extData) {
+             data = data.map(d => {
+               const ext = extData.find(e => e.uid_sheet === d.linked_external_id);
+               return { ...d, external_data: ext ? { raw_data: ext.raw_data } : null };
+             });
+           }
+        }
+      }
+    }
 
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -584,8 +638,12 @@ export default function Screening() {
                 >
                   <div className="p-5 border-b border-slate-100 flex items-start justify-between">
                     <div className="flex items-center gap-3 min-w-0">
-                      <Link to={`/candidates/${candidate.id}`} className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0 text-indigo-700 font-bold hover:bg-indigo-200 transition-colors">
-                        {candidate.full_name[0]}
+                      <Link to={`/candidates/${candidate.id}`} className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0 text-indigo-700 font-bold hover:bg-indigo-200 transition-colors overflow-hidden">
+                        {extractPhotoUrl(candidate.external_data?.raw_data || candidate.source_info) ? (
+                          <img src={extractPhotoUrl(candidate.external_data?.raw_data || candidate.source_info)!} alt={candidate.full_name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                          candidate.full_name[0]
+                        )}
                       </Link>
                       <div className="min-w-0">
                         <h3 className="text-base font-bold text-slate-900 truncate">
@@ -723,8 +781,12 @@ export default function Screening() {
                         )}
                       >
                         <div className="flex items-center gap-4 flex-1 min-w-0">
-                          <Link to={`/candidates/${candidate.id}`} className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0 text-indigo-700 font-bold hover:bg-indigo-200 transition-colors">
-                            {candidate.full_name[0]}
+                          <Link to={`/candidates/${candidate.id}`} className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0 text-indigo-700 font-bold hover:bg-indigo-200 transition-colors overflow-hidden">
+                            {extractPhotoUrl(candidate.external_data?.raw_data || candidate.source_info) ? (
+                              <img src={extractPhotoUrl(candidate.external_data?.raw_data || candidate.source_info)!} alt={candidate.full_name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            ) : (
+                              candidate.full_name[0]
+                            )}
                           </Link>
                           <div className="flex-1 min-w-0">
                             <h3 className="text-lg font-bold text-slate-900 truncate flex items-center gap-2">

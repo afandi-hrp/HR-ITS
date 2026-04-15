@@ -68,6 +68,16 @@ export default function CandidateArchive() {
       .order('archived_at', { ascending: false })
       .range(from, to);
 
+    // Handle array case if relationship returns an array
+    if (data && !error) {
+      data = data.map(d => {
+        if (Array.isArray(d.external_data) && d.external_data.length > 0) {
+          return { ...d, external_data: d.external_data[0] };
+        }
+        return d;
+      });
+    }
+
     // Fallback if foreign key doesn't exist
     if (error && error.message.includes('relationship')) {
       let fallbackQuery = supabase
