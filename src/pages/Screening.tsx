@@ -118,13 +118,19 @@ export default function Screening() {
     if (!profile) return; // Wait for profile to load
 
     setLoading(true);
+    let selectQuery = '*, psikotes_schedules(id, is_confirmed, schedule_date), interview_schedules(id, is_confirmed, schedule_date), external_data(raw_data), candidate_assignees(user_id, profiles(full_name))';
+    
+    if (profile.role === 'USER_MANAGER') {
+      selectQuery = '*, psikotes_schedules(id, is_confirmed, schedule_date), interview_schedules(id, is_confirmed, schedule_date), external_data(raw_data), filter_assignees:candidate_assignees!inner(user_id), candidate_assignees(user_id, profiles(full_name))';
+    }
+
     let query = supabase
       .from('candidates')
-      .select('*, psikotes_schedules(id, is_confirmed, schedule_date), interview_schedules(id, is_confirmed, schedule_date), external_data(raw_data)', { count: 'exact' })
+      .select(selectQuery, { count: 'exact' })
       .order('created_at', { ascending: false });
 
     if (profile.role === 'USER_MANAGER') {
-      query = query.eq('assigned_to', profile.id);
+      query = query.eq('filter_assignees.user_id', profile.id);
     }
 
     if (debouncedSearch) {
@@ -146,10 +152,11 @@ export default function Screening() {
     query = query.range(from, to);
 
     let { data, count, error } = await query;
+    let typedData = data as any[] | null;
 
     // Handle array case if relationship returns an array
-    if (data && !error) {
-      data = data.map(d => {
+    if (typedData && !error) {
+      typedData = typedData.map(d => {
         if (Array.isArray(d.external_data) && d.external_data.length > 0) {
           return { ...d, external_data: d.external_data[0] };
         }
@@ -160,10 +167,10 @@ export default function Screening() {
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
-      setCandidates(data || []);
+      setCandidates(typedData || []);
       setTotalItems(count || 0);
       // Expand all groups by default
-      const positions = Array.from(new Set((data || []).map(c => c.position)));
+      const positions = Array.from(new Set((typedData || []).map(c => c.position)));
       setExpandedGroups(positions);
     }
     setLoading(false);

@@ -45,8 +45,8 @@ export interface Candidate {
   psikotes_result_url?: string | null;
   source_info?: string | null;
   external_data?: { raw_data: any } | null;
-  assigned_to?: string | null;
-  assignee?: Profile | null;
+  candidate_assignees?: { user_id: string, profiles?: Profile }[];
+  assigned_history?: { id: string, name: string }[];
   created_at?: string;
   updated_at?: string;
 }

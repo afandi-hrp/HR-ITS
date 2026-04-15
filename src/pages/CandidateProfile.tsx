@@ -76,7 +76,7 @@ export default function CandidateProfile() {
   const [isInterviewQuestionsExpanded, setIsInterviewQuestionsExpanded] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [managers, setManagers] = useState<any[]>([]);
-  const [selectedManager, setSelectedManager] = useState('');
+  const [selectedManagers, setSelectedManagers] = useState<string[]>([]);
   const [assigning, setAssigning] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [fullScreenPdf, setFullScreenPdf] = useState<string | null>(null);
@@ -401,7 +401,7 @@ export default function CandidateProfile() {
     setLoading(true);
     const { data, error } = await supabase
       .from('candidates')
-      .select('*, psikotes_schedules(id, is_confirmed, schedule_date), interview_schedules(id, is_confirmed, schedule_date), assignee:profiles(id, full_name, role, department)')
+      .select('*, psikotes_schedules(id, is_confirmed, schedule_date), interview_schedules(id, is_confirmed, schedule_date), candidate_assignees(user_id, profiles(id, full_name, role, department))')
       .eq('id', candidateId)
       .single();
 
@@ -411,7 +411,7 @@ export default function CandidateProfile() {
       // Try fetching from candidate_logs if not found in active candidates
       const { data: logData, error: logError } = await supabase
         .from('candidate_logs')
-        .select('*, assignee:profiles(id, full_name, role, department)')
+        .select('*')
         .eq('id', candidateId)
         .single();
 
@@ -428,7 +428,7 @@ export default function CandidateProfile() {
     }
 
     // Access Control Check
-    if (profile?.role === 'USER_MANAGER' && candidateData.assigned_to !== profile.id) {
+    if (profile?.role === 'USER_MANAGER' && !candidateData.candidate_assignees?.some((a: any) => a.user_id === profile.id)) {
       toast({ title: 'Akses Ditolak', description: 'Anda tidak memiliki akses ke kandidat ini.', variant: 'destructive' });
       navigate('/screening');
       setLoading(false);
@@ -454,7 +454,7 @@ export default function CandidateProfile() {
   };
 
   const handleAssign = async () => {
-    if (!id || !selectedManager) return;
+    if (!id) return;
     
     try {
       setAssigning(true);
@@ -467,12 +467,24 @@ export default function CandidateProfile() {
 
       const table = activeData ? 'candidates' : 'candidate_logs';
 
-      const { error } = await supabase
-        .from(table)
-        .update({ assigned_to: selectedManager })
-        .eq('id', id);
+      // Delete existing assignments
+      await supabase
+        .from('candidate_assignees')
+        .delete()
+        .eq('candidate_id', id);
 
-      if (error) throw error;
+      // Insert new assignments
+      if (selectedManagers.length > 0) {
+        const inserts = selectedManagers.map(userId => ({
+          candidate_id: id,
+          user_id: userId
+        }));
+        const { error } = await supabase
+          .from('candidate_assignees')
+          .insert(inserts);
+
+        if (error) throw error;
+      }
 
       toast({
         title: "Berhasil",
@@ -1083,17 +1095,31 @@ export default function CandidateProfile() {
         </div>
       </div>
 
-      {candidate.assignee && (
+      {(candidate.candidate_assignees && candidate.candidate_assignees.length > 0) ? (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
           <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
             <Users size={20} />
           </div>
           <div>
             <p className="text-sm font-medium text-blue-900">Kandidat ini sedang di-review oleh:</p>
-            <p className="text-sm text-blue-700">{candidate.assignee.full_name} ({candidate.assignee.department || 'User Manager'})</p>
+            <p className="text-sm text-blue-700">
+              {candidate.candidate_assignees.map((a: any) => `${a.profiles?.full_name} (${a.profiles?.department || 'User Manager'})`).join(', ')}
+            </p>
           </div>
         </div>
-      )}
+      ) : (candidate.assigned_history && candidate.assigned_history.length > 0) ? (
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center gap-3">
+          <div className="p-2 bg-slate-200 rounded-lg text-slate-600">
+            <Users size={20} />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-slate-900">Pernah di-review oleh:</p>
+            <p className="text-sm text-slate-700">
+              {candidate.assigned_history.map((h: any) => h.name).join(', ')}
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Basic Info */}
@@ -2174,17 +2200,37 @@ export default function CandidateProfile() {
                 Pilih User Manager untuk me-review kandidat ini. User yang dipilih akan dapat melihat profil kandidat ini di halaman mereka.
               </p>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Pilih User / Divisi
+              <div className="space-y-3">
+                <label className="block text-sm font-bold text-slate-700">
+                  Assign To (PIC)
                 </label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {selectedManagers.map(userId => {
+                    const user = managers.find(u => u.id === userId);
+                    return (
+                      <div key={userId} className="flex items-center gap-1 bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg text-sm font-medium border border-indigo-100">
+                        <span>{user?.full_name || 'Unknown User'}</span>
+                        <button 
+                          onClick={() => setSelectedManagers(prev => prev.filter(id => id !== userId))}
+                          className="p-0.5 hover:bg-indigo-200 rounded-md transition-colors ml-1"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
                 <select
-                  value={selectedManager}
-                  onChange={(e) => setSelectedManager(e.target.value)}
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value && !selectedManagers.includes(e.target.value)) {
+                      setSelectedManagers(prev => [...prev, e.target.value]);
+                    }
+                  }}
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 >
-                  <option value="">-- Pilih User --</option>
-                  {managers.map(manager => (
+                  <option value="">-- Tambah PIC --</option>
+                  {managers.filter(m => !selectedManagers.includes(m.id)).map(manager => (
                     <option key={manager.id} value={manager.id}>
                       {manager.full_name} {manager.department ? `(${manager.department})` : ''}
                     </option>
@@ -2202,7 +2248,7 @@ export default function CandidateProfile() {
               </button>
               <button
                 onClick={handleAssign}
-                disabled={assigning || !selectedManager}
+                disabled={assigning}
                 className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-50"
               >
                 {assigning ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}

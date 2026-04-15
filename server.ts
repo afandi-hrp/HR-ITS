@@ -153,10 +153,10 @@ app.use((req: any, res, next) => {
 
     try {
       const supabaseAdmin = getSupabaseAdmin();
-      // 1. Fetch candidate with schedules
+      // 1. Fetch candidate with schedules and assignees
       const { data: candidate, error: fetchError } = await supabaseAdmin
         .from("candidates")
-        .select("*, psikotes_schedules(is_confirmed), interview_schedules(is_confirmed)")
+        .select("*, psikotes_schedules(is_confirmed), interview_schedules(is_confirmed), candidate_assignees(user_id, profiles(full_name))")
         .eq("id", candidateId)
         .single();
 
@@ -164,8 +164,14 @@ app.use((req: any, res, next) => {
         return res.status(404).json({ error: "Candidate not found" });
       }
 
+      // Build assigned_history
+      const history = candidate.candidate_assignees?.map((a: any) => ({
+        id: a.user_id,
+        name: a.profiles?.full_name
+      })) || [];
+
       // 2. Insert into logs (Remove fields that don't exist in candidate_logs and add statuses)
-      const { created_at, updated_at, psikotes_schedules, interview_schedules, ...baseData } = candidate;
+      const { created_at, updated_at, psikotes_schedules, interview_schedules, candidate_assignees, ...baseData } = candidate;
       
       const logData = {
         ...baseData,
@@ -174,7 +180,8 @@ app.use((req: any, res, next) => {
         notes: notes || "",
         archived_at: new Date().toISOString(),
         created_at: candidate.created_at,
-        updated_at: candidate.updated_at
+        updated_at: candidate.updated_at,
+        assigned_history: history
       };
 
       const { error: insertError } = await supabaseAdmin
