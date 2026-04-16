@@ -384,8 +384,16 @@ app.use((req: any, res, next) => {
       }
 
       const status = error.response?.status || 500;
-      const data = error.response?.data || { error: error.message };
-      res.status(status).json(data);
+      
+      // Log the actual error data from the webhook if available, but don't expose it to the client
+      if (error.response?.data) {
+        console.error("Webhook error response:", error.response.data);
+      }
+      
+      // Return a generic, user-friendly error message
+      const errorMessage = "Gagal memproses permintaan. Sistem sedang sibuk atau ada gangguan pada layanan. Silakan coba beberapa saat lagi.";
+      
+      res.status(status).json({ error: errorMessage });
     }
   });
 
@@ -463,8 +471,16 @@ app.use((req: any, res, next) => {
     } catch (error: any) {
       console.error("Error requesting OTP:", error);
       const status = error.response?.status || 500;
-      const data = error.response?.data || { error: error.message };
-      res.status(status).json(data);
+      
+      // Log the actual error data from the webhook if available, but don't expose it to the client
+      if (error.response?.data) {
+        console.error("Webhook error response:", error.response.data);
+      }
+      
+      // Return a generic, user-friendly error message
+      const errorMessage = "Gagal mengirim pesan OTP. Sistem sedang sibuk atau ada gangguan pada layanan pengiriman pesan. Silakan coba beberapa saat lagi.";
+      
+      res.status(status).json({ error: errorMessage });
     }
   });
 
@@ -738,8 +754,16 @@ app.use((req: any, res, next) => {
       }
 
       const status = error.response?.status || 500;
-      const data = error.response?.data || { error: error.message };
-      res.status(status).json(data);
+      
+      // Log the actual error data from the webhook if available, but don't expose it to the client
+      if (error.response?.data) {
+        console.error("Webhook error response:", error.response.data);
+      }
+      
+      // Return a generic, user-friendly error message
+      const errorMessage = "Gagal mengirim lamaran. Sistem sedang sibuk atau ada gangguan pada layanan pengiriman. Silakan coba beberapa saat lagi.";
+      
+      res.status(status).json({ error: errorMessage });
     }
   });
 

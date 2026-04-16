@@ -249,12 +249,14 @@ export default function PublicCareer() {
         errorMessage.includes('Failed to fetch') || 
         errorMessage.includes('ECONNREFUSED') ||
         errorMessage.includes('timeout') ||
-        errorMessage.includes('NetworkError')
+        errorMessage.includes('NetworkError') ||
+        errorMessage.includes('automation') ||
+        errorMessage.includes('n8n')
       ) {
-        errorMessage = 'Gagal terhubung ke server, silakan periksa koneksi Anda dan coba kembali.';
+        errorMessage = 'Sistem sedang sibuk atau ada gangguan pada layanan pengiriman pesan. Silakan periksa koneksi Anda dan coba beberapa saat lagi.';
       }
 
-      toast({ title: 'Error', description: errorMessage, variant: 'destructive' });
+      toast({ title: 'Gagal Mengirim OTP', description: errorMessage, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -394,19 +396,20 @@ export default function PublicCareer() {
     } catch (error: any) {
       console.error('Error uploading CV:', error);
       
-      let errorMessage = error.message || 'Gagal terhubung keserver, silakan coba kembali';
+      let errorMessage = error.message || 'Gagal terhubung ke server, silakan coba kembali';
       if (
         errorMessage.includes('Failed to fetch') || 
         errorMessage.includes('n8n') || 
         errorMessage.includes('Gagal mengirim') ||
         errorMessage.includes('ECONNREFUSED') ||
-        errorMessage.includes('timeout')
+        errorMessage.includes('timeout') ||
+        errorMessage.includes('automation')
       ) {
-        errorMessage = 'Gagal terhubung keserver, silakan coba kembali';
+        errorMessage = 'Sistem sedang sibuk atau ada gangguan pada layanan pengiriman lamaran. Silakan coba beberapa saat lagi.';
       }
 
       toast({ 
-        title: 'Error', 
+        title: 'Gagal Mengirim Lamaran', 
         description: errorMessage, 
         variant: 'destructive' 
       });
