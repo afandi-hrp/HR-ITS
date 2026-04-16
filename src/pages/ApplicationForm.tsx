@@ -1051,7 +1051,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                           {!readOnly && (
                             <td className="p-0 text-center align-middle">
                               {index >= 3 && (
-                                <button type="button" onClick={() => removeLanguage(index)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
+                                <button type="button" onClick={() => removeLanguage(index)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors focus:opacity-100">
                                   <Trash2 size={16} />
                                 </button>
                               )}
@@ -1116,7 +1116,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                           {!readOnly && (
                             <td className="p-0 text-center align-middle">
                               {index >= 3 && (
-                                <button type="button" onClick={() => removeSkill(index)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
+                                <button type="button" onClick={() => removeSkill(index)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors focus:opacity-100">
                                   <Trash2 size={16} />
                                 </button>
                               )}
@@ -1607,6 +1607,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                       <SignatureCanvas 
                         ref={sigCanvas}
                         penColor="black"
+                        clearOnResize={false}
                         canvasProps={{className: 'w-full h-32 sm:w-64 cursor-crosshair'}}
                       />
                       <button 
@@ -1724,6 +1725,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                           <SignatureCanvas 
                             ref={remunerationSigCanvas}
                             penColor="black"
+                            clearOnResize={false}
                             canvasProps={{className: 'w-full h-40 cursor-crosshair'}}
                           />
                           <button 
