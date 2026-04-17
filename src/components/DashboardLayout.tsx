@@ -57,7 +57,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
     }
   }, [user]);
 
-  // Auto-logout after 10 minutes of inactivity
+  // Auto-logout after 30 minutes of inactivity
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
 
@@ -66,7 +66,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
       timeoutId = setTimeout(async () => {
         await supabase.auth.signOut();
         navigate('/login');
-      }, 10 * 60 * 1000); // 10 minutes
+      }, 30 * 60 * 1000); // 30 minutes
     };
 
     // Initialize timer
