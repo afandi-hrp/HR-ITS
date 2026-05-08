@@ -28,10 +28,24 @@ export default function SendEmailModal({ candidate, schedule, type, onClose }: S
   
   const [tokens, setTokens] = useState<Token[]>([]);
   const [selectedToken, setSelectedToken] = useState<string>('');
+  const [fullCandidate, setFullCandidate] = useState<Candidate>(candidate);
   
   const { toast } = useToast();
 
   useEffect(() => {
+    const fetchFullCandidate = async () => {
+      const { data } = await supabase
+        .from('candidates')
+        .select('*, interview_schedules(*), psikotes_schedules(*)')
+        .eq('id', candidate.id)
+        .single();
+        
+      if (data) {
+        setFullCandidate(data as Candidate);
+      }
+    };
+    fetchFullCandidate();
+
     const fetchTemplates = async () => {
       const { data, error } = await supabase
         .from('email_templates')
@@ -80,8 +94,8 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
     if (template) {
       const scheduleStr = `${formatDate(schedule.schedule_date)}, ${new Date(schedule.schedule_date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} (${schedule.location_type}: ${schedule.location_detail || '-'})`;
       
-      const interviewSchedule = candidate.interview_schedules?.[0];
-      const psikotesSchedule = candidate.psikotes_schedules?.[0];
+      const interviewSchedule = type === 'interview' ? schedule : fullCandidate.interview_schedules?.[0];
+      const psikotesSchedule = type === 'psikotes' ? schedule : fullCandidate.psikotes_schedules?.[0];
 
       const interviewStr = interviewSchedule 
         ? `${formatDate(interviewSchedule.schedule_date)}, ${new Date(interviewSchedule.schedule_date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`
@@ -91,16 +105,26 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
         ? `${formatDate(psikotesSchedule.schedule_date)}, ${new Date(psikotesSchedule.schedule_date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`
         : 'Belum dijadwalkan';
 
+      const lokasiInterviewStr = interviewSchedule
+        ? `${interviewSchedule.location_type} (${interviewSchedule.location_detail || '-'})`
+        : 'Belum dijadwalkan';
+
+      const lokasiPsikotesStr = psikotesSchedule
+        ? `${psikotesSchedule.location_type} (${psikotesSchedule.location_detail || '-'})`
+        : 'Belum dijadwalkan';
+
       const replaceVars = (text: string) => {
         let replaced = text
-          .replace(/{{nama}}/g, candidate.full_name)
-          .replace(/{{email_kandidat}}/g, candidate.email)
-          .replace(/{{posisi}}/g, candidate.position)
-          .replace(/{{pendidikan_terakhir}}/g, candidate.education || '-')
-          .replace(/{{pengalaman_kerja}}/g, candidate.work_experience || '-')
+          .replace(/{{nama}}/g, fullCandidate.full_name)
+          .replace(/{{email_kandidat}}/g, fullCandidate.email)
+          .replace(/{{posisi}}/g, fullCandidate.position)
+          .replace(/{{pendidikan_terakhir}}/g, fullCandidate.education || '-')
+          .replace(/{{pengalaman_kerja}}/g, fullCandidate.work_experience || '-')
           .replace(/{{jadwal}}/g, scheduleStr)
           .replace(/{{jadwal_interview}}/g, interviewStr)
-          .replace(/{{jadwal_psikotes}}/g, psikotesStr);
+          .replace(/{{jadwal_psikotes}}/g, psikotesStr)
+          .replace(/{{lokasi_interview}}/g, lokasiInterviewStr)
+          .replace(/{{lokasi_psikotes}}/g, lokasiPsikotesStr);
           
         if (selectedToken) {
           const tokenObj = tokens.find(t => t.id === selectedToken);
@@ -115,7 +139,7 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
       let processedBody = replaceVars(template.body_html);
 
       setSubject(processedSubject);
-      setBody(prev => prev ? `${prev}\n\n${processedBody}` : processedBody);
+      setBody(processedBody);
       // Reset selection so user can select the same template again if needed
       setTimeout(() => setSelectedTemplate(''), 100);
     }
@@ -348,7 +372,7 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
             />
             <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
               <p className="text-[10px] text-slate-400 italic">
-                Variabel: {"{{nama}}"}, {"{{email_kandidat}}"}, {"{{posisi}}"}, {"{{pendidikan_terakhir}}"}, {"{{pengalaman_kerja}}"}, {"{{jadwal}}"}, {"{{jadwal_interview}}"}, {"{{jadwal_psikotes}}"}
+                Variabel: {"{{nama}}"}, {"{{email_kandidat}}"}, {"{{posisi}}"}, {"{{pendidikan_terakhir}}"}, {"{{pengalaman_kerja}}"}, {"{{jadwal}}"}, {"{{jadwal_interview}}"}, {"{{jadwal_psikotes}}"}, {"{{lokasi_interview}}"}, {"{{lokasi_psikotes}}"}
               </p>
               <p className="text-[10px] text-amber-600 italic sm:max-w-[200px] sm:text-right">
                 Jika notifikasi "Berhasil" tapi email tidak masuk, pastikan workflow n8n Anda sudah Active.
