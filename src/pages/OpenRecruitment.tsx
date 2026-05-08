@@ -10,7 +10,9 @@ import {
   FileText,
   GraduationCap,
   Send,
-  ChevronDown
+  ChevronDown,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { useToast } from '../components/ui/use-toast';
 import { cn, fetchWithRetry } from '../lib/utils';
@@ -21,6 +23,7 @@ interface OpenRecruitment {
   jobdesk: string;
   kualifikasi: string;
   created_at: string;
+  is_published: boolean;
 }
 
 export default function OpenRecruitment() {
@@ -186,6 +189,29 @@ export default function OpenRecruitment() {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const togglePublish = async (id: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('open_recruitment')
+        .update({ is_published: !currentStatus })
+        .eq('id', id);
+
+      if (error) {
+        if (error.code === '42703') {
+           toast({ title: 'Gagal', description: 'Kolom "is_published" belum ada di tabel Anda. Silakan tambahkan kolom tersebut (BOOLEAN DEFAULT true).', variant: 'destructive' });
+           return;
+        }
+        throw error;
+      }
+      
+      toast({ title: 'Berhasil', description: `Lowongan berhasil di-${!currentStatus ? 'publish' : 'unpublish'}.` });
+      // Update local state smoothly
+      setItems(items.map(item => item.id === id ? { ...item, is_published: !currentStatus } : item));
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
     }
   };
 
@@ -360,11 +386,30 @@ export default function OpenRecruitment() {
                     </div>
                     <div>
                       <h3 className="font-bold text-slate-900 text-lg">{item.position}</h3>
-                      <p className="text-sm text-slate-500">Dibuat: {new Date(item.created_at).toLocaleDateString('id-ID')}</p>
+                      <div className="flex items-center gap-3 mt-1">
+                        <p className="text-sm text-slate-500">Dibuat: {new Date(item.created_at).toLocaleDateString('id-ID')}</p>
+                        {item.is_published === false ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500 uppercase tracking-widest border border-slate-200">Draft / Unpublish</span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-600 uppercase tracking-widest border border-emerald-200">Published</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      <button 
+                        onClick={() => togglePublish(item.id, item.is_published !== false)}
+                        className={cn(
+                          "flex items-center justify-center p-2 rounded-lg transition-colors border",
+                          item.is_published === false 
+                            ? "text-emerald-600 border-emerald-200 hover:bg-emerald-50 bg-emerald-50/50" 
+                            : "text-amber-500 border-amber-200 hover:bg-amber-50"
+                        )}
+                        title={item.is_published === false ? "Publish Lowongan" : "Unpublish Lowongan"}
+                      >
+                        {item.is_published === false ? <Eye size={18} /> : <EyeOff size={18} />}
+                      </button>
                       <button 
                         onClick={() => handleEdit(item)}
                         className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"

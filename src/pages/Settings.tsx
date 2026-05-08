@@ -33,7 +33,9 @@ export default function Settings() {
   const [loginAnimationUrl, setLoginAnimationUrl] = useState('');
   const [faviconUrl, setFaviconUrl] = useState('');
   const [jobSources, setJobSources] = useState<string[]>([]);
+  const [careerJobSources, setCareerJobSources] = useState<string[]>([]);
   const [newJobSource, setNewJobSource] = useState('');
+  const [newCareerJobSource, setNewCareerJobSource] = useState('');
   const [loading, setLoading] = useState(false);
   const [uploadingAssets, setUploadingAssets] = useState<Record<string, boolean>>({});
   const [testingWebhook, setTestingWebhook] = useState<'email' | 'cv' | 'public_cv' | 'sheet' | 'otp' | 'wa' | 'external_data_delete' | 'ai_analysis' | 'ai_psikotes' | 'ai_interview' | null>(null);
@@ -83,6 +85,18 @@ export default function Settings() {
         setLoginAnimationUrl(data.login_animation_url || '');
         setFaviconUrl(data.favicon_url || '');
         setJobSources(data.job_sources && data.job_sources.length > 0 ? data.job_sources : [
+          'Campus Hiring',
+          'Email',
+          'Instagram',
+          'Jobstreet',
+          'LinkedIn',
+          'Referensi',
+          'Walk In',
+          'TGT Program',
+          'Head Hunter',
+          'Others'
+        ]);
+        setCareerJobSources(data.career_job_sources && data.career_job_sources.length > 0 ? data.career_job_sources : [
           'Campus Hiring',
           'Email',
           'Instagram',
@@ -146,6 +160,7 @@ export default function Settings() {
       login_animation_url: loginAnimationUrl.trim(),
       favicon_url: faviconUrl.trim(),
       job_sources: jobSources,
+      career_job_sources: careerJobSources,
       updated_at: new Date().toISOString()
     });
 
@@ -830,7 +845,7 @@ export default function Settings() {
                       </p>
                     </div>
                     <div className="pt-4 border-t border-slate-200">
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">Sumber Lowongan</label>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Sumber Lowongan (Upload CV)</label>
                       <div className="flex gap-2 mb-4">
                         <input
                           type="text"
@@ -867,7 +882,49 @@ export default function Settings() {
                         ))}
                       </div>
                       <p className="mt-2 text-xs text-slate-500 italic">
-                        Daftar ini akan muncul sebagai pilihan di halaman Upload CV dan Karir Publik.
+                        Daftar ini akan muncul sebagai pilihan di halaman Upload CV.
+                      </p>
+                    </div>
+
+                    <div className="pt-4 border-t border-slate-200">
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Sumber Lowongan (Public Career / Form Pelamar)</label>
+                      <div className="flex gap-2 mb-4">
+                        <input
+                          type="text"
+                          value={newCareerJobSource}
+                          onChange={(e) => setNewCareerJobSource(e.target.value)}
+                          placeholder="Tambah sumber baru..."
+                          className="flex-1 px-4 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (newCareerJobSource.trim() && !careerJobSources.includes(newCareerJobSource.trim())) {
+                              setCareerJobSources([...careerJobSources, newCareerJobSource.trim()]);
+                              setNewCareerJobSource('');
+                            }
+                          }}
+                          className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all text-sm font-medium"
+                        >
+                          Tambah
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {careerJobSources.map((source, idx) => (
+                          <div key={idx} className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg text-sm text-slate-700">
+                            <span>{source}</span>
+                            <button
+                              type="button"
+                              onClick={() => setCareerJobSources(careerJobSources.filter((_, i) => i !== idx))}
+                              className="text-slate-400 hover:text-red-500 transition-colors"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="mt-2 text-xs text-slate-500 italic">
+                        Daftar ini akan muncul sebagai pilihan di halaman Public Career (Form Pelamar).
                       </p>
                     </div>
                     <div className="pt-4 border-t border-slate-200">

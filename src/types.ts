@@ -42,6 +42,7 @@ export interface Candidate {
   ai_biodata_summary?: any | null;
   ai_psikotes_summary?: any | null;
   ai_interview_questions?: any | null;
+  ai_cv_analysis?: string | null;
   psikotes_result_url?: string | null;
   source_info?: string | null;
   external_data?: { raw_data: any } | null;
@@ -68,6 +69,7 @@ export interface SiteSettings {
   login_animation_url: string | null;
   favicon_url: string | null;
   job_sources?: string[] | null;
+  career_job_sources?: string[] | null;
   n8n_webhook_url_interview?: string | null;
   updated_at: string;
 }

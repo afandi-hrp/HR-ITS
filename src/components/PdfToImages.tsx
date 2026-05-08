@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
-import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
-// Set worker path to local file to avoid CDN dynamic import issues
-pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+// Use CDN for worker to prevent module resolution issues and TS errors
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 interface PdfToImagesProps {
   url: string;
@@ -35,6 +34,7 @@ export const PdfToImages: React.FC<PdfToImagesProps> = ({ url, title }) => {
           canvas.width = viewport.width;
 
           if (context) {
+            // @ts-ignore
             await page.render({ canvasContext: context, viewport: viewport }).promise;
             imageUrls.push(canvas.toDataURL('image/png'));
           }

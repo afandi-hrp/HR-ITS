@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Candidate } from '../types';
-import { Search, Filter, RefreshCcw, Users, X, Calendar, Mail, Phone, Briefcase, Star, FileText, ChevronDown, Trash2, CheckSquare, Square, Sparkles, Database } from 'lucide-react';
+import { Search, Filter, RefreshCcw, Users, X, Calendar, Mail, Phone, Briefcase, Star, FileText, ChevronDown, Trash2, CheckSquare, Square, Sparkles, Database, Download, Loader2 } from 'lucide-react';
 import { formatDate, cn, extractPhotoUrl } from '../lib/utils';
 import { useToast } from '../components/ui/use-toast';
 import JSONRenderer from '../components/JSONRenderer';
+import * as XLSX from 'xlsx';
 
 export default function Logs() {
   const location = useLocation();
@@ -43,6 +44,11 @@ export default function Logs() {
   const [deleteModalData, setDeleteModalData] = useState<Candidate | null>(null);
   const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const [exportPreviewOpen, setExportPreviewOpen] = useState(false);
+  const [exportData, setExportData] = useState<any[]>([]);
+  const [exportLoading, setExportLoading] = useState(false);
+  
   const { toast } = useToast();
 
   useEffect(() => {
@@ -99,6 +105,76 @@ export default function Logs() {
       setTotalItems(count || 0);
     }
     setLoading(false);
+  };
+
+  const handlePrepareExport = async () => {
+    setExportLoading(true);
+    try {
+      let query = supabase
+        .from('candidate_logs')
+        .select('*, external_data(raw_data)');
+
+      if (debouncedSearch) {
+        query = query.or(`full_name.ilike.%${debouncedSearch}%,position.ilike.%${debouncedSearch}%`);
+      }
+
+      if (startDate) {
+        query = query.gte('date', `${startDate}T00:00:00`);
+      }
+
+      if (endDate) {
+        query = query.lte('date', `${endDate}T23:59:59`);
+      }
+
+      if (statusFilter !== 'all') {
+        query = query.eq('status_screening', statusFilter);
+      }
+
+      const { data, error } = await query.order('archived_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      const formatted = (data || []).map(c => ({
+        'Nama Kandidat': c.full_name || '-',
+        'Posisi': c.position || '-',
+        'Email Kandidat': c.email || '-',
+        // Force string type in Excel for phone number to prevent stripping leading zeros
+        'Nomor Telepon': c.phone ? `'${c.phone}` : '-',
+        'Status Psikotest': c.psikotes_status || '-',
+        'Status Interview': c.interview_status || '-',
+        'Status': c.status_screening === 'hired' ? 'Diterima' : (c.status_screening === 'rejected' || c.status_screening === 'Tidak Lolos' ? 'Ditolak' : 'Proses'),
+        'Skor Screening': c.ai_screening_score != null ? c.ai_screening_score : '-',
+        'Sumber Lowongan': c.source_info || '-'
+      }));
+
+      setExportData(formatted);
+      setExportPreviewOpen(true);
+    } catch (err: any) {
+      toast({ title: 'Export Gagal', description: err.message, variant: 'destructive' });
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  const handleDownloadExcel = () => {
+    try {
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Log Kandidat");
+      
+      const colWidths = [
+          {wch: 30}, {wch: 25}, {wch: 35}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 15}, {wch: 15}, {wch: 25}
+      ];
+      worksheet['!cols'] = colWidths;
+
+      XLSX.writeFile(workbook, `Log_Kandidat_${new Date().toISOString().split('T')[0]}.xlsx`);
+      setExportPreviewOpen(false);
+      toast({ title: 'Berhasil', description: 'Data Excel berhasil diunduh.' });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Gagal men-generate file Excel', variant: 'destructive' });
+    }
   };
 
   useEffect(() => {
@@ -295,14 +371,26 @@ export default function Logs() {
   const startIndex = (currentPage - 1) * itemsPerPage;
 
   return (
-    <div className="space-y-8">
-      <div className="space-y-1 mb-2">
-        <h1 className="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">
-          Log Kandidat
-        </h1>
-        <p className="text-sm font-medium text-slate-500 max-w-xl">
-          Arsip riwayat kandidat yang telah diproses.
-        </p>
+    <div className="space-y-8 pb-10">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
+        <div className="space-y-1">
+          <h1 className="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">
+            Log Kandidat
+          </h1>
+          <p className="text-sm font-medium text-slate-500 max-w-xl">
+            Arsip riwayat kandidat yang telah diproses.
+          </p>
+        </div>
+        <div className="flex">
+          <button
+            onClick={handlePrepareExport}
+            disabled={exportLoading}
+            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-bold rounded-xl transition-all shadow-sm border border-emerald-200 disabled:opacity-50"
+          >
+            {exportLoading ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+            <span className="hidden sm:inline">Export Excel</span>
+          </button>
+        </div>
       </div>
 
       <div className="bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4">
@@ -815,6 +903,106 @@ export default function Logs() {
           </div>
         </div>
       )}
+
+      {/* Export Preview Modal */}
+      {exportPreviewOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-6xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
+                  <Download size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">Preview Data Excel</h3>
+                  <p className="text-xs text-slate-500">
+                    Menampilkan {Math.min(exportData.length, 20)} baris pertama dari total {exportData.length} baris yang akan diekspor.
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setExportPreviewOpen(false)}
+                className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-400"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="overflow-auto bg-slate-50/50 p-6 flex-1">
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse whitespace-nowrap min-w-max">
+                    <thead>
+                      <tr className="bg-slate-100 text-slate-700 text-[11px] font-extrabold uppercase tracking-wider">
+                        <th className="p-4 py-3 border-b border-slate-200">Nama Kandidat</th>
+                        <th className="p-4 py-3 border-b border-slate-200">Posisi</th>
+                        <th className="p-4 py-3 border-b border-slate-200">Email</th>
+                        <th className="p-4 py-3 border-b border-slate-200">No Telepon</th>
+                        <th className="p-4 py-3 border-b border-slate-200">Stat Psikotest</th>
+                        <th className="p-4 py-3 border-b border-slate-200">Stat Interview</th>
+                        <th className="p-4 py-3 border-b border-slate-200 text-center">Status</th>
+                        <th className="p-4 py-3 border-b border-slate-200 text-center">Skor</th>
+                        <th className="p-4 py-3 border-b border-slate-200">Sumber</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-xs divide-y divide-slate-100">
+                      {exportData.slice(0, 20).map((row, i) => (
+                        <tr key={i} className="hover:bg-slate-50 transition-colors">
+                          <td className="p-4 py-2 font-medium text-slate-800">{row['Nama Kandidat']}</td>
+                          <td className="p-4 py-2 text-slate-600">{row['Posisi']}</td>
+                          <td className="p-4 py-2 text-slate-500">{row['Email Kandidat']}</td>
+                          <td className="p-4 py-2 font-mono text-slate-600">{row['Nomor Telepon'].replace(/^'/, '')}</td>
+                          <td className="p-4 py-2 text-slate-600">{row['Status Psikotest']}</td>
+                          <td className="p-4 py-2 text-slate-600">{row['Status Interview']}</td>
+                          <td className="p-4 py-2 text-center">
+                            <span className={cn(
+                              "px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider",
+                              row['Status'] === 'Diterima' ? "bg-emerald-100 text-emerald-700" :
+                              row['Status'] === 'Ditolak' ? "bg-red-100 text-red-700" : "bg-slate-100 text-slate-600"
+                            )}>
+                              {row['Status']}
+                            </span>
+                          </td>
+                          <td className="p-4 py-2 text-center font-bold text-indigo-600">{row['Skor Screening']}</td>
+                          <td className="p-4 py-2 text-slate-600">{row['Sumber Lowongan']}</td>
+                        </tr>
+                      ))}
+                      {exportData.length === 0 && (
+                        <tr>
+                          <td colSpan={9} className="p-8 text-center text-slate-500 italic">Tidak ada data untuk diekspor.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 bg-white border-t border-slate-100 flex items-center justify-between shrink-0">
+              <span className="text-sm font-medium text-slate-500">
+                Total Baris: <strong className="text-slate-800">{exportData.length}</strong>
+              </span>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setExportPreviewOpen(false)}
+                  className="px-6 py-2.5 bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-all"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleDownloadExcel}
+                  disabled={exportData.length === 0}
+                  className="px-6 py-2.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-200 flex items-center gap-2 disabled:opacity-50"
+                >
+                  <Download size={18} />
+                  Konfirmasi & Unduh
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

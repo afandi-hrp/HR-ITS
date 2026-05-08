@@ -28,7 +28,7 @@ export default function RecruitmentFunnel() {
   const [pdfDataUri, setPdfDataUri] = useState<string | null>(null);
   const [showEfficiencyInfo, setShowEfficiencyInfo] = useState(false);
   const [monthlyMetrics, setMonthlyMetrics] = useState<{label: string, count: number, avgDaysToHire: number}[]>([]);
-  const [sourceDistribution, setSourceDistribution] = useState<{source: string, count: number}[]>([]);
+  const [sourceDistribution, setSourceDistribution] = useState<{source: string, count: number, accepted: number, rejected: number, pending: number}[]>([]);
   const [pipelineEfficiency, setPipelineEfficiency] = useState<{stage: string, days: number}[]>([]);
   const [stats, setStats] = useState({
     total: 0,
@@ -226,18 +226,28 @@ export default function RecruitmentFunnel() {
       const [psikotesSchedules, interviewSchedules, activeSources, logSources] = await Promise.all([
         supabase.from('psikotes_schedules').select('candidate_id, created_at, schedule_date'),
         supabase.from('interview_schedules').select('candidate_id, created_at, schedule_date'),
-        buildDataQuery('candidates', 'id, created_at, source_info').limit(10000),
-        buildDataQuery('candidate_logs', 'id, created_at, source_info').limit(10000)
+        buildDataQuery('candidates', 'id, created_at, source_info, status_screening').limit(10000),
+        buildDataQuery('candidate_logs', 'id, created_at, source_info, status_screening').limit(10000)
       ]);
 
       // Calculate Source Distribution
-      const sourceCounts: Record<string, number> = {};
+      const sourceCounts: Record<string, { total: number, accepted: number, rejected: number, pending: number }> = {};
       [...(activeSources.data || []), ...(logSources.data || [])].forEach((c: any) => {
         const source = c.source_info || 'Tidak Diketahui';
-        sourceCounts[source] = (sourceCounts[source] || 0) + 1;
+        if (!sourceCounts[source]) {
+          sourceCounts[source] = { total: 0, accepted: 0, rejected: 0, pending: 0 };
+        }
+        sourceCounts[source].total++;
+        if (c.status_screening === 'hired') {
+          sourceCounts[source].accepted++;
+        } else if (c.status_screening === 'rejected' || c.status_screening === 'Tidak Lolos') {
+          sourceCounts[source].rejected++;
+        } else {
+          sourceCounts[source].pending++;
+        }
       });
       const distribution = Object.entries(sourceCounts)
-        .map(([source, count]) => ({ source, count }))
+        .map(([source, stats]) => ({ source, count: stats.total, accepted: stats.accepted, rejected: stats.rejected, pending: stats.pending }))
         .sort((a, b) => b.count - a.count);
       setSourceDistribution(distribution);
 
@@ -559,15 +569,19 @@ export default function RecruitmentFunnel() {
       doc.text('SUMBER LOWONGAN', 14, 25);
       autoTable(doc, {
         startY: 32,
-        head: [['SUMBER', 'JUMLAH KANDIDAT']],
+        head: [['SUMBER', 'TOTAL', 'DITERIMA', 'DITOLAK']],
         body: sourceDistribution.map(item => [
           item.source,
-          item.count.toString()
+          item.count.toString(),
+          item.accepted.toString(),
+          item.rejected.toString()
         ]),
         theme: 'striped',
         headStyles: { fillColor: colors.secondary },
         columnStyles: {
-          1: { halign: 'center' }
+          1: { halign: 'center' },
+          2: { halign: 'center', textColor: [22, 163, 74] }, // green text
+          3: { halign: 'center', textColor: [220, 38, 38] }  // red text
         },
         margin: { left: 14, right: 14 }
       });
@@ -576,15 +590,19 @@ export default function RecruitmentFunnel() {
       doc.text('SUMBER LOWONGAN', 14, finalYAfterMonthly + 15);
       autoTable(doc, {
         startY: finalYAfterMonthly + 20,
-        head: [['SUMBER', 'JUMLAH KANDIDAT']],
+        head: [['SUMBER', 'TOTAL', 'DITERIMA', 'DITOLAK']],
         body: sourceDistribution.map(item => [
           item.source,
-          item.count.toString()
+          item.count.toString(),
+          item.accepted.toString(),
+          item.rejected.toString()
         ]),
         theme: 'striped',
         headStyles: { fillColor: colors.secondary },
         columnStyles: {
-          1: { halign: 'center' }
+          1: { halign: 'center' },
+          2: { halign: 'center', textColor: [22, 163, 74] },
+          3: { halign: 'center', textColor: [220, 38, 38] }
         },
         margin: { left: 14, right: 14 }
       });
@@ -1001,21 +1019,34 @@ export default function RecruitmentFunnel() {
           <div className="flex-1 flex flex-col justify-center gap-4 overflow-y-auto pr-2 max-h-[300px]">
             {sourceDistribution.map((item, index) => {
               const maxCount = Math.max(...sourceDistribution.map(s => s.count), 1);
-              const countWidth = Math.max((item.count / maxCount) * 100, 0);
+              const totalPct = Math.max((item.count / maxCount) * 100, 0);
+              const acceptedPct = (item.accepted / item.count) * 100;
+              const rejectedPct = (item.rejected / item.count) * 100;
+              const pendingPct = (item.pending / item.count) * 100;
               
               return (
-                <div key={index} className="flex items-center gap-3">
-                  <div className="w-24 text-xs font-bold text-slate-600 text-right shrink-0 leading-tight truncate" title={item.source}>
-                    {item.source}
-                  </div>
-                  <div className="flex-1 flex items-center gap-2">
-                    <div className="flex-1 bg-white/40 border border-white/60 h-2.5 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-indigo-500 rounded-full transition-all duration-500" 
-                        style={{ width: `${countWidth}%` }} 
-                      />
+                <div key={index} className="flex flex-col gap-1.5 group cursor-pointer relative">
+                  <div className="flex items-center gap-3">
+                    <div className="w-24 text-xs font-bold text-slate-600 text-right shrink-0 leading-tight truncate" title={item.source}>
+                      {item.source}
                     </div>
-                    <span className="text-[10px] font-bold text-indigo-600 w-6">{item.count}</span>
+                    <div className="flex-1 flex items-center gap-2">
+                      <div className="flex-1 bg-slate-100 border border-slate-200 h-2.5 rounded-full overflow-hidden flex" style={{ width: `${totalPct}%` }}>
+                        <div className="h-full bg-emerald-500 transition-all duration-300" style={{ width: `${acceptedPct}%` }} title={`Diterima: ${item.accepted}`} />
+                        <div className="h-full bg-red-500 transition-all duration-300" style={{ width: `${rejectedPct}%` }} title={`Ditolak: ${item.rejected}`} />
+                        <div className="h-full bg-indigo-300 transition-all duration-300" style={{ width: `${pendingPct}%` }} title={`Masih Proses: ${item.pending}`} />
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-600 w-6 text-right">{item.count}</span>
+                    </div>
+                  </div>
+                  
+                  {/* Tooltip on Hover */}
+                  <div className="absolute left-32 bottom-full mb-1 bg-slate-800 text-white text-[10px] px-3 py-2 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
+                    <p className="font-bold border-b border-slate-600 pb-1 mb-1">{item.source}</p>
+                    <p className="text-emerald-400">Diterima: {item.accepted}</p>
+                    <p className="text-red-400">Ditolak: {item.rejected}</p>
+                    <p className="text-indigo-300">Proses: {item.pending}</p>
+                    <p className="font-bold pt-1 mt-1 border-t border-slate-600">Total: {item.count}</p>
                   </div>
                 </div>
               );
@@ -1195,19 +1226,23 @@ export default function RecruitmentFunnel() {
                       <thead>
                         <tr className="bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-wider">
                           <th className="p-3">Sumber</th>
-                          <th className="p-3 text-center">Jumlah Kandidat</th>
+                          <th className="p-3 text-center">Total</th>
+                          <th className="p-3 text-center">Diterima</th>
+                          <th className="p-3 text-center">Ditolak</th>
                         </tr>
                       </thead>
                       <tbody className="text-xs divide-y divide-slate-100">
                         {sourceDistribution.map((item, i) => (
                           <tr key={i} className={i % 2 === 1 ? 'bg-indigo-50/30' : ''}>
                             <td className="p-3 font-medium">{item.source}</td>
-                            <td className="p-3 text-center font-bold text-indigo-600">{item.count}</td>
+                            <td className="p-3 text-center font-bold text-slate-600">{item.count}</td>
+                            <td className="p-3 text-center font-bold text-emerald-600">{item.accepted}</td>
+                            <td className="p-3 text-center font-bold text-red-600">{item.rejected}</td>
                           </tr>
                         ))}
                         {sourceDistribution.length === 0 && (
                           <tr>
-                            <td colSpan={2} className="p-3 text-center text-slate-500">Belum ada data sumber lowongan</td>
+                            <td colSpan={4} className="p-3 text-center text-slate-500">Belum ada data sumber lowongan</td>
                           </tr>
                         )}
                       </tbody>

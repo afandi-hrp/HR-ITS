@@ -194,9 +194,9 @@ export const generatePdfBlob = async (element: HTMLElement | null, title: string
     const opt = {
       margin:       10,
       filename:     `${title}.pdf`,
-      image:        { type: 'jpeg', quality: 0.98 },
+      image:        { type: 'jpeg' as const, quality: 0.98 },
       html2canvas:  { scale: 2, useCORS: true, logging: false, windowWidth: 794 },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      jsPDF:        { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
     };
 
     const pdfBlob = await html2pdf().from(clone).set(opt).output('blob');

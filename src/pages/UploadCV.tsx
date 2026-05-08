@@ -130,6 +130,7 @@ export default function UploadCV() {
         const { data: positionsData, error: positionsError } = await supabase
           .from('open_recruitment')
           .select('position')
+          .or('is_published.eq.true,is_published.is.null')
           .order('created_at', { ascending: false });
 
         if (positionsError) {

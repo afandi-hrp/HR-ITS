@@ -39,6 +39,7 @@ export default function PublicCareer() {
   const [otpInput, setOtpInput] = useState('');
   const [otpRequestId, setOtpRequestId] = useState('');
   const [uploadToken, setUploadToken] = useState('');
+  const [countdown, setCountdown] = useState(0);
   
   // Upload Data
   const [files, setFiles] = useState<File[]>([]);
@@ -56,6 +57,7 @@ export default function PublicCareer() {
 
   const [showOtpConfirmModal, setShowOtpConfirmModal] = useState(false);
   const [showUploadConfirmModal, setShowUploadConfirmModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const { toast } = useToast();
@@ -109,6 +111,14 @@ export default function PublicCareer() {
   }, [step]);
 
   useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (countdown > 0) {
+      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [countdown]);
+
+  useEffect(() => {
     if (step === 2 && captchaText && canvasRef.current) {
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
@@ -150,8 +160,8 @@ export default function PublicCareer() {
     supabase.from('site_settings').select('*').eq('id', 1).single().then(({ data, error }) => {
       if (data) {
         setSettings(data);
-        if (data.job_sources && data.job_sources.length > 0) {
-          setAvailableJobSources(data.job_sources);
+        if (data.career_job_sources && data.career_job_sources.length > 0) {
+          setAvailableJobSources(data.career_job_sources);
         } else {
           setAvailableJobSources([
             'Campus Hiring',
@@ -187,6 +197,8 @@ export default function PublicCareer() {
         const { data, error } = await supabase
           .from('open_recruitment')
           .select('*')
+          // Using is_published = true or is_published is null (for backward compatibility if column not yet initialized)
+          .or('is_published.eq.true,is_published.is.null')
           .order('created_at', { ascending: false });
 
         if (error) {
@@ -241,6 +253,7 @@ export default function PublicCareer() {
 
       toast({ title: 'OTP Terkirim', description: 'Silakan periksa WhatsApp Anda untuk kode OTP.' });
       setStep(2);
+      setCountdown(120);
     } catch (error: any) {
       console.error('Error requesting OTP:', error);
       
@@ -257,6 +270,47 @@ export default function PublicCareer() {
       }
 
       toast({ title: 'Gagal Mengirim OTP', description: errorMessage, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    setLoading(true);
+    setOtpInput(''); // Clear existing input
+    try {
+      const response = await fetchWithRetry('/api/request-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: phoneNumber
+        }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || 'Gagal mengirim ulang OTP via WhatsApp');
+      }
+
+      const data = await response.json();
+      setOtpRequestId(data.otpRequestId);
+
+      toast({ title: 'OTP Terkirim', description: 'Silakan periksa WhatsApp Anda untuk kode OTP baru.' });
+      setCountdown(120);
+    } catch (error: any) {
+      console.error('Error resending OTP:', error);
+      let errorMessage = error.message || 'Gagal terhubung ke server, silakan coba kembali';
+      if (
+        errorMessage.includes('Failed to fetch') || 
+        errorMessage.includes('ECONNREFUSED') ||
+        errorMessage.includes('timeout') ||
+        errorMessage.includes('NetworkError') ||
+        errorMessage.includes('automation') ||
+        errorMessage.includes('n8n')
+      ) {
+        errorMessage = 'Sistem sedang sibuk atau ada gangguan pada layanan pengiriman pesan. Silakan periksa koneksi Anda dan coba beberapa saat lagi.';
+      }
+      toast({ title: 'Gagal Mengirim Ulang OTP', description: errorMessage, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -380,18 +434,7 @@ export default function PublicCareer() {
 
       const responseData = await response.json();
       
-      toast({ 
-        title: 'Lamaran Terkirim!', 
-        description: 'Terima kasih telah melamar. Tim kami akan segera meninjau CV Anda.' 
-      });
-      
-      // Reset
-      setStep(1);
-      setCandidateName('');
-      setCandidateEmail('');
-      setPhoneNumber('');
-      setFiles([]);
-      setOtpInput('');
+      setShowSuccessModal(true);
       
     } catch (error: any) {
       console.error('Error uploading CV:', error);
@@ -734,13 +777,33 @@ export default function PublicCareer() {
                   Verifikasi OTP
                 </button>
                 
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  className="text-sm text-indigo-600 font-medium hover:underline"
-                >
-                  Ganti Nomor WhatsApp
-                </button>
+                <div className="pt-4 flex flex-col items-center gap-3">
+                  <div className="text-sm flex flex-col items-center justify-center gap-1 sm:flex-row">
+                    <span className="text-slate-500">Belum menerima kode OTP?</span>
+                    {countdown > 0 ? (
+                      <span className="text-slate-400 font-medium">
+                        Tunggu {Math.floor(countdown / 60)}:{String(countdown % 60).padStart(2, '0')}
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleResendOTP}
+                        disabled={loading}
+                        className="text-indigo-600 font-bold hover:underline disabled:opacity-50"
+                      >
+                        Kirim Ulang
+                      </button>
+                    )}
+                  </div>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setStep(1)}
+                    className="text-sm text-slate-400 font-medium hover:text-indigo-600 transition-colors"
+                  >
+                    Ganti Nomor WhatsApp
+                  </button>
+                </div>
               </form>
             )}
 
@@ -969,6 +1032,38 @@ export default function PublicCareer() {
                 className="px-6 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
               >
                 Ya, Kirim Lamaran
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-8 text-center flex flex-col items-center">
+              <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-6">
+                <CheckCircle2 size={40} />
+              </div>
+              <h2 className="text-2xl font-bold text-slate-900 mb-2">Berhasil Terkirim!</h2>
+              <p className="text-slate-600 mb-8 leading-relaxed">
+                Lamaran anda berhasil di kirim. Kami akan mengirimkan status lamaran anda Via Whatapps. Mohon cek secara berkala. Terima kasih.
+              </p>
+              <button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  setStep(1);
+                  setCandidateName('');
+                  setCandidateEmail('');
+                  setPhoneNumber('');
+                  setFiles([]);
+                  setOtpInput('');
+                  setView('listing');
+                }}
+                className="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all flex items-center justify-center"
+              >
+                Kembali ke Halaman Awal
               </button>
             </div>
           </div>

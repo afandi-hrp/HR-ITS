@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { supabase } from "./supabase";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -34,13 +35,29 @@ export function normalizeEmail(email: string | null | undefined): string {
 
 export async function fetchWithRetry(url: string, options?: RequestInit, maxRetries = 5) {
   let retries = maxRetries;
+  
+  const finalOptions = { ...options };
+  if (url.startsWith('/api/')) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        finalOptions.headers = {
+          ...finalOptions.headers,
+          Authorization: `Bearer ${session.access_token}`
+        };
+      }
+    } catch(e) {
+      // ignore
+    }
+  }
+
   while (retries > 0) {
     try {
       // Prevent caching of the "Please wait" page
       const fetchOptions = {
-        ...options,
+        ...finalOptions,
         headers: {
-          ...options?.headers,
+          ...finalOptions.headers,
           'Cache-Control': 'no-cache',
           'Pragma': 'no-cache'
         },

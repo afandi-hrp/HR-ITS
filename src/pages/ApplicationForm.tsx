@@ -212,7 +212,13 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => {
+      const newData = { ...prev, [name]: value };
+      if (name === 'full_name') {
+        newData.remuneration_signature_name = value;
+      }
+      return newData;
+    });
   };
 
   const handleCheckboxChange = (name: 'job_vacancy_info' | 'driver_license', value: string, checked: boolean) => {
@@ -250,6 +256,23 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
   };
 
   const handleMotivationPriorityChange = (field: string, value: string) => {
+    // Only allow empty string or numbers 1-6
+    if (value !== '' && !/^[1-6]$/.test(value)) {
+      return;
+    }
+
+    if (value !== '') {
+      // Check if value already exists in another field
+      const existingField = Object.entries(formData.motivation_priority).find(([k, v]) => k !== field && v === value);
+      if (existingField) {
+         toast({
+           title: 'Angka Sudah Digunakan',
+           description: `Angka ${value} sudah dipilih. Tidak bisa diisi di field lain.`,
+           variant: 'destructive'
+         });
+         return;
+      }
+    }
     setFormData(prev => ({
       ...prev,
       motivation_priority: { ...prev.motivation_priority, [field]: value }
@@ -396,6 +419,96 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // VALIDATIONS
+    const errors: string[] = [];
+
+    // 1. Upload Dokumen
+    if (!ktpFile) errors.push('Dokumen KTP wajib diunggah.');
+    if (!ijazahFile) errors.push('Dokumen Ijazah wajib diunggah.');
+    if (!transcriptFile) errors.push('Dokumen Transkrip Nilai wajib diunggah.');
+
+    // 2. No. Handphone
+    if (!formData.mobile_phone?.trim()) errors.push('No. Handphone wajib diisi.');
+
+    // 3. Tanda Tangan
+    if (!sigCanvas.current || sigCanvas.current.isEmpty()) {
+      errors.push('Tanda tangan deklarasi wajib diisi.');
+    }
+
+    // 4. Posisi yang dilamar
+    if (!formData.position?.trim()) errors.push('Posisi yang dilamar wajib diisi.');
+
+    // 5. Susunan Anggota Keluarga minimal Ayah dan Ibu
+    const ayah = formData.family_members.find(f => f.relation.includes('Ayah'));
+    const ibu = formData.family_members.find(f => f.relation.includes('Ibu'));
+    if (!ayah?.name?.trim() || !ibu?.name?.trim()) {
+      errors.push('Susunan Anggota Keluarga minimal harus mengisi nama Ayah dan Ibu.');
+    }
+
+    // 6. Pendidikan Formal minimal 1 baris
+    const formalEdus = formData.formal_education.filter(e => e.institution?.trim() !== '');
+    if (formalEdus.length === 0) {
+      errors.push('Pendidikan Formal wajib diisi minimal 1 (satu) baris.');
+    }
+
+    // 7. Riwayat Pekerjaan point 1
+    const firstWork = formData.work_experience?.[0];
+    if (firstWork && firstWork.company_name?.trim() !== '') {
+      if (!firstWork.period_start || !firstWork.period_end) {
+        errors.push('Jika RIWAYAT PEKERJAAN diisi nama perusahaan, maka masa kerja (Periode) wajib diisi.');
+      }
+    }
+
+    // 8. Riwayat Pekerjaan point 2-6
+    if (!formData.work_achievements?.trim() || 
+        !formData.work_pressure_response?.trim() || 
+        !formData.job_desc_and_reason?.trim() || 
+        !formData.strategy_to_contribute?.trim() || 
+        !formData.reason_join_waruna?.trim()) {
+      errors.push('Pertanyaan essay pada bagian RIWAYAT PEKERJAAN (point 2-6) wajib diisi seluruhnya.');
+    }
+
+    // 9. Karyawan yang dikenal
+    for (const emp of formData.known_employees) {
+      if (emp.name?.trim() !== '' && (!emp.position?.trim() || !emp.relation?.trim())) {
+        errors.push('Jika mengisi karyawan yang dikenal di Waruna Group, posisi dan hubungan wajib diisi.');
+        break; // Only show once
+      }
+    }
+
+    // 10. Setidaknya 2 referensi
+    const validRefs = formData.references.filter(r => r.name?.trim() !== '');
+    if (validRefs.length < 2) {
+      errors.push('Sebutkan minimal 2 kenalan pada bagian Referensi (selain keluarga) yang dapat dihubungi.');
+    }
+
+    // 11. Referensi darurat
+    if (!formData.emergency_contact?.name?.trim() || 
+        !formData.emergency_contact?.phone?.trim() || 
+        !formData.emergency_contact?.relation?.trim()) {
+      errors.push('Referensi keluarga yang dapat dihubungi saat keadaan darurat wajib diisi nama, nomor, dan hubungannya.');
+    }
+
+    // 12. loyal_factor
+    if (!formData.loyal_factor?.trim()) {
+      errors.push('Faktor yang membuat Anda bertahan lama (loyal) di suatu perusahaan wajib diisi.');
+    }
+
+    // 13. Kapan mulai bekerja
+    if (!formData.join_date?.trim()) {
+      errors.push('Tanggal mulai bekerja (kapan Anda dapat mulai bekerja) wajib diisi.');
+    }
+
+    if (errors.length > 0) {
+      toast({
+        title: 'Formulir Belum Lengkap',
+        description: 'Silakan periksa kembali bagian berikut: \n- ' + errors.join('\n- '),
+        variant: 'destructive'
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -765,9 +878,9 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Handphone / Telp. Rumah <span className="text-slate-400 font-normal italic">(Mobile/Home)</span></label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Handphone / Telp. Rumah <span className="text-slate-400 font-normal italic">(Mobile/Home) <span className="text-red-500">*</span></span></label>
                 <div className="flex gap-2 items-center">
-                  <input type="text" name="mobile_phone" placeholder="Mobile" value={formData.mobile_phone} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                  <input type="text" name="mobile_phone" required placeholder="Mobile" value={formData.mobile_phone} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                   <span className="text-slate-400">/</span>
                   <input type="text" name="home_phone" placeholder="Home" value={formData.home_phone} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
@@ -1456,30 +1569,30 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-3 border border-slate-200 p-4 rounded-xl">
                     <div className="flex items-center gap-3">
-                      <input type="number" min="1" max="6" value={formData.motivation_priority.work_location} onChange={(e) => handleMotivationPriorityChange('work_location', e.target.value)} className="w-12 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+                      <input type="text" inputMode="numeric" maxLength={1} value={formData.motivation_priority.work_location} onChange={(e) => handleMotivationPriorityChange('work_location', e.target.value)} className="w-12 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
                       <span className="text-sm text-slate-700">Lokasi Kerja <span className="text-slate-400 italic">(Work Location)</span></span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <input type="number" min="1" max="6" value={formData.motivation_priority.career_path} onChange={(e) => handleMotivationPriorityChange('career_path', e.target.value)} className="w-12 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+                      <input type="text" inputMode="numeric" maxLength={1} value={formData.motivation_priority.career_path} onChange={(e) => handleMotivationPriorityChange('career_path', e.target.value)} className="w-12 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
                       <span className="text-sm text-slate-700">Jenjang Karir/Status Karyawan <span className="text-slate-400 italic">(Career Path/employee status)</span></span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <input type="number" min="1" max="6" value={formData.motivation_priority.self_actualization} onChange={(e) => handleMotivationPriorityChange('self_actualization', e.target.value)} className="w-12 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+                      <input type="text" inputMode="numeric" maxLength={1} value={formData.motivation_priority.self_actualization} onChange={(e) => handleMotivationPriorityChange('self_actualization', e.target.value)} className="w-12 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
                       <span className="text-sm text-slate-700">Pengembangan Diri <span className="text-slate-400 italic">(Self-Actualization)</span></span>
                     </div>
                   </div>
                   <div className="space-y-3 border border-slate-200 p-4 rounded-xl">
                     <div className="flex items-center gap-3">
-                      <input type="number" min="1" max="6" value={formData.motivation_priority.challenge} onChange={(e) => handleMotivationPriorityChange('challenge', e.target.value)} className="w-12 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+                      <input type="text" inputMode="numeric" maxLength={1} value={formData.motivation_priority.challenge} onChange={(e) => handleMotivationPriorityChange('challenge', e.target.value)} className="w-12 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
                       <span className="text-sm text-slate-700">Tantangan/variasi pekerjaan <span className="text-slate-400 italic">(Challenge / task variation)</span></span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <input type="number" min="1" max="6" value={formData.motivation_priority.working_environment} onChange={(e) => handleMotivationPriorityChange('working_environment', e.target.value)} className="w-12 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+                      <input type="text" inputMode="numeric" maxLength={1} value={formData.motivation_priority.working_environment} onChange={(e) => handleMotivationPriorityChange('working_environment', e.target.value)} className="w-12 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
                       <span className="text-sm text-slate-700">Lingkungan Kerja <span className="text-slate-400 italic">(Social Working Environment)</span></span>
                     </div>
                     {!hideSalary && (
                       <div className="flex items-center gap-3">
-                        <input type="number" min="1" max="6" value={formData.motivation_priority.salary_benefit} onChange={(e) => handleMotivationPriorityChange('salary_benefit', e.target.value)} className="w-12 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+                        <input type="text" inputMode="numeric" maxLength={1} value={formData.motivation_priority.salary_benefit} onChange={(e) => handleMotivationPriorityChange('salary_benefit', e.target.value)} className="w-12 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
                         <span className="text-sm text-slate-700">Salary & Benefit <span className="text-slate-400 italic">(Compensation & Benefit)</span></span>
                       </div>
                     )}
@@ -1489,8 +1602,8 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
 
               {/* 11. Kapan mulai bekerja */}
               <div className="flex flex-col sm:flex-row sm:items-center gap-4 border border-slate-200 p-4 rounded-xl bg-slate-50">
-                <h3 className="text-sm font-semibold text-slate-800">11. Jika DITERIMA, kapan Anda dapat mulai bekerja <span className="text-slate-500 italic font-normal">(if you are ACCEPTED, when will you able to join)?</span></h3>
-                <input type="text" name="join_date" value={formData.join_date} onChange={handleInputChange} className="flex-1 px-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="Contoh: 1 Bulan setelah pemberitahuan" />
+                <h3 className="text-sm font-semibold text-slate-800">11. Jika DITERIMA, kapan Anda dapat mulai bekerja <span className="text-slate-500 italic font-normal">(if you are ACCEPTED, when will you able to join)?</span> <span className="text-red-500">*</span></h3>
+                <input type="text" name="join_date" required value={formData.join_date} onChange={handleInputChange} className="flex-1 px-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="Contoh: 1 Bulan setelah pemberitahuan" />
               </div>
 
             </div>
@@ -1503,7 +1616,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-slate-700">Scan KTP <span className="text-slate-400 italic">(ID Card)</span> {!readOnly && <span className="text-xs text-red-500">*Maks. 2MB</span>}</label>
+                <label className="block text-sm font-medium text-slate-700">Scan KTP <span className="text-slate-400 italic">(ID Card)</span> <span className="text-red-500">*</span> {!readOnly && <span className="text-xs text-red-500">Maks. 2MB</span>}</label>
                 {readOnly ? (
                   renderAttachment(initialData?.ktp_url, "KTP")
                 ) : (
@@ -1516,7 +1629,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                 )}
               </div>
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-slate-700">Scan Ijazah <span className="text-slate-400 italic">(Certificate)</span> {!readOnly && <span className="text-xs text-red-500">*Maks. 2MB</span>}</label>
+                <label className="block text-sm font-medium text-slate-700">Scan Ijazah <span className="text-slate-400 italic">(Certificate)</span> <span className="text-red-500">*</span> {!readOnly && <span className="text-xs text-red-500">Maks. 2MB</span>}</label>
                 {readOnly ? (
                   renderAttachment(initialData?.ijazah_url, "Ijazah")
                 ) : (
@@ -1529,7 +1642,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                 )}
               </div>
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-slate-700">Scan Transkrip Nilai <span className="text-slate-400 italic">(Transcript)</span> {!readOnly && <span className="text-xs text-red-500">*Maks. 2MB</span>}</label>
+                <label className="block text-sm font-medium text-slate-700">Scan Transkrip Nilai <span className="text-slate-400 italic">(Transcript)</span> <span className="text-red-500">*</span> {!readOnly && <span className="text-xs text-red-500">Maks. 2MB</span>}</label>
                 {readOnly ? (
                   renderAttachment(initialData?.transcript_url, "Transkrip Nilai")
                 ) : (
@@ -1626,8 +1739,13 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                     </>
                   )}
                 </div>
-                <p className="text-sm font-semibold text-slate-800">Nama lengkap & tanda tangan</p>
-                <p className="text-xs text-slate-500 italic">(Full Name & Signature)</p>
+                <p className="text-sm font-semibold text-slate-800">Nama lengkap & tanda tangan <span className="text-red-500">*</span></p>
+                <p className="text-xs text-slate-500 italic mb-2">(Full Name & Signature)</p>
+                {readOnly ? (
+                  <p className="text-base font-bold text-slate-900">{initialData?.full_name || '-'}</p>
+                ) : (
+                  <p className="text-base font-bold text-slate-900 border-b border-slate-300 inline-block px-4 pb-1">{formData.full_name || '______________________'}</p>
+                )}
               </div>
             </div>
           </div>
@@ -1755,11 +1873,10 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                         <input 
                           type="text" 
                           name="remuneration_signature_name"
-                          value={formData.remuneration_signature_name}
-                          onChange={handleInputChange}
+                          value={formData.full_name}
+                          readOnly
                           placeholder="Nama Lengkap"
-                          required
-                          className="w-full bg-transparent border-none focus:ring-0 text-center font-medium text-slate-900 placeholder-slate-400"
+                          className="w-full bg-transparent border-none focus:ring-0 text-center font-medium text-slate-900 placeholder-slate-400 cursor-not-allowed"
                         />
                       )}
                     </div>

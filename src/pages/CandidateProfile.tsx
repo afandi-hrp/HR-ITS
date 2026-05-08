@@ -30,7 +30,8 @@ import {
   ExternalLink,
   ChevronDown,
   ChevronUp,
-  Trash2
+  Trash2,
+  UserCheck
 } from 'lucide-react';
 import { cn, formatDate, normalizeEmail, normalizeName, normalizePhone, fetchWithRetry, extractPhotoUrl, getEmbedUrl } from '../lib/utils';
 import { waitForN8nJob } from '../lib/n8n';
@@ -49,6 +50,28 @@ import {
 import ApplicationForm from './ApplicationForm';
 import { printElement, generatePdfBlob } from '../lib/print';
 import JSZip from 'jszip';
+
+const extractMatchPercentage = (summary: any): { value: number | null, text: string | null } => {
+  let result = { value: null as number | null, text: null as string | null };
+  const search = (obj: any) => {
+    if (!obj || typeof obj !== 'object' || result.value !== null) return;
+    for (const [key, value] of Object.entries(obj)) {
+      const lowerKey = key.toLowerCase();
+      if ((lowerKey.includes('persentase') || lowerKey.includes('kecocokan') || lowerKey.includes('match') || lowerKey.includes('fit')) && (typeof value === 'string' || typeof value === 'number')) {
+        const num = parseInt(String(value).replace(/[^0-9]/g, ''), 10);
+        if (!isNaN(num) && num >= 0 && num <= 100) {
+          result = { value: num, text: String(value) };
+          return;
+        }
+      }
+      if (typeof value === 'object') {
+        search(value);
+      }
+    }
+  };
+  search(summary);
+  return result;
+};
 
 export default function CandidateProfile() {
   const { id } = useParams<{ id: string }>();
@@ -1246,6 +1269,35 @@ export default function CandidateProfile() {
               </div>
             </div>
           </div>
+
+          {candidate.ai_cv_analysis && (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 overflow-hidden">
+              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2 mb-4">
+                <UserCheck className="text-indigo-500" size={20} />
+                Analisis CV (AI / Manusia)
+              </h3>
+              <p className="text-sm text-slate-600 leading-relaxed">
+                {(() => {
+                  const analysis = candidate.ai_cv_analysis as string;
+                  if (!analysis) return null;
+                  const parts = analysis.split('\n').map(s => s.trim()).filter(Boolean);
+                  
+                  if (parts.length >= 3) {
+                    const percentage = parts[0].replace('%', ''); // In case it already has %
+                    const probability = parts[1];
+                    const reason = parts.slice(2).join(' ');
+                    
+                    return (
+                      <span>
+                        Persentase AI <span className="font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded-md border border-indigo-100">{percentage}%</span>, probabilitas penggunaan AI <span className="font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded-md border border-indigo-100">{probability}</span>, dengan Alasan: <span className="font-medium text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded-md border border-slate-200">{reason}</span>
+                      </span>
+                    );
+                  }
+                  return analysis;
+                })()}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Right Column - Details */}
@@ -1305,7 +1357,7 @@ export default function CandidateProfile() {
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
             <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
               <FileText className="text-indigo-500" size={20} />
-              Hasil Evaluasi & Analisis
+              CV Summary
             </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -1359,143 +1411,171 @@ export default function CandidateProfile() {
                 {candidate.assessment_reason || <span className="italic opacity-70">Tidak ada alasan penilaian yang diberikan.</span>}
               </p>
             </div>
-
-            {candidate.ai_biodata_summary && (
-              <div className="mt-6 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border border-indigo-100 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
-                  <Sparkles size={64} className="text-indigo-600" />
-                </div>
-                <button 
-                  onClick={() => setIsBiodataSummaryExpanded(!isBiodataSummaryExpanded)}
-                  className="w-full p-5 flex items-center justify-between text-left relative z-10 focus:outline-none"
-                >
-                  <h4 className="font-bold text-indigo-900 flex items-center gap-2">
-                    <Sparkles size={18} className="text-indigo-600" />
-                    Ringkasan AI (Berdasarkan Biodata)
-                  </h4>
-                  {isBiodataSummaryExpanded ? (
-                    <ChevronUp size={20} className="text-indigo-600" />
-                  ) : (
-                    <ChevronDown size={20} className="text-indigo-600" />
-                  )}
-                </button>
-                {isBiodataSummaryExpanded && (
-                  <div className="px-5 pb-5 text-sm text-indigo-900/80 relative z-10 border-t border-indigo-100/50 pt-4">
-                    <JSONRenderer data={candidate.ai_biodata_summary} />
-                  </div>
-                )}
-              </div>
-            )}
-
-            {candidate.ai_psikotes_summary && (
-              <div className="mt-4 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border border-indigo-100 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
-                  <Sparkles size={64} className="text-indigo-600" />
-                </div>
-                <button 
-                  onClick={() => setIsPsikotesSummaryExpanded(!isPsikotesSummaryExpanded)}
-                  className="w-full p-5 flex items-center justify-between text-left relative z-10 focus:outline-none"
-                >
-                  <h4 className="font-bold text-indigo-900 flex items-center gap-2">
-                    <Sparkles size={18} className="text-indigo-600" />
-                    Ringkasan AI (Berdasarkan Psikotes)
-                  </h4>
-                  {isPsikotesSummaryExpanded ? (
-                    <ChevronUp size={20} className="text-indigo-600" />
-                  ) : (
-                    <ChevronDown size={20} className="text-indigo-600" />
-                  )}
-                </button>
-                {isPsikotesSummaryExpanded && (
-                  <div className="px-5 pb-5 text-sm text-indigo-900/80 relative z-10 border-t border-indigo-100/50 pt-4">
-                    <JSONRenderer data={candidate.ai_psikotes_summary} />
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
+          {/* AI Biodata Summary Section */}
+          {candidate.ai_biodata_summary && (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6">
+              <div 
+                className="flex items-center justify-between p-6 cursor-pointer hover:bg-slate-50 transition-colors"
+                onClick={() => setIsBiodataSummaryExpanded(!isBiodataSummaryExpanded)}
+              >
+                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <Sparkles className="text-indigo-500" size={20} />
+                  Ringkasan AI (Berdasarkan Biodata)
+                  {isBiodataSummaryExpanded ? (
+                    <ChevronUp size={20} className="text-slate-400 ml-2" />
+                  ) : (
+                    <ChevronDown size={20} className="text-slate-400 ml-2" />
+                  )}
+                </h3>
+              </div>
+              {isBiodataSummaryExpanded && (
+                <div className="px-6 pb-6 border-t border-slate-100 pt-6 text-sm text-slate-700">
+                  <JSONRenderer data={candidate.ai_biodata_summary} />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* AI Psikotes Summary Section */}
+          {candidate.ai_psikotes_summary && (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6">
+              <div 
+                className="flex items-center justify-between p-6 cursor-pointer hover:bg-slate-50 transition-colors flex-wrap gap-2"
+                onClick={() => setIsPsikotesSummaryExpanded(!isPsikotesSummaryExpanded)}
+              >
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <Sparkles className="text-indigo-500" size={20} />
+                    Ringkasan AI (Berdasarkan Psikotes)
+                  </h3>
+                  {(() => {
+                    const matchData = extractMatchPercentage(candidate.ai_psikotes_summary);
+                    if (matchData.value !== null) {
+                      const isGood = matchData.value > 60;
+                      return (
+                        <span className={cn(
+                          "ml-2 text-sm font-bold px-2 py-0.5 rounded-full border",
+                          isGood ? "text-emerald-700 bg-emerald-50 border-emerald-200" : "text-red-700 bg-red-50 border-red-200"
+                        )}>
+                          Persentase Kecocokan: {matchData.text?.includes('%') ? matchData.text : `${matchData.value}%`}
+                        </span>
+                      );
+                    }
+                    return null;
+                  })()}
+                  {isPsikotesSummaryExpanded ? (
+                    <ChevronUp size={20} className="text-slate-400 ml-2" />
+                  ) : (
+                    <ChevronDown size={20} className="text-slate-400 ml-2" />
+                  )}
+                </div>
+              </div>
+              {isPsikotesSummaryExpanded && (
+                <div className="px-6 pb-6 border-t border-slate-100 pt-6 text-sm text-slate-700">
+                  <JSONRenderer data={candidate.ai_psikotes_summary} />
+                </div>
+              )}
+            </div>
+          )}
+
           {/* AI Interview Questions Section */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6">
+            <div 
+              className="flex items-center justify-between p-6 cursor-pointer hover:bg-slate-50 transition-colors"
+              onClick={() => setIsInterviewQuestionsExpanded(!isInterviewQuestionsExpanded)}
+            >
               <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                 <Sparkles className="text-indigo-500" size={20} />
                 Pertanyaan Interview (AI)
+                {isInterviewQuestionsExpanded ? (
+                  <ChevronUp size={20} className="text-slate-400 ml-2" />
+                ) : (
+                  <ChevronDown size={20} className="text-slate-400 ml-2" />
+                )}
               </h3>
-              {profile?.role !== 'USER_MANAGER' && !isArchived && (
-                <button
-                  onClick={handleGenerateInterviewQuestions}
-                  disabled={isGeneratingInterview}
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-bold rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all shadow-sm"
-                >
-                  {isGeneratingInterview ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
-                  {isGeneratingInterview ? 'AI sedang menyusun...' : 'Generate Pertanyaan (AI)'}
-                </button>
-              )}
+              <div className="flex items-center gap-4" onClick={(e) => e.stopPropagation()}>
+                {profile?.role !== 'USER_MANAGER' && !isArchived && (
+                  <button
+                    onClick={handleGenerateInterviewQuestions}
+                    disabled={isGeneratingInterview}
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-bold rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all shadow-sm shrink-0"
+                  >
+                    {isGeneratingInterview ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
+                    {isGeneratingInterview ? 'AI sedang menyusun...' : 'Generate (AI)'}
+                  </button>
+                )}
+              </div>
             </div>
 
-            {(() => {
-              let questions: any[] = [];
-              if (candidate.ai_interview_questions) {
-                try {
-                  const parsed = typeof candidate.ai_interview_questions === 'string' 
-                    ? JSON.parse(candidate.ai_interview_questions) 
-                    : candidate.ai_interview_questions;
-                  
-                  if (Array.isArray(parsed)) {
-                    questions = parsed;
-                  } else if (parsed && Array.isArray(parsed.interview_questions)) {
-                    questions = parsed.interview_questions;
+            {isInterviewQuestionsExpanded && (
+              <div className="px-6 pb-6 border-t border-slate-100 pt-6">
+                {(() => {
+                  let questions: any[] = [];
+                  if (candidate.ai_interview_questions) {
+                    try {
+                      const parsed = typeof candidate.ai_interview_questions === 'string' 
+                        ? JSON.parse(candidate.ai_interview_questions) 
+                        : candidate.ai_interview_questions;
+                      
+                      if (Array.isArray(parsed)) {
+                        questions = parsed;
+                      } else if (parsed && Array.isArray(parsed.interview_questions)) {
+                        questions = parsed.interview_questions;
+                      }
+                    } catch (e) {
+                      console.error("Failed to parse ai_interview_questions", e);
+                    }
                   }
-                } catch (e) {
-                  console.error("Failed to parse ai_interview_questions", e);
-                }
-              }
 
-              if (questions.length > 0) {
-                return (
-                  <div className="space-y-4">
-                    {questions.map((q: any, index: number) => (
-                      <div key={index} className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="px-2.5 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-md">
-                            {q.category || 'General'}
-                          </span>
-                        </div>
-                        <p className="text-slate-800 font-medium mb-2">{q.question}</p>
-                        {q.reasoning && (
-                          <div className="flex gap-2 text-sm text-slate-500 bg-white p-3 rounded-lg border border-slate-100">
-                            <Sparkles size={16} className="text-indigo-400 shrink-0 mt-0.5" />
-                            <p className="italic">{q.reasoning}</p>
+                  if (questions.length > 0) {
+                    return (
+                      <div className="space-y-4">
+                        {questions.map((q: any, index: number) => (
+                          <div key={index} className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="px-2.5 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-md">
+                                {q.category || 'General'}
+                              </span>
+                            </div>
+                            <p className="text-slate-800 font-medium mb-2">{q.question}</p>
+                            {q.reasoning && (
+                              <div className="flex gap-2 text-sm text-slate-500 bg-white p-3 rounded-lg border border-slate-100">
+                                <Sparkles size={16} className="text-indigo-400 shrink-0 mt-0.5" />
+                                <p className="italic">{q.reasoning}</p>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        {profile?.role !== 'USER_MANAGER' && !isArchived && (
+                          <div className="flex justify-end mt-4">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setGeneratedQuestions(questions);
+                                setShowInterviewModal(true);
+                              }}
+                              className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                            >
+                              Edit Daftar Pertanyaan
+                            </button>
                           </div>
                         )}
                       </div>
-                    ))}
-                    {profile?.role !== 'USER_MANAGER' && !isArchived && (
-                      <div className="flex justify-end mt-4">
-                        <button
-                          onClick={() => {
-                            setGeneratedQuestions(questions);
-                            setShowInterviewModal(true);
-                          }}
-                          className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
-                        >
-                          Edit Daftar Pertanyaan
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              }
+                    );
+                  }
 
-              return (
-                <div className="text-center py-8 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
-                  <Sparkles className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                  <p className="text-slate-500 font-medium">Belum ada pertanyaan interview</p>
-                  <p className="text-sm text-slate-400 mt-1">Klik tombol "Generate Pertanyaan (AI)" untuk membuat daftar pertanyaan yang terpersonalisasi.</p>
-                </div>
-              );
-            })()}
+                  return (
+                    <div className="text-center py-8 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
+                      <Sparkles className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                      <p className="text-slate-500 font-medium">Belum ada pertanyaan interview</p>
+                      <p className="text-sm text-slate-400 mt-1">Klik tombol "Generate (AI)" untuk membuat daftar pertanyaan yang terpersonalisasi.</p>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
           </div>
 
           {/* Psikotes Eksternal */}
