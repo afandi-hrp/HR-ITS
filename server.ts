@@ -29,6 +29,20 @@ const uploadRateLimiter = rateLimit({
   validate: { trustProxy: false, xForwardedForHeader: false }
 });
 
+const otpRequestRateLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 15, // limit each IP to 15 OTP requests per 5 minutes to prevent spamming different numbers
+  message: { error: "Terlalu banyak permintaan OTP dari perangkat Anda. Silakan coba lagi nanti." },
+  validate: { trustProxy: false, xForwardedForHeader: false }
+});
+
+const otpVerifyRateLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 10, // limit each IP to 10 OTP verification attempts per 5 minutes to prevent brute-force
+  message: { error: "Terlalu banyak percobaan kode OTP. Silakan coba lagi nanti." },
+  validate: { trustProxy: false, xForwardedForHeader: false }
+});
+
 const upload = multer({ 
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
@@ -84,6 +98,26 @@ app.use((req: any, res, next) => {
       express.urlencoded({ limit: '20mb', extended: true })(req, res, next);
     }
   });
+
+  // Auth middleware
+  const requireAuth = async (req: any, res: any, next: any) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: "Unauthorized. Missing or invalid Authorization header." });
+    }
+    try {
+      const supabaseAdmin = getSupabaseAdmin();
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+      if (error || !user) {
+        return res.status(401).json({ error: "Unauthorized. Invalid token." });
+      }
+      req.user = user;
+      next();
+    } catch (error) {
+      return res.status(401).json({ error: "Unauthorized." });
+    }
+  };
 
   // API Routes
   app.get("/api/health", (req, res) => {
@@ -144,7 +178,7 @@ app.use((req: any, res, next) => {
   });
 
   // Feature: Move Candidate to Log
-  app.post("/api/candidates/move-to-log", async (req, res) => {
+  app.post("/api/candidates/move-to-log", requireAuth, async (req, res) => {
     const { candidateId, notes } = req.body;
 
     if (!candidateId) {
@@ -398,7 +432,7 @@ app.use((req: any, res, next) => {
   });
 
   // Feature: Request OTP for Public Career Page
-  app.post("/api/request-otp", async (req, res) => {
+  app.post("/api/request-otp", otpRequestRateLimiter, async (req, res) => {
     const { phone } = req.body || {};
 
     if (!phone) {
@@ -485,7 +519,7 @@ app.use((req: any, res, next) => {
   });
 
   // Feature: Verify OTP for Public Career Page
-  app.post("/api/verify-otp", async (req, res) => {
+  app.post("/api/verify-otp", otpVerifyRateLimiter, async (req, res) => {
     const { otpRequestId, otpInput } = req.body || {};
 
     if (!otpRequestId || !otpInput) {
@@ -768,7 +802,7 @@ app.use((req: any, res, next) => {
   });
 
   // Feature: Fetch CV Uploads
-  app.get("/api/cv-uploads", async (req, res) => {
+  app.get("/api/cv-uploads", requireAuth, async (req, res) => {
     const { search, page = '1', limit = '10' } = req.query;
     try {
       const supabaseAdmin = getSupabaseAdmin();
@@ -800,7 +834,7 @@ app.use((req: any, res, next) => {
   });
 
   // Feature: Delete CV Uploads
-  app.delete("/api/cv-uploads", async (req, res) => {
+  app.delete("/api/cv-uploads", requireAuth, async (req, res) => {
     const { ids } = req.body;
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({ error: "No IDs provided" });
