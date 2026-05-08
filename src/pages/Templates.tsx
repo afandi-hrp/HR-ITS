@@ -322,8 +322,10 @@ export default function Templates() {
                     <code className="bg-white px-1 rounded">{"{{pendidikan_terakhir}}"}</code> - Pendidikan <br/>
                     <code className="bg-white px-1 rounded">{"{{pengalaman_kerja}}"}</code> - Pengalaman <br/>
                     <code className="bg-white px-1 rounded">{"{{jadwal}}"}</code> - Waktu & Lokasi (Umum) <br/>
-                    <code className="bg-white px-1 rounded">{"{{jadwal_interview}}"}</code> - Detail Interview <br/>
-                    <code className="bg-white px-1 rounded">{"{{jadwal_psikotes}}"}</code> - Detail Psikotes
+                    <code className="bg-white px-1 rounded">{"{{jadwal_interview}}"}</code> - Detail Waktu Interview <br/>
+                    <code className="bg-white px-1 rounded">{"{{jadwal_psikotes}}"}</code> - Detail Waktu Psikotes <br/>
+                    <code className="bg-white px-1 rounded">{"{{lokasi_interview}}"}</code> - Lokasi Interview <br/>
+                    <code className="bg-white px-1 rounded">{"{{lokasi_psikotes}}"}</code> - Lokasi Psikotes
                   </p>
                 </div>
               </div>
