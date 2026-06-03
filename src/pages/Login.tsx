@@ -78,6 +78,9 @@ export default function Login() {
       }
       // Trigger animation after a tiny delay for smooth entry
       setTimeout(() => setIsLoaded(true), 100);
+    }).catch(err => {
+      console.warn('Failed to get site settings:', err);
+      setTimeout(() => setIsLoaded(true), 100);
     });
 
     if (location.state?.message) {

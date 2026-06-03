@@ -190,7 +190,7 @@ export default function PublicCareer() {
           'Others'
         ]);
       }
-    });
+    }).catch(err => console.warn('Failed to get site settings:', err));
 
     const fetchPositions = async () => {
       try {

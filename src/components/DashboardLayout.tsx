@@ -48,12 +48,12 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
   useEffect(() => {
     supabase.from('site_settings').select('*').eq('id', 1).single().then(({ data }) => {
       if (data) setSettings(data);
-    });
+    }).catch(err => console.warn('Failed to get site settings:', err));
     
     if (user) {
       supabase.from('profiles').select('*').eq('id', user.id).single().then(({ data }) => {
         if (data) setProfile(data);
-      });
+      }).catch(err => console.warn('Failed to get profile:', err));
     }
   }, [user]);
 

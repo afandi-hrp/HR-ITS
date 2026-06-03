@@ -109,7 +109,7 @@ export default function Settings() {
           'Others'
         ]);
       }
-    });
+    }).catch(err => console.warn('Failed to get site settings:', err));
   }, []);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {

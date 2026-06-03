@@ -101,9 +101,9 @@ export default function Screening() {
       if (user) {
         supabase.from('profiles').select('*').eq('id', user.id).single().then(({ data }) => {
           if (data) setProfile(data);
-        });
+        }).catch(err => console.warn('Failed to get profile:', err));
       }
-    });
+    }).catch(err => console.warn('Failed to get user:', err));
   }, []);
 
   useEffect(() => {

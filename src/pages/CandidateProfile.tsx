@@ -73,6 +73,76 @@ const extractMatchPercentage = (summary: any): { value: number | null, text: str
   return result;
 };
 
+const formatAsNumberedList = (text?: string | null, emptyFallback?: React.ReactNode) => {
+  if (!text) return emptyFallback;
+  
+  const points = text
+    .split('\n')
+    .map(t => t.trim())
+    .map(t => t.replace(/^[-•*]\s*/, '').replace(/^\d+[\.\)]\s*/, '').trim())
+    .filter(t => t.length > 0);
+
+  if (points.length === 0) return emptyFallback;
+
+  return (
+    <ol className="list-decimal pl-4 space-y-1">
+      {points.map((point, idx) => (
+        <li key={idx} className="leading-relaxed pl-1">{point}</li>
+      ))}
+    </ol>
+  );
+};
+
+const formatLevelAndList = (text?: string | null, emptyFallback?: React.ReactNode) => {
+  if (!text) return emptyFallback;
+
+  const lines = text.split('\n').map(t => t.trim()).filter(t => t.length > 0);
+  if (lines.length === 0) return emptyFallback;
+
+  const headerIndex = lines.findIndex(line => /\b(low|medium|high)\b/i.test(line));
+  
+  let preHeaderLines: string[] = [];
+  let headerText = '';
+  let pointLines = lines;
+  let badgeClass = "bg-gray-100 text-gray-800 font-medium px-2 py-1 rounded inline-block mb-2 mt-1";
+
+  if (headerIndex !== -1 && headerIndex < 3 && lines[headerIndex].length < 100) {
+    preHeaderLines = lines.slice(0, headerIndex);
+    headerText = lines[headerIndex];
+    pointLines = lines.slice(headerIndex + 1);
+
+    if (/\blow\b/i.test(headerText)) {
+      badgeClass = "bg-red-100 text-red-800 font-semibold px-2.5 py-1 rounded-md inline-block mb-3 mt-1";
+    } else if (/\bmedium\b/i.test(headerText)) {
+      badgeClass = "bg-yellow-100 text-yellow-800 font-semibold px-2.5 py-1 rounded-md inline-block mb-3 mt-1";
+    } else if (/\bhigh\b/i.test(headerText)) {
+      badgeClass = "bg-green-100 text-green-800 font-semibold px-2.5 py-1 rounded-md inline-block mb-3 mt-1";
+    }
+  }
+
+  const points = pointLines
+    .map(t => t.replace(/^[-•*]\s*/, '').replace(/^\d+[\.\)]\s*/, '').trim())
+    .filter(t => t.length > 0);
+
+  return (
+    <div className="flex flex-col items-start w-full">
+      {preHeaderLines.map((line, idx) => (
+        <span key={`pre-${idx}`} className="mb-2 block">{line}</span>
+      ))}
+      {headerText ? <div className={badgeClass}>{headerText}</div> : null}
+      {points.length > 0 && (
+        <ol className="list-decimal pl-4 space-y-1 w-full">
+          {points.map((point, idx) => (
+            <li key={idx} className="leading-relaxed pl-1">{point}</li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+};
+
+
+
 export default function CandidateProfile() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -320,9 +390,9 @@ export default function CandidateProfile() {
       if (user) {
         supabase.from('profiles').select('*').eq('id', user.id).single().then(({ data }) => {
           if (data) setProfile(data);
-        });
+        }).catch((err) => console.warn('Failed to get profile:', err));
       }
-    });
+    }).catch((err) => console.warn('Failed to get user:', err));
   }, []);
 
   const formatValue = (val: any): string => {
@@ -1366,9 +1436,9 @@ export default function CandidateProfile() {
                   <ThumbsUp size={16} />
                   Kekuatan (Strengths)
                 </h4>
-                <p className="text-sm text-emerald-700 whitespace-pre-wrap">
-                  {candidate.strengths || <span className="italic opacity-70">Belum dianalisis</span>}
-                </p>
+                <div className="text-sm text-emerald-700">
+                  {formatAsNumberedList(candidate.strengths, <span className="italic opacity-70">Belum dianalisis</span>)}
+                </div>
               </div>
               
               <div className="bg-rose-50/50 border border-rose-100 rounded-xl p-4">
@@ -1376,19 +1446,9 @@ export default function CandidateProfile() {
                   <ThumbsDown size={16} />
                   Kelemahan (Weaknesses)
                 </h4>
-                <p className="text-sm text-rose-700 whitespace-pre-wrap">
-                  {candidate.weaknesses || <span className="italic opacity-70">Belum dianalisis</span>}
-                </p>
-              </div>
-              
-              <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-4">
-                <h4 className="font-bold text-amber-800 flex items-center gap-2 mb-2">
-                  <AlertTriangle size={16} />
-                  Faktor Risiko
-                </h4>
-                <p className="text-sm text-amber-700 whitespace-pre-wrap">
-                  {candidate.risk_factors || <span className="italic opacity-70">Belum dianalisis</span>}
-                </p>
+                <div className="text-sm text-rose-700">
+                  {formatAsNumberedList(candidate.weaknesses, <span className="italic opacity-70">Belum dianalisis</span>)}
+                </div>
               </div>
               
               <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4">
@@ -1396,9 +1456,19 @@ export default function CandidateProfile() {
                   <Star size={16} />
                   Potensi
                 </h4>
-                <p className="text-sm text-blue-700 whitespace-pre-wrap">
-                  {candidate.potential_factors || <span className="italic opacity-70">Belum dianalisis</span>}
-                </p>
+                <div className="text-sm text-blue-700">
+                  {formatLevelAndList(candidate.potential_factors, <span className="italic opacity-70">Belum dianalisis</span>)}
+                </div>
+              </div>
+              
+              <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-4">
+                <h4 className="font-bold text-amber-800 flex items-center gap-2 mb-2">
+                  <AlertTriangle size={16} />
+                  Faktor Risiko
+                </h4>
+                <div className="text-sm text-amber-700">
+                  {formatLevelAndList(candidate.risk_factors, <span className="italic opacity-70">Belum dianalisis</span>)}
+                </div>
               </div>
             </div>
 
@@ -1407,9 +1477,9 @@ export default function CandidateProfile() {
                 <FileText size={16} className="text-indigo-500" />
                 Alasan Penilaian
               </h4>
-              <p className="text-sm text-indigo-800 whitespace-pre-wrap leading-relaxed">
-                {candidate.assessment_reason || <span className="italic opacity-70">Tidak ada alasan penilaian yang diberikan.</span>}
-              </p>
+              <div className="text-sm text-indigo-800">
+                {formatAsNumberedList(candidate.assessment_reason, <span className="italic opacity-70">Tidak ada alasan penilaian yang diberikan.</span>)}
+              </div>
             </div>
           </div>
 

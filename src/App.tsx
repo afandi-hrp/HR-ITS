@@ -34,14 +34,14 @@ export default function App() {
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
         console.warn('Session error:', error.message);
-        if (error.message.includes('Refresh Token Not Found') || error.message.includes('Invalid Refresh Token') || error.message.includes('refresh_token_not_found')) {
+        if (error.message.includes('Refresh Token Not Found') || error.message.includes('Invalid Refresh Token') || error.message.includes('refresh_token_not_found') || error.message.includes('Auth session missing')) {
           supabase.auth.signOut().catch(() => {});
           // Clear supabase auth tokens from local storage
           let cleared = false;
           const keysToRemove: string[] = [];
           for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
-            if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
+            if (key && key.startsWith('sb-') && key.includes('auth-token')) {
               keysToRemove.push(key);
             }
           }
@@ -51,6 +51,9 @@ export default function App() {
           });
           if (cleared) {
             window.location.reload();
+          } else {
+            // Force location reload even if we didn't find the exact key, to ensure clean state
+            window.location.href = '/';
           }
         }
       }
@@ -58,6 +61,9 @@ export default function App() {
       if (session?.user) {
         supabase.from('profiles').select('*').eq('id', session.user.id).single().then(({ data }) => {
           setProfile(data);
+          setLoading(false);
+        }).catch((err) => {
+          console.warn('Failed to load profile (1):', err);
           setLoading(false);
         });
       } else {
@@ -75,7 +81,7 @@ export default function App() {
         const keysToRemove: string[] = [];
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
-          if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
+          if (key && key.startsWith('sb-') && key.includes('auth-token')) {
             keysToRemove.push(key);
           }
         }
@@ -85,12 +91,16 @@ export default function App() {
         });
         if (cleared) {
           window.location.reload();
+        } else if ((event as string) === 'TOKEN_REFRESH_FAILED') {
+          window.location.href = '/';
         }
       }
       setSession(session);
       if (session?.user) {
         supabase.from('profiles').select('*').eq('id', session.user.id).single().then(({ data }) => {
           setProfile(data);
+        }).catch((err) => {
+          console.warn('Failed to load profile (2):', err);
         });
       } else {
         setProfile(null);
@@ -110,6 +120,8 @@ export default function App() {
           document.head.appendChild(newLink);
         }
       }
+    }).catch((err) => {
+      console.warn('Failed to fetch favicon settings:', err);
     });
 
     return () => subscription.unsubscribe();
