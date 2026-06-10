@@ -72,7 +72,7 @@ export default function SchedulingModal({ candidate, type, initialData, onClose,
       return;
     }
     if (!date || !time) {
-      toast({ title: 'Error', description: 'Tanggal dan waktu wajib diisi.', variant: 'destructive' });
+      toast({ title: 'Error', description: `${type === 'psikotes' ? 'Batas Akhir (Deadline)' : 'Tanggal'} dan waktu wajib diisi.`, variant: 'destructive' });
       return;
     }
 
@@ -85,7 +85,7 @@ export default function SchedulingModal({ candidate, type, initialData, onClose,
       : true;
 
     if (isDateChanged && scheduleDateObj < now) {
-      toast({ title: 'Error', description: 'Tanggal dan waktu tidak boleh di masa lalu.', variant: 'destructive' });
+      toast({ title: 'Error', description: `${type === 'psikotes' ? 'Batas Akhir (Deadline)' : 'Tanggal'} dan waktu tidak boleh di masa lalu.`, variant: 'destructive' });
       return;
     }
 
@@ -182,7 +182,7 @@ export default function SchedulingModal({ candidate, type, initialData, onClose,
             <div className="space-y-2">
               <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
                 <CalendarIcon size={14} className="text-indigo-500" />
-                Tanggal
+                {type === 'psikotes' ? 'Batas Akhir (Deadline)' : 'Tanggal'}
               </label>
               <input 
                 type="date" 

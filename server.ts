@@ -205,7 +205,17 @@ app.use((req: any, res, next) => {
       })) || [];
 
       // 2. Insert into logs (Remove fields that don't exist in candidate_logs and add statuses)
-      const { created_at, updated_at, psikotes_schedules, interview_schedules, candidate_assignees, ...baseData } = candidate;
+      const { 
+        created_at, 
+        updated_at, 
+        psikotes_schedules, 
+        interview_schedules, 
+        candidate_assignees,
+        ai_cv_analysis,
+        psikotes_result_url,
+        source_info,
+        ...baseData 
+      } = candidate;
       
       const logData = {
         ...baseData,

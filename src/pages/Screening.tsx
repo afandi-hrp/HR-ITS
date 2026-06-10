@@ -74,6 +74,9 @@ export default function Screening() {
   const [movingToLog, setMovingToLog] = useState(false);
   const [rejectModalData, setRejectModalData] = useState<Candidate | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [sendRejectEmail, setSendRejectEmail] = useState(false);
+  const [rejectEmailTemplates, setRejectEmailTemplates] = useState<any[]>([]);
+  const [selectedRejectTemplate, setSelectedRejectTemplate] = useState('');
   const [acceptModalData, setAcceptModalData] = useState<Candidate | null>(null);
   const [hireModalData, setHireModalData] = useState<Candidate | null>(null);
   const [hireNotes, setHireNotes] = useState('');
@@ -209,6 +212,64 @@ export default function Screening() {
           title: 'Berhasil', 
           description: `Kandidat ${rejectModalData.full_name} telah ditolak dan dipindahkan ke Candidate Archive.` 
         });
+        
+        if (sendRejectEmail && selectedRejectTemplate) {
+          try {
+            const template = rejectEmailTemplates.find(t => t.id === selectedRejectTemplate);
+            if (template) {
+              const { data: { session } } = await supabase.auth.getSession();
+              
+              const replaceVars = (text: string) => {
+                return text
+                  .replace(/{{nama}}/g, rejectModalData.full_name)
+                  .replace(/{{email_kandidat}}/g, rejectModalData.email)
+                  .replace(/{{posisi}}/g, rejectModalData.position)
+                  .replace(/{{pendidikan_terakhir}}/g, rejectModalData.education || '-')
+                  .replace(/{{pengalaman_kerja}}/g, rejectModalData.work_experience || '-');
+              };
+
+              const processedSubject = replaceVars(template.subject);
+              const processedBody = replaceVars(template.body_html);
+
+              const n8nResponse = await fetchWithRetry('/api/n8n/trigger', {
+                method: 'POST',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${session?.access_token}`
+                },
+                body: JSON.stringify({
+                  type: 'email',
+                  payload: {
+                    event: 'send_rejection',
+                    type: 'rejection',
+                    candidate: {
+                      id: rejectModalData.id,
+                      full_name: rejectModalData.full_name,
+                      email: rejectModalData.email,
+                      position: rejectModalData.position,
+                    },
+                    email: {
+                      subject: processedSubject,
+                      body: processedBody
+                    },
+                    sender: {
+                      name: profile?.full_name || 'HR Team'
+                    }
+                  }
+                })
+              });
+              
+              if (!n8nResponse.ok) {
+                toast({ title: 'Peringatan', description: 'Kandidat ditolak, tapi email penolakan gagal terkirim.', variant: 'destructive' });
+              } else {
+                toast({ title: 'Email Terkirim', description: 'Email penolakan otomatis berhasil dikirim ke kandidat.' });
+              }
+            }
+          } catch (err: any) {
+            toast({ title: 'Error Email', description: err.message || 'Gagal memproses email penolakan', variant: 'destructive' });
+          }
+        }
+
         setCandidates(candidates.filter(c => c.id !== rejectModalData.id));
         setRejectModalData(null);
         setRejectReason('');
@@ -227,6 +288,12 @@ export default function Screening() {
       const candidate = candidates.find(c => c.id === candidateId);
       if (candidate) {
         setRejectModalData(candidate);
+        setSendRejectEmail(false);
+        setSelectedRejectTemplate('');
+        supabase.from('email_templates').select('*').order('created_at', { ascending: false })
+          .then(({ data }) => {
+            if (data) setRejectEmailTemplates(data);
+          }).catch(err => console.warn('Failed to fetch templates:', err));
       }
       return;
     }
@@ -1253,6 +1320,39 @@ export default function Screening() {
                   placeholder="Ditolak pada tahap Screening Awal"
                   rows={3}
                 />
+              </div>
+
+              <div className="text-left mt-4 border-t border-slate-100 pt-4">
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={sendRejectEmail}
+                    onChange={(e) => setSendRejectEmail(e.target.checked)}
+                    className="w-4 h-4 text-red-600 rounded border-slate-300 focus:ring-red-500 transition-all cursor-pointer"
+                  />
+                  <span className="text-sm font-semibold text-slate-700 group-hover:text-slate-900 transition-colors">
+                    Kirim Email Penolakan Otomatis
+                  </span>
+                </label>
+                
+                {sendRejectEmail && (
+                  <div className="mt-3">
+                    <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">Pilih Template Email</label>
+                    <div className="relative">
+                      <select
+                        value={selectedRejectTemplate}
+                        onChange={(e) => setSelectedRejectTemplate(e.target.value)}
+                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500 transition-all appearance-none"
+                      >
+                        <option value="">-- Pilih Template --</option>
+                        {rejectEmailTemplates.map(t => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                      <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-3">

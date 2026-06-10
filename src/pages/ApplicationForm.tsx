@@ -694,7 +694,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
           <div className="flex flex-col md:flex-row gap-8 items-start border-b border-slate-200 pb-8">
             <div className="flex-1 space-y-6 w-full">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Posisi yang dilamar <span className="text-slate-400 font-normal italic">(Position applied)</span></label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Posisi yang dilamar <span className="text-slate-400 font-normal italic">(Position applied)</span> <span className="text-red-500">*</span></label>
                 <input 
                   type="text" 
                   name="position"
@@ -765,7 +765,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
               <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Nama Lengkap <span className="text-slate-400 font-normal italic">(Full Name)</span></label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Nama Lengkap <span className="text-slate-400 font-normal italic">(Full Name)</span> <span className="text-red-500">*</span></label>
                 <input type="text" name="full_name" required value={formData.full_name} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
 
@@ -785,11 +785,11 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
 
               <div className="flex gap-4">
                 <div className="flex-1">
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Tempat Lahir <span className="text-slate-400 font-normal italic">(Place of Birth)</span></label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Tempat Lahir <span className="text-slate-400 font-normal italic">(Place of Birth)</span> <span className="text-red-500">*</span></label>
                   <input type="text" name="place_of_birth" required value={formData.place_of_birth} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
                 <div className="flex-1">
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Tanggal Lahir <span className="text-slate-400 font-normal italic">(Date of Birth)</span></label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Tanggal Lahir <span className="text-slate-400 font-normal italic">(Date of Birth)</span> <span className="text-red-500">*</span></label>
                   <input type="date" name="date_of_birth" required value={formData.date_of_birth} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
               </div>
@@ -843,7 +843,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-slate-700 mb-1">No. KTP/Passport <span className="text-slate-400 font-normal italic">(Identity Number)</span></label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">No. KTP/Passport <span className="text-slate-400 font-normal italic">(Identity Number)</span> <span className="text-red-500">*</span></label>
                 <input type="text" name="identity_number" required value={formData.identity_number} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
 
@@ -902,7 +902,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Email <span className="text-slate-400 font-normal italic">(E-Mail)</span></label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Email <span className="text-slate-400 font-normal italic">(E-Mail)</span> <span className="text-red-500">*</span></label>
                 <input type="email" name="email" required value={formData.email} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
 
@@ -944,7 +944,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
             <div className="space-y-8">
               {/* Table 1: Susunan Anggota Keluarga */}
               <div>
-                <h3 className="text-sm font-semibold text-slate-800 mb-3">1. Susunan Anggota Keluarga <span className="text-slate-500 italic font-normal">(Family Member)</span>, Termasuk Anda <span className="text-slate-500 italic font-normal">(Including You)</span></h3>
+                <h3 className="text-sm font-semibold text-slate-800 mb-3">1. Susunan Anggota Keluarga <span className="text-slate-500 italic font-normal">(Family Member)</span>, Termasuk Anda <span className="text-slate-500 italic font-normal">(Including You)</span> <span className="text-red-500">*Ayah & Ibu Wajib</span></h3>
                 <div className="overflow-x-auto print:overflow-visible border border-slate-200 rounded-xl">
                   <table className="w-full min-w-[800px] print:min-w-0 text-sm text-left">
                     <thead className="bg-indigo-50 text-indigo-900 border-b border-indigo-100">
@@ -1012,7 +1012,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               
               {/* 1. Pendidikan Formal */}
               <div>
-                <h3 className="text-sm font-semibold text-slate-800 mb-3">1. Pendidikan Formal <span className="text-slate-500 italic font-normal">(Formal Education)</span></h3>
+                <h3 className="text-sm font-semibold text-slate-800 mb-3">1. Pendidikan Formal <span className="text-slate-500 italic font-normal">(Formal Education)</span> <span className="text-red-500">*Minimal 1</span></h3>
                 <div className="overflow-x-auto print:overflow-visible border border-slate-200 rounded-xl">
                   <table className="w-full min-w-[800px] print:min-w-0 text-sm text-left">
                     <thead className="bg-indigo-50 text-indigo-900 border-b border-indigo-100">
@@ -1344,23 +1344,23 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               {/* Pertanyaan Esai Riwayat Pekerjaan */}
               <div className="space-y-6 pt-4">
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-800 mb-2">2. Prestasi yang pernah dicapai selama bekerja <span className="text-slate-500 italic font-normal">(achievement & accomplishment in work)?</span></h3>
+                  <h3 className="text-sm font-semibold text-slate-800 mb-2">2. Prestasi yang pernah dicapai selama bekerja <span className="text-slate-500 italic font-normal">(achievement & accomplishment in work)?</span> <span className="text-red-500">*</span></h3>
                   <textarea name="work_achievements" value={formData.work_achievements} onChange={handleInputChange} rows={3} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-800 mb-2">3. Bagaimana respon Anda saat bekerja di bawah tekanan dan dikejar tenggat waktu? <span className="text-slate-500 italic font-normal">(How do you respond when working under pressure and facing deadlines?)</span></h3>
+                  <h3 className="text-sm font-semibold text-slate-800 mb-2">3. Bagaimana respon Anda saat bekerja di bawah tekanan dan dikejar tenggat waktu? <span className="text-slate-500 italic font-normal">(How do you respond when working under pressure and facing deadlines?)</span> <span className="text-red-500">*</span></h3>
                   <textarea name="work_pressure_response" value={formData.work_pressure_response} onChange={handleInputChange} rows={3} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-800 mb-2">4. Jelaskan tugas dari posisi yang Anda lamar, dan alasan Anda melamar posisi ini. <span className="text-slate-500 italic font-normal">(Please explain about the job desc and the reason why you interested in this position.)</span></h3>
+                  <h3 className="text-sm font-semibold text-slate-800 mb-2">4. Jelaskan tugas dari posisi yang Anda lamar, dan alasan Anda melamar posisi ini. <span className="text-slate-500 italic font-normal">(Please explain about the job desc and the reason why you interested in this position.)</span> <span className="text-red-500">*</span></h3>
                   <textarea name="job_desc_and_reason" value={formData.job_desc_and_reason} onChange={handleInputChange} rows={3} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-800 mb-2">5. Bagaimana strategi Anda agar dapat terus berkembang dan memberikan kontribusi bagi perusahaan? <span className="text-slate-500 italic font-normal">(What is your strategy to continue to develop and contribute to the company?)</span></h3>
+                  <h3 className="text-sm font-semibold text-slate-800 mb-2">5. Bagaimana strategi Anda agar dapat terus berkembang dan memberikan kontribusi bagi perusahaan? <span className="text-slate-500 italic font-normal">(What is your strategy to continue to develop and contribute to the company?)</span> <span className="text-red-500">*</span></h3>
                   <textarea name="strategy_to_contribute" value={formData.strategy_to_contribute} onChange={handleInputChange} rows={3} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-800 mb-2">6. Mengapa Anda tertarik bergabung dengan Waruna Group? <span className="text-slate-500 italic font-normal">(Why are you interested in joining Waruna Group?)</span></h3>
+                  <h3 className="text-sm font-semibold text-slate-800 mb-2">6. Mengapa Anda tertarik bergabung dengan Waruna Group? <span className="text-slate-500 italic font-normal">(Why are you interested in joining Waruna Group?)</span> <span className="text-red-500">*</span></h3>
                   <textarea name="reason_join_waruna" value={formData.reason_join_waruna} onChange={handleInputChange} rows={3} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
                 </div>
               </div>
@@ -1499,7 +1499,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
 
               {/* 6. Referensi */}
               <div>
-                <h3 className="text-sm font-semibold text-slate-800 mb-3">6. Sebutkan 3 kenalan mis. mantan atasan (tidak ada hubungan keluarga) yg dapat memberikan keterangan tentang kinerja Anda / <span className="text-slate-500 italic font-normal">Please attach 3 references from the people (not family member) that might give the information about you?</span></h3>
+                <h3 className="text-sm font-semibold text-slate-800 mb-3">6. Sebutkan 3 kenalan mis. mantan atasan (tidak ada hubungan keluarga) yg dapat memberikan keterangan tentang kinerja Anda / <span className="text-slate-500 italic font-normal">Please attach 3 references from the people (not family member) that might give the information about you?</span> <span className="text-red-500">*Minimal 2</span></h3>
                 <div className="overflow-x-auto print:overflow-visible border border-slate-200 rounded-xl">
                   <table className="w-full min-w-[800px] print:min-w-0 text-sm text-left">
                     <thead className="bg-purple-50 text-indigo-900 border-b border-indigo-100">
@@ -1528,7 +1528,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
 
               {/* 7. Referensi Keluarga Darurat */}
               <div>
-                <h3 className="text-sm font-semibold text-slate-800 mb-3">7. Referensi keluarga yang dapat dihubungi ketika keadaan darurat <span className="text-slate-500 italic font-normal">(Family member that available to contact in emergency)?</span></h3>
+                <h3 className="text-sm font-semibold text-slate-800 mb-3">7. Referensi keluarga yang dapat dihubungi ketika keadaan darurat <span className="text-slate-500 italic font-normal">(Family member that available to contact in emergency)?</span> <span className="text-red-500">*</span></h3>
                 <div className="overflow-x-auto print:overflow-visible border border-slate-200 rounded-xl">
                   <table className="w-full min-w-[800px] print:min-w-0 text-sm text-left">
                     <thead className="bg-purple-50 text-indigo-900 border-b border-indigo-100">
@@ -1553,7 +1553,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
 
               {/* 8. Faktor Bertahan Lama */}
               <div>
-                <h3 className="text-sm font-semibold text-slate-800 mb-2">8. Jelaskan faktor yang membuat anda bertahan lama (loyal) di suatu perusahaan? <span className="text-slate-500 italic font-normal">(Explain what was the most important thing that retain you in a company?)</span></h3>
+                <h3 className="text-sm font-semibold text-slate-800 mb-2">8. Jelaskan faktor yang membuat anda bertahan lama (loyal) di suatu perusahaan? <span className="text-slate-500 italic font-normal">(Explain what was the most important thing that retain you in a company?)</span> <span className="text-red-500">*</span></h3>
                 <textarea name="loyal_factor" value={formData.loyal_factor} onChange={handleInputChange} rows={3} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
               </div>
 
@@ -1698,7 +1698,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                   className="w-5 h-5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
                 />
                 <label htmlFor="declaration_agreed" className="text-sm font-semibold text-slate-700 cursor-pointer select-none">
-                  Saya menyetujui pernyataan di atas
+                  Saya menyetujui pernyataan di atas <span className="text-red-500">*</span>
                 </label>
               </div>
 

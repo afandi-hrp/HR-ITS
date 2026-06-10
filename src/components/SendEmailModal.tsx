@@ -23,6 +23,7 @@ export default function SendEmailModal({ candidate, schedule, type, onClose }: S
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
+  const [ccEmail, setCcEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [fetchingTemplates, setFetchingTemplates] = useState(true);
   
@@ -204,7 +205,8 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
             },
             email: {
               subject,
-              body
+              body,
+              cc: ccEmail
             },
             token: tokenValue,
             sender: {
@@ -301,6 +303,16 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
               <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 truncate">
                 {candidate.email}
               </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">CC Email</label>
+              <input
+                type="text"
+                value={ccEmail}
+                onChange={(e) => setCcEmail(e.target.value)}
+                placeholder="email1@domain.com, email2@domain.com"
+                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all truncate"
+              />
             </div>
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Jadwal {type === 'psikotes' ? 'Psikotes' : 'Interview'}</label>
