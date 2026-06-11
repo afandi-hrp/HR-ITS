@@ -376,13 +376,13 @@ export default function PublicCareer() {
       const selectedFiles = Array.from(e.target.files) as File[];
       const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
       
-      const validFiles = selectedFiles.filter(f => allowedTypes.includes(f.type) && f.size <= 5 * 1024 * 1024);
-      const invalidFiles = selectedFiles.filter(f => !allowedTypes.includes(f.type) || f.size > 5 * 1024 * 1024);
+      const validFiles = selectedFiles.filter(f => allowedTypes.includes(f.type) && f.size <= 15 * 1024 * 1024);
+      const invalidFiles = selectedFiles.filter(f => !allowedTypes.includes(f.type) || f.size > 15 * 1024 * 1024);
 
       if (invalidFiles.length > 0) {
         toast({ 
           title: 'Beberapa File Ditolak', 
-          description: 'Hanya file PDF/Word di bawah 5MB yang diperbolehkan.',
+          description: 'Hanya file PDF/Word di bawah 15MB yang diperbolehkan.',
           variant: 'destructive' 
         });
       }
