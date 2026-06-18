@@ -315,7 +315,7 @@ export default function Templates() {
                 />
                 <div className="p-3 bg-amber-50 rounded-lg border border-amber-100 mt-2">
                   <p className="text-[10px] sm:text-xs text-amber-700 font-medium leading-relaxed">
-                    Gunakan variabel berikut untuk isi otomatis: <br/>
+                    Gunakan variabel dan format berikut untuk isi otomatis: <br/>
                     <code className="bg-white px-1 rounded">{"{{nama}}"}</code> - Nama Kandidat <br/>
                     <code className="bg-white px-1 rounded">{"{{email_kandidat}}"}</code> - Email Kandidat <br/>
                     <code className="bg-white px-1 rounded">{"{{posisi}}"}</code> - Posisi Dilamar <br/>
@@ -325,7 +325,9 @@ export default function Templates() {
                     <code className="bg-white px-1 rounded">{"{{jadwal_interview}}"}</code> - Detail Waktu Interview <br/>
                     <code className="bg-white px-1 rounded">{"{{jadwal_psikotes}}"}</code> - Detail Waktu Psikotes <br/>
                     <code className="bg-white px-1 rounded">{"{{lokasi_interview}}"}</code> - Lokasi Interview <br/>
-                    <code className="bg-white px-1 rounded">{"{{lokasi_psikotes}}"}</code> - Lokasi Psikotes
+                    <code className="bg-white px-1 rounded">{"{{lokasi_psikotes}}"}</code> - Lokasi Psikotes <br/>
+                    <code className="bg-white px-1 rounded">{"{{token}}"}</code> - Token Psikotes <br/>
+                    <code className="bg-white px-1 rounded">{"*teks*"}</code> - Teks Cetak Tebal (*Teks Tebal*)
                   </p>
                 </div>
               </div>

@@ -62,6 +62,12 @@ export default function SendEmailModal({ candidate, schedule, type, onClose }: S
     };
 
     const fetchTokens = async () => {
+      // Fetch latest candidate state to see if token is already assigned
+      const { data: cData } = await supabase.from('candidates').select('confirmation_token').eq('id', candidate.id).single();
+      if (cData?.confirmation_token) {
+        setFullCandidate(prev => ({ ...prev, confirmation_token: cData.confirmation_token }));
+      }
+
       const { data, error } = await supabase
         .from('registration_tokens')
         .select('id, token, used_at')
@@ -70,6 +76,10 @@ export default function SendEmailModal({ candidate, schedule, type, onClose }: S
         
       if (!error && data) {
         setTokens(data);
+        if (cData?.confirmation_token) {
+          const assignedDef = data.find(t => t.id === cData.confirmation_token);
+          if (assignedDef) setSelectedToken(assignedDef.id);
+        }
       }
     };
 
@@ -178,6 +188,11 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
             .from('registration_tokens')
             .update({ used_at: new Date().toISOString() })
             .eq('id', selectedToken);
+          
+          await supabase
+            .from('candidates')
+            .update({ confirmation_token: selectedToken })
+            .eq('id', candidate.id);
         }
       }
 
@@ -205,7 +220,8 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
             },
             email: {
               subject,
-              body,
+              body: body.replace(/{{token}}/g, ''),
+              body_html: body.replace(/\*(.*?)\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>').replace(/{{token}}/g, ''),
               cc: ccEmail
             },
             token: tokenValue,
@@ -261,11 +277,15 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
        if (newTokenObj) {
          newBody = newBody.replace(oldTokenObj.token, newTokenObj.token);
        } else {
-         newBody = newBody.replace(`\n\nToken Akses: ${oldTokenObj.token}`, '');
+         if (newBody.includes(`\n\nToken Akses: ${oldTokenObj.token}`)) {
+           newBody = newBody.replace(`\n\nToken Akses: ${oldTokenObj.token}`, '');
+         } else {
+           newBody = newBody.replace(oldTokenObj.token, '{{token}}');
+         }
        }
     } else if (newTokenObj) {
-       if (newBody.includes('[TOKEN]')) {
-         newBody = newBody.replace('[TOKEN]', newTokenObj.token);
+       if (newBody.includes('{{token}}')) {
+         newBody = newBody.replace('{{token}}', newTokenObj.token);
        } else {
          newBody = newBody + `\n\nToken Akses: ${newTokenObj.token}`;
        }
@@ -352,8 +372,8 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
                   className="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none text-sm font-medium truncate"
                 >
                   <option value="">-- Tanpa Token --</option>
-                  {tokens.filter(t => !t.used_at || t.id === selectedToken).map(t => (
-                    <option key={t.id} value={t.id}>{t.token}</option>
+                  {tokens.filter(t => !t.used_at || t.id === fullCandidate.confirmation_token || t.id === selectedToken).map(t => (
+                    <option key={t.id} value={t.id}>{t.token} {t.id === fullCandidate.confirmation_token ? '(Token Tersimpan)' : ''}</option>
                   ))}
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
@@ -383,9 +403,11 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm resize-none leading-relaxed"
             />
             <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
-              <p className="text-[10px] text-slate-400 italic">
-                Variabel: {"{{nama}}"}, {"{{email_kandidat}}"}, {"{{posisi}}"}, {"{{pendidikan_terakhir}}"}, {"{{pengalaman_kerja}}"}, {"{{jadwal}}"}, {"{{jadwal_interview}}"}, {"{{jadwal_psikotes}}"}, {"{{lokasi_interview}}"}, {"{{lokasi_psikotes}}"}
-              </p>
+              <div className="text-[10px] text-slate-400 italic">
+                <p>Variabel: {"{{nama}}"}, {"{{email_kandidat}}"}, {"{{posisi}}"}, {"{{pendidikan_terakhir}}"}, {"{{pengalaman_kerja}}"}, {"{{jadwal}}"}, {"{{jadwal_interview}}"}, {"{{jadwal_psikotes}}"}, {"{{lokasi_interview}}"}, {"{{lokasi_psikotes}}"}, {"{{token}}"}</p>
+                <p className="mt-1">Format: Gunakan tanda asteris (*) untuk teks tebal. Contoh: *Teks Tebal*</p>
+                <p className="mt-1 font-semibold text-indigo-500">Tips n8n: Untuk format tebal, gunakan variabel <code>body_html</code> di payload dan aktifkan "Is HTML". Untuk menghilangkan tulisan "This email was sent...", nonaktifkan opsi "Append Attribution" pada node email n8n Anda.</p>
+              </div>
               <p className="text-[10px] text-amber-600 italic sm:max-w-[200px] sm:text-right">
                 Jika notifikasi "Berhasil" tapi email tidak masuk, pastikan workflow n8n Anda sudah Active.
               </p>

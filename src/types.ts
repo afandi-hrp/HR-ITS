@@ -32,8 +32,8 @@ export interface Candidate {
   status_screening: 'pending' | 'invited' | 'rejected' | 'accepted' | 'hired';
   confirmation_status: 'unconfirmed' | 'confirmed';
   confirmation_token: string | null;
-  psikotes_schedules?: { id: string, is_confirmed: boolean, schedule_date: string }[];
-  interview_schedules?: { id: string, is_confirmed: boolean, schedule_date: string }[];
+  psikotes_schedules?: { id: string, is_confirmed: boolean, schedule_date: string, location_type?: string, location_detail?: string | null }[];
+  interview_schedules?: { id: string, is_confirmed: boolean, schedule_date: string, location_type?: string, location_detail?: string | null }[];
   psikotes_status?: string;
   interview_status?: string;
   notes?: string;

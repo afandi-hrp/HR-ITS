@@ -60,6 +60,12 @@ export default function SendWAModal({ candidate, schedule, type, onClose }: Send
     };
 
     const fetchTokens = async () => {
+      // Fetch latest candidate state to see if token is already assigned
+      const { data: cData } = await supabase.from('candidates').select('confirmation_token').eq('id', candidate.id).single();
+      if (cData?.confirmation_token) {
+        setFullCandidate(prev => ({ ...prev, confirmation_token: cData.confirmation_token }));
+      }
+
       const { data, error } = await supabase
         .from('registration_tokens')
         .select('id, token, used_at')
@@ -68,6 +74,10 @@ export default function SendWAModal({ candidate, schedule, type, onClose }: Send
         
       if (!error && data) {
         setTokens(data);
+        if (cData?.confirmation_token) {
+          const assignedDef = data.find(t => t.id === cData.confirmation_token);
+          if (assignedDef) setSelectedToken(assignedDef.id);
+        }
       }
     };
 
@@ -175,6 +185,11 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
             .from('registration_tokens')
             .update({ used_at: new Date().toISOString() })
             .eq('id', selectedToken);
+            
+          await supabase
+            .from('candidates')
+            .update({ confirmation_token: selectedToken })
+            .eq('id', candidate.id);
         }
       }
 
@@ -202,7 +217,7 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
               location_detail: schedule.location_detail,
             },
             whatsapp: {
-              body
+              body: body.replace(/{{token}}/g, '')
             },
             token: tokenValue,
             sender: {
@@ -257,11 +272,15 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
        if (newTokenObj) {
          newBody = newBody.replace(oldTokenObj.token, newTokenObj.token);
        } else {
-         newBody = newBody.replace(`\n\nToken Akses: ${oldTokenObj.token}`, '');
+         if (newBody.includes(`\n\nToken Akses: ${oldTokenObj.token}`)) {
+           newBody = newBody.replace(`\n\nToken Akses: ${oldTokenObj.token}`, '');
+         } else {
+           newBody = newBody.replace(oldTokenObj.token, '{{token}}');
+         }
        }
     } else if (newTokenObj) {
-       if (newBody.includes('[TOKEN]')) {
-         newBody = newBody.replace('[TOKEN]', newTokenObj.token);
+       if (newBody.includes('{{token}}')) {
+         newBody = newBody.replace('{{token}}', newTokenObj.token);
        } else {
          newBody = newBody + `\n\nToken Akses: ${newTokenObj.token}`;
        }
@@ -338,8 +357,8 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
                   className="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all appearance-none text-sm font-medium truncate"
                 >
                   <option value="">-- Tanpa Token --</option>
-                  {tokens.filter(t => !t.used_at || t.id === selectedToken).map(t => (
-                    <option key={t.id} value={t.id}>{t.token}</option>
+                  {tokens.filter(t => !t.used_at || t.id === fullCandidate.confirmation_token || t.id === selectedToken).map(t => (
+                    <option key={t.id} value={t.id}>{t.token} {t.id === fullCandidate.confirmation_token ? '(Token Tersimpan)' : ''}</option>
                   ))}
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
