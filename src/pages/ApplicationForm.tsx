@@ -53,9 +53,21 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
   const [otherDocFiles, setOtherDocFiles] = useState<File[]>([]);
   const [payslipFile, setPayslipFile] = useState<File | null>(null);
   const [token, setToken] = useState('');
+  const [isOffline, setIsOffline] = useState(typeof navigator !== 'undefined' ? !navigator.onLine : false);
 
   const sigCanvas = useRef<SignatureCanvas>(null);
   const remunerationSigCanvas = useRef<SignatureCanvas>(null);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     loadSiteSettings();
@@ -63,6 +75,18 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
       // Merge initialData with default formData to ensure all arrays/objects exist
       setFormData(prev => ({ ...prev, ...initialData }));
       if (initialData.photo_url) setPhotoPreview(initialData.photo_url);
+    } else {
+      const draft = localStorage.getItem('application_draft');
+      if (draft) {
+        try {
+          const parsed = JSON.parse(draft);
+          setFormData(prev => ({ ...prev, ...parsed }));
+          toast({
+            title: 'Draft Ditemukan',
+            description: 'Kami telah memuat kembali data isian form Anda sebelumnya.',
+          });
+        } catch(e) {}
+      }
     }
   }, [initialData]);
 
@@ -209,6 +233,15 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
     remuneration_signature_name: '',
     remuneration_signature_date: new Date().toISOString().split('T')[0],
   });
+
+  useEffect(() => {
+    if (!initialData) {
+      const timeout = setTimeout(() => {
+        localStorage.setItem('application_draft', JSON.stringify(formData));
+      }, 1000);
+      return () => clearTimeout(timeout);
+    }
+  }, [formData, initialData]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -436,8 +469,21 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
       errors.push('Tanda tangan deklarasi wajib diisi.');
     }
 
-    // 4. Posisi yang dilamar
+    // 4. Posisi yang dilamar & Info Lowongan
     if (!formData.position?.trim()) errors.push('Posisi yang dilamar wajib diisi.');
+    if (formData.job_vacancy_info.length === 0) errors.push('Info lowongan kerja wajib diisi (pilih minimal satu).');
+
+    // 4.1 Identitas Personal Wajib
+    if (!formData.full_name?.trim()) errors.push('Nama Lengkap wajib diisi.');
+    if (!formData.sex?.trim()) errors.push('Jenis Kelamin wajib diisi.');
+    if (!formData.place_of_birth?.trim() || !formData.date_of_birth?.trim()) errors.push('Tempat dan Tanggal Lahir wajib diisi.');
+    if (!formData.religion?.trim()) errors.push('Agama wajib diisi.');
+    if (!formData.nationality?.trim()) errors.push('Kewarganegaraan wajib diisi.');
+    if (!formData.marital_status?.trim()) errors.push('Status Perkawinan wajib diisi.');
+    if (!formData.identity_number?.trim()) errors.push('No. KTP/Passport wajib diisi.');
+    if (!formData.address_ktp?.trim()) errors.push('Alamat Sesuai KTP wajib diisi.');
+    if (!formData.residential_status?.trim()) errors.push('Status Tempat Tinggal wajib diisi.');
+    if (!formData.height?.trim() || !formData.weight?.trim()) errors.push('Tinggi dan Berat Badan wajib diisi.');
 
     // 5. Susunan Anggota Keluarga minimal Ayah dan Ibu
     const ayah = formData.family_members.find(f => f.relation.includes('Ayah'));
@@ -595,6 +641,9 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
       }
 
       setSuccess(true);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('application_draft');
+      }
       toast({
         title: 'Berhasil',
         description: 'Formulir lamaran Anda telah berhasil dikirim.',
@@ -607,28 +656,31 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
       console.error('Submit error:', error);
       
       let errorMessage = error.message || 'Terjadi kesalahan saat mengirim formulir.';
+      let title = 'Error';
       
       // Sanitasi pesan error teknis
       if (
         errorMessage.includes('Failed to fetch') || 
         errorMessage.includes('ECONNREFUSED') ||
         errorMessage.includes('timeout') ||
-        errorMessage.includes('NetworkError')
+        errorMessage.includes('NetworkError') ||
+        isOffline
       ) {
-        errorMessage = 'Gagal terhubung ke server, silakan periksa koneksi Anda dan coba kembali.';
+        title = 'Koneksi Terputus';
+        errorMessage = 'Gagal terhubung ke server. Data isian Anda otomatis disimpan di penyimpanan lokal (draft). Anda dapat kembali menekan tombol "Kirim" ketika koneksi sudah stabil tanpa harus mengetik ulang form.';
       } else if (errorMessage.includes('Gagal mengunggah')) {
-        errorMessage = 'Gagal mengunggah dokumen. Silakan periksa koneksi Anda atau coba file lain.';
+        errorMessage = 'Gagal mengunggah dokumen. Data teks Anda saat ini aman disimpan dalam draft. Silakan periksa koneksi Anda dan coba unggah ulang.';
       } else if (errorMessage.includes('Token')) {
         // Biarkan pesan terkait token (misal: "Token tidak valid atau sudah digunakan")
       } else {
         // Jika error tidak dikenali dan berpotensi teknis (mengandung bahasa Inggris atau kode), samarkan
         if (/^[a-zA-Z0-9_]+$/.test(errorMessage) || errorMessage.includes('relation') || errorMessage.includes('syntax') || errorMessage.includes('database')) {
-           errorMessage = 'Terjadi kesalahan sistem saat memproses formulir Anda. Silakan coba beberapa saat lagi.';
+           errorMessage = 'Terjadi kesalahan sistem saat memproses formulir Anda. Silakan coba beberapa saat lagi. Kami telah menyimpan isian Anda ke penyimpanan lokal perangkat.';
         }
       }
 
       toast({
-        title: 'Error',
+        title: title,
         description: errorMessage,
         variant: 'destructive'
       });
@@ -659,6 +711,23 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
 
   return (
     <div className={cn("bg-slate-50", readOnly ? "py-0 bg-transparent flex flex-col gap-6" : "min-h-screen py-12 px-4 sm:px-6 lg:px-8")} id="application-form-container">
+      {isOffline && !readOnly && (
+        <div className="mx-auto w-full max-w-4xl bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-xl shadow-sm">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-yellow-800">Anda sedang offline (Koneksi Terputus)</h3>
+              <div className="mt-2 text-sm text-yellow-700">
+                <p>Tidak perlu khawatir, setiap isian Anda secara otomatis disimpan sementara di perangkat ini. Anda bisa melanjutkan pengisian dan menekan "Kirim" ketika koneksi kembali stabil.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className={cn("mx-auto bg-white overflow-hidden print:overflow-visible print:shadow-none print:border-none", readOnly ? "w-full rounded-2xl shadow-sm border border-slate-200" : "w-full max-w-4xl rounded-2xl shadow-xl")}>
           <div className="bg-[#8E4585] px-4 sm:px-8 py-4 sm:py-6 text-white flex items-center gap-4">
@@ -706,7 +775,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               </div>
               
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Info lowongan kerja <span className="text-slate-400 font-normal italic">(Job vacancy information)</span></label>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Info lowongan kerja <span className="text-slate-400 font-normal italic">(Job vacancy information)</span> <span className="text-red-500">*</span></label>
                 <div className="flex flex-wrap gap-4">
                   {['Jobstreet', 'JobsDB', 'Linkedin', 'Instagram', 'Lainnya'].map(item => (
                     <label key={item} className="flex items-center gap-2 cursor-pointer">
@@ -765,12 +834,12 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
               <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Nama Lengkap <span className="text-slate-400 font-normal italic">(Full Name)</span> <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">1. Nama Lengkap <span className="text-slate-400 font-normal italic">(Full Name)</span> <span className="text-red-500">*</span></label>
                 <input type="text" name="full_name" required value={formData.full_name} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Jenis Kelamin <span className="text-slate-400 font-normal italic">(Sex)</span></label>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">2. Jenis Kelamin <span className="text-slate-400 font-normal italic">(Sex)</span> <span className="text-red-500">*</span></label>
                 <div className="flex gap-6">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="radio" name="sex" value="Laki-laki" checked={formData.sex === 'Laki-laki'} onChange={handleInputChange} className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500" />
@@ -785,7 +854,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
 
               <div className="flex gap-4">
                 <div className="flex-1">
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Tempat Lahir <span className="text-slate-400 font-normal italic">(Place of Birth)</span> <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">3. Tempat Lahir <span className="text-slate-400 font-normal italic">(Place of Birth)</span> <span className="text-red-500">*</span></label>
                   <input type="text" name="place_of_birth" required value={formData.place_of_birth} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
                 <div className="flex-1">
@@ -795,27 +864,35 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Agama <span className="text-slate-400 font-normal italic">(Religion)</span></label>
-                <input type="text" name="religion" value={formData.religion} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <label className="block text-sm font-semibold text-slate-700 mb-1">4. Agama <span className="text-slate-400 font-normal italic">(Religion)</span> <span className="text-red-500">*</span></label>
+                <select name="religion" value={formData.religion} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none">
+                  <option value="">Pilih Agama</option>
+                  <option value="Islam">Islam</option>
+                  <option value="Kristen Protestan">Kristen Protestan</option>
+                  <option value="Kristen Katolik">Kristen Katolik</option>
+                  <option value="Hindu">Hindu</option>
+                  <option value="Buddha">Buddha</option>
+                  <option value="Khonghucu">Khonghucu</option>
+                </select>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Kewarganegaraan <span className="text-slate-400 font-normal italic">(Nationality)</span></label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">5. Kewarganegaraan <span className="text-slate-400 font-normal italic">(Nationality)</span> <span className="text-red-500">*</span></label>
                 <input type="text" name="nationality" value={formData.nationality} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Suku <span className="text-slate-400 font-normal italic">(Ethnic)</span></label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">6. Suku <span className="text-slate-400 font-normal italic">(Ethnic)</span></label>
                 <input type="text" name="ethnic" value={formData.ethnic} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Hoby <span className="text-slate-400 font-normal italic">(Hobby)</span></label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">7. Hoby <span className="text-slate-400 font-normal italic">(Hobby)</span></label>
                 <input type="text" name="hobby" value={formData.hobby} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Status Perkawinan <span className="text-slate-400 font-normal italic">(Marital Status)</span></label>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">8. Status Perkawinan <span className="text-slate-400 font-normal italic">(Marital Status)</span> <span className="text-red-500">*</span></label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="radio" name="marital_status" value="Belum Menikah" checked={formData.marital_status === 'Belum Menikah'} onChange={handleInputChange} className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500" />
@@ -843,12 +920,12 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-slate-700 mb-1">No. KTP/Passport <span className="text-slate-400 font-normal italic">(Identity Number)</span> <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">9. No. KTP/Passport <span className="text-slate-400 font-normal italic">(Identity Number)</span> <span className="text-red-500">*</span></label>
                 <input type="text" name="identity_number" required value={formData.identity_number} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Alamat Sesuai KTP <span className="text-slate-400 font-normal italic">(Address Based Identity Card)</span></label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">10. Alamat Sesuai KTP <span className="text-slate-400 font-normal italic">(Address Based Identity Card)</span> <span className="text-red-500">*</span></label>
                 <textarea name="address_ktp" rows={2} value={formData.address_ktp} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
                 <div className="flex justify-end mt-2 items-center gap-2">
                   <span className="text-sm text-slate-600">Kode Pos <span className="text-slate-400 italic">(Postal Code)</span> :</span>
@@ -857,7 +934,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Alamat Saat Ini <span className="text-slate-400 font-normal italic">(Current Address)</span></label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">11. Alamat Saat Ini <span className="text-slate-400 font-normal italic">(Current Address)</span></label>
                 <textarea name="current_address" rows={2} value={formData.current_address} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
                 <div className="flex justify-end mt-2 items-center gap-2">
                   <span className="text-sm text-slate-600">Kode Pos <span className="text-slate-400 italic">(Postal Code)</span> :</span>
@@ -866,7 +943,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Status Tempat Tinggal <span className="text-slate-400 font-normal italic">(Residential Status)</span></label>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">12. Status Tempat Tinggal <span className="text-slate-400 font-normal italic">(Residential Status)</span> <span className="text-red-500">*</span></label>
                 <div className="flex flex-wrap gap-6">
                   {['Own House', 'Rented House', 'Parents', 'Others'].map(status => (
                     <label key={status} className="flex items-center gap-2 cursor-pointer">
@@ -878,7 +955,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Handphone / Telp. Rumah <span className="text-slate-400 font-normal italic">(Mobile/Home) <span className="text-red-500">*</span></span></label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">13. Handphone / Telp. Rumah <span className="text-slate-400 font-normal italic">(Mobile/Home) <span className="text-red-500">*</span></span></label>
                 <div className="flex gap-2 items-center">
                   <input type="text" name="mobile_phone" required placeholder="Mobile" value={formData.mobile_phone} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                   <span className="text-slate-400">/</span>
@@ -887,32 +964,32 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Tinggi / Berat Badan <span className="text-slate-400 font-normal italic">(Height/Weight)</span></label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">14. Tinggi / Berat Badan <span className="text-slate-400 font-normal italic">(Height/Weight)</span> <span className="text-red-500">*</span></label>
                 <div className="flex gap-2 items-center">
                   <div className="relative flex-1">
-                    <input type="number" name="height" value={formData.height} onChange={handleInputChange} className="w-full pl-4 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                    <input type="number" name="height" required value={formData.height} onChange={handleInputChange} className="w-full pl-4 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">Cm</span>
                   </div>
                   <span className="text-slate-400">/</span>
                   <div className="relative flex-1">
-                    <input type="number" name="weight" value={formData.weight} onChange={handleInputChange} className="w-full pl-4 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                    <input type="number" name="weight" required value={formData.weight} onChange={handleInputChange} className="w-full pl-4 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">Kg</span>
                   </div>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Email <span className="text-slate-400 font-normal italic">(E-Mail)</span> <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">15. Email <span className="text-slate-400 font-normal italic">(E-Mail)</span> <span className="text-red-500">*</span></label>
                 <input type="email" name="email" required value={formData.email} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Sosial Media <span className="text-slate-400 font-normal italic">(Social Media Account)</span></label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">16. Sosial Media <span className="text-slate-400 font-normal italic">(Social Media Account)</span></label>
                 <input type="text" name="social_media" value={formData.social_media} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Surat Izin Mengemudi <span className="text-slate-400 font-normal italic">(Driver License)</span></label>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">17. Surat Izin Mengemudi <span className="text-slate-400 font-normal italic">(Driver License)</span></label>
                 <div className="flex flex-wrap gap-6 items-center">
                   {['SIM A', 'SIM B1', 'SIM B2', 'SIM C'].map(sim => (
                     <label key={sim} className="flex items-center gap-2 cursor-pointer">

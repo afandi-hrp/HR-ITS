@@ -1956,12 +1956,7 @@ export default function CandidateProfile() {
               )}
             </div>
 
-            {evaluations.filter(evalItem => {
-              if (profile?.role === 'USER_MANAGER' && evalItem.evaluation_type === 'HR') {
-                return false;
-              }
-              return true;
-            }).length === 0 ? (
+            {evaluations.length === 0 ? (
               <div className="text-center py-8 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
                 <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
                 <p className="text-slate-500 font-medium">Belum ada hasil interview</p>
@@ -1973,12 +1968,7 @@ export default function CandidateProfile() {
               </div>
             ) : (
               <div className="space-y-4">
-                {evaluations.filter(evalItem => {
-                  if (profile?.role === 'USER_MANAGER' && evalItem.evaluation_type === 'HR') {
-                    return false;
-                  }
-                  return true;
-                }).map((evalItem) => (
+                {evaluations.map((evalItem) => (
                   <div key={evalItem.id} className="border border-slate-200 rounded-xl overflow-hidden">
                     <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -2006,7 +1996,7 @@ export default function CandidateProfile() {
                           >
                             {expandedEvaluations.includes(evalItem.id) ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                           </button>
-                          {!isArchived && (
+                          {!isArchived && evalItem.evaluator_id === profile?.id && (
                             <button
                               onClick={() => {
                                 setExistingEvaluation(evalItem);
@@ -2061,15 +2051,57 @@ export default function CandidateProfile() {
                           .filter(([key]) => key.startsWith('summary_'))
                           .map(([key, value]) => {
                             const fieldName = key.replace('summary_', '');
+                            const valStr = String(value);
+                            const valLower = valStr.toLowerCase().trim();
+                            
+                            let highlightClass = "text-sm text-slate-700 whitespace-pre-wrap";
+                            if (valLower === 'not recommended' || valLower === 'ditolak') {
+                              highlightClass = "text-sm font-bold text-red-600 bg-red-50 px-2 py-1 rounded inline-block whitespace-pre-wrap";
+                            } else if (valLower === 'to be considered') {
+                              highlightClass = "text-sm font-bold text-yellow-600 bg-yellow-50 px-2 py-1 rounded inline-block whitespace-pre-wrap";
+                            } else if (valLower === 'recommended' || valLower === 'diterima') {
+                              highlightClass = "text-sm font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded inline-block whitespace-pre-wrap";
+                            }
+
+                            const isObject = typeof value === 'object' && value !== null;
+                            const isScoring = isObject && !(Object.keys(value).every(k => !isNaN(Number(k))) || Array.isArray(value));
+
                             return (
-                              <div key={key} className="space-y-1">
-                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{fieldName}</p>
-                                {Array.isArray(value) ? (
-                                  <ul className="list-disc list-inside text-sm text-slate-700">
-                                    {value.map((v, i) => <li key={i}>{v}</li>)}
-                                  </ul>
+                              <div key={key} className={`space-y-2 bg-slate-50 border border-slate-100 rounded-xl p-4 ${isScoring ? 'col-span-1 md:col-span-2' : ''}`}>
+                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">{fieldName}</p>
+                                {isObject ? (
+                                  !isScoring ? (
+                                    <ul className="list-disc list-inside text-sm text-slate-700 space-y-1">
+                                      {Object.values(value).map((v, i) => <li key={i}>{String(v)}</li>)}
+                                    </ul>
+                                  ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                      {Object.entries(value)
+                                        .filter(([, v]) => !isNaN(Number(v)) && String(v).trim() !== '')
+                                        .map(([k, v]) => {
+                                          return {
+                                            score: Number(v),
+                                            label: String(k),
+                                            originalKey: k
+                                          };
+                                        })
+                                        .sort((a, b) => {
+                                          if (isNaN(a.score)) return 1;
+                                          if (isNaN(b.score)) return -1;
+                                          return a.score - b.score;
+                                        })
+                                        .map((item) => (
+                                        <div key={item.originalKey} className="flex items-start gap-3 text-sm text-slate-700 bg-white border border-slate-200 p-3 rounded-lg shadow-sm font-medium h-full break-words">
+                                          <div className="min-w-[32px] w-8 h-8 rounded border border-indigo-100 bg-indigo-50 flex items-center justify-center font-bold text-indigo-700 shrink-0 mt-0.5">
+                                            {item.score}
+                                          </div>
+                                          <span className="flex-1 leading-snug pt-1.5 break-words whitespace-normal break-all sm:break-normal">{item.label}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )
                                 ) : (
-                                  <p className="text-sm text-slate-700 whitespace-pre-wrap">{String(value) || '-'}</p>
+                                  <div className={highlightClass}>{valStr || '-'}</div>
                                 )}
                               </div>
                             );
@@ -2173,6 +2205,7 @@ export default function CandidateProfile() {
         onSuccess={() => fetchEvaluations(id!)}
         existingEvaluation={existingEvaluation}
         userProfile={profile}
+        isAssignedToMe={candidate?.candidate_assignees?.some((a: any) => a.user_id === profile?.id) || false}
       />
 
       {/* AI Interview Questions Modal */}

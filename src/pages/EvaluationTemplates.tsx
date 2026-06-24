@@ -23,9 +23,10 @@ interface Category {
 
 interface SummaryField {
   name: string;
-  type: 'textarea' | 'radio' | 'checkbox_group';
+  type: 'textarea' | 'radio' | 'checkbox_group' | 'scoring';
   placeholder?: string;
   options?: string[];
+  max_score?: number;
 }
 
 export default function EvaluationTemplates() {
@@ -541,6 +542,7 @@ export default function EvaluationTemplates() {
                               <option value="textarea">Teks Panjang</option>
                               <option value="radio">Pilihan Tunggal (Radio)</option>
                               <option value="checkbox_group">Pilihan Ganda (Checkbox)</option>
+                              <option value="scoring">Scoring / Penilaian</option>
                             </select>
                           </div>
 
@@ -558,10 +560,10 @@ export default function EvaluationTemplates() {
                                 type="text"
                                 value={field.options?.join(', ') || ''}
                                 onChange={(e) => updateSummaryField(idx, 'options', e.target.value)}
-                                placeholder="Masukkan opsi, pisahkan dengan koma (Cth: Ya, Tidak, Mungkin)"
+                                placeholder={field.type === 'scoring' ? "Masukkan item scoring, pisahkan dengan koma (Cth: Lokasi, Jenjang Karir)" : "Masukkan opsi, pisahkan dengan koma (Cth: Ya, Tidak, Mungkin)"}
                                 className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                               />
-                              <p className="text-xs text-slate-500">Pisahkan setiap opsi dengan tanda koma (,)</p>
+                              <p className="text-xs text-slate-500">Pisahkan setiap {field.type === 'scoring' ? 'item' : 'opsi'} dengan tanda koma (,)</p>
                             </div>
                           )}
                         </div>

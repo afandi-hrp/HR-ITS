@@ -11,9 +11,10 @@ interface EvaluationModalProps {
   onSuccess: () => void;
   existingEvaluation?: CandidateEvaluation | null;
   userProfile?: Profile | null;
+  isAssignedToMe?: boolean;
 }
 
-export default function EvaluationModal({ isOpen, onClose, candidateId, onSuccess, existingEvaluation, userProfile }: EvaluationModalProps) {
+export default function EvaluationModal({ isOpen, onClose, candidateId, onSuccess, existingEvaluation, userProfile, isAssignedToMe }: EvaluationModalProps) {
   const { toast } = useToast();
   const [templates, setTemplates] = useState<EvaluationTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
@@ -72,6 +73,9 @@ export default function EvaluationModal({ isOpen, onClose, candidateId, onSucces
       } else if (userProfile?.role === 'HR_ADMIN') {
         filteredTemplates = filteredTemplates.filter(t => {
           if (t.target_role && t.target_role !== 'ALL' && t.target_role !== 'HR_ADMIN') {
+            if (isAssignedToMe && t.target_role === 'USER_MANAGER') {
+              return true;
+            }
             return false;
           }
           return true;
@@ -79,6 +83,9 @@ export default function EvaluationModal({ isOpen, onClose, candidateId, onSucces
       }
 
       setTemplates(filteredTemplates);
+      if (!existingEvaluation && filteredTemplates.length === 1) {
+        setSelectedTemplateId(filteredTemplates[0].id);
+      }
     } catch (error: any) {
       toast({ title: 'Error', description: 'Gagal memuat template', variant: 'destructive' });
     } finally {
@@ -113,6 +120,33 @@ export default function EvaluationModal({ isOpen, onClose, candidateId, onSucces
     });
   };
 
+  const handleSummaryScoreChange = (fieldName: string, option: string, score: number | string) => {
+    setEvaluationData(prev => {
+      const prevVal = prev[`summary_${fieldName}`];
+      const currentValues = Array.isArray(prevVal) ? {} : { ...(prevVal || {}) };
+      
+      if (score !== '') {
+        const existingOption = Object.entries(currentValues).find(([opt, val]) => val === score && opt !== option);
+        if (existingOption) {
+          toast({
+            title: 'Skor Duplikat',
+            description: `Skor ${score} sudah digunakan pada opsi "${existingOption[0]}". Silakan pilih skor lain.`,
+            variant: 'destructive',
+          });
+          return prev;
+        }
+      }
+
+      return {
+        ...prev,
+        [`summary_${fieldName}`]: {
+          ...currentValues,
+          [option]: score
+        }
+      };
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTemplate) return;
@@ -141,7 +175,7 @@ export default function EvaluationModal({ isOpen, onClose, candidateId, onSucces
           .update({
             template_id: selectedTemplate.id,
             evaluation_type: selectedTemplate.type,
-            interviewer_name: selectedTemplate.type === 'USER' ? interviewerName : (userData.user?.email || 'HR'),
+            interviewer_name: interviewerName || (userData.user?.email || 'HR'),
             evaluation_data: evaluationData,
             total_score: totalScore
           })
@@ -156,7 +190,7 @@ export default function EvaluationModal({ isOpen, onClose, candidateId, onSucces
             candidate_id: candidateId,
             template_id: selectedTemplate.id,
             evaluation_type: selectedTemplate.type,
-            interviewer_name: selectedTemplate.type === 'USER' ? interviewerName : (userData.user?.email || 'HR'),
+            interviewer_name: interviewerName || (userData.user?.email || 'HR'),
             evaluator_id: userData.user?.id,
             evaluation_data: evaluationData,
             total_score: totalScore
@@ -198,39 +232,44 @@ export default function EvaluationModal({ isOpen, onClose, candidateId, onSucces
             <form id="evaluation-form" onSubmit={handleSubmit} className="space-y-8">
               
               {/* Template Selection */}
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-slate-700">Pilih Jenis Penilaian / Template</label>
-                <select
-                  value={selectedTemplateId}
-                  onChange={(e) => setSelectedTemplateId(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  required
-                >
-                  <option value="">-- Pilih Template --</option>
-                  {templates.map(t => (
-                    <option key={t.id} value={t.id}>{t.name} ({t.type})</option>
-                  ))}
-                </select>
-              </div>
+              {templates.length > 1 || !selectedTemplate ? (
+                <div className="space-y-3">
+                  <label className="block text-sm font-medium text-slate-700">Pilih Jenis Penilaian / Template</label>
+                  <select
+                    value={selectedTemplateId}
+                    onChange={(e) => setSelectedTemplateId(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    required
+                  >
+                    <option value="">-- Pilih Template --</option>
+                    {templates.map(t => (
+                      <option key={t.id} value={t.id}>{t.name} ({t.type})</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <label className="block text-sm font-medium text-slate-500">Template Penilaian</label>
+                  <p className="font-semibold text-slate-900">{selectedTemplate.name} ({selectedTemplate.type})</p>
+                </div>
+              )}
 
               {selectedTemplate && (
                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                   
-                  {/* Interviewer Name (If USER) */}
-                  {selectedTemplate.type === 'USER' && (
-                    <div className="space-y-3 p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
-                      <label className="block text-sm font-bold text-indigo-900">Nama Interviewer (User)</label>
-                      <input
-                        type="text"
-                        value={interviewerName}
-                        onChange={(e) => setInterviewerName(e.target.value)}
-                        placeholder="Contoh: Pak Budi - IT Manager"
-                        className="w-full px-4 py-2.5 bg-white border border-indigo-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        required
-                      />
-                      <p className="text-xs text-indigo-700">Masukkan nama asli User yang melakukan interview.</p>
-                    </div>
-                  )}
+                  {/* Interviewer Name */}
+                  <div className="space-y-3 p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
+                    <label className="block text-sm font-bold text-indigo-900">Nama Interviewer</label>
+                    <input
+                      type="text"
+                      value={interviewerName}
+                      onChange={(e) => setInterviewerName(e.target.value)}
+                      placeholder="Contoh: Pak Budi - IT Manager"
+                      className="w-full px-4 py-2.5 bg-white border border-indigo-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      required
+                    />
+                    <p className="text-xs text-indigo-700">Masukkan nama asli pihak yang melakukan interview.</p>
+                  </div>
 
                   {/* Scoring Categories */}
                   {selectedTemplate.form_schema.categories?.map((category: any, catIdx: number) => (
@@ -324,6 +363,34 @@ export default function EvaluationModal({ isOpen, onClose, candidateId, onSucces
                                     />
                                     <span className="text-sm text-slate-700 leading-snug">{opt}</span>
                                   </label>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {field.type === 'scoring' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {field.options?.map((opt: string) => {
+                                const maxScore = field.options.length;
+                                const currentScores = evaluationData[`summary_${field.name}`] || {};
+                                return (
+                                  <div key={opt} className="flex items-center gap-3 border border-slate-200 p-3 rounded-xl bg-slate-50/50">
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      maxLength={1}
+                                      value={currentScores[opt] || ''}
+                                      onChange={(e) => {
+                                        let val: any = parseInt(e.target.value);
+                                        if (isNaN(val)) val = '';
+                                        else if (val < 1) val = 1;
+                                        else if (val > maxScore) val = maxScore;
+                                        handleSummaryScoreChange(field.name, opt, val);
+                                      }}
+                                      className="w-12 px-2 py-1.5 text-center bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold"
+                                    />
+                                    <span className="text-sm text-slate-700">{opt}</span>
+                                  </div>
                                 );
                               })}
                             </div>
