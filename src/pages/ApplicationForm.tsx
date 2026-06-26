@@ -51,7 +51,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
   const [ijazahFile, setIjazahFile] = useState<File | null>(null);
   const [transcriptFile, setTranscriptFile] = useState<File | null>(null);
   const [otherDocFiles, setOtherDocFiles] = useState<File[]>([]);
-  const [payslipFile, setPayslipFile] = useState<File | null>(null);
+  const [payslipFiles, setPayslipFiles] = useState<File[]>([]);
   const [token, setToken] = useState('');
   const [isOffline, setIsOffline] = useState(typeof navigator !== 'undefined' ? !navigator.onLine : false);
 
@@ -706,8 +706,13 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
       }
       otherDocUrl = otherDocUrls.join(',');
 
-      let payslipUrl = '';
-      if (payslipFile) payslipUrl = await uploadFile(payslipFile, 'payslip');
+      let payslipUrls: string[] = [];
+      if (payslipFiles.length > 0) {
+        for (const file of payslipFiles) {
+          payslipUrls.push(await uploadFile(file, 'payslip'));
+        }
+      }
+      let payslipUrl = payslipUrls.join(',');
 
       let signatureDataUrl = '';
       if (sigCanvas.current && !sigCanvas.current.isEmpty()) {
@@ -2020,32 +2025,19 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-sm font-bold text-slate-700">Upload Slip Gaji Terakhir <span className="text-slate-400 font-normal italic">*Diisi jika ada</span> {!readOnly && <span className="text-xs text-red-500">*Maks. 3MB</span>}</label>
+                  <label className="block text-sm font-bold text-slate-700">Upload Slip Gaji Terakhir <span className="text-slate-400 font-normal italic">*Diisi jika ada</span> {!readOnly && <span className="text-xs text-red-500">*Maks. 2 File, masing-masing 3MB</span>}</label>
                   {readOnly ? (
-                    initialData?.payslip_url ? (
-                      initialData.payslip_url.toLowerCase().includes('.pdf') ? (
-                        <div className="w-full h-[400px] border border-slate-200 rounded-xl overflow-hidden bg-slate-50 mt-2">
-                          <iframe 
-                            src={getEmbedUrl(initialData.payslip_url)} 
-                            className="w-full h-full"
-                            title="Preview Slip Gaji"
-                          />
-                        </div>
-                      ) : (
-                        <div className="mt-2">
-                          <a href={initialData.payslip_url} target="_blank" rel="noopener noreferrer" className="block border border-slate-200 rounded-lg overflow-hidden hover:border-indigo-300 transition-colors max-w-md bg-slate-50 p-1">
-                            <img src={initialData.payslip_url} alt="Slip Gaji" className="w-full h-auto object-contain max-h-96 rounded" />
-                          </a>
-                        </div>
-                      )
-                    ) : (
-                      <span className="text-sm text-slate-500">-</span>
-                    )
+                    <div className="flex flex-col gap-2">
+                      {initialData?.payslip_url ? initialData.payslip_url.split(',').map((url: string, index: number) => (
+                        <div key={index}>{renderAttachment(url.trim(), `Slip Gaji ${index + 1}`)}</div>
+                      )) : <span className="text-sm text-slate-500">-</span>}
+                    </div>
                   ) : (
                     <input 
                       type="file" 
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => handleFileChange(e, setPayslipFile, 'Slip Gaji')}
+                      multiple
+                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                      onChange={(e) => handleMultipleFileChange(e, setPayslipFiles, 'Slip Gaji', 2)}
                       className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
                     />
                   )}
