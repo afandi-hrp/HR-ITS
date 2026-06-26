@@ -74,6 +74,7 @@ export default function Screening() {
   const [movingToLog, setMovingToLog] = useState(false);
   const [rejectModalData, setRejectModalData] = useState<Candidate | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [rejectCcEmail, setRejectCcEmail] = useState('');
   const [sendRejectEmail, setSendRejectEmail] = useState(false);
   const [rejectEmailTemplates, setRejectEmailTemplates] = useState<any[]>([]);
   const [selectedRejectTemplate, setSelectedRejectTemplate] = useState('');
@@ -220,10 +221,11 @@ export default function Screening() {
               const { data: { session } } = await supabase.auth.getSession();
               
               const replaceVars = (text: string) => {
+                if (!text) return '';
                 return text
-                  .replace(/{{nama}}/g, rejectModalData.full_name)
-                  .replace(/{{email_kandidat}}/g, rejectModalData.email)
-                  .replace(/{{posisi}}/g, rejectModalData.position)
+                  .replace(/{{nama}}/g, rejectModalData.full_name || '')
+                  .replace(/{{email_kandidat}}/g, rejectModalData.email || '')
+                  .replace(/{{posisi}}/g, rejectModalData.position || '')
                   .replace(/{{pendidikan_terakhir}}/g, rejectModalData.education || '-')
                   .replace(/{{pengalaman_kerja}}/g, rejectModalData.work_experience || '-');
               };
@@ -250,7 +252,9 @@ export default function Screening() {
                     },
                     email: {
                       subject: processedSubject,
-                      body: processedBody
+                      body: processedBody,
+                      body_html: processedBody.replace(/\*(.*?)\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>'),
+                      cc: rejectCcEmail || undefined
                     },
                     sender: {
                       name: profile?.full_name || 'HR Team'
@@ -273,6 +277,7 @@ export default function Screening() {
         setCandidates(candidates.filter(c => c.id !== rejectModalData.id));
         setRejectModalData(null);
         setRejectReason('');
+        setRejectCcEmail('');
       } else {
         throw new Error(result.error || 'Gagal memindahkan kandidat');
       }
@@ -1336,20 +1341,32 @@ export default function Screening() {
                 </label>
                 
                 {sendRejectEmail && (
-                  <div className="mt-3">
-                    <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">Pilih Template Email</label>
-                    <div className="relative">
-                      <select
-                        value={selectedRejectTemplate}
-                        onChange={(e) => setSelectedRejectTemplate(e.target.value)}
-                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500 transition-all appearance-none"
-                      >
-                        <option value="">-- Pilih Template --</option>
-                        {rejectEmailTemplates.map(t => (
-                          <option key={t.id} value={t.id}>{t.name}</option>
-                        ))}
-                      </select>
-                      <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <div className="mt-3 space-y-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">Pilih Template Email</label>
+                      <div className="relative">
+                        <select
+                          value={selectedRejectTemplate}
+                          onChange={(e) => setSelectedRejectTemplate(e.target.value)}
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500 transition-all appearance-none"
+                        >
+                          <option value="">-- Pilih Template --</option>
+                          {rejectEmailTemplates.map(t => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                          ))}
+                        </select>
+                        <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">CC Email (Opsional)</label>
+                      <input
+                        type="text"
+                        value={rejectCcEmail}
+                        onChange={(e) => setRejectCcEmail(e.target.value)}
+                        placeholder="hr.manager@example.com, manager@example.com"
+                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                      />
                     </div>
                   </div>
                 )}
@@ -1360,6 +1377,7 @@ export default function Screening() {
                 onClick={() => {
                   setRejectModalData(null);
                   setRejectReason('');
+                  setRejectCcEmail('');
                 }}
                 className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-all"
               >

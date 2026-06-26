@@ -171,6 +171,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
       {
         period_start: '',
         period_end: '',
+        is_current_job: false,
         company_name: '',
         company_address: '',
         business_line: '',
@@ -312,7 +313,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
     }));
   };
 
-  const handleWorkExperienceChange = (index: number, field: string, value: string) => {
+  const handleWorkExperienceChange = (index: number, field: string, value: string | boolean) => {
     setFormData(prev => {
       const updatedExperience = [...prev.work_experience];
       updatedExperience[index] = { ...updatedExperience[index], [field]: value };
@@ -328,6 +329,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
         {
           period_start: '',
           period_end: '',
+          is_current_job: false,
           company_name: '',
           company_address: '',
           business_line: '',
@@ -386,10 +388,10 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      if (file.size > 2 * 1024 * 1024) {
+      if (file.size > 3 * 1024 * 1024) {
         toast({
           title: 'Ukuran File Terlalu Besar',
-          description: 'Maksimal ukuran foto adalah 2MB.',
+          description: 'Maksimal ukuran foto adalah 3MB.',
           variant: 'destructive'
         });
         e.target.value = '';
@@ -407,10 +409,10 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<File | null>>, label: string) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      if (file.size > 2 * 1024 * 1024) {
+      if (file.size > 3 * 1024 * 1024) {
         toast({
           title: 'Ukuran File Terlalu Besar',
-          description: `Maksimal ukuran file untuk ${label} adalah 2MB.`,
+          description: `Maksimal ukuran file untuk ${label} adalah 3MB.`,
           variant: 'destructive'
         });
         e.target.value = '';
@@ -436,10 +438,10 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
 
       const validFiles: File[] = [];
       for (const file of files) {
-        if (file.size > 2 * 1024 * 1024) {
+        if (file.size > 3 * 1024 * 1024) {
           toast({
             title: 'Ukuran File Terlalu Besar',
-            description: `File ${file.name} melebihi 2MB.`,
+            description: `File ${file.name} melebihi 3MB.`,
             variant: 'destructive'
           });
         } else {
@@ -457,6 +459,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
     const errors: string[] = [];
 
     // 1. Upload Dokumen
+    if (!photoFile) errors.push('Pas foto wajib diunggah.');
     if (!ktpFile) errors.push('Dokumen KTP wajib diunggah.');
     if (!ijazahFile) errors.push('Dokumen Ijazah wajib diunggah.');
     if (!transcriptFile) errors.push('Dokumen Transkrip Nilai wajib diunggah.');
@@ -466,7 +469,10 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
 
     // 3. Tanda Tangan
     if (!sigCanvas.current || sigCanvas.current.isEmpty()) {
-      errors.push('Tanda tangan deklarasi wajib diisi.');
+      errors.push('Tanda tangan deklarasi (Pelamar) wajib diisi.');
+    }
+    if (!hideSalary && (!remunerationSigCanvas.current || remunerationSigCanvas.current.isEmpty())) {
+      errors.push('Tanda tangan formulir remunerasi wajib diisi.');
     }
 
     // 4. Posisi yang dilamar & Info Lowongan
@@ -479,32 +485,109 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
     if (!formData.place_of_birth?.trim() || !formData.date_of_birth?.trim()) errors.push('Tempat dan Tanggal Lahir wajib diisi.');
     if (!formData.religion?.trim()) errors.push('Agama wajib diisi.');
     if (!formData.nationality?.trim()) errors.push('Kewarganegaraan wajib diisi.');
+    if (!formData.ethnic?.trim()) errors.push('Suku wajib diisi.');
+    if (!formData.hobby?.trim()) errors.push('Hobby wajib diisi.');
     if (!formData.marital_status?.trim()) errors.push('Status Perkawinan wajib diisi.');
     if (!formData.identity_number?.trim()) errors.push('No. KTP/Passport wajib diisi.');
     if (!formData.address_ktp?.trim()) errors.push('Alamat Sesuai KTP wajib diisi.');
+    if (!formData.current_address?.trim()) errors.push('Alamat Saat Ini wajib diisi.');
     if (!formData.residential_status?.trim()) errors.push('Status Tempat Tinggal wajib diisi.');
     if (!formData.height?.trim() || !formData.weight?.trim()) errors.push('Tinggi dan Berat Badan wajib diisi.');
+    if (!formData.social_media?.trim()) errors.push('Sosial Media wajib diisi.');
 
-    // 5. Susunan Anggota Keluarga minimal Ayah dan Ibu
+    // 5. Susunan Anggota Keluarga
     const ayah = formData.family_members.find(f => f.relation.includes('Ayah'));
     const ibu = formData.family_members.find(f => f.relation.includes('Ibu'));
-    if (!ayah?.name?.trim() || !ibu?.name?.trim()) {
-      errors.push('Susunan Anggota Keluarga minimal harus mengisi nama Ayah dan Ibu.');
+    if (!ayah?.name?.trim() || !ayah?.age?.trim() || !ayah?.education?.trim() || !ayah?.occupation?.trim() ||
+        !ibu?.name?.trim() || !ibu?.age?.trim() || !ibu?.education?.trim() || !ibu?.occupation?.trim()) {
+      errors.push('Susunan Anggota Keluarga: Seluruh kolom pada baris Ayah dan Ibu wajib diisi.');
     }
+    formData.family_members.forEach((member, index) => {
+      if (!member.relation.includes('Ayah') && !member.relation.includes('Ibu')) {
+        const hasAnyValue = member.name?.trim() || member.age?.trim() || member.education?.trim() || member.occupation?.trim();
+        if (hasAnyValue) {
+          if (!member.name?.trim() || !member.age?.trim() || !member.education?.trim() || !member.occupation?.trim()) {
+            errors.push(`Susunan Anggota Keluarga: Pada baris ${member.relation}, seluruh kolom harus diisi jika salah satu diisi.`);
+          }
+        }
+      }
+    });
+    // Susunan Keluarga (Sudah Menikah)
+    formData.married_family_members.forEach((member, index) => {
+      const hasAnyValue = member.name?.trim() || member.age?.trim() || member.education?.trim() || member.occupation?.trim();
+      if (hasAnyValue) {
+        if (!member.name?.trim() || !member.age?.trim() || !member.education?.trim() || !member.occupation?.trim()) {
+          errors.push(`Susunan Keluarga (Sudah Menikah): Pada baris ${member.relation}, seluruh kolom harus diisi jika salah satu diisi.`);
+        }
+      }
+    });
 
-    // 6. Pendidikan Formal minimal 1 baris
+    // 6. Pendidikan Formal
     const formalEdus = formData.formal_education.filter(e => e.institution?.trim() !== '');
     if (formalEdus.length === 0) {
       errors.push('Pendidikan Formal wajib diisi minimal 1 (satu) baris.');
     }
+    formData.formal_education.forEach((edu, index) => {
+      const hasAnyValue = edu.institution?.trim() || edu.major?.trim() || edu.grade?.trim() || edu.period?.trim();
+      if (hasAnyValue) {
+        if (!edu.institution?.trim() || !edu.major?.trim() || !edu.grade?.trim() || !edu.period?.trim()) {
+          errors.push(`Pendidikan Formal: Pada tingkat ${edu.level}, seluruh kolom harus diisi jika salah satu diisi.`);
+        }
+      }
+    });
+
+    // Pendidikan Non Formal
+    formData.non_formal_education.forEach((edu, index) => {
+      const hasAnyValue = edu.name?.trim() || edu.institution?.trim() || edu.certificate?.trim();
+      if (hasAnyValue) {
+        if (!edu.name?.trim() || !edu.institution?.trim() || !edu.certificate?.trim()) {
+          errors.push(`Pendidikan Non Formal: Pada baris ke-${index + 1}, seluruh kolom harus diisi jika salah satu diisi.`);
+        }
+      }
+    });
+
+    // Bahasa Asing / Daerah
+    formData.languages.forEach((lang, index) => {
+      const hasAnyValue = lang.name?.trim() || lang.spoken?.trim() || lang.written?.trim();
+      if (hasAnyValue) {
+        if (!lang.name?.trim() || !lang.spoken?.trim() || !lang.written?.trim()) {
+          errors.push(`Bahasa Asing / Daerah: Pada baris ke-${index + 1}, seluruh kolom harus diisi jika salah satu diisi.`);
+        }
+      }
+    });
+    
+    // Keterampilan / Keahlian Khusus
+    formData.skills.forEach((skill, index) => {
+      const hasAnyValue = skill.name?.trim() || skill.level?.trim();
+      if (hasAnyValue) {
+        if (!skill.name?.trim() || !skill.level?.trim()) {
+          errors.push(`Keterampilan / Keahlian: Pada baris ke-${index + 1}, seluruh kolom harus diisi jika salah satu diisi.`);
+        }
+      }
+    });
 
     // 7. Riwayat Pekerjaan point 1
-    const firstWork = formData.work_experience?.[0];
-    if (firstWork && firstWork.company_name?.trim() !== '') {
-      if (!firstWork.period_start || !firstWork.period_end) {
-        errors.push('Jika RIWAYAT PEKERJAAN diisi nama perusahaan, maka masa kerja (Periode) wajib diisi.');
+    formData.work_experience?.forEach((work, index) => {
+      const hasAnyValue = work.company_name?.trim() || work.period_start || work.period_end || work.company_address?.trim() || work.business_line?.trim() || work.current_position?.trim() || work.report_directly?.trim() || work.total_employees?.trim() || work.number_of_subordinates?.trim() || work.job_description?.trim() || work.reason_for_leaving?.trim();
+      
+      if (hasAnyValue) {
+        if (
+          !work.company_name?.trim() ||
+          !work.period_start ||
+          !work.period_end ||
+          !work.company_address?.trim() ||
+          !work.business_line?.trim() ||
+          !work.current_position?.trim() ||
+          !work.report_directly?.trim() ||
+          !work.total_employees?.trim() ||
+          !work.number_of_subordinates?.trim() ||
+          !work.job_description?.trim() ||
+          !work.reason_for_leaving?.trim()
+        ) {
+          errors.push(`Pada RIWAYAT PEKERJAAN ke-${index + 1}, jika salah satu kolom diisi, maka seluruh kolom pada baris tersebut wajib diisi (Masa Kerja hingga Alasan Keluar).`);
+        }
       }
-    }
+    });
 
     // 8. Riwayat Pekerjaan point 2-6
     if (!formData.work_achievements?.trim() || 
@@ -528,22 +611,48 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
     if (validRefs.length < 2) {
       errors.push('Sebutkan minimal 2 kenalan pada bagian Referensi (selain keluarga) yang dapat dihubungi.');
     }
+    formData.references.forEach((ref, index) => {
+      const hasAnyValue = ref.name?.trim() || ref.phone?.trim() || ref.occupation?.trim() || ref.company?.trim() || ref.relation?.trim();
+      if (hasAnyValue) {
+        if (!ref.name?.trim() || !ref.phone?.trim() || !ref.occupation?.trim() || !ref.company?.trim() || !ref.relation?.trim()) {
+           errors.push(`Referensi: Pada baris ke-${index + 1}, seluruh kolom harus diisi jika salah satu diisi.`);
+        }
+      }
+    });
 
     // 11. Referensi darurat
     if (!formData.emergency_contact?.name?.trim() || 
         !formData.emergency_contact?.phone?.trim() || 
-        !formData.emergency_contact?.relation?.trim()) {
-      errors.push('Referensi keluarga yang dapat dihubungi saat keadaan darurat wajib diisi nama, nomor, dan hubungannya.');
+        !formData.emergency_contact?.relation?.trim() ||
+        !formData.emergency_contact?.address?.trim()) {
+      errors.push('Referensi keluarga yang dapat dihubungi saat keadaan darurat wajib diisi nama, nomor, hubungan, dan alamatnya.');
     }
 
-    // 12. loyal_factor
-    if (!formData.loyal_factor?.trim()) {
-      errors.push('Faktor yang membuat Anda bertahan lama (loyal) di suatu perusahaan wajib diisi.');
+    // V. KETERANGAN LAINNYA
+    if (!formData.hospitalized?.trim()) errors.push('Keterangan Lainnya: Pertanyaan 1 (Sakit Berat) wajib diisi.');
+    if (formData.hospitalized === 'Ya' && !formData.hospitalized_explain?.trim()) errors.push('Keterangan Lainnya: Penjelasan sakit berat wajib diisi.');
+    
+    if (!formData.crime_involved?.trim()) errors.push('Keterangan Lainnya: Pertanyaan 2 (Tindak Pidana) wajib diisi.');
+    if (formData.crime_involved === 'Ya' && !formData.crime_explain?.trim()) errors.push('Keterangan Lainnya: Penjelasan tindak pidana wajib diisi.');
+    
+    if (!formData.worked_in_waruna?.trim()) errors.push('Keterangan Lainnya: Pertanyaan 3 (Bergabung di Waruna) wajib diisi.');
+    if (formData.worked_in_waruna === 'Ya' && (!formData.waruna_position?.trim() || !formData.waruna_period?.trim())) errors.push('Keterangan Lainnya: Posisi dan periode saat bergabung di Waruna wajib diisi.');
+    
+    if (!formData.applying_other_company?.trim()) errors.push('Keterangan Lainnya: Pertanyaan 4 (Proses di tempat lain) wajib diisi.');
+    if (formData.applying_other_company === 'Ya' && !formData.applying_other_explain?.trim()) errors.push('Keterangan Lainnya: Penjelasan proses seleksi di perusahaan lain wajib diisi.');
+
+    if (!formData.loyal_factor?.trim()) errors.push('Keterangan Lainnya: Pertanyaan 8 (Faktor loyal) wajib diisi.');
+    if (!formData.productivity_factor?.trim()) errors.push('Keterangan Lainnya: Pertanyaan 9 (Faktor produktivitas) wajib diisi.');
+
+    // Validasi Motivasi Bergabung
+    const mp = formData.motivation_priority;
+    if (!mp.work_location?.trim() || !mp.career_path?.trim() || !mp.self_actualization?.trim() || !mp.challenge?.trim() || !mp.working_environment?.trim() || (!hideSalary && !mp.salary_benefit?.trim())) {
+      errors.push('Keterangan Lainnya: Pertanyaan 10 (Skala Prioritas Motivasi Bergabung) wajib diisi secara lengkap (semua kotak).');
     }
 
     // 13. Kapan mulai bekerja
     if (!formData.join_date?.trim()) {
-      errors.push('Tanggal mulai bekerja (kapan Anda dapat mulai bekerja) wajib diisi.');
+      errors.push('Keterangan Lainnya: Tanggal mulai bekerja (kapan Anda dapat mulai bekerja) wajib diisi.');
     }
 
     if (errors.length > 0) {
@@ -803,7 +912,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
             </div>
 
             <div className="w-full md:w-48 shrink-0">
-              <label className="block text-sm font-semibold text-slate-700 mb-1 text-center">Photo <span className="text-xs font-normal text-red-500">*Maks. 2MB</span></label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1 text-center">Photo <span className="text-red-500">*</span> <span className="text-xs font-normal text-slate-500">(Maks. 3MB)</span></label>
               <div className="relative w-full aspect-[3/4] border-2 border-dashed border-slate-300 rounded-xl overflow-hidden hover:border-indigo-500 transition-colors group cursor-pointer bg-slate-50">
                 {!readOnly && (
                   <input 
@@ -882,13 +991,13 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">6. Suku <span className="text-slate-400 font-normal italic">(Ethnic)</span></label>
-                <input type="text" name="ethnic" value={formData.ethnic} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <label className="block text-sm font-semibold text-slate-700 mb-1">6. Suku <span className="text-slate-400 font-normal italic">(Ethnic)</span> <span className="text-red-500">*</span></label>
+                <input type="text" name="ethnic" required value={formData.ethnic} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">7. Hoby <span className="text-slate-400 font-normal italic">(Hobby)</span></label>
-                <input type="text" name="hobby" value={formData.hobby} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <label className="block text-sm font-semibold text-slate-700 mb-1">7. Hoby <span className="text-slate-400 font-normal italic">(Hobby)</span> <span className="text-red-500">*</span></label>
+                <input type="text" name="hobby" required value={formData.hobby} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
 
               <div className="md:col-span-2">
@@ -934,11 +1043,29 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-slate-700 mb-1">11. Alamat Saat Ini <span className="text-slate-400 font-normal italic">(Current Address)</span></label>
-                <textarea name="current_address" rows={2} value={formData.current_address} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">11. Alamat Saat Ini <span className="text-slate-400 font-normal italic">(Current Address)</span> <span className="text-red-500">*</span></label>
+                {!readOnly && (
+                  <label className="flex items-center gap-2 mb-2 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setFormData(prev => ({
+                            ...prev,
+                            current_address: prev.address_ktp,
+                            postal_code_current: prev.postal_code_ktp
+                          }));
+                        }
+                      }}
+                      className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" 
+                    />
+                    <span className="text-sm text-slate-600 italic">Sama dengan Alamat KTP</span>
+                  </label>
+                )}
+                <textarea name="current_address" required rows={2} value={formData.current_address} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
                 <div className="flex justify-end mt-2 items-center gap-2">
                   <span className="text-sm text-slate-600">Kode Pos <span className="text-slate-400 italic">(Postal Code)</span> :</span>
-                  <input type="text" name="postal_code_current" value={formData.postal_code_current} onChange={handleInputChange} className="w-32 px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+                  <input type="text" name="postal_code_current" required value={formData.postal_code_current} onChange={handleInputChange} className="w-32 px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
                 </div>
               </div>
 
@@ -984,8 +1111,8 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">16. Sosial Media <span className="text-slate-400 font-normal italic">(Social Media Account)</span></label>
-                <input type="text" name="social_media" value={formData.social_media} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <label className="block text-sm font-semibold text-slate-700 mb-1">16. Sosial Media <span className="text-slate-400 font-normal italic">(Social Media Account)</span> <span className="text-red-500">*</span></label>
+                <input type="text" name="social_media" required value={formData.social_media} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
 
               <div className="md:col-span-2">
@@ -1135,7 +1262,13 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                           <td className="px-4 py-2 font-medium text-slate-700 bg-slate-50 border-r border-slate-200 text-center">{index + 1}</td>
                           <td className="p-0 border-r border-slate-200"><input type="text" value={edu.name} onChange={(e) => handleTableChange('non_formal_education', index, 'name', e.target.value)} className="w-full h-full px-4 py-2 bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500" /></td>
                           <td className="p-0 border-r border-slate-200"><input type="text" value={edu.institution} onChange={(e) => handleTableChange('non_formal_education', index, 'institution', e.target.value)} className="w-full h-full px-4 py-2 bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500" /></td>
-                          <td className="p-0"><input type="text" value={edu.certificate} onChange={(e) => handleTableChange('non_formal_education', index, 'certificate', e.target.value)} className="w-full h-full px-4 py-2 bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 text-center" /></td>
+                          <td className="p-0">
+                            <select value={edu.certificate} onChange={(e) => handleTableChange('non_formal_education', index, 'certificate', e.target.value)} className="w-full h-full px-4 py-2 bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 text-center appearance-none">
+                              <option value="">-</option>
+                              <option value="Yes">Yes</option>
+                              <option value="No">No</option>
+                            </select>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -1361,7 +1494,24 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                                 <span className="text-slate-400 hidden sm:inline">s/d</span>
                                 <div className="flex items-center gap-2">
                                   <span className="text-slate-500">Sampai:</span>
-                                  <input type="date" value={exp.period_end} onChange={(e) => handleWorkExperienceChange(index, 'period_end', e.target.value)} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+                                  {exp.is_current_job ? (
+                                    <span className="px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-sm text-slate-500 font-medium whitespace-nowrap">Saat Ini</span>
+                                  ) : (
+                                    <input type="date" value={exp.period_end} onChange={(e) => handleWorkExperienceChange(index, 'period_end', e.target.value)} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+                                  )}
+                                  <label className="flex items-center gap-2 ml-2 cursor-pointer whitespace-nowrap">
+                                    <input 
+                                      type="checkbox" 
+                                      checked={exp.is_current_job || false} 
+                                      onChange={(e) => {
+                                        handleWorkExperienceChange(index, 'is_current_job', e.target.checked);
+                                        if (e.target.checked) handleWorkExperienceChange(index, 'period_end', 'Saat Ini');
+                                        else handleWorkExperienceChange(index, 'period_end', '');
+                                      }}
+                                      className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" 
+                                    />
+                                    <span className="text-sm text-slate-600">Sampai saat ini</span>
+                                  </label>
                                 </div>
                               </div>
                             </td>
@@ -1453,7 +1603,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
             <div className="space-y-8">
               {/* 1. Sakit Berat */}
               <div>
-                <h3 className="text-sm font-semibold text-slate-800 mb-2">1. Apakah Anda pernah menderita sakit berat hingga dirawat di rumah sakit <span className="text-slate-500 italic font-normal">(Have you ever been hospitalized or seriously ill in long time period)?</span></h3>
+                <h3 className="text-sm font-semibold text-slate-800 mb-2">1. Apakah Anda pernah menderita sakit berat hingga dirawat di rumah sakit <span className="text-slate-500 italic font-normal">(Have you ever been hospitalized or seriously ill in long time period)?</span> <span className="text-red-500">*</span></h3>
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                   <div className="flex gap-6 shrink-0">
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -1476,7 +1626,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
 
               {/* 2. Tindak Pidana */}
               <div>
-                <h3 className="text-sm font-semibold text-slate-800 mb-2">2. Apakah Anda pernah terlibat/menjadi terdakwa dalam tindak pidana/perdata? <span className="text-slate-500 italic font-normal">(Do you ever have involved in crime/civil issue)?</span></h3>
+                <h3 className="text-sm font-semibold text-slate-800 mb-2">2. Apakah Anda pernah terlibat/menjadi terdakwa dalam tindak pidana/perdata? <span className="text-slate-500 italic font-normal">(Do you ever have involved in crime/civil issue)?</span> <span className="text-red-500">*</span></h3>
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                   <div className="flex gap-6 shrink-0">
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -1499,7 +1649,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
 
               {/* 3. Pernah bergabung di Waruna */}
               <div>
-                <h3 className="text-sm font-semibold text-slate-800 mb-2">3. Apakah Anda pernah bergabung di Waruna Group? <span className="text-slate-500 italic font-normal">(Do you ever worked in Waruna Group?)</span></h3>
+                <h3 className="text-sm font-semibold text-slate-800 mb-2">3. Apakah Anda pernah bergabung di Waruna Group? <span className="text-slate-500 italic font-normal">(Do you ever worked in Waruna Group?)</span> <span className="text-red-500">*</span></h3>
                 <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                   <div className="flex gap-6 shrink-0 mt-2">
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -1528,7 +1678,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
 
               {/* 4. Proses seleksi di perusahaan lain */}
               <div>
-                <h3 className="text-sm font-semibold text-slate-800 mb-2">4. Apakah Anda sedang proses seleksi di perusahaan lain? <span className="text-slate-500 italic font-normal">Are you currently applying and being processed at another company?</span></h3>
+                <h3 className="text-sm font-semibold text-slate-800 mb-2">4. Apakah Anda sedang proses seleksi di perusahaan lain? <span className="text-slate-500 italic font-normal">Are you currently applying and being processed at another company?</span> <span className="text-red-500">*</span></h3>
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                   <div className="flex gap-6 shrink-0">
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -1636,13 +1786,13 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
 
               {/* 9. Faktor Produktivitas */}
               <div>
-                <h3 className="text-sm font-semibold text-slate-800 mb-2">9. Hal apa yang paling membuat Anda dapat meningkatkan produktivitas kerja? <span className="text-slate-500 italic font-normal">(What is the most important thing that can increase your work productivity?)</span></h3>
+                <h3 className="text-sm font-semibold text-slate-800 mb-2">9. Hal apa yang paling membuat Anda dapat meningkatkan produktivitas kerja? <span className="text-slate-500 italic font-normal">(What is the most important thing that can increase your work productivity?)</span> <span className="text-red-500">*</span></h3>
                 <textarea name="productivity_factor" value={formData.productivity_factor} onChange={handleInputChange} rows={3} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
               </div>
 
               {/* 10. Motivasi Bergabung */}
               <div>
-                <h3 className="text-sm font-semibold text-slate-800 mb-3">10. Urutkan berdasarkan skala prioritas dari 1 sampai 6 Motivasi Anda bergabung dengan Waruna Group. <span className="text-slate-500 italic font-normal">(Please arrange from 1 to 6 the motivation to join Waruna Group on below lists).</span></h3>
+                <h3 className="text-sm font-semibold text-slate-800 mb-3">10. Urutkan berdasarkan skala prioritas dari 1 sampai 6 Motivasi Anda bergabung dengan Waruna Group. <span className="text-slate-500 italic font-normal">(Please arrange from 1 to 6 the motivation to join Waruna Group on below lists).</span> <span className="text-red-500">*</span></h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-3 border border-slate-200 p-4 rounded-xl">
                     <div className="flex items-center gap-3">
@@ -1693,7 +1843,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-slate-700">Scan KTP <span className="text-slate-400 italic">(ID Card)</span> <span className="text-red-500">*</span> {!readOnly && <span className="text-xs text-red-500">Maks. 2MB</span>}</label>
+                <label className="block text-sm font-medium text-slate-700">Scan KTP <span className="text-slate-400 italic">(ID Card)</span> <span className="text-red-500">*</span> {!readOnly && <span className="text-xs text-red-500">Maks. 3MB</span>}</label>
                 {readOnly ? (
                   renderAttachment(initialData?.ktp_url, "KTP")
                 ) : (
@@ -1706,7 +1856,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                 )}
               </div>
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-slate-700">Scan Ijazah <span className="text-slate-400 italic">(Certificate)</span> <span className="text-red-500">*</span> {!readOnly && <span className="text-xs text-red-500">Maks. 2MB</span>}</label>
+                <label className="block text-sm font-medium text-slate-700">Scan Ijazah <span className="text-slate-400 italic">(Certificate)</span> <span className="text-red-500">*</span> {!readOnly && <span className="text-xs text-red-500">Maks. 3MB</span>}</label>
                 {readOnly ? (
                   renderAttachment(initialData?.ijazah_url, "Ijazah")
                 ) : (
@@ -1719,7 +1869,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                 )}
               </div>
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-slate-700">Scan Transkrip Nilai <span className="text-slate-400 italic">(Transcript)</span> <span className="text-red-500">*</span> {!readOnly && <span className="text-xs text-red-500">Maks. 2MB</span>}</label>
+                <label className="block text-sm font-medium text-slate-700">Scan Transkrip Nilai <span className="text-slate-400 italic">(Transcript)</span> <span className="text-red-500">*</span> {!readOnly && <span className="text-xs text-red-500">Maks. 3MB</span>}</label>
                 {readOnly ? (
                   renderAttachment(initialData?.transcript_url, "Transkrip Nilai")
                 ) : (
@@ -1732,7 +1882,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                 )}
               </div>
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-slate-700">Dokumen Lainnya <span className="text-slate-400 italic">(Other Documents)</span> {!readOnly && <span className="text-xs text-red-500">*Maks. 3 File, masing-masing 2MB</span>}</label>
+                <label className="block text-sm font-medium text-slate-700">Dokumen Lainnya <span className="text-slate-400 italic">(Other Documents)</span> {!readOnly && <span className="text-xs text-red-500">*Maks. 3 File, masing-masing 3MB</span>}</label>
                 {readOnly ? (
                   <div className="flex flex-col gap-2">
                     {initialData?.other_doc_url ? initialData.other_doc_url.split(',').map((url: string, index: number) => (
@@ -1870,7 +2020,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-sm font-bold text-slate-700">Upload Slip Gaji Terakhir <span className="text-slate-400 font-normal italic">*Diisi jika ada</span> {!readOnly && <span className="text-xs text-red-500">*Maks. 2MB</span>}</label>
+                  <label className="block text-sm font-bold text-slate-700">Upload Slip Gaji Terakhir <span className="text-slate-400 font-normal italic">*Diisi jika ada</span> {!readOnly && <span className="text-xs text-red-500">*Maks. 3MB</span>}</label>
                   {readOnly ? (
                     initialData?.payslip_url ? (
                       initialData.payslip_url.toLowerCase().includes('.pdf') ? (
@@ -1939,7 +2089,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                         </>
                       )}
                     </div>
-                    <p className="text-sm font-semibold text-slate-500">Tanda Tangan</p>
+                    <p className="text-sm font-semibold text-slate-500">Tanda Tangan <span className="text-red-500">*</span></p>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-200">
                     <div className="p-4 flex items-center justify-between sm:justify-center gap-4">
