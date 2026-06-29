@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../components/ui/use-toast';
-import { Loader2, Upload, CheckCircle2, Plus, Trash2, Eraser, FileText } from 'lucide-react';
+import { Loader2, Upload, CheckCircle2, Plus, Trash2, Eraser, FileText, Facebook, Instagram, Twitter, Linkedin, Youtube, Link } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import SignatureCanvas from 'react-signature-canvas';
 import { cn, getEmbedUrl } from '../lib/utils';
@@ -73,14 +73,50 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
     loadSiteSettings();
     if (initialData) {
       // Merge initialData with default formData to ensure all arrays/objects exist
-      setFormData(prev => ({ ...prev, ...initialData }));
+      setFormData(prev => {
+        let merged = { ...prev, ...initialData };
+        if (typeof initialData.social_media === 'string') {
+          merged.social_media = [{ platform: '', account: initialData.social_media }];
+        }
+        if (typeof initialData.driver_license === 'string') {
+          merged.driver_license = initialData.driver_license.split(',').map((s: string) => s.trim()).filter(Boolean);
+        }
+        if (typeof initialData.job_vacancy_info === 'string') {
+          merged.job_vacancy_info = initialData.job_vacancy_info.split(',').map((s: string) => s.trim()).filter(Boolean);
+        }
+        if (typeof initialData.driver_license_numbers !== 'object') {
+          merged.driver_license_numbers = {};
+          if (typeof initialData.driver_license_number === 'string' && merged.driver_license.length > 0) {
+             merged.driver_license_numbers[merged.driver_license[0]] = initialData.driver_license_number;
+          }
+        }
+        return merged;
+      });
       if (initialData.photo_url) setPhotoPreview(initialData.photo_url);
     } else {
       const draft = localStorage.getItem('application_draft');
       if (draft) {
         try {
           const parsed = JSON.parse(draft);
-          setFormData(prev => ({ ...prev, ...parsed }));
+          setFormData(prev => {
+            let merged = { ...prev, ...parsed };
+            if (typeof parsed.social_media === 'string') {
+              merged.social_media = [{ platform: '', account: parsed.social_media }];
+            }
+            if (typeof parsed.driver_license === 'string') {
+              merged.driver_license = parsed.driver_license.split(',').map((s: string) => s.trim()).filter(Boolean);
+            }
+            if (typeof parsed.job_vacancy_info === 'string') {
+              merged.job_vacancy_info = parsed.job_vacancy_info.split(',').map((s: string) => s.trim()).filter(Boolean);
+            }
+            if (typeof parsed.driver_license_numbers !== 'object') {
+              merged.driver_license_numbers = {};
+              if (typeof parsed.driver_license_number === 'string' && merged.driver_license?.length > 0) {
+                 merged.driver_license_numbers[merged.driver_license[0]] = parsed.driver_license_number;
+              }
+            }
+            return merged;
+          });
           toast({
             title: 'Draft Ditemukan',
             description: 'Kami telah memuat kembali data isian form Anda sebelumnya.',
@@ -124,9 +160,10 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
     height: '',
     weight: '',
     email: '',
-    social_media: '',
+    social_media: [{ platform: '', account: '' }] as { platform: string, account: string }[],
     driver_license: [] as string[],
     driver_license_number: '',
+    driver_license_numbers: {} as Record<string, string>,
     family_members: [
       { relation: 'Ayah (Father)', name: '', age: '', education: '', occupation: '' },
       { relation: 'Ibu (Mother)', name: '', age: '', education: '', occupation: '' },
@@ -385,6 +422,32 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
     }));
   };
 
+  const addSocialMedia = () => {
+    if (formData.social_media.length >= 2) return;
+    setFormData(prev => ({
+      ...prev,
+      social_media: [
+        ...prev.social_media,
+        { platform: '', account: '' }
+      ]
+    }));
+  };
+
+  const removeSocialMedia = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      social_media: prev.social_media.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleSocialMediaChange = (index: number, field: 'platform' | 'account', value: string) => {
+    setFormData(prev => {
+      const updated = [...prev.social_media];
+      updated[index] = { ...updated[index], [field]: value };
+      return { ...prev, social_media: updated };
+    });
+  };
+
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -493,7 +556,22 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
     if (!formData.current_address?.trim()) errors.push('Alamat Saat Ini wajib diisi.');
     if (!formData.residential_status?.trim()) errors.push('Status Tempat Tinggal wajib diisi.');
     if (!formData.height?.trim() || !formData.weight?.trim()) errors.push('Tinggi dan Berat Badan wajib diisi.');
-    if (!formData.social_media?.trim()) errors.push('Sosial Media wajib diisi.');
+    
+    let hasValidSocialMedia = false;
+    formData.social_media.forEach(sm => {
+      if (sm.platform?.trim() && sm.account?.trim()) {
+        hasValidSocialMedia = true;
+      }
+    });
+    if (!hasValidSocialMedia) errors.push('Minimal 1 Sosial Media (Platform dan Akun) wajib diisi.');
+
+    if (formData.driver_license.length > 0) {
+      for (const sim of formData.driver_license) {
+        if (!formData.driver_license_numbers?.[sim]?.trim()) {
+          errors.push(`Nomor SIM untuk ${sim} wajib diisi.`);
+        }
+      }
+    }
 
     // 5. Susunan Anggota Keluarga
     const ayah = formData.family_members.find(f => f.relation.includes('Ayah'));
@@ -558,10 +636,10 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
     
     // Keterampilan / Keahlian Khusus
     formData.skills.forEach((skill, index) => {
-      const hasAnyValue = skill.name?.trim() || skill.level?.trim();
+      const hasAnyValue = skill.ability?.trim() || skill.level?.trim();
       if (hasAnyValue) {
-        if (!skill.name?.trim() || !skill.level?.trim()) {
-          errors.push(`Keterampilan / Keahlian: Pada baris ke-${index + 1}, seluruh kolom harus diisi jika salah satu diisi.`);
+        if (!skill.ability?.trim() || !skill.level?.trim()) {
+          errors.push(`Keterampilan / Keahlian: Pada baris ke-${index + 1}, seluruh kolom (Keterampilan dan Level) harus diisi jika salah satu diisi.`);
         }
       }
     });
@@ -849,8 +927,12 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               <img src={siteSettings.career_logo_url} alt="Logo" className="w-12 h-12 sm:w-16 sm:h-16 object-contain bg-white rounded-xl p-1.5 shadow-sm shrink-0" />
             )}
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold">Formulir Data Pribadi Calon Karyawan</h1>
-              <p className="text-fuchsia-100 mt-1 text-sm sm:text-base">Harap isi data berikut dengan lengkap dan benar.</p>
+              <h1 className="text-xl sm:text-2xl font-bold">
+                Formulir Data Pribadi Calon Karyawan <span className="font-normal italic text-lg opacity-90 block sm:inline sm:ml-2">(Job Applicant Personal Information Form)</span>
+              </h1>
+              <p className="text-fuchsia-100 mt-1 text-sm sm:text-base">
+                Harap isi data berikut dengan lengkap dan benar. <span className="italic opacity-90 block sm:inline sm:ml-1">(Please ensure all the following details are filled out fully and correctly.)</span>
+              </p>
             </div>
           </div>
 
@@ -918,7 +1000,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
 
             <div className="w-full md:w-48 shrink-0">
               <label className="block text-sm font-semibold text-slate-700 mb-1 text-center">Photo <span className="text-red-500">*</span> <span className="text-xs font-normal text-slate-500">(Maks. 3MB)</span></label>
-              <div className="relative w-full aspect-[3/4] border-2 border-dashed border-slate-300 rounded-xl overflow-hidden hover:border-indigo-500 transition-colors group cursor-pointer bg-slate-50">
+              <div className="relative w-full aspect-[3/4] print:aspect-auto border-2 border-dashed border-slate-300 rounded-xl overflow-hidden hover:border-indigo-500 transition-colors group cursor-pointer bg-slate-50">
                 {!readOnly && (
                   <input 
                     type="file" 
@@ -928,7 +1010,7 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                   />
                 )}
                 {photoPreview ? (
-                  <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                  <img src={photoPreview} alt="Preview" className="w-full h-full object-cover print:h-auto print:w-full print:object-contain print:bg-transparent" />
                 ) : (
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 group-hover:text-indigo-500">
                     <Upload size={24} className="mb-2" />
@@ -979,15 +1061,19 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
 
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1">4. Agama <span className="text-slate-400 font-normal italic">(Religion)</span> <span className="text-red-500">*</span></label>
-                <select name="religion" value={formData.religion} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none">
-                  <option value="">Pilih Agama</option>
-                  <option value="Islam">Islam</option>
-                  <option value="Kristen Protestan">Kristen Protestan</option>
-                  <option value="Kristen Katolik">Kristen Katolik</option>
-                  <option value="Hindu">Hindu</option>
-                  <option value="Buddha">Buddha</option>
-                  <option value="Khonghucu">Khonghucu</option>
-                </select>
+                {readOnly ? (
+                  <input type="text" readOnly value={formData.religion || '-'} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none" />
+                ) : (
+                  <select name="religion" value={formData.religion} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none">
+                    <option value="">Pilih Agama</option>
+                    <option value="Islam">Islam</option>
+                    <option value="Kristen Protestan">Kristen Protestan</option>
+                    <option value="Kristen Katolik">Kristen Katolik</option>
+                    <option value="Hindu">Hindu</option>
+                    <option value="Buddha">Buddha</option>
+                    <option value="Khonghucu">Khonghucu</option>
+                  </select>
+                )}
               </div>
 
               <div>
@@ -1115,9 +1201,96 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                 <input type="email" name="email" required value={formData.email} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">16. Sosial Media <span className="text-slate-400 font-normal italic">(Social Media Account)</span> <span className="text-red-500">*</span></label>
-                <input type="text" name="social_media" required value={formData.social_media} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">16. Sosial Media <span className="text-slate-400 font-normal italic">(Social Media Account)</span> <span className="text-red-500">*</span></label>
+                <div className="space-y-3">
+                  {formData.social_media.map((sm, index) => (
+                    <div key={index} className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                      {readOnly ? (
+                        <div className="flex-1 flex items-center gap-3 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl">
+                          {sm.platform ? (
+                            <div className={cn(
+                              "p-2 rounded-lg text-white",
+                              sm.platform === 'LinkedIn' || sm.platform === 'Facebook' ? 'bg-blue-600 print:bg-blue-600' :
+                              sm.platform === 'Instagram' ? 'bg-pink-600 print:bg-pink-600' :
+                              sm.platform === 'YouTube' ? 'bg-red-600 print:bg-red-600' :
+                              sm.platform === 'Twitter' ? 'bg-slate-900 print:bg-slate-900' :
+                              'bg-indigo-600 print:bg-indigo-600'
+                            )} style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+                              {sm.platform === 'LinkedIn' && <Linkedin size={20} />}
+                              {sm.platform === 'Instagram' && <Instagram size={20} />}
+                              {sm.platform === 'Facebook' && <Facebook size={20} />}
+                              {sm.platform === 'Twitter' && <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>}
+                              {sm.platform === 'YouTube' && <Youtube size={20} />}
+                              {sm.platform === 'Lainnya' && <Link size={20} />}
+                            </div>
+                          ) : null}
+                          <div className="flex-1 overflow-hidden">
+                            <a 
+                              href={sm.account ? (sm.account.startsWith('http') ? sm.account : `https://${sm.account}`) : '#'} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className={cn(
+                                "font-medium break-all",
+                                sm.platform === 'LinkedIn' || sm.platform === 'Facebook' ? 'text-blue-600 print:text-blue-600' :
+                                sm.platform === 'Instagram' ? 'text-pink-600 print:text-pink-600' :
+                                sm.platform === 'YouTube' ? 'text-red-600 print:text-red-600' :
+                                sm.platform === 'Twitter' ? 'text-slate-800 print:text-slate-800' :
+                                'text-indigo-600 print:text-indigo-600'
+                              )}
+                            >
+                              {sm.account || '-'}
+                            </a>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex gap-2">
+                            {[
+                              { id: 'LinkedIn', icon: <Linkedin size={20} /> },
+                              { id: 'Instagram', icon: <Instagram size={20} /> },
+                              { id: 'Facebook', icon: <Facebook size={20} /> },
+                              { id: 'Twitter', icon: <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>, label: 'X' },
+                              { id: 'YouTube', icon: <Youtube size={20} /> },
+                              { id: 'Lainnya', icon: <Link size={20} /> }
+                            ].map(platform => (
+                              <button
+                                key={platform.id}
+                                type="button"
+                                onClick={() => handleSocialMediaChange(index, 'platform', platform.id)}
+                                className={cn(
+                                  "p-2 rounded-lg border transition-colors",
+                                  sm.platform === platform.id ? "bg-indigo-100 border-indigo-300 text-indigo-700 print:border-indigo-300 print:text-indigo-700" : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
+                                )}
+                                style={sm.platform === platform.id ? { WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' } : {}}
+                                title={platform.label || platform.id}
+                              >
+                                {platform.icon}
+                              </button>
+                            ))}
+                          </div>
+                          <input 
+                            type="text" 
+                            placeholder={sm.platform ? `Nama Akun / Link ${sm.platform}` : "Pilih platform lalu isi akun..."}
+                            value={sm.account} 
+                            onChange={(e) => handleSocialMediaChange(index, 'account', e.target.value)} 
+                            className="flex-1 w-full sm:w-auto px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                          />
+                          {index > 0 && (
+                            <button type="button" onClick={() => removeSocialMedia(index)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                              <Trash2 size={20} />
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  ))}
+                  {!readOnly && formData.social_media.length < 2 && (
+                    <button type="button" onClick={addSocialMedia} className="text-sm text-indigo-600 font-semibold hover:text-indigo-700 flex items-center gap-1">
+                      <Plus size={16} /> Tambah Sosial Media
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="md:col-span-2">
@@ -1130,15 +1303,43 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                         checked={formData.driver_license.includes(sim)}
                         onChange={(e) => handleCheckboxChange('driver_license', sim, e.target.checked)}
                         className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                        disabled={readOnly}
                       />
                       <span className="text-sm text-slate-700">{sim}</span>
                     </label>
                   ))}
-                  <div className="flex items-center gap-2 ml-auto">
-                    <span className="text-sm text-slate-600">Nomor SIM <span className="text-slate-400 italic">(license number)</span> :</span>
-                    <input type="text" name="driver_license_number" value={formData.driver_license_number} onChange={handleInputChange} className="w-48 px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
-                  </div>
                 </div>
+                {formData.driver_license.length > 0 && (
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {formData.driver_license.map(sim => (
+                      <div key={sim} className="flex items-center gap-3">
+                        <span className="text-sm font-medium text-slate-700 whitespace-nowrap min-w-[80px]">No. {sim}:</span>
+                        {readOnly ? (
+                          <div className="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-800">
+                            {formData.driver_license_numbers?.[sim] || formData.driver_license_number || '-'}
+                          </div>
+                        ) : (
+                          <input 
+                            type="text" 
+                            required
+                            placeholder={`Nomor ${sim}`}
+                            value={formData.driver_license_numbers?.[sim] || ''} 
+                            onChange={(e) => {
+                              setFormData(prev => ({
+                                ...prev,
+                                driver_license_numbers: {
+                                  ...prev.driver_license_numbers,
+                                  [sim]: e.target.value
+                                }
+                              }))
+                            }} 
+                            className="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" 
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
             </div>
@@ -1268,11 +1469,15 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                           <td className="p-0 border-r border-slate-200"><input type="text" value={edu.name} onChange={(e) => handleTableChange('non_formal_education', index, 'name', e.target.value)} className="w-full h-full px-4 py-2 bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500" /></td>
                           <td className="p-0 border-r border-slate-200"><input type="text" value={edu.institution} onChange={(e) => handleTableChange('non_formal_education', index, 'institution', e.target.value)} className="w-full h-full px-4 py-2 bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500" /></td>
                           <td className="p-0">
-                            <select value={edu.certificate} onChange={(e) => handleTableChange('non_formal_education', index, 'certificate', e.target.value)} className="w-full h-full px-4 py-2 bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 text-center appearance-none">
-                              <option value="">-</option>
-                              <option value="Yes">Yes</option>
-                              <option value="No">No</option>
-                            </select>
+                            {readOnly ? (
+                              <div className="w-full h-full px-4 py-2 text-center text-sm">{edu.certificate || '-'}</div>
+                            ) : (
+                              <select value={edu.certificate} onChange={(e) => handleTableChange('non_formal_education', index, 'certificate', e.target.value)} className="w-full h-full px-4 py-2 bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 text-center appearance-none cursor-pointer">
+                                <option value="">-</option>
+                                <option value="Yes">Yes</option>
+                                <option value="No">No</option>
+                              </select>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -1440,7 +1645,21 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                           <td className="p-0 border-r border-slate-200 text-center">
                             <input type="radio" name={`skill_level_${index}`} value="4" checked={skill.level === '4'} onChange={(e) => handleTableChange('skills', index, 'level', e.target.value)} className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500 cursor-pointer" />
                           </td>
-                          <td className="p-0"><input type="text" value={skill.certificate} onChange={(e) => handleTableChange('skills', index, 'certificate', e.target.value)} className="w-full h-full px-4 py-2 bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 text-center" /></td>
+                          <td className="p-0">
+                            {readOnly ? (
+                              <div className="w-full h-full px-4 py-2.5 text-center text-sm">{skill.certificate || '-'}</div>
+                            ) : (
+                              <select 
+                                value={skill.certificate} 
+                                onChange={(e) => handleTableChange('skills', index, 'certificate', e.target.value)} 
+                                className="w-full h-full px-4 py-2.5 bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 text-center appearance-none cursor-pointer"
+                              >
+                                <option value="">- Pilih -</option>
+                                <option value="Yes">Yes</option>
+                                <option value="No">No</option>
+                              </select>
+                            )}
+                          </td>
                           {!readOnly && (
                             <td className="p-0 text-center align-middle">
                               {index >= 3 && (
@@ -1833,9 +2052,9 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
               </div>
 
               {/* 11. Kapan mulai bekerja */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4 border border-slate-200 p-4 rounded-xl bg-slate-50">
+              <div className="flex flex-col sm:flex-row sm:items-center print:flex-col print:items-stretch gap-4 border border-slate-200 p-4 rounded-xl bg-slate-50">
                 <h3 className="text-sm font-semibold text-slate-800">11. Jika DITERIMA, kapan Anda dapat mulai bekerja <span className="text-slate-500 italic font-normal">(if you are ACCEPTED, when will you able to join)?</span> <span className="text-red-500">*</span></h3>
-                <input type="text" name="join_date" required value={formData.join_date} onChange={handleInputChange} className="flex-1 px-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="Contoh: 1 Bulan setelah pemberitahuan" />
+                <input type="text" name="join_date" required value={formData.join_date} onChange={handleInputChange} className="flex-1 w-full px-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="Contoh: 1 Bulan setelah pemberitahuan" />
               </div>
 
             </div>
@@ -2191,8 +2410,27 @@ export default function ApplicationForm({ readOnly = false, initialData = null, 
                   </div>
                 </div>
               )}
+              {initialData?.payslip_url && (
+                <div className="pdf-avoid-break">
+                  <h3 className="font-bold text-slate-700 mb-4">Slip Gaji Terakhir</h3>
+                  <div className="space-y-8">
+                    {initialData.payslip_url.split(',').map((url: string, index: number) => {
+                      const trimmedUrl = url.trim();
+                      return (
+                        <div key={index}>
+                          {trimmedUrl.split('?')[0].toLowerCase().endsWith('.pdf') ? (
+                            <PdfToImages url={trimmedUrl} title={`Slip Gaji ${index + 1}`} />
+                          ) : (
+                            <img src={trimmedUrl} alt={`Slip Gaji ${index + 1}`} className="max-w-full h-auto max-h-[800px] object-contain border border-slate-200 p-2 rounded-lg" />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               
-              {!initialData?.ktp_url && !initialData?.ijazah_url && !initialData?.transcript_url && !initialData?.other_doc_url && (
+              {!initialData?.ktp_url && !initialData?.ijazah_url && !initialData?.transcript_url && !initialData?.other_doc_url && !initialData?.payslip_url && (
                 <div className="text-slate-500 italic">Tidak ada lampiran dokumen.</div>
               )}
             </div>

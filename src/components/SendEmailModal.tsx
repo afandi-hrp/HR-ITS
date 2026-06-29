@@ -221,7 +221,7 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
             email: {
               subject,
               body: body.replace(/{{token}}/g, ''),
-              body_html: body.replace(/\*(.*?)\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>').replace(/{{token}}/g, ''),
+              body_html: body.replace(/\*(.*?)\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>').replace(/ {2}/g, '&nbsp;&nbsp;').replace(/{{token}}/g, ''),
               cc: ccEmail
             },
             token: tokenValue,

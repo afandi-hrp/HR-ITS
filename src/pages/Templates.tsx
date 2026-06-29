@@ -122,6 +122,113 @@ export default function Templates() {
     }
   };
 
+  const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const textarea = e.currentTarget;
+    const { value, selectionStart, selectionEnd } = textarea;
+
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const tabSpaces = '    '; // 4 spaces for tab
+      const newValue = value.substring(0, selectionStart) + tabSpaces + value.substring(selectionEnd);
+      setFormData({ ...formData, body_html: newValue });
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = selectionStart + tabSpaces.length;
+      }, 0);
+      return;
+    }
+
+    if (e.key === ' ' || e.code === 'Space') {
+      if (selectionStart !== selectionEnd) return;
+      const lines = value.substring(0, selectionStart).split('\n');
+      const currentLine = lines[lines.length - 1];
+
+      const listTriggerMatch = currentLine.match(/^(\s*)([0-9]+)\.$/);
+      const bulletTriggerMatch = currentLine.match(/^(\s*)([-*])$/);
+
+      if (listTriggerMatch) {
+        e.preventDefault();
+        const indent = listTriggerMatch[1] || '  ';
+        const number = listTriggerMatch[2];
+        const nextPrefix = `${indent}${number}.   `;
+        const newValue = value.substring(0, selectionStart - currentLine.length) + nextPrefix + value.substring(selectionEnd);
+        setFormData({ ...formData, body_html: newValue });
+        setTimeout(() => {
+          textarea.selectionStart = textarea.selectionEnd = selectionStart - currentLine.length + nextPrefix.length;
+        }, 0);
+        return;
+      } else if (bulletTriggerMatch) {
+        e.preventDefault();
+        const indent = bulletTriggerMatch[1] || '  ';
+        const bullet = bulletTriggerMatch[2];
+        const nextPrefix = `${indent}${bullet}   `;
+        const newValue = value.substring(0, selectionStart - currentLine.length) + nextPrefix + value.substring(selectionEnd);
+        setFormData({ ...formData, body_html: newValue });
+        setTimeout(() => {
+          textarea.selectionStart = textarea.selectionEnd = selectionStart - currentLine.length + nextPrefix.length;
+        }, 0);
+        return;
+      }
+    }
+
+    if (e.key === 'Enter') {
+      if (selectionStart !== selectionEnd) return;
+
+      const lines = value.substring(0, selectionStart).split('\n');
+      const currentLine = lines[lines.length - 1];
+
+      const listMatch = currentLine.match(/^(\s*)([0-9]+)\.(\s+)(.*)$/);
+      const bulletMatch = currentLine.match(/^(\s*)([-*])(\s+)(.*)$/);
+
+      if (listMatch) {
+        e.preventDefault();
+        const indent = listMatch[1];
+        const number = parseInt(listMatch[2], 10);
+        const spacesAfter = listMatch[3];
+        const content = listMatch[4];
+
+        if (content.trim() === '') {
+          // If empty, remove the list numbering and move to next line
+          const newValue = value.substring(0, selectionStart - currentLine.length) + '\n' + value.substring(selectionEnd);
+          setFormData({ ...formData, body_html: newValue });
+          setTimeout(() => {
+            textarea.selectionStart = textarea.selectionEnd = selectionStart - currentLine.length + 1;
+          }, 0);
+        } else {
+          // Add the next number
+          const nextPrefix = `\n${indent}${number + 1}.${spacesAfter}`;
+          const newValue = value.substring(0, selectionStart) + nextPrefix + value.substring(selectionEnd);
+          setFormData({ ...formData, body_html: newValue });
+          setTimeout(() => {
+            textarea.selectionStart = textarea.selectionEnd = selectionStart + nextPrefix.length;
+          }, 0);
+        }
+      } else if (bulletMatch) {
+        e.preventDefault();
+        const indent = bulletMatch[1];
+        const bullet = bulletMatch[2];
+        const spacesAfter = bulletMatch[3];
+        const content = bulletMatch[4];
+
+        if (content.trim() === '') {
+          // If empty, remove the bullet and move to next line
+          const newValue = value.substring(0, selectionStart - currentLine.length) + '\n' + value.substring(selectionEnd);
+          setFormData({ ...formData, body_html: newValue });
+          setTimeout(() => {
+            textarea.selectionStart = textarea.selectionEnd = selectionStart - currentLine.length + 1;
+          }, 0);
+        } else {
+          // Add another bullet
+          const nextPrefix = `\n${indent}${bullet}${spacesAfter}`;
+          const newValue = value.substring(0, selectionStart) + nextPrefix + value.substring(selectionEnd);
+          setFormData({ ...formData, body_html: newValue });
+          setTimeout(() => {
+            textarea.selectionStart = textarea.selectionEnd = selectionStart + nextPrefix.length;
+          }, 0);
+        }
+      }
+    }
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
@@ -309,6 +416,7 @@ export default function Templates() {
                 <textarea
                   value={formData.body_html}
                   onChange={(e) => setFormData({ ...formData, body_html: e.target.value })}
+                  onKeyDown={handleTextareaKeyDown}
                   placeholder="Ketik isi email di sini..."
                   rows={8}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm resize-none leading-relaxed"

@@ -38,6 +38,8 @@ export interface Candidate {
   interview_status?: string;
   notes?: string;
   archived_at?: string;
+  is_blacklisted?: boolean;
+  blacklist_reason?: string;
   linked_external_id?: string | null;
   ai_biodata_summary?: any | null;
   ai_psikotes_summary?: any | null;

@@ -76,6 +76,7 @@ export default function Screening() {
   const [rejectReason, setRejectReason] = useState('');
   const [rejectCcEmail, setRejectCcEmail] = useState('');
   const [sendRejectEmail, setSendRejectEmail] = useState(false);
+  const [addToBlacklist, setAddToBlacklist] = useState(false);
   const [rejectEmailTemplates, setRejectEmailTemplates] = useState<any[]>([]);
   const [selectedRejectTemplate, setSelectedRejectTemplate] = useState('');
   const [acceptModalData, setAcceptModalData] = useState<Candidate | null>(null);
@@ -166,6 +167,30 @@ export default function Screening() {
         }
         return d;
       });
+
+      try {
+        const { data: blacklistData } = await supabase
+          .from('blacklisted_candidates')
+          .select('email, phone, identity_number, reason');
+          
+        if (blacklistData && blacklistData.length > 0) {
+          typedData = typedData.map(d => {
+            const nik = d.external_data?.raw_data?.identity_number;
+            const blacklistedRecord = blacklistData.find(b => 
+              (b.email && b.email === d.email) ||
+              (b.phone && b.phone === d.phone) ||
+              (nik && b.identity_number && b.identity_number === nik)
+            );
+            return { 
+              ...d, 
+              is_blacklisted: !!blacklistedRecord,
+              blacklist_reason: blacklistedRecord?.reason 
+            };
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching blacklist:', err);
+      }
     }
 
     if (error) {
@@ -253,7 +278,7 @@ export default function Screening() {
                     email: {
                       subject: processedSubject,
                       body: processedBody,
-                      body_html: processedBody.replace(/\*(.*?)\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>'),
+                      body_html: processedBody.replace(/\*(.*?)\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>').replace(/ {2}/g, '&nbsp;&nbsp;'),
                       cc: rejectCcEmail || undefined
                     },
                     sender: {
@@ -274,10 +299,28 @@ export default function Screening() {
           }
         }
 
+        if (addToBlacklist) {
+          try {
+            const { error: blacklistError } = await supabase
+              .from('blacklisted_candidates')
+              .insert({
+                email: rejectModalData.email,
+                phone: rejectModalData.phone,
+                identity_number: rejectModalData.external_data?.raw_data?.identity_number,
+                reason: rejectReason.trim() || 'Ditolak dan di-blacklist pada tahap Screening Awal'
+              });
+            if (blacklistError) console.error('Gagal menambahkan ke blacklist:', blacklistError);
+            else toast({ title: 'Blacklist', description: 'Kandidat berhasil ditambahkan ke daftar Blacklist.' });
+          } catch (err) {
+            console.error('Error inserting to blacklist:', err);
+          }
+        }
+
         setCandidates(candidates.filter(c => c.id !== rejectModalData.id));
         setRejectModalData(null);
         setRejectReason('');
         setRejectCcEmail('');
+        setAddToBlacklist(false);
       } else {
         throw new Error(result.error || 'Gagal memindahkan kandidat');
       }
@@ -681,12 +724,19 @@ export default function Screening() {
                         )}
                       </Link>
                       <div className="min-w-0">
-                        <h3 className="text-base font-bold text-slate-900 truncate">
+                        <h3 className="text-base font-bold text-slate-900 truncate flex items-center gap-2">
                           <Link to={`/candidates/${candidate.id}`} className="hover:text-indigo-600 transition-colors">
                             {candidate.full_name}
                           </Link>
                         </h3>
-                        <p className="text-xs text-slate-500 truncate">{candidate.email}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {candidate.is_blacklisted && (
+                            <span className="px-1.5 py-0.5 bg-black text-white text-[10px] font-bold rounded" title={candidate.blacklist_reason || 'Kandidat berada dalam daftar blacklist'}>
+                              BLACKLIST
+                            </span>
+                          )}
+                          <p className="text-xs text-slate-500 truncate">{candidate.email}</p>
+                        </div>
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1 shrink-0">
@@ -828,6 +878,11 @@ export default function Screening() {
                               <Link to={`/candidates/${candidate.id}`} className="hover:text-indigo-600 transition-colors">
                                 {candidate.full_name}
                               </Link>
+                              {candidate.is_blacklisted && (
+                                <span className="px-2 py-0.5 bg-black text-white text-[10px] font-bold rounded" title={candidate.blacklist_reason || 'Kandidat berada dalam daftar blacklist'}>
+                                  BLACKLIST
+                                </span>
+                              )}
                               <span className="text-slate-400 font-normal">:</span> <span className="text-slate-500 font-medium text-sm">{candidate.email}</span>
                             </h3>
                              {!isExpanded && (
@@ -1327,7 +1382,24 @@ export default function Screening() {
                 />
               </div>
 
-              <div className="text-left mt-4 border-t border-slate-100 pt-4">
+              <div className="text-left mt-4 border-t border-slate-100 pt-4 space-y-4">
+                <label className="flex items-center gap-2 cursor-pointer group bg-slate-50 p-3 rounded-lg border border-slate-200">
+                  <input
+                    type="checkbox"
+                    checked={addToBlacklist}
+                    onChange={(e) => setAddToBlacklist(e.target.checked)}
+                    className="w-4 h-4 text-slate-900 rounded border-slate-300 focus:ring-slate-900 transition-all cursor-pointer"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-slate-900 group-hover:text-black transition-colors">
+                      Tambahkan ke Blacklist
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      Kandidat akan ditandai hitam jika melamar kembali di masa depan.
+                    </span>
+                  </div>
+                </label>
+
                 <label className="flex items-center gap-2 cursor-pointer group">
                   <input
                     type="checkbox"
@@ -1378,6 +1450,7 @@ export default function Screening() {
                   setRejectModalData(null);
                   setRejectReason('');
                   setRejectCcEmail('');
+                  setAddToBlacklist(false);
                 }}
                 className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-all"
               >
