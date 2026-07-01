@@ -1,28 +1,46 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
-import { EmailTemplate } from '../types';
-import { Search, Plus, Mail, Trash2, Edit2, RefreshCcw, X, Save, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useToast } from '../components/ui/use-toast';
-import ConfirmModal from '../components/ConfirmModal';
-import { cn } from '../lib/utils';
+import React, { useState, useEffect } from "react";
+import { supabase } from "../lib/supabase";
+import { EmailTemplate } from "../types";
+import {
+  Search,
+  Plus,
+  Mail,
+  Trash2,
+  Edit2,
+  RefreshCcw,
+  X,
+  Save,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+import { useToast } from "../components/ui/use-toast";
+import ConfirmModal from "../components/ConfirmModal";
+import { cn } from "../lib/utils";
 
 export default function Templates() {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(
+    null,
+  );
   const [formData, setFormData] = useState({
-    name: '',
-    subject: '',
-    body_html: ''
+    name: "",
+    subject: "",
+    body_html: "",
   });
   const [saving, setSaving] = useState(false);
-  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; id: string; loading?: boolean }>({ isOpen: false, id: '', loading: false });
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    id: string;
+    loading?: boolean;
+  }>({ isOpen: false, id: "", loading: false });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -39,19 +57,25 @@ export default function Templates() {
     const to = from + itemsPerPage - 1;
 
     let query = supabase
-      .from('email_templates')
-      .select('*', { count: 'exact' });
+      .from("email_templates")
+      .select("*", { count: "exact" });
 
     if (debouncedSearch) {
-      query = query.or(`name.ilike.%${debouncedSearch}%,subject.ilike.%${debouncedSearch}%`);
+      query = query.or(
+        `name.ilike.%${debouncedSearch}%,subject.ilike.%${debouncedSearch}%`,
+      );
     }
 
     const { data, error, count } = await query
-      .order('created_at', { ascending: false })
+      .order("created_at", { ascending: false })
       .range(from, to);
 
     if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     } else {
       setTemplates(data || []);
       setTotalItems(count || 0);
@@ -69,14 +93,14 @@ export default function Templates() {
       setFormData({
         name: template.name,
         subject: template.subject,
-        body_html: template.body_html
+        body_html: template.body_html,
       });
     } else {
       setEditingTemplate(null);
       setFormData({
-        name: '',
-        subject: '',
-        body_html: ''
+        name: "",
+        subject: "",
+        body_html: "",
       });
     }
     setIsModalOpen(true);
@@ -84,19 +108,33 @@ export default function Templates() {
 
   const handleSave = async () => {
     if (!formData.name || !formData.subject || !formData.body_html) {
-      toast({ title: 'Peringatan', description: 'Semua field harus diisi.', variant: 'destructive' });
+      toast({
+        title: "Peringatan",
+        description: "Semua field harus diisi.",
+        variant: "destructive",
+      });
       return;
     }
 
     setSaving(true);
-    const { error } = editingTemplate 
-      ? await supabase.from('email_templates').update(formData).eq('id', editingTemplate.id)
-      : await supabase.from('email_templates').insert([formData]);
+    const { error } = editingTemplate
+      ? await supabase
+          .from("email_templates")
+          .update(formData)
+          .eq("id", editingTemplate.id)
+      : await supabase.from("email_templates").insert([formData]);
 
     if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     } else {
-      toast({ title: 'Berhasil', description: `Template berhasil ${editingTemplate ? 'diperbarui' : 'disimpan'}.` });
+      toast({
+        title: "Berhasil",
+        description: `Template berhasil ${editingTemplate ? "diperbarui" : "disimpan"}.`,
+      });
       setIsModalOpen(false);
       fetchTemplates();
     }
@@ -108,38 +146,51 @@ export default function Templates() {
   };
 
   const executeDelete = async (id: string) => {
-    setConfirmModal(prev => ({ ...prev, loading: true }));
+    setConfirmModal((prev) => ({ ...prev, loading: true }));
     try {
-      const { error } = await supabase.from('email_templates').delete().eq('id', id);
+      const { error } = await supabase
+        .from("email_templates")
+        .delete()
+        .eq("id", id);
       if (error) {
-        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
       } else {
-        toast({ title: 'Berhasil', description: 'Template berhasil dihapus.' });
+        toast({ title: "Berhasil", description: "Template berhasil dihapus." });
         fetchTemplates();
       }
     } finally {
-      setConfirmModal(prev => ({ ...prev, loading: false, isOpen: false }));
+      setConfirmModal((prev) => ({ ...prev, loading: false, isOpen: false }));
     }
   };
 
-  const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleTextareaKeyDown = (
+    e: React.KeyboardEvent<HTMLTextAreaElement>,
+  ) => {
     const textarea = e.currentTarget;
     const { value, selectionStart, selectionEnd } = textarea;
 
-    if (e.key === 'Tab') {
+    if (e.key === "Tab") {
       e.preventDefault();
-      const tabSpaces = '    '; // 4 spaces for tab
-      const newValue = value.substring(0, selectionStart) + tabSpaces + value.substring(selectionEnd);
+      const tabSpaces = "    "; // 4 spaces for tab
+      const newValue =
+        value.substring(0, selectionStart) +
+        tabSpaces +
+        value.substring(selectionEnd);
       setFormData({ ...formData, body_html: newValue });
       setTimeout(() => {
-        textarea.selectionStart = textarea.selectionEnd = selectionStart + tabSpaces.length;
+        textarea.selectionStart = textarea.selectionEnd =
+          selectionStart + tabSpaces.length;
       }, 0);
       return;
     }
 
-    if (e.key === ' ' || e.code === 'Space') {
+    if (e.key === " " || e.code === "Space") {
       if (selectionStart !== selectionEnd) return;
-      const lines = value.substring(0, selectionStart).split('\n');
+      const lines = value.substring(0, selectionStart).split("\n");
       const currentLine = lines[lines.length - 1];
 
       const listTriggerMatch = currentLine.match(/^(\s*)([0-9]+)\.$/);
@@ -147,33 +198,41 @@ export default function Templates() {
 
       if (listTriggerMatch) {
         e.preventDefault();
-        const indent = listTriggerMatch[1] || '  ';
+        const indent = listTriggerMatch[1] || "  ";
         const number = listTriggerMatch[2];
         const nextPrefix = `${indent}${number}.   `;
-        const newValue = value.substring(0, selectionStart - currentLine.length) + nextPrefix + value.substring(selectionEnd);
+        const newValue =
+          value.substring(0, selectionStart - currentLine.length) +
+          nextPrefix +
+          value.substring(selectionEnd);
         setFormData({ ...formData, body_html: newValue });
         setTimeout(() => {
-          textarea.selectionStart = textarea.selectionEnd = selectionStart - currentLine.length + nextPrefix.length;
+          textarea.selectionStart = textarea.selectionEnd =
+            selectionStart - currentLine.length + nextPrefix.length;
         }, 0);
         return;
       } else if (bulletTriggerMatch) {
         e.preventDefault();
-        const indent = bulletTriggerMatch[1] || '  ';
+        const indent = bulletTriggerMatch[1] || "  ";
         const bullet = bulletTriggerMatch[2];
         const nextPrefix = `${indent}${bullet}   `;
-        const newValue = value.substring(0, selectionStart - currentLine.length) + nextPrefix + value.substring(selectionEnd);
+        const newValue =
+          value.substring(0, selectionStart - currentLine.length) +
+          nextPrefix +
+          value.substring(selectionEnd);
         setFormData({ ...formData, body_html: newValue });
         setTimeout(() => {
-          textarea.selectionStart = textarea.selectionEnd = selectionStart - currentLine.length + nextPrefix.length;
+          textarea.selectionStart = textarea.selectionEnd =
+            selectionStart - currentLine.length + nextPrefix.length;
         }, 0);
         return;
       }
     }
 
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       if (selectionStart !== selectionEnd) return;
 
-      const lines = value.substring(0, selectionStart).split('\n');
+      const lines = value.substring(0, selectionStart).split("\n");
       const currentLine = lines[lines.length - 1];
 
       const listMatch = currentLine.match(/^(\s*)([0-9]+)\.(\s+)(.*)$/);
@@ -186,20 +245,28 @@ export default function Templates() {
         const spacesAfter = listMatch[3];
         const content = listMatch[4];
 
-        if (content.trim() === '') {
+        if (content.trim() === "") {
           // If empty, remove the list numbering and move to next line
-          const newValue = value.substring(0, selectionStart - currentLine.length) + '\n' + value.substring(selectionEnd);
+          const newValue =
+            value.substring(0, selectionStart - currentLine.length) +
+            "\n" +
+            value.substring(selectionEnd);
           setFormData({ ...formData, body_html: newValue });
           setTimeout(() => {
-            textarea.selectionStart = textarea.selectionEnd = selectionStart - currentLine.length + 1;
+            textarea.selectionStart = textarea.selectionEnd =
+              selectionStart - currentLine.length + 1;
           }, 0);
         } else {
           // Add the next number
           const nextPrefix = `\n${indent}${number + 1}.${spacesAfter}`;
-          const newValue = value.substring(0, selectionStart) + nextPrefix + value.substring(selectionEnd);
+          const newValue =
+            value.substring(0, selectionStart) +
+            nextPrefix +
+            value.substring(selectionEnd);
           setFormData({ ...formData, body_html: newValue });
           setTimeout(() => {
-            textarea.selectionStart = textarea.selectionEnd = selectionStart + nextPrefix.length;
+            textarea.selectionStart = textarea.selectionEnd =
+              selectionStart + nextPrefix.length;
           }, 0);
         }
       } else if (bulletMatch) {
@@ -209,20 +276,28 @@ export default function Templates() {
         const spacesAfter = bulletMatch[3];
         const content = bulletMatch[4];
 
-        if (content.trim() === '') {
+        if (content.trim() === "") {
           // If empty, remove the bullet and move to next line
-          const newValue = value.substring(0, selectionStart - currentLine.length) + '\n' + value.substring(selectionEnd);
+          const newValue =
+            value.substring(0, selectionStart - currentLine.length) +
+            "\n" +
+            value.substring(selectionEnd);
           setFormData({ ...formData, body_html: newValue });
           setTimeout(() => {
-            textarea.selectionStart = textarea.selectionEnd = selectionStart - currentLine.length + 1;
+            textarea.selectionStart = textarea.selectionEnd =
+              selectionStart - currentLine.length + 1;
           }, 0);
         } else {
           // Add another bullet
           const nextPrefix = `\n${indent}${bullet}${spacesAfter}`;
-          const newValue = value.substring(0, selectionStart) + nextPrefix + value.substring(selectionEnd);
+          const newValue =
+            value.substring(0, selectionStart) +
+            nextPrefix +
+            value.substring(selectionEnd);
           setFormData({ ...formData, body_html: newValue });
           setTimeout(() => {
-            textarea.selectionStart = textarea.selectionEnd = selectionStart + nextPrefix.length;
+            textarea.selectionStart = textarea.selectionEnd =
+              selectionStart + nextPrefix.length;
           }, 0);
         }
       }
@@ -233,14 +308,14 @@ export default function Templates() {
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
         <div className="space-y-1">
-          <h1 className="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">
+          <h1 className="text-4xl font-extrabold tracking-tight text-[#3D2C44]">
             Template Email
           </h1>
-          <p className="text-sm font-medium text-slate-500 max-w-xl">
+          <p className="text-sm font-medium text-[#3D2C44]/70 max-w-xl">
             Kelola template pesan untuk korespondensi kandidat.
           </p>
         </div>
-        <button 
+        <button
           onClick={() => handleOpenModal()}
           className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all"
         >
@@ -251,35 +326,38 @@ export default function Templates() {
 
       <div className="bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-          <input 
-            type="text" 
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            size={18}
+          />
+          <input
+            type="text"
             placeholder="Cari template..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
           />
         </div>
-        <button 
+        <button
           onClick={() => {
-            setSearch('');
+            setSearch("");
           }}
           className="px-4 py-2 text-sm font-bold text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm"
         >
           Reset
         </button>
-        <button 
+        <button
           onClick={fetchTemplates}
           className="p-2.5 text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm flex items-center justify-center"
         >
-          <RefreshCcw size={20} className={loading ? 'animate-spin' : ''} />
+          <RefreshCcw size={20} className={loading ? "animate-spin" : ""} />
         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {templates.map((template) => (
-          <div 
-            key={template.id} 
+          <div
+            key={template.id}
             onClick={() => handleOpenModal(template)}
             className="bg-white/70 backdrop-blur-md p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-indigo-500 hover:ring-2 hover:ring-indigo-200 hover:shadow-md transition-all group cursor-pointer flex flex-col"
           >
@@ -287,16 +365,24 @@ export default function Templates() {
               <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg shrink-0">
                 <Mail size={20} />
               </div>
-              <h3 className="font-bold text-slate-900 break-words mt-0.5">{template.name}</h3>
+              <h3 className="font-bold text-slate-900 break-words mt-0.5">
+                {template.name}
+              </h3>
             </div>
             <div className="space-y-2 mb-6 flex-1">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Subjek</p>
-              <p className="text-sm text-slate-600 line-clamp-2">{template.subject}</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                Subjek
+              </p>
+              <p className="text-sm text-slate-600 line-clamp-2">
+                {template.subject}
+              </p>
             </div>
             <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-auto">
-              <span className="text-xs text-slate-400">Dibuat: {new Date(template.created_at).toLocaleDateString()}</span>
+              <span className="text-xs text-slate-400">
+                Dibuat: {new Date(template.created_at).toLocaleDateString()}
+              </span>
               <div className="flex gap-2">
-                <button 
+                <button
                   onClick={(e) => {
                     e.stopPropagation();
                     handleDelete(template.id);
@@ -316,8 +402,12 @@ export default function Templates() {
             <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
               <Mail className="text-slate-400" size={32} />
             </div>
-            <h3 className="text-lg font-bold text-slate-900">Belum ada template</h3>
-            <p className="text-slate-500">Buat template email pertama Anda untuk mempercepat screening.</p>
+            <h3 className="text-lg font-bold text-slate-900">
+              Belum ada template
+            </h3>
+            <p className="text-slate-500">
+              Buat template email pertama Anda untuk mempercepat screening.
+            </p>
           </div>
         )}
       </div>
@@ -326,44 +416,57 @@ export default function Templates() {
       {totalItems > itemsPerPage && (
         <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-6">
           <div className="text-sm text-slate-500">
-            Menampilkan <span className="font-medium text-slate-900">{(currentPage - 1) * itemsPerPage + 1}</span> hingga <span className="font-medium text-slate-900">{Math.min(currentPage * itemsPerPage, totalItems)}</span> dari <span className="font-medium text-slate-900">{totalItems}</span>
+            Menampilkan{" "}
+            <span className="font-medium text-slate-900">
+              {(currentPage - 1) * itemsPerPage + 1}
+            </span>{" "}
+            hingga{" "}
+            <span className="font-medium text-slate-900">
+              {Math.min(currentPage * itemsPerPage, totalItems)}
+            </span>{" "}
+            dari{" "}
+            <span className="font-medium text-slate-900">{totalItems}</span>
           </div>
           <div className="flex items-center gap-2">
             <button
               disabled={currentPage === 1}
-              onClick={() => setCurrentPage(prev => prev - 1)}
+              onClick={() => setCurrentPage((prev) => prev - 1)}
               className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               Sebelumnya
             </button>
             <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(5, Math.ceil(totalItems / itemsPerPage)) }, (_, i) => {
-                let pageNum = currentPage;
-                const totalPages = Math.ceil(totalItems / itemsPerPage);
-                if (totalPages <= 5) pageNum = i + 1;
-                else if (currentPage <= 3) pageNum = i + 1;
-                else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
-                else pageNum = currentPage - 2 + i;
+              {Array.from(
+                { length: Math.min(5, Math.ceil(totalItems / itemsPerPage)) },
+                (_, i) => {
+                  let pageNum = currentPage;
+                  const totalPages = Math.ceil(totalItems / itemsPerPage);
+                  if (totalPages <= 5) pageNum = i + 1;
+                  else if (currentPage <= 3) pageNum = i + 1;
+                  else if (currentPage >= totalPages - 2)
+                    pageNum = totalPages - 4 + i;
+                  else pageNum = currentPage - 2 + i;
 
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => setCurrentPage(pageNum)}
-                    className={cn(
-                      "w-8 h-8 rounded-lg text-sm font-medium transition-all",
-                      currentPage === pageNum 
-                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-100" 
-                        : "text-slate-600 hover:bg-slate-100"
-                    )}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              })}
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={cn(
+                        "w-8 h-8 rounded-lg text-sm font-medium transition-all",
+                        currentPage === pageNum
+                          ? "bg-indigo-600 text-white shadow-md shadow-indigo-100"
+                          : "text-slate-600 hover:bg-slate-100",
+                      )}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                },
+              )}
             </div>
             <button
               disabled={currentPage === Math.ceil(totalItems / itemsPerPage)}
-              onClick={() => setCurrentPage(prev => prev + 1)}
+              onClick={() => setCurrentPage((prev) => prev + 1)}
               className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               Selanjutnya
@@ -381,41 +484,58 @@ export default function Templates() {
                 <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg shrink-0">
                   <Mail size={20} />
                 </div>
-                <h2 className="text-lg sm:text-xl font-bold text-slate-900">{editingTemplate ? 'Edit Template' : 'Tambah Template Baru'}</h2>
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900">
+                  {editingTemplate ? "Edit Template" : "Tambah Template Baru"}
+                </h2>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all shrink-0">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all shrink-0"
+              >
                 <X size={20} />
               </button>
             </div>
 
             <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 overflow-y-auto">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Nama Template</label>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  Nama Template
+                </label>
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                   placeholder="Contoh: Undangan Interview Tahap 1"
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium"
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Subject Email</label>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  Subject Email
+                </label>
                 <input
                   type="text"
                   value={formData.subject}
-                  onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, subject: e.target.value })
+                  }
                   placeholder="Contoh: Undangan Interview - {{posisi}}"
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium"
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Isi Pesan Email</label>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  Isi Pesan Email
+                </label>
                 <textarea
                   value={formData.body_html}
-                  onChange={(e) => setFormData({ ...formData, body_html: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, body_html: e.target.value })
+                  }
                   onKeyDown={handleTextareaKeyDown}
                   placeholder="Ketik isi email di sini..."
                   rows={8}
@@ -423,38 +543,77 @@ export default function Templates() {
                 />
                 <div className="p-3 bg-amber-50 rounded-lg border border-amber-100 mt-2">
                   <p className="text-[10px] sm:text-xs text-amber-700 font-medium leading-relaxed">
-                    Gunakan variabel dan format berikut untuk isi otomatis: <br/>
-                    <code className="bg-white px-1 rounded">{"{{nama}}"}</code> - Nama Kandidat <br/>
-                    <code className="bg-white px-1 rounded">{"{{email_kandidat}}"}</code> - Email Kandidat <br/>
-                    <code className="bg-white px-1 rounded">{"{{posisi}}"}</code> - Posisi Dilamar <br/>
-                    <code className="bg-white px-1 rounded">{"{{pendidikan_terakhir}}"}</code> - Pendidikan <br/>
-                    <code className="bg-white px-1 rounded">{"{{pengalaman_kerja}}"}</code> - Pengalaman <br/>
-                    <code className="bg-white px-1 rounded">{"{{jadwal}}"}</code> - Waktu & Lokasi (Umum) <br/>
-                    <code className="bg-white px-1 rounded">{"{{jadwal_interview}}"}</code> - Detail Waktu Interview <br/>
-                    <code className="bg-white px-1 rounded">{"{{jadwal_psikotes}}"}</code> - Detail Waktu Psikotes <br/>
-                    <code className="bg-white px-1 rounded">{"{{lokasi_interview}}"}</code> - Lokasi Interview <br/>
-                    <code className="bg-white px-1 rounded">{"{{lokasi_psikotes}}"}</code> - Lokasi Psikotes <br/>
-                    <code className="bg-white px-1 rounded">{"{{token}}"}</code> - Token Psikotes <br/>
-                    <code className="bg-white px-1 rounded">{"*teks*"}</code> - Teks Cetak Tebal (*Teks Tebal*)
+                    Gunakan variabel dan format berikut untuk isi otomatis:{" "}
+                    <br />
+                    <code className="bg-white px-1 rounded">
+                      {"{{nama}}"}
+                    </code>{" "}
+                    - Nama Kandidat <br />
+                    <code className="bg-white px-1 rounded">
+                      {"{{email_kandidat}}"}
+                    </code>{" "}
+                    - Email Kandidat <br />
+                    <code className="bg-white px-1 rounded">
+                      {"{{posisi}}"}
+                    </code>{" "}
+                    - Posisi Dilamar <br />
+                    <code className="bg-white px-1 rounded">
+                      {"{{pendidikan_terakhir}}"}
+                    </code>{" "}
+                    - Pendidikan <br />
+                    <code className="bg-white px-1 rounded">
+                      {"{{pengalaman_kerja}}"}
+                    </code>{" "}
+                    - Pengalaman <br />
+                    <code className="bg-white px-1 rounded">
+                      {"{{jadwal}}"}
+                    </code>{" "}
+                    - Waktu & Lokasi (Umum) <br />
+                    <code className="bg-white px-1 rounded">
+                      {"{{jadwal_interview}}"}
+                    </code>{" "}
+                    - Detail Waktu Interview <br />
+                    <code className="bg-white px-1 rounded">
+                      {"{{jadwal_psikotes}}"}
+                    </code>{" "}
+                    - Detail Waktu Psikotes <br />
+                    <code className="bg-white px-1 rounded">
+                      {"{{lokasi_interview}}"}
+                    </code>{" "}
+                    - Lokasi Interview <br />
+                    <code className="bg-white px-1 rounded">
+                      {"{{lokasi_psikotes}}"}
+                    </code>{" "}
+                    - Lokasi Psikotes <br />
+                    <code className="bg-white px-1 rounded">
+                      {"{{token}}"}
+                    </code>{" "}
+                    - Token Psikotes <br />
+                    <code className="bg-white px-1 rounded">{"*teks*"}</code> -
+                    Teks Cetak Tebal (*Teks Tebal*)
                   </p>
                 </div>
               </div>
             </div>
 
             <div className="p-4 sm:p-6 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row gap-3 shrink-0">
-              <button 
+              <button
                 onClick={() => setIsModalOpen(false)}
                 className="flex-1 py-3 bg-white text-slate-600 font-bold rounded-xl border border-slate-200 hover:bg-slate-50 transition-all"
               >
                 Batal
               </button>
-              <button 
+              <button
                 onClick={handleSave}
                 disabled={saving}
                 className="flex-[2] py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
               >
-                {saving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
-                {saving ? 'Menyimpan...' : 'Simpan Template'}
+                {saving ? (
+                  <Loader2 size={20} className="animate-spin" />
+                ) : (
+                  <Save size={20} />
+                )}
+                {saving ? "Menyimpan..." : "Simpan Template"}
               </button>
             </div>
           </div>

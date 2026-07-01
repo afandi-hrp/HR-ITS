@@ -110,7 +110,7 @@ export default function NotificationPanel({ isMobile = false }: { isMobile?: boo
       .limit(50);
 
     if (error) {
-      console.error('Error fetching notifications:', error);
+      console.warn('Error fetching notifications:', error);
       return;
     }
 

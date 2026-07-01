@@ -1,131 +1,177 @@
-import React, { useState, useEffect } from 'react';
-import { fetchWithRetry } from '../lib/utils';
-import { supabase } from '../lib/supabase';
-import { User } from '@supabase/supabase-js';
-import { 
-  User as UserIcon, 
-  Camera, 
-  Lock, 
+import React, { useState, useEffect } from "react";
+import { fetchWithRetry } from "../lib/utils";
+import { supabase } from "../lib/supabase";
+import { User } from "@supabase/supabase-js";
+import {
+  User as UserIcon,
+  Camera,
+  Lock,
   Save,
   Loader2,
   Settings as SettingsIcon,
-  X
-} from 'lucide-react';
-import { useToast } from '../components/ui/use-toast';
+  X,
+} from "lucide-react";
+import { useToast } from "../components/ui/use-toast";
 
 export default function Settings() {
   const [user, setUser] = useState<User | null>(null);
-  const [fullName, setFullName] = useState('');
-  const [n8nWebhookUrl, setN8nWebhookUrl] = useState('');
-  const [cvWebhookUrl, setCvWebhookUrl] = useState('');
-  const [publicCvWebhookUrl, setPublicCvWebhookUrl] = useState('');
-  const [sheetWebhookUrl, setSheetWebhookUrl] = useState('');
-  const [otpWebhookUrl, setOtpWebhookUrl] = useState('');
-  const [waWebhookUrl, setWaWebhookUrl] = useState('');
-  const [externalDataDeleteWebhookUrl, setExternalDataDeleteWebhookUrl] = useState('');
-  const [aiAnalysisWebhookUrl, setAiAnalysisWebhookUrl] = useState('');
-  const [aiPsikotesWebhookUrl, setAiPsikotesWebhookUrl] = useState('');
-  const [aiInterviewWebhookUrl, setAiInterviewWebhookUrl] = useState('');
-  const [loginLogoUrl, setLoginLogoUrl] = useState('');
-  const [careerLogoUrl, setCareerLogoUrl] = useState('');
-  const [sidebarLogoUrl, setSidebarLogoUrl] = useState('');
-  const [sidebarText, setSidebarText] = useState('');
-  const [loginAnimationUrl, setLoginAnimationUrl] = useState('');
-  const [faviconUrl, setFaviconUrl] = useState('');
+  const [fullName, setFullName] = useState("");
+  const [n8nWebhookUrl, setN8nWebhookUrl] = useState("");
+  const [cvWebhookUrl, setCvWebhookUrl] = useState("");
+  const [publicCvWebhookUrl, setPublicCvWebhookUrl] = useState("");
+  const [sheetWebhookUrl, setSheetWebhookUrl] = useState("");
+  const [otpWebhookUrl, setOtpWebhookUrl] = useState("");
+  const [waWebhookUrl, setWaWebhookUrl] = useState("");
+  const [externalDataDeleteWebhookUrl, setExternalDataDeleteWebhookUrl] =
+    useState("");
+  const [aiAnalysisWebhookUrl, setAiAnalysisWebhookUrl] = useState("");
+  const [aiPsikotesWebhookUrl, setAiPsikotesWebhookUrl] = useState("");
+  const [aiInterviewWebhookUrl, setAiInterviewWebhookUrl] = useState("");
+  const [loginLogoUrl, setLoginLogoUrl] = useState("");
+  const [careerLogoUrl, setCareerLogoUrl] = useState("");
+  const [sidebarLogoUrl, setSidebarLogoUrl] = useState("");
+  const [sidebarText, setSidebarText] = useState("");
+  const [loginAnimationUrl, setLoginAnimationUrl] = useState("");
+  const [faviconUrl, setFaviconUrl] = useState("");
   const [jobSources, setJobSources] = useState<string[]>([]);
   const [careerJobSources, setCareerJobSources] = useState<string[]>([]);
-  const [newJobSource, setNewJobSource] = useState('');
-  const [newCareerJobSource, setNewCareerJobSource] = useState('');
+  const [newJobSource, setNewJobSource] = useState("");
+  const [newCareerJobSource, setNewCareerJobSource] = useState("");
   const [loading, setLoading] = useState(false);
-  const [uploadingAssets, setUploadingAssets] = useState<Record<string, boolean>>({});
-  const [testingWebhook, setTestingWebhook] = useState<'email' | 'cv' | 'public_cv' | 'sheet' | 'otp' | 'wa' | 'external_data_delete' | 'ai_analysis' | 'ai_psikotes' | 'ai_interview' | null>(null);
+  const [uploadingAssets, setUploadingAssets] = useState<
+    Record<string, boolean>
+  >({});
+  const [testingWebhook, setTestingWebhook] = useState<
+    | "email"
+    | "cv"
+    | "public_cv"
+    | "sheet"
+    | "otp"
+    | "wa"
+    | "external_data_delete"
+    | "ai_analysis"
+    | "ai_psikotes"
+    | "ai_interview"
+    | null
+  >(null);
   const [passwordLoading, setPasswordLoading] = useState(false);
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showWebhookSettings, setShowWebhookSettings] = useState(false);
   const [showDisplaySettings, setShowDisplaySettings] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
-  const [pinType, setPinType] = useState<'webhook' | 'display' | null>(null);
-  const [pinInput, setPinInput] = useState('');
-  const [webhookPin, setWebhookPin] = useState('Waruna#10'); // Default PIN
-  const [displayPin, setDisplayPin] = useState('Waruna#10'); // Default PIN
-  const [newWebhookPin, setNewWebhookPin] = useState('');
-  const [newDisplayPin, setNewDisplayPin] = useState('');
+  const [pinType, setPinType] = useState<"webhook" | "display" | null>(null);
+  const [pinInput, setPinInput] = useState("");
+  const [webhookPin, setWebhookPin] = useState("Waruna#10"); // Default PIN
+  const [displayPin, setDisplayPin] = useState("Waruna#10"); // Default PIN
+  const [newWebhookPin, setNewWebhookPin] = useState("");
+  const [newDisplayPin, setNewDisplayPin] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user }, error }) => {
-      if (error) {
-        console.warn('Settings getUser error:', error.message);
-      }
-      setUser(user);
-      setFullName(user?.user_metadata.full_name || '');
-      setN8nWebhookUrl(user?.user_metadata.n8n_webhook_url || '');
-      setCvWebhookUrl(user?.user_metadata.cv_webhook_url || '');
-      setPublicCvWebhookUrl(user?.user_metadata.public_cv_webhook_url || '');
-      setSheetWebhookUrl(user?.user_metadata.sheet_webhook_url || '');
-      setOtpWebhookUrl(user?.user_metadata.otp_webhook_url || '');
-      setWaWebhookUrl(user?.user_metadata.wa_webhook_url || '');
-      setExternalDataDeleteWebhookUrl(user?.user_metadata.external_data_delete_webhook_url || '');
-      setAiAnalysisWebhookUrl(user?.user_metadata.ai_analysis_webhook_url || '');
-      setAiPsikotesWebhookUrl(user?.user_metadata.ai_psikotes_webhook_url || '');
-      setAiInterviewWebhookUrl(user?.user_metadata.ai_interview_webhook_url || '');
-      if (user?.user_metadata.webhook_pin) setWebhookPin(user.user_metadata.webhook_pin);
-      if (user?.user_metadata.display_pin) setDisplayPin(user.user_metadata.display_pin);
-    }).catch((err) => {
-      console.warn('Settings failed to get user:', err);
-    });
+    supabase.auth
+      .getUser()
+      .then(({ data: { user }, error }) => {
+        if (error) {
+          console.warn("Settings getUser error:", error.message);
+        }
+        setUser(user);
+        setFullName(user?.user_metadata.full_name || "");
+        setN8nWebhookUrl(user?.user_metadata.n8n_webhook_url || "");
+        setCvWebhookUrl(user?.user_metadata.cv_webhook_url || "");
+        setPublicCvWebhookUrl(user?.user_metadata.public_cv_webhook_url || "");
+        setSheetWebhookUrl(user?.user_metadata.sheet_webhook_url || "");
+        setOtpWebhookUrl(user?.user_metadata.otp_webhook_url || "");
+        setWaWebhookUrl(user?.user_metadata.wa_webhook_url || "");
+        setExternalDataDeleteWebhookUrl(
+          user?.user_metadata.external_data_delete_webhook_url || "",
+        );
+        setAiAnalysisWebhookUrl(
+          user?.user_metadata.ai_analysis_webhook_url || "",
+        );
+        setAiPsikotesWebhookUrl(
+          user?.user_metadata.ai_psikotes_webhook_url || "",
+        );
+        setAiInterviewWebhookUrl(
+          user?.user_metadata.ai_interview_webhook_url || "",
+        );
+        if (user?.user_metadata.webhook_pin)
+          setWebhookPin(user.user_metadata.webhook_pin);
+        if (user?.user_metadata.display_pin)
+          setDisplayPin(user.user_metadata.display_pin);
+      })
+      .catch((err) => {
+        console.warn("Settings failed to get user:", err);
+      });
 
-    supabase.from('site_settings').select('*').eq('id', 1).single().then(({ data }) => {
-      if (data) {
-        setLoginLogoUrl(data.login_logo_url || '');
-        setCareerLogoUrl(data.career_logo_url || '');
-        setSidebarLogoUrl(data.sidebar_logo_url || '');
-        setSidebarText(data.sidebar_text || '');
-        setLoginAnimationUrl(data.login_animation_url || '');
-        setFaviconUrl(data.favicon_url || '');
-        setJobSources(data.job_sources && data.job_sources.length > 0 ? data.job_sources : [
-          'Campus Hiring',
-          'Email',
-          'Instagram',
-          'Jobstreet',
-          'LinkedIn',
-          'Referensi',
-          'Walk In',
-          'TGT Program',
-          'Head Hunter',
-          'Others'
-        ]);
-        setCareerJobSources(data.career_job_sources && data.career_job_sources.length > 0 ? data.career_job_sources : [
-          'Campus Hiring',
-          'Email',
-          'Instagram',
-          'Jobstreet',
-          'LinkedIn',
-          'Referensi',
-          'Walk In',
-          'TGT Program',
-          'Head Hunter',
-          'Others'
-        ]);
-      }
-    }).catch(err => console.warn('Failed to get site settings:', err));
+    supabase
+      .from("site_settings")
+      .select("*")
+      .eq("id", 1)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setLoginLogoUrl(data.login_logo_url || "");
+          setCareerLogoUrl(data.career_logo_url || "");
+          setSidebarLogoUrl(data.sidebar_logo_url || "");
+          setSidebarText(data.sidebar_text || "");
+          setLoginAnimationUrl(data.login_animation_url || "");
+          setFaviconUrl(data.favicon_url || "");
+          setJobSources(
+            data.job_sources && data.job_sources.length > 0
+              ? data.job_sources
+              : [
+                  "Campus Hiring",
+                  "Email",
+                  "Instagram",
+                  "Jobstreet",
+                  "LinkedIn",
+                  "Referensi",
+                  "Walk In",
+                  "TGT Program",
+                  "Head Hunter",
+                  "Others",
+                ],
+          );
+          setCareerJobSources(
+            data.career_job_sources && data.career_job_sources.length > 0
+              ? data.career_job_sources
+              : [
+                  "Campus Hiring",
+                  "Email",
+                  "Instagram",
+                  "Jobstreet",
+                  "LinkedIn",
+                  "Referensi",
+                  "Walk In",
+                  "TGT Program",
+                  "Head Hunter",
+                  "Others",
+                ],
+          );
+        }
+      })
+      .catch((err) => console.warn("Failed to get site settings:", err));
   }, []);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
-    if (n8nWebhookUrl.trim() === cvWebhookUrl.trim() && n8nWebhookUrl.trim() !== '') {
-      toast({ 
-        title: 'Peringatan', 
-        description: 'Anda menggunakan URL yang sama untuk kedua webhook. Pastikan workflow n8n Anda dapat menangani kedua jenis event tersebut.',
-        variant: 'default'
+
+    if (
+      n8nWebhookUrl.trim() === cvWebhookUrl.trim() &&
+      n8nWebhookUrl.trim() !== ""
+    ) {
+      toast({
+        title: "Peringatan",
+        description:
+          "Anda menggunakan URL yang sama untuk kedua webhook. Pastikan workflow n8n Anda dapat menangani kedua jenis event tersebut.",
+        variant: "default",
       });
     }
-    
+
     const { error } = await supabase.auth.updateUser({
-      data: { 
+      data: {
         full_name: fullName,
         n8n_webhook_url: n8nWebhookUrl.trim(),
         cv_webhook_url: cvWebhookUrl.trim(),
@@ -138,65 +184,111 @@ export default function Settings() {
         ai_psikotes_webhook_url: aiPsikotesWebhookUrl.trim(),
         ai_interview_webhook_url: aiInterviewWebhookUrl.trim(),
         webhook_pin: newWebhookPin || webhookPin,
-        display_pin: newDisplayPin || displayPin
-      }
+        display_pin: newDisplayPin || displayPin,
+      },
     });
 
     if (newWebhookPin) {
       setWebhookPin(newWebhookPin);
-      setNewWebhookPin('');
+      setNewWebhookPin("");
     }
     if (newDisplayPin) {
       setDisplayPin(newDisplayPin);
-      setNewDisplayPin('');
+      setNewDisplayPin("");
     }
 
-    const { error: settingsError } = await supabase.from('site_settings').upsert({
-      id: 1,
-      login_logo_url: loginLogoUrl.trim(),
-      career_logo_url: careerLogoUrl.trim(),
-      sidebar_logo_url: sidebarLogoUrl.trim(),
-      sidebar_text: sidebarText.trim(),
-      login_animation_url: loginAnimationUrl.trim(),
-      favicon_url: faviconUrl.trim(),
-      job_sources: jobSources,
-      career_job_sources: careerJobSources,
-      updated_at: new Date().toISOString()
-    });
+    const { error: settingsError } = await supabase
+      .from("site_settings")
+      .upsert({
+        id: 1,
+        login_logo_url: loginLogoUrl.trim(),
+        career_logo_url: careerLogoUrl.trim(),
+        sidebar_logo_url: sidebarLogoUrl.trim(),
+        sidebar_text: sidebarText.trim(),
+        login_animation_url: loginAnimationUrl.trim(),
+        favicon_url: faviconUrl.trim(),
+        job_sources: jobSources,
+        career_job_sources: careerJobSources,
+        updated_at: new Date().toISOString(),
+      });
 
     if (error || settingsError) {
-      toast({ title: 'Error', description: error?.message || settingsError?.message, variant: 'destructive' });
+      toast({
+        title: "Error",
+        description: error?.message || settingsError?.message,
+        variant: "destructive",
+      });
     } else {
-      toast({ title: 'Berhasil', description: 'Profil dan pengaturan diperbarui.' });
+      toast({
+        title: "Berhasil",
+        description: "Profil dan pengaturan diperbarui.",
+      });
     }
     setLoading(false);
   };
 
-  const testWebhook = async (type: 'email' | 'cv' | 'public_cv' | 'sheet' | 'otp' | 'wa' | 'external_data_delete' | 'ai_analysis' | 'ai_psikotes' | 'ai_interview') => {
-    const url = type === 'email' ? n8nWebhookUrl : type === 'cv' ? cvWebhookUrl : type === 'public_cv' ? publicCvWebhookUrl : type === 'sheet' ? sheetWebhookUrl : type === 'otp' ? otpWebhookUrl : type === 'wa' ? waWebhookUrl : type === 'external_data_delete' ? externalDataDeleteWebhookUrl : type === 'ai_analysis' ? aiAnalysisWebhookUrl : type === 'ai_psikotes' ? aiPsikotesWebhookUrl : aiInterviewWebhookUrl;
+  const testWebhook = async (
+    type:
+      | "email"
+      | "cv"
+      | "public_cv"
+      | "sheet"
+      | "otp"
+      | "wa"
+      | "external_data_delete"
+      | "ai_analysis"
+      | "ai_psikotes"
+      | "ai_interview",
+  ) => {
+    const url =
+      type === "email"
+        ? n8nWebhookUrl
+        : type === "cv"
+          ? cvWebhookUrl
+          : type === "public_cv"
+            ? publicCvWebhookUrl
+            : type === "sheet"
+              ? sheetWebhookUrl
+              : type === "otp"
+                ? otpWebhookUrl
+                : type === "wa"
+                  ? waWebhookUrl
+                  : type === "external_data_delete"
+                    ? externalDataDeleteWebhookUrl
+                    : type === "ai_analysis"
+                      ? aiAnalysisWebhookUrl
+                      : type === "ai_psikotes"
+                        ? aiPsikotesWebhookUrl
+                        : aiInterviewWebhookUrl;
     if (!url) {
-      toast({ title: 'Peringatan', description: 'Silakan masukkan URL webhook terlebih dahulu.', variant: 'destructive' });
+      toast({
+        title: "Peringatan",
+        description: "Silakan masukkan URL webhook terlebih dahulu.",
+        variant: "destructive",
+      });
       return;
     }
 
     setTestingWebhook(type);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetchWithRetry('/api/n8n/trigger', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const response = await fetchWithRetry("/api/n8n/trigger", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({
-          type: 'test',
+          type: "test",
           payload: {
-            event: 'test_connection',
+            event: "test_connection",
             type: type,
             url: url,
             timestamp: new Date().toISOString(),
-            message: 'Testing connection from HR Dashboard'
-          }
+            message: "Testing connection from HR Dashboard",
+          },
         }),
       });
 
@@ -209,19 +301,25 @@ export default function Settings() {
       }
 
       if (response.ok) {
-        toast({ 
-          title: 'Berhasil', 
-          description: data.message || `Koneksi ke webhook ${type === 'email' ? 'Email' : type === 'cv' ? 'CV Internal' : type === 'public_cv' ? 'CV Publik' : type === 'wa' ? 'WhatsApp' : type === 'otp' ? 'OTP' : 'Google Sheets'} berhasil!` 
+        toast({
+          title: "Berhasil",
+          description:
+            data.message ||
+            `Koneksi ke webhook ${type === "email" ? "Email" : type === "cv" ? "CV Internal" : type === "public_cv" ? "CV Publik" : type === "wa" ? "WhatsApp" : type === "otp" ? "OTP" : "Google Sheets"} berhasil!`,
         });
       } else {
-        toast({ 
-          title: 'Gagal', 
-          description: data.error || `Koneksi gagal: ${response.statusText}`, 
-          variant: 'destructive' 
+        toast({
+          title: "Gagal",
+          description: data.error || `Koneksi gagal: ${response.statusText}`,
+          variant: "destructive",
         });
       }
     } catch (error: any) {
-      toast({ title: 'Error', description: error.message || 'Terjadi kesalahan saat mencoba koneksi.', variant: 'destructive' });
+      toast({
+        title: "Error",
+        description: error.message || "Terjadi kesalahan saat mencoba koneksi.",
+        variant: "destructive",
+      });
     } finally {
       setTestingWebhook(null);
     }
@@ -230,61 +328,85 @@ export default function Settings() {
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      toast({ title: 'Error', description: 'Password tidak cocok.', variant: 'destructive' });
+      toast({
+        title: "Error",
+        description: "Password tidak cocok.",
+        variant: "destructive",
+      });
       return;
     }
 
     setPasswordLoading(true);
     const { error } = await supabase.auth.updateUser({
-      password: newPassword
+      password: newPassword,
     });
 
     if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     } else {
-      toast({ title: 'Berhasil', description: 'Password diperbarui.' });
-      setNewPassword('');
-      setConfirmPassword('');
+      toast({ title: "Berhasil", description: "Password diperbarui." });
+      setNewPassword("");
+      setConfirmPassword("");
     }
     setPasswordLoading(false);
   };
 
   const handlePinSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Hash the input pin for comparison (simulated SHA512 for now, ideally done backend)
     const encoder = new TextEncoder();
     const data = encoder.encode(pinInput);
-    const hashBuffer = await crypto.subtle.digest('SHA-512', data);
+    const hashBuffer = await crypto.subtle.digest("SHA-512", data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashedPinInput = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    const hashedPinInput = hashArray
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
 
     // For demonstration, we'll check against plain text or hashed if stored that way
     // In a real scenario, you'd only store and compare hashes.
-    // Here we'll just use the plain text comparison for simplicity as requested, 
+    // Here we'll just use the plain text comparison for simplicity as requested,
     // but the user asked if it can be SHA512. We'll simulate the check.
-    
-    const isWebhookValid = pinType === 'webhook' && (pinInput === webhookPin || hashedPinInput === webhookPin);
-    const isDisplayValid = pinType === 'display' && (pinInput === displayPin || hashedPinInput === displayPin);
+
+    const isWebhookValid =
+      pinType === "webhook" &&
+      (pinInput === webhookPin || hashedPinInput === webhookPin);
+    const isDisplayValid =
+      pinType === "display" &&
+      (pinInput === displayPin || hashedPinInput === displayPin);
 
     if (isWebhookValid) {
       setShowWebhookSettings(true);
       setShowPinModal(false);
-      setPinInput('');
+      setPinInput("");
       setPinType(null);
-      toast({ title: 'Akses Diberikan', description: 'Pengaturan Webhook sekarang dapat diakses.' });
+      toast({
+        title: "Akses Diberikan",
+        description: "Pengaturan Webhook sekarang dapat diakses.",
+      });
     } else if (isDisplayValid) {
       setShowDisplaySettings(true);
       setShowPinModal(false);
-      setPinInput('');
+      setPinInput("");
       setPinType(null);
-      toast({ title: 'Akses Diberikan', description: 'Pengaturan Tampilan sekarang dapat diakses.' });
+      toast({
+        title: "Akses Diberikan",
+        description: "Pengaturan Tampilan sekarang dapat diakses.",
+      });
     } else {
-      toast({ title: 'PIN Salah', description: 'PIN yang Anda masukkan tidak valid.', variant: 'destructive' });
+      toast({
+        title: "PIN Salah",
+        description: "PIN yang Anda masukkan tidak valid.",
+        variant: "destructive",
+      });
     }
   };
 
-  const openPinModal = (type: 'webhook' | 'display') => {
+  const openPinModal = (type: "webhook" | "display") => {
     setPinType(type);
     setShowPinModal(true);
   };
@@ -294,67 +416,86 @@ export default function Settings() {
     if (!file || !user) return;
 
     setLoading(true);
-    const fileExt = file.name.split('.').pop();
+    const fileExt = file.name.split(".").pop();
     const fileName = `${user.id}-${Math.random()}.${fileExt}`;
     const filePath = `${fileName}`;
 
     const { error: uploadError } = await supabase.storage
-      .from('avatars')
+      .from("avatars")
       .upload(filePath, file);
 
     if (uploadError) {
-      toast({ title: 'Error', description: uploadError.message, variant: 'destructive' });
+      toast({
+        title: "Error",
+        description: uploadError.message,
+        variant: "destructive",
+      });
       setLoading(false);
       return;
     }
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('avatars')
-      .getPublicUrl(filePath);
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("avatars").getPublicUrl(filePath);
 
     const { error: updateError } = await supabase.auth.updateUser({
-      data: { avatar_url: publicUrl }
+      data: { avatar_url: publicUrl },
     });
 
     if (updateError) {
-      toast({ title: 'Error', description: updateError.message, variant: 'destructive' });
+      toast({
+        title: "Error",
+        description: updateError.message,
+        variant: "destructive",
+      });
     } else {
-      toast({ title: 'Berhasil', description: 'Foto profil diperbarui.' });
+      toast({ title: "Berhasil", description: "Foto profil diperbarui." });
     }
     setLoading(false);
   };
 
-  const handleAssetUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'loginLogo' | 'careerLogo' | 'sidebarLogo' | 'favicon' | 'loginAnimation') => {
+  const handleAssetUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    type:
+      "loginLogo" | "careerLogo" | "sidebarLogo" | "favicon" | "loginAnimation",
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploadingAssets(prev => ({ ...prev, [type]: true }));
-    const fileExt = file.name.split('.').pop();
+    setUploadingAssets((prev) => ({ ...prev, [type]: true }));
+    const fileExt = file.name.split(".").pop();
     const fileName = `${type}-${Date.now()}.${fileExt}`;
     const filePath = `${fileName}`;
 
     const { error: uploadError } = await supabase.storage
-      .from('site-assets')
+      .from("site-assets")
       .upload(filePath, file);
 
     if (uploadError) {
-      toast({ title: 'Error', description: uploadError.message, variant: 'destructive' });
-      setUploadingAssets(prev => ({ ...prev, [type]: false }));
+      toast({
+        title: "Error",
+        description: uploadError.message,
+        variant: "destructive",
+      });
+      setUploadingAssets((prev) => ({ ...prev, [type]: false }));
       return;
     }
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('site-assets')
-      .getPublicUrl(filePath);
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("site-assets").getPublicUrl(filePath);
 
-    if (type === 'loginLogo') setLoginLogoUrl(publicUrl);
-    if (type === 'careerLogo') setCareerLogoUrl(publicUrl);
-    if (type === 'sidebarLogo') setSidebarLogoUrl(publicUrl);
-    if (type === 'favicon') setFaviconUrl(publicUrl);
-    if (type === 'loginAnimation') setLoginAnimationUrl(publicUrl);
+    if (type === "loginLogo") setLoginLogoUrl(publicUrl);
+    if (type === "careerLogo") setCareerLogoUrl(publicUrl);
+    if (type === "sidebarLogo") setSidebarLogoUrl(publicUrl);
+    if (type === "favicon") setFaviconUrl(publicUrl);
+    if (type === "loginAnimation") setLoginAnimationUrl(publicUrl);
 
-    toast({ title: 'Berhasil', description: 'File berhasil diunggah. Jangan lupa klik Simpan Perubahan.' });
-    setUploadingAssets(prev => ({ ...prev, [type]: false }));
+    toast({
+      title: "Berhasil",
+      description: "File berhasil diunggah. Jangan lupa klik Simpan Perubahan.",
+    });
+    setUploadingAssets((prev) => ({ ...prev, [type]: false }));
   };
 
   if (!user) return null;
@@ -362,10 +503,10 @@ export default function Settings() {
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="space-y-1 mb-2">
-        <h1 className="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">
+        <h1 className="text-4xl font-extrabold tracking-tight text-[#3D2C44]">
           Pengaturan Akun
         </h1>
-        <p className="text-sm font-medium text-slate-500 max-w-xl">
+        <p className="text-sm font-medium text-[#3D2C44]/70 max-w-xl">
           Kelola informasi profil dan keamanan akun Anda.
         </p>
       </div>
@@ -377,7 +518,11 @@ export default function Settings() {
             <div className="relative inline-block">
               <div className="w-32 h-32 rounded-full bg-slate-100 border-4 border-white shadow-md overflow-hidden mx-auto">
                 {user.user_metadata.avatar_url ? (
-                  <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                  <img
+                    src={user.user_metadata.avatar_url}
+                    alt="Avatar"
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-indigo-50 text-indigo-700 text-4xl font-bold">
                     {fullName?.[0] || user.email?.[0].toUpperCase()}
@@ -386,11 +531,16 @@ export default function Settings() {
               </div>
               <label className="absolute bottom-0 right-0 p-2 bg-indigo-600 text-white rounded-full shadow-lg cursor-pointer hover:bg-indigo-700 transition-all">
                 <Camera size={20} />
-                <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} />
+                <input
+                  type="file"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                />
               </label>
             </div>
             <div className="mt-4">
-              <h3 className="font-bold text-slate-900">{fullName || 'User'}</h3>
+              <h3 className="font-bold text-slate-900">{fullName || "User"}</h3>
               <p className="text-sm text-slate-500">{user.email}</p>
             </div>
           </div>
@@ -404,11 +554,15 @@ export default function Settings() {
               <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
                 <UserIcon size={20} />
               </div>
-              <h2 className="text-xl font-bold text-slate-900">Informasi Profil</h2>
+              <h2 className="text-xl font-bold text-slate-900">
+                Informasi Profil
+              </h2>
             </div>
             <form onSubmit={handleUpdateProfile} className="space-y-6">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Nama Lengkap</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Nama Lengkap
+                </label>
                 <input
                   type="text"
                   value={fullName}
@@ -422,12 +576,16 @@ export default function Settings() {
               {!showWebhookSettings ? (
                 <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl">
                   <div>
-                    <h3 className="text-sm font-semibold text-slate-700">Pengaturan Webhook</h3>
-                    <p className="text-xs text-slate-500">Tersembunyi untuk keamanan</p>
+                    <h3 className="text-sm font-semibold text-slate-700">
+                      Pengaturan Webhook
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Tersembunyi untuk keamanan
+                    </p>
                   </div>
                   <button
                     type="button"
-                    onClick={() => openPinModal('webhook')}
+                    onClick={() => openPinModal("webhook")}
                     className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
                     title="Buka Pengaturan Webhook"
                   >
@@ -444,9 +602,13 @@ export default function Settings() {
                   >
                     <X size={16} />
                   </button>
-                  <h4 className="font-bold text-slate-800 mb-4">Pengaturan Webhook</h4>
+                  <h4 className="font-bold text-slate-800 mb-4">
+                    Pengaturan Webhook
+                  </h4>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">n8n Webhook URL (Email)</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      n8n Webhook URL (Email)
+                    </label>
                     <input
                       type="url"
                       value={n8nWebhookUrl}
@@ -455,20 +617,25 @@ export default function Settings() {
                       placeholder="https://n8n.your-domain.com/webhook/..."
                     />
                     <p className="mt-2 text-xs text-slate-500 italic">
-                      URL ini akan dipicu saat Anda mengklik tombol "Kirim Undangan" di menu Screening. 
+                      URL ini akan dipicu saat Anda mengklik tombol "Kirim
+                      Undangan" di menu Screening.
                     </p>
                     <button
                       type="button"
-                      onClick={() => testWebhook('email')}
-                      disabled={testingWebhook === 'email'}
+                      onClick={() => testWebhook("email")}
+                      disabled={testingWebhook === "email"}
                       className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
                     >
-                      {testingWebhook === 'email' ? <Loader2 className="animate-spin" size={16} /> : null}
+                      {testingWebhook === "email" ? (
+                        <Loader2 className="animate-spin" size={16} />
+                      ) : null}
                       Test Koneksi Email Webhook
                     </button>
                   </div>
                   <div className="pt-4 border-t border-slate-200">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">n8n CV Upload Webhook URL (Internal)</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      n8n CV Upload Webhook URL (Internal)
+                    </label>
                     <input
                       type="url"
                       value={cvWebhookUrl}
@@ -477,21 +644,27 @@ export default function Settings() {
                       placeholder="https://n8n.your-domain.com/webhook/..."
                     />
                     <p className="mt-2 text-xs text-slate-500 italic">
-                      URL ini khusus digunakan untuk menu <strong>Upload CV</strong> di dashboard internal. 
-                      File akan dikirimkan sebagai <code>multipart/form-data</code> (format asli).
+                      URL ini khusus digunakan untuk menu{" "}
+                      <strong>Upload CV</strong> di dashboard internal. File
+                      akan dikirimkan sebagai <code>multipart/form-data</code>{" "}
+                      (format asli).
                     </p>
                     <button
                       type="button"
-                      onClick={() => testWebhook('cv')}
-                      disabled={testingWebhook === 'cv'}
+                      onClick={() => testWebhook("cv")}
+                      disabled={testingWebhook === "cv"}
                       className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
                     >
-                      {testingWebhook === 'cv' ? <Loader2 className="animate-spin" size={16} /> : null}
+                      {testingWebhook === "cv" ? (
+                        <Loader2 className="animate-spin" size={16} />
+                      ) : null}
                       Test Koneksi CV Webhook (Internal)
                     </button>
                   </div>
                   <div className="pt-4 border-t border-slate-200">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">n8n CV Upload Webhook URL (Public Career)</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      n8n CV Upload Webhook URL (Public Career)
+                    </label>
                     <input
                       type="url"
                       value={publicCvWebhookUrl}
@@ -500,21 +673,26 @@ export default function Settings() {
                       placeholder="https://n8n.your-domain.com/webhook/..."
                     />
                     <p className="mt-2 text-xs text-slate-500 italic">
-                      URL ini khusus digunakan untuk halaman <strong>/public/career</strong>. 
-                      File akan dikirimkan sebagai <code>multipart/form-data</code> (format asli).
+                      URL ini khusus digunakan untuk halaman{" "}
+                      <strong>/public/career</strong>. File akan dikirimkan
+                      sebagai <code>multipart/form-data</code> (format asli).
                     </p>
                     <button
                       type="button"
-                      onClick={() => testWebhook('public_cv')}
-                      disabled={testingWebhook === 'public_cv'}
+                      onClick={() => testWebhook("public_cv")}
+                      disabled={testingWebhook === "public_cv"}
                       className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
                     >
-                      {testingWebhook === 'public_cv' ? <Loader2 className="animate-spin" size={16} /> : null}
+                      {testingWebhook === "public_cv" ? (
+                        <Loader2 className="animate-spin" size={16} />
+                      ) : null}
                       Test Koneksi CV Webhook (Public)
                     </button>
                   </div>
                   <div className="pt-4 border-t border-slate-200">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">n8n Google Sheets Sync Webhook URL</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      n8n Google Sheets Sync Webhook URL
+                    </label>
                     <input
                       type="url"
                       value={sheetWebhookUrl}
@@ -523,20 +701,25 @@ export default function Settings() {
                       placeholder="https://n8n.your-domain.com/webhook/..."
                     />
                     <p className="mt-2 text-xs text-slate-500 italic">
-                      URL ini akan dipicu saat Anda menekan tombol Sync di menu Open Recruitment.
+                      URL ini akan dipicu saat Anda menekan tombol Sync di menu
+                      Open Recruitment.
                     </p>
                     <button
                       type="button"
-                      onClick={() => testWebhook('sheet')}
-                      disabled={testingWebhook === 'sheet'}
+                      onClick={() => testWebhook("sheet")}
+                      disabled={testingWebhook === "sheet"}
                       className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
                     >
-                      {testingWebhook === 'sheet' ? <Loader2 className="animate-spin" size={16} /> : null}
+                      {testingWebhook === "sheet" ? (
+                        <Loader2 className="animate-spin" size={16} />
+                      ) : null}
                       Test Koneksi Google Sheets Webhook
                     </button>
                   </div>
                   <div className="pt-4 border-t border-slate-200">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">n8n WhatsApp OTP Webhook URL</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      n8n WhatsApp OTP Webhook URL
+                    </label>
                     <input
                       type="url"
                       value={otpWebhookUrl}
@@ -545,20 +728,25 @@ export default function Settings() {
                       placeholder="https://n8n.your-domain.com/webhook/..."
                     />
                     <p className="mt-2 text-xs text-slate-500 italic">
-                      URL ini akan dipicu saat kandidat meminta OTP di halaman publik (/career).
+                      URL ini akan dipicu saat kandidat meminta OTP di halaman
+                      publik (/career).
                     </p>
                     <button
                       type="button"
-                      onClick={() => testWebhook('otp')}
-                      disabled={testingWebhook === 'otp'}
+                      onClick={() => testWebhook("otp")}
+                      disabled={testingWebhook === "otp"}
                       className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
                     >
-                      {testingWebhook === 'otp' ? <Loader2 className="animate-spin" size={16} /> : null}
+                      {testingWebhook === "otp" ? (
+                        <Loader2 className="animate-spin" size={16} />
+                      ) : null}
                       Test Koneksi OTP Webhook
                     </button>
                   </div>
                   <div className="pt-4 border-t border-slate-200">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">n8n WhatsApp Invitation Webhook URL</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      n8n WhatsApp Invitation Webhook URL
+                    </label>
                     <input
                       type="url"
                       value={waWebhookUrl}
@@ -567,42 +755,54 @@ export default function Settings() {
                       placeholder="https://n8n.your-domain.com/webhook/..."
                     />
                     <p className="mt-2 text-xs text-slate-500 italic">
-                      URL ini akan dipicu saat Anda mengklik tombol "Kirim WA" di menu Jadwal Psikotes atau Jadwal Interview.
+                      URL ini akan dipicu saat Anda mengklik tombol "Kirim WA"
+                      di menu Jadwal Psikotes atau Jadwal Interview.
                     </p>
                     <button
                       type="button"
-                      onClick={() => testWebhook('wa')}
-                      disabled={testingWebhook === 'wa'}
+                      onClick={() => testWebhook("wa")}
+                      disabled={testingWebhook === "wa"}
                       className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
                     >
-                      {testingWebhook === 'wa' ? <Loader2 className="animate-spin" size={16} /> : null}
+                      {testingWebhook === "wa" ? (
+                        <Loader2 className="animate-spin" size={16} />
+                      ) : null}
                       Test Koneksi WA Webhook
                     </button>
                   </div>
                   <div className="pt-4 border-t border-slate-200">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">n8n External Data DELETE Webhook URL</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      n8n External Data DELETE Webhook URL
+                    </label>
                     <input
                       type="url"
                       value={externalDataDeleteWebhookUrl}
-                      onChange={(e) => setExternalDataDeleteWebhookUrl(e.target.value)}
+                      onChange={(e) =>
+                        setExternalDataDeleteWebhookUrl(e.target.value)
+                      }
                       className="block w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                       placeholder="https://n8n.your-domain.com/webhook/..."
                     />
                     <p className="mt-2 text-xs text-slate-500 italic">
-                      URL ini akan dipicu saat Anda menghapus kartu di menu Data Eksternal.
+                      URL ini akan dipicu saat Anda menghapus kartu di menu Data
+                      Eksternal.
                     </p>
                     <button
                       type="button"
-                      onClick={() => testWebhook('external_data_delete')}
-                      disabled={testingWebhook === 'external_data_delete'}
+                      onClick={() => testWebhook("external_data_delete")}
+                      disabled={testingWebhook === "external_data_delete"}
                       className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
                     >
-                      {testingWebhook === 'external_data_delete' ? <Loader2 className="animate-spin" size={16} /> : null}
+                      {testingWebhook === "external_data_delete" ? (
+                        <Loader2 className="animate-spin" size={16} />
+                      ) : null}
                       Test Koneksi DELETE Webhook
                     </button>
                   </div>
                   <div className="pt-4 border-t border-slate-200">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">n8n AI Analysis Webhook URL</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      n8n AI Analysis Webhook URL
+                    </label>
                     <input
                       type="url"
                       value={aiAnalysisWebhookUrl}
@@ -611,20 +811,25 @@ export default function Settings() {
                       placeholder="https://n8n.your-domain.com/webhook/..."
                     />
                     <p className="mt-2 text-xs text-slate-500 italic">
-                      URL ini akan dipicu saat Anda mengklik tombol "Analisa Biodata dengan AI" di Profil Kandidat.
+                      URL ini akan dipicu saat Anda mengklik tombol "Analisa
+                      Biodata dengan AI" di Profil Kandidat.
                     </p>
                     <button
                       type="button"
-                      onClick={() => testWebhook('ai_analysis')}
-                      disabled={testingWebhook === 'ai_analysis'}
+                      onClick={() => testWebhook("ai_analysis")}
+                      disabled={testingWebhook === "ai_analysis"}
                       className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
                     >
-                      {testingWebhook === 'ai_analysis' ? <Loader2 className="animate-spin" size={16} /> : null}
+                      {testingWebhook === "ai_analysis" ? (
+                        <Loader2 className="animate-spin" size={16} />
+                      ) : null}
                       Test Koneksi AI Analysis Webhook
                     </button>
                   </div>
                   <div className="pt-4 border-t border-slate-200">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">n8n AI Psikotes Analysis Webhook URL</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      n8n AI Psikotes Analysis Webhook URL
+                    </label>
                     <input
                       type="url"
                       value={aiPsikotesWebhookUrl}
@@ -633,20 +838,25 @@ export default function Settings() {
                       placeholder="https://n8n.your-domain.com/webhook/..."
                     />
                     <p className="mt-2 text-xs text-slate-500 italic">
-                      URL ini akan dipicu saat Anda mengklik tombol "Analisa Psikotes dengan AI" di Profil Kandidat.
+                      URL ini akan dipicu saat Anda mengklik tombol "Analisa
+                      Psikotes dengan AI" di Profil Kandidat.
                     </p>
                     <button
                       type="button"
-                      onClick={() => testWebhook('ai_psikotes')}
-                      disabled={testingWebhook === 'ai_psikotes'}
+                      onClick={() => testWebhook("ai_psikotes")}
+                      disabled={testingWebhook === "ai_psikotes"}
                       className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
                     >
-                      {testingWebhook === 'ai_psikotes' ? <Loader2 className="animate-spin" size={16} /> : null}
+                      {testingWebhook === "ai_psikotes" ? (
+                        <Loader2 className="animate-spin" size={16} />
+                      ) : null}
                       Test Koneksi AI Psikotes Webhook
                     </button>
                   </div>
                   <div className="pt-4 border-t border-slate-200">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">n8n AI Interview Question Generator Webhook URL</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      n8n AI Interview Question Generator Webhook URL
+                    </label>
                     <input
                       type="url"
                       value={aiInterviewWebhookUrl}
@@ -655,20 +865,25 @@ export default function Settings() {
                       placeholder="https://n8n.your-domain.com/webhook/..."
                     />
                     <p className="mt-2 text-xs text-slate-500 italic">
-                      URL ini akan dipicu saat Anda mengklik tombol "Generate Pertanyaan Interview (AI)" di Profil Kandidat.
+                      URL ini akan dipicu saat Anda mengklik tombol "Generate
+                      Pertanyaan Interview (AI)" di Profil Kandidat.
                     </p>
                     <button
                       type="button"
-                      onClick={() => testWebhook('ai_interview')}
-                      disabled={testingWebhook === 'ai_interview'}
+                      onClick={() => testWebhook("ai_interview")}
+                      disabled={testingWebhook === "ai_interview"}
                       className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
                     >
-                      {testingWebhook === 'ai_interview' ? <Loader2 className="animate-spin" size={16} /> : null}
+                      {testingWebhook === "ai_interview" ? (
+                        <Loader2 className="animate-spin" size={16} />
+                      ) : null}
                       Test Koneksi AI Interview Webhook
                     </button>
                   </div>
                   <div className="pt-4 border-t border-slate-200">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">Ubah PIN Webhook</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      Ubah PIN Webhook
+                    </label>
                     <input
                       type="password"
                       value={newWebhookPin}
@@ -677,7 +892,8 @@ export default function Settings() {
                       placeholder="Masukkan PIN baru (opsional)"
                     />
                     <p className="mt-2 text-xs text-slate-500 italic">
-                      Biarkan kosong jika tidak ingin mengubah PIN. PIN akan dienkripsi (SHA512) saat disimpan (simulasi).
+                      Biarkan kosong jika tidak ingin mengubah PIN. PIN akan
+                      dienkripsi (SHA512) saat disimpan (simulasi).
                     </p>
                   </div>
                 </div>
@@ -687,12 +903,16 @@ export default function Settings() {
               {!showDisplaySettings ? (
                 <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl">
                   <div>
-                    <h3 className="text-sm font-semibold text-slate-700">Pengaturan Tampilan</h3>
-                    <p className="text-xs text-slate-500">Tersembunyi untuk keamanan</p>
+                    <h3 className="text-sm font-semibold text-slate-700">
+                      Pengaturan Tampilan
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Tersembunyi untuk keamanan
+                    </p>
                   </div>
                   <button
                     type="button"
-                    onClick={() => openPinModal('display')}
+                    onClick={() => openPinModal("display")}
                     className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
                     title="Buka Pengaturan Tampilan"
                   >
@@ -709,23 +929,35 @@ export default function Settings() {
                   >
                     <X size={16} />
                   </button>
-                  <h4 className="font-bold text-slate-800 mb-4">Pengaturan Tampilan</h4>
+                  <h4 className="font-bold text-slate-800 mb-4">
+                    Pengaturan Tampilan
+                  </h4>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">Logo Halaman Login</label>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        Logo Halaman Login
+                      </label>
                       <div className="flex items-center gap-4">
                         <label className="flex items-center justify-center px-4 py-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-all text-sm font-medium text-slate-700">
-                          {uploadingAssets['loginLogo'] ? (
-                            <><Loader2 className="animate-spin mr-2" size={16} /> Mengunggah...</>
+                          {uploadingAssets["loginLogo"] ? (
+                            <>
+                              <Loader2
+                                className="animate-spin mr-2"
+                                size={16}
+                              />{" "}
+                              Mengunggah...
+                            </>
                           ) : (
-                            <><Camera className="mr-2" size={16} /> Pilih File</>
+                            <>
+                              <Camera className="mr-2" size={16} /> Pilih File
+                            </>
                           )}
                           <input
                             type="file"
                             className="hidden"
                             accept="image/*"
-                            onChange={(e) => handleAssetUpload(e, 'loginLogo')}
-                            disabled={uploadingAssets['loginLogo']}
+                            onChange={(e) => handleAssetUpload(e, "loginLogo")}
+                            disabled={uploadingAssets["loginLogo"]}
                           />
                         </label>
                         {loginLogoUrl && (
@@ -736,20 +968,30 @@ export default function Settings() {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">Logo Halaman Karir Publik</label>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        Logo Halaman Karir Publik
+                      </label>
                       <div className="flex items-center gap-4">
                         <label className="flex items-center justify-center px-4 py-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-all text-sm font-medium text-slate-700">
-                          {uploadingAssets['careerLogo'] ? (
-                            <><Loader2 className="animate-spin mr-2" size={16} /> Mengunggah...</>
+                          {uploadingAssets["careerLogo"] ? (
+                            <>
+                              <Loader2
+                                className="animate-spin mr-2"
+                                size={16}
+                              />{" "}
+                              Mengunggah...
+                            </>
                           ) : (
-                            <><Camera className="mr-2" size={16} /> Pilih File</>
+                            <>
+                              <Camera className="mr-2" size={16} /> Pilih File
+                            </>
                           )}
                           <input
                             type="file"
                             className="hidden"
                             accept="image/*"
-                            onChange={(e) => handleAssetUpload(e, 'careerLogo')}
-                            disabled={uploadingAssets['careerLogo']}
+                            onChange={(e) => handleAssetUpload(e, "careerLogo")}
+                            disabled={uploadingAssets["careerLogo"]}
                           />
                         </label>
                         {careerLogoUrl && (
@@ -760,20 +1002,32 @@ export default function Settings() {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">Logo Sidebar Navigasi</label>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        Logo Sidebar Navigasi
+                      </label>
                       <div className="flex items-center gap-4">
                         <label className="flex items-center justify-center px-4 py-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-all text-sm font-medium text-slate-700">
-                          {uploadingAssets['sidebarLogo'] ? (
-                            <><Loader2 className="animate-spin mr-2" size={16} /> Mengunggah...</>
+                          {uploadingAssets["sidebarLogo"] ? (
+                            <>
+                              <Loader2
+                                className="animate-spin mr-2"
+                                size={16}
+                              />{" "}
+                              Mengunggah...
+                            </>
                           ) : (
-                            <><Camera className="mr-2" size={16} /> Pilih File</>
+                            <>
+                              <Camera className="mr-2" size={16} /> Pilih File
+                            </>
                           )}
                           <input
                             type="file"
                             className="hidden"
                             accept="image/*"
-                            onChange={(e) => handleAssetUpload(e, 'sidebarLogo')}
-                            disabled={uploadingAssets['sidebarLogo']}
+                            onChange={(e) =>
+                              handleAssetUpload(e, "sidebarLogo")
+                            }
+                            disabled={uploadingAssets["sidebarLogo"]}
                           />
                         </label>
                         {sidebarLogoUrl && (
@@ -784,7 +1038,9 @@ export default function Settings() {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">Teks Sidebar Navigasi</label>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        Teks Sidebar Navigasi
+                      </label>
                       <input
                         type="text"
                         value={sidebarText}
@@ -794,20 +1050,30 @@ export default function Settings() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">Favicon</label>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        Favicon
+                      </label>
                       <div className="flex items-center gap-4">
                         <label className="flex items-center justify-center px-4 py-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-all text-sm font-medium text-slate-700">
-                          {uploadingAssets['favicon'] ? (
-                            <><Loader2 className="animate-spin mr-2" size={16} /> Mengunggah...</>
+                          {uploadingAssets["favicon"] ? (
+                            <>
+                              <Loader2
+                                className="animate-spin mr-2"
+                                size={16}
+                              />{" "}
+                              Mengunggah...
+                            </>
                           ) : (
-                            <><Camera className="mr-2" size={16} /> Pilih File</>
+                            <>
+                              <Camera className="mr-2" size={16} /> Pilih File
+                            </>
                           )}
                           <input
                             type="file"
                             className="hidden"
                             accept="image/x-icon,image/png,image/jpeg,image/svg+xml"
-                            onChange={(e) => handleAssetUpload(e, 'favicon')}
-                            disabled={uploadingAssets['favicon']}
+                            onChange={(e) => handleAssetUpload(e, "favicon")}
+                            disabled={uploadingAssets["favicon"]}
                           />
                         </label>
                         {faviconUrl && (
@@ -818,20 +1084,32 @@ export default function Settings() {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">Animasi Login (Gambar/Video)</label>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        Animasi Login (Gambar/Video)
+                      </label>
                       <div className="flex items-center gap-4">
                         <label className="flex items-center justify-center px-4 py-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-all text-sm font-medium text-slate-700">
-                          {uploadingAssets['loginAnimation'] ? (
-                            <><Loader2 className="animate-spin mr-2" size={16} /> Mengunggah...</>
+                          {uploadingAssets["loginAnimation"] ? (
+                            <>
+                              <Loader2
+                                className="animate-spin mr-2"
+                                size={16}
+                              />{" "}
+                              Mengunggah...
+                            </>
                           ) : (
-                            <><Camera className="mr-2" size={16} /> Pilih File</>
+                            <>
+                              <Camera className="mr-2" size={16} /> Pilih File
+                            </>
                           )}
                           <input
                             type="file"
                             className="hidden"
                             accept="image/*,video/*"
-                            onChange={(e) => handleAssetUpload(e, 'loginAnimation')}
-                            disabled={uploadingAssets['loginAnimation']}
+                            onChange={(e) =>
+                              handleAssetUpload(e, "loginAnimation")
+                            }
+                            disabled={uploadingAssets["loginAnimation"]}
                           />
                         </label>
                         {loginAnimationUrl && (
@@ -841,11 +1119,14 @@ export default function Settings() {
                         )}
                       </div>
                       <p className="mt-2 text-xs text-slate-500 italic">
-                        Upload file gambar (PNG/JPG/GIF) atau video (MP4) untuk animasi di halaman login.
+                        Upload file gambar (PNG/JPG/GIF) atau video (MP4) untuk
+                        animasi di halaman login.
                       </p>
                     </div>
                     <div className="pt-4 border-t border-slate-200">
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">Sumber Lowongan (Upload CV)</label>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        Sumber Lowongan (Upload CV)
+                      </label>
                       <div className="flex gap-2 mb-4">
                         <input
                           type="text"
@@ -857,9 +1138,15 @@ export default function Settings() {
                         <button
                           type="button"
                           onClick={() => {
-                            if (newJobSource.trim() && !jobSources.includes(newJobSource.trim())) {
-                              setJobSources([...jobSources, newJobSource.trim()]);
-                              setNewJobSource('');
+                            if (
+                              newJobSource.trim() &&
+                              !jobSources.includes(newJobSource.trim())
+                            ) {
+                              setJobSources([
+                                ...jobSources,
+                                newJobSource.trim(),
+                              ]);
+                              setNewJobSource("");
                             }
                           }}
                           className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all text-sm font-medium"
@@ -869,11 +1156,18 @@ export default function Settings() {
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {jobSources.map((source, idx) => (
-                          <div key={idx} className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg text-sm text-slate-700">
+                          <div
+                            key={idx}
+                            className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg text-sm text-slate-700"
+                          >
                             <span>{source}</span>
                             <button
                               type="button"
-                              onClick={() => setJobSources(jobSources.filter((_, i) => i !== idx))}
+                              onClick={() =>
+                                setJobSources(
+                                  jobSources.filter((_, i) => i !== idx),
+                                )
+                              }
                               className="text-slate-400 hover:text-red-500 transition-colors"
                             >
                               <X size={14} />
@@ -882,26 +1176,39 @@ export default function Settings() {
                         ))}
                       </div>
                       <p className="mt-2 text-xs text-slate-500 italic">
-                        Daftar ini akan muncul sebagai pilihan di halaman Upload CV.
+                        Daftar ini akan muncul sebagai pilihan di halaman Upload
+                        CV.
                       </p>
                     </div>
 
                     <div className="pt-4 border-t border-slate-200">
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">Sumber Lowongan (Public Career / Form Pelamar)</label>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        Sumber Lowongan (Public Career / Form Pelamar)
+                      </label>
                       <div className="flex gap-2 mb-4">
                         <input
                           type="text"
                           value={newCareerJobSource}
-                          onChange={(e) => setNewCareerJobSource(e.target.value)}
+                          onChange={(e) =>
+                            setNewCareerJobSource(e.target.value)
+                          }
                           placeholder="Tambah sumber baru..."
                           className="flex-1 px-4 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
                         />
                         <button
                           type="button"
                           onClick={() => {
-                            if (newCareerJobSource.trim() && !careerJobSources.includes(newCareerJobSource.trim())) {
-                              setCareerJobSources([...careerJobSources, newCareerJobSource.trim()]);
-                              setNewCareerJobSource('');
+                            if (
+                              newCareerJobSource.trim() &&
+                              !careerJobSources.includes(
+                                newCareerJobSource.trim(),
+                              )
+                            ) {
+                              setCareerJobSources([
+                                ...careerJobSources,
+                                newCareerJobSource.trim(),
+                              ]);
+                              setNewCareerJobSource("");
                             }
                           }}
                           className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all text-sm font-medium"
@@ -911,11 +1218,18 @@ export default function Settings() {
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {careerJobSources.map((source, idx) => (
-                          <div key={idx} className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg text-sm text-slate-700">
+                          <div
+                            key={idx}
+                            className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg text-sm text-slate-700"
+                          >
                             <span>{source}</span>
                             <button
                               type="button"
-                              onClick={() => setCareerJobSources(careerJobSources.filter((_, i) => i !== idx))}
+                              onClick={() =>
+                                setCareerJobSources(
+                                  careerJobSources.filter((_, i) => i !== idx),
+                                )
+                              }
                               className="text-slate-400 hover:text-red-500 transition-colors"
                             >
                               <X size={14} />
@@ -924,11 +1238,14 @@ export default function Settings() {
                         ))}
                       </div>
                       <p className="mt-2 text-xs text-slate-500 italic">
-                        Daftar ini akan muncul sebagai pilihan di halaman Public Career (Form Pelamar).
+                        Daftar ini akan muncul sebagai pilihan di halaman Public
+                        Career (Form Pelamar).
                       </p>
                     </div>
                     <div className="pt-4 border-t border-slate-200">
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">Ubah PIN Tampilan</label>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        Ubah PIN Tampilan
+                      </label>
                       <input
                         type="password"
                         value={newDisplayPin}
@@ -937,7 +1254,8 @@ export default function Settings() {
                         placeholder="Masukkan PIN baru (opsional)"
                       />
                       <p className="mt-2 text-xs text-slate-500 italic">
-                        Biarkan kosong jika tidak ingin mengubah PIN. PIN akan dienkripsi (SHA512) saat disimpan (simulasi).
+                        Biarkan kosong jika tidak ingin mengubah PIN. PIN akan
+                        dienkripsi (SHA512) saat disimpan (simulasi).
                       </p>
                     </div>
                   </div>
@@ -949,7 +1267,11 @@ export default function Settings() {
                 disabled={loading}
                 className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all disabled:opacity-50"
               >
-                {loading ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
+                {loading ? (
+                  <Loader2 className="animate-spin" size={20} />
+                ) : (
+                  <Save size={20} />
+                )}
                 Simpan Perubahan
               </button>
             </form>
@@ -966,7 +1288,9 @@ export default function Settings() {
             <form onSubmit={handleUpdatePassword} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Password Baru</label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Password Baru
+                  </label>
                   <input
                     type="password"
                     value={newPassword}
@@ -976,7 +1300,9 @@ export default function Settings() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Konfirmasi Password</label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Konfirmasi Password
+                  </label>
                   <input
                     type="password"
                     value={confirmPassword}
@@ -991,7 +1317,11 @@ export default function Settings() {
                 disabled={passwordLoading}
                 className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all disabled:opacity-50"
               >
-                {passwordLoading ? <Loader2 className="animate-spin" size={20} /> : <Lock size={20} />}
+                {passwordLoading ? (
+                  <Loader2 className="animate-spin" size={20} />
+                ) : (
+                  <Lock size={20} />
+                )}
                 Perbarui Password
               </button>
             </form>
@@ -1004,11 +1334,13 @@ export default function Settings() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between p-6 border-b border-slate-100">
-              <h3 className="text-lg font-bold text-slate-900">Masukkan PIN {pinType === 'webhook' ? 'Webhook' : 'Tampilan'}</h3>
-              <button 
+              <h3 className="text-lg font-bold text-slate-900">
+                Masukkan PIN {pinType === "webhook" ? "Webhook" : "Tampilan"}
+              </h3>
+              <button
                 onClick={() => {
                   setShowPinModal(false);
-                  setPinInput('');
+                  setPinInput("");
                   setPinType(null);
                 }}
                 className="text-slate-400 hover:text-slate-600 transition-colors"
@@ -1018,7 +1350,9 @@ export default function Settings() {
             </div>
             <form onSubmit={handlePinSubmit} className="p-6 space-y-6">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">PIN Keamanan</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  PIN Keamanan
+                </label>
                 <input
                   type="password"
                   value={pinInput}
@@ -1028,7 +1362,8 @@ export default function Settings() {
                   autoFocus
                 />
                 <p className="mt-2 text-xs text-slate-500 text-center">
-                  Masukkan PIN untuk mengakses pengaturan {pinType === 'webhook' ? 'webhook' : 'tampilan'}.
+                  Masukkan PIN untuk mengakses pengaturan{" "}
+                  {pinType === "webhook" ? "webhook" : "tampilan"}.
                 </p>
               </div>
               <div className="flex gap-3">
@@ -1036,7 +1371,7 @@ export default function Settings() {
                   type="button"
                   onClick={() => {
                     setShowPinModal(false);
-                    setPinInput('');
+                    setPinInput("");
                     setPinType(null);
                   }}
                   className="flex-1 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-all"

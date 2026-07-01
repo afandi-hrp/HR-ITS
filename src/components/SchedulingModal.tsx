@@ -268,14 +268,14 @@ export default function SchedulingModal({ candidate, type, initialData, onClose,
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-6 py-3 border border-slate-200 text-slate-600 font-bold rounded-xl bg-white hover:bg-slate-50 transition-all"
+              className="flex-1 px-6 py-3 border border-rose-200 text-rose-600 font-bold rounded-xl bg-rose-50 hover:bg-rose-100 transition-all"
             >
               Batal
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all disabled:opacity-50"
+              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-[#3D2C44] text-white font-bold rounded-xl hover:bg-[#3D2C44]/90 shadow-lg shadow-[#3D2C44]/20 transition-all disabled:opacity-50"
             >
               {loading ? <Loader2 className="animate-spin" size={20} /> : initialData ? 'Perbarui Jadwal' : 'Simpan Jadwal'}
             </button>

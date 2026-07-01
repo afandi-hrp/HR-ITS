@@ -1,7 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
-import { useToast } from '../components/ui/use-toast';
-import { Loader2, Plus, KeyRound, CheckCircle2, XCircle, Copy, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { supabase } from "../lib/supabase";
+import { useToast } from "../components/ui/use-toast";
+import {
+  Loader2,
+  Plus,
+  KeyRound,
+  CheckCircle2,
+  XCircle,
+  Copy,
+  Trash2,
+} from "lucide-react";
 
 interface Token {
   id: string;
@@ -25,18 +33,18 @@ export default function RegistrationTokens() {
   const fetchTokens = async () => {
     try {
       const { data, error } = await supabase
-        .from('registration_tokens')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .from("registration_tokens")
+        .select("*")
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
       setTokens(data || []);
     } catch (error: any) {
-      console.error('Error fetching tokens:', error);
+      console.error("Error fetching tokens:", error);
       toast({
-        title: 'Error',
-        description: 'Gagal mengambil data token.',
-        variant: 'destructive'
+        title: "Error",
+        description: "Gagal mengambil data token.",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -46,35 +54,45 @@ export default function RegistrationTokens() {
   const generateToken = async (count: number = 1) => {
     setGenerating(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
       const newTokens = Array.from({ length: count }).map(() => {
-        const randomString1 = Math.random().toString(36).substring(2, 10).toUpperCase().padEnd(8, '0');
-        const randomString2 = Math.random().toString(36).substring(2, 6).toUpperCase().padEnd(4, '0');
+        const randomString1 = Math.random()
+          .toString(36)
+          .substring(2, 10)
+          .toUpperCase()
+          .padEnd(8, "0");
+        const randomString2 = Math.random()
+          .toString(36)
+          .substring(2, 6)
+          .toUpperCase()
+          .padEnd(4, "0");
         return {
           token: `WRN-${randomString1}-${randomString2}`,
-          created_by: user?.id
+          created_by: user?.id,
         };
       });
 
       const { error } = await supabase
-        .from('registration_tokens')
+        .from("registration_tokens")
         .insert(newTokens);
 
       if (error) throw error;
 
       toast({
-        title: 'Berhasil',
+        title: "Berhasil",
         description: `${count} Token berhasil dibuat.`,
       });
 
       fetchTokens();
     } catch (error: any) {
-      console.error('Error generating token:', error);
+      console.error("Error generating token:", error);
       toast({
-        title: 'Error',
-        description: 'Gagal membuat token baru.',
-        variant: 'destructive'
+        title: "Error",
+        description: "Gagal membuat token baru.",
+        variant: "destructive",
       });
     } finally {
       setGenerating(false);
@@ -82,29 +100,34 @@ export default function RegistrationTokens() {
   };
 
   const handleDeleteUsedTokens = async () => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus semua token yang sudah terpakai?')) return;
-    
+    if (
+      !window.confirm(
+        "Apakah Anda yakin ingin menghapus semua token yang sudah terpakai?",
+      )
+    )
+      return;
+
     setDeleting(true);
     try {
       const { error } = await supabase
-        .from('registration_tokens')
+        .from("registration_tokens")
         .delete()
-        .eq('is_used', true);
+        .eq("is_used", true);
 
       if (error) throw error;
 
       toast({
-        title: 'Berhasil',
-        description: 'Semua token yang sudah terpakai berhasil dihapus.',
+        title: "Berhasil",
+        description: "Semua token yang sudah terpakai berhasil dihapus.",
       });
 
       fetchTokens();
     } catch (error: any) {
-      console.error('Error deleting used tokens:', error);
+      console.error("Error deleting used tokens:", error);
       toast({
-        title: 'Error',
-        description: 'Gagal menghapus token terpakai.',
-        variant: 'destructive'
+        title: "Error",
+        description: "Gagal menghapus token terpakai.",
+        variant: "destructive",
       });
     } finally {
       setDeleting(false);
@@ -114,19 +137,19 @@ export default function RegistrationTokens() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({
-      title: 'Tersalin',
-      description: 'Token berhasil disalin ke clipboard.',
+      title: "Tersalin",
+      description: "Token berhasil disalin ke clipboard.",
     });
   };
 
   const formatDate = (dateString: string | null) => {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleString('id-ID', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    if (!dateString) return "-";
+    return new Date(dateString).toLocaleString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -134,16 +157,22 @@ export default function RegistrationTokens() {
     <div className="p-8 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Token Pelamar</h1>
-          <p className="text-slate-500 mt-1">Kelola token akses satu kali pakai untuk form pelamar publik.</p>
+          <h1 className="text-2xl font-bold text-[#3D2C44]">Token Pelamar</h1>
+          <p className="text-[#3D2C44]/70 mt-1">
+            Kelola token akses satu kali pakai untuk form pelamar publik.
+          </p>
         </div>
         <div className="flex gap-3">
           <button
             onClick={handleDeleteUsedTokens}
-            disabled={deleting || tokens.filter(t => t.is_used).length === 0}
+            disabled={deleting || tokens.filter((t) => t.is_used).length === 0}
             className="bg-white border border-rose-200 text-rose-600 px-4 py-2 rounded-xl hover:bg-rose-50 transition-colors flex items-center gap-2 disabled:opacity-50"
           >
-            {deleting ? <Loader2 size={20} className="animate-spin" /> : <Trash2 size={20} />}
+            {deleting ? (
+              <Loader2 size={20} className="animate-spin" />
+            ) : (
+              <Trash2 size={20} />
+            )}
             Hapus Token Terpakai
           </button>
           <button
@@ -151,7 +180,11 @@ export default function RegistrationTokens() {
             disabled={generating}
             className="bg-indigo-100 text-indigo-700 px-4 py-2 rounded-xl hover:bg-indigo-200 transition-colors flex items-center gap-2 disabled:opacity-70 font-medium"
           >
-            {generating ? <Loader2 size={20} className="animate-spin" /> : <Plus size={20} />}
+            {generating ? (
+              <Loader2 size={20} className="animate-spin" />
+            ) : (
+              <Plus size={20} />
+            )}
             Buat 10 Token
           </button>
           <button
@@ -159,7 +192,11 @@ export default function RegistrationTokens() {
             disabled={generating}
             className="bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-70 font-medium"
           >
-            {generating ? <Loader2 size={20} className="animate-spin" /> : <Plus size={20} />}
+            {generating ? (
+              <Loader2 size={20} className="animate-spin" />
+            ) : (
+              <Plus size={20} />
+            )}
             Buat 1 Token
           </button>
         </div>
@@ -172,16 +209,25 @@ export default function RegistrationTokens() {
               <tr className="bg-slate-50 border-b border-slate-200">
                 <th className="p-4 font-semibold text-slate-600">Token</th>
                 <th className="p-4 font-semibold text-slate-600">Status</th>
-                <th className="p-4 font-semibold text-slate-600">Dibuat Pada</th>
-                <th className="p-4 font-semibold text-slate-600">Digunakan Pada</th>
-                <th className="p-4 font-semibold text-slate-600 text-right">Aksi</th>
+                <th className="p-4 font-semibold text-slate-600">
+                  Dibuat Pada
+                </th>
+                <th className="p-4 font-semibold text-slate-600">
+                  Digunakan Pada
+                </th>
+                <th className="p-4 font-semibold text-slate-600 text-right">
+                  Aksi
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
                   <td colSpan={5} className="p-8 text-center">
-                    <Loader2 className="animate-spin mx-auto text-indigo-600 mb-2" size={24} />
+                    <Loader2
+                      className="animate-spin mx-auto text-indigo-600 mb-2"
+                      size={24}
+                    />
                     <p className="text-slate-500">Memuat data token...</p>
                   </td>
                 </tr>
@@ -193,11 +239,16 @@ export default function RegistrationTokens() {
                 </tr>
               ) : (
                 tokens.map((token) => (
-                  <tr key={token.id} className="hover:bg-slate-50 transition-colors">
+                  <tr
+                    key={token.id}
+                    className="hover:bg-slate-50 transition-colors"
+                  >
                     <td className="p-4">
                       <div className="flex items-center gap-2">
                         <KeyRound size={16} className="text-slate-400" />
-                        <span className="font-mono font-medium text-slate-900">{token.token}</span>
+                        <span className="font-mono font-medium text-slate-900">
+                          {token.token}
+                        </span>
                       </div>
                     </td>
                     <td className="p-4">

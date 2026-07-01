@@ -2,7 +2,7 @@ export interface Profile {
   id: string;
   full_name: string | null;
   avatar_url: string | null;
-  role?: 'HR_ADMIN' | 'USER_MANAGER' | string;
+  role?: 'HR_ADMIN' | 'USER_MANAGER' | 'DIRECTOR' | 'FINANCE_DIRECTOR' | string;
   department?: string | null;
 }
 
@@ -30,6 +30,8 @@ export interface Candidate {
   adaptability_score?: number;
   resume_url: string | null;
   status_screening: 'pending' | 'invited' | 'rejected' | 'accepted' | 'hired';
+  director_status?: 'pending' | 'accepted' | 'rejected' | 'hold';
+  finance_status?: 'pending' | 'accepted' | 'rejected';
   confirmation_status: 'unconfirmed' | 'confirmed';
   confirmation_token: string | null;
   psikotes_schedules?: { id: string, is_confirmed: boolean, schedule_date: string, location_type?: string, location_detail?: string | null }[];
@@ -93,7 +95,7 @@ export interface EvaluationTemplate {
   id: string;
   name: string;
   type: 'HR' | 'USER';
-  target_role?: 'ALL' | 'HR_ADMIN' | 'USER_MANAGER' | string;
+  target_role?: 'ALL' | 'HR_ADMIN' | 'USER_MANAGER' | 'DIRECTOR' | 'FINANCE_DIRECTOR' | string;
   target_department?: string;
   form_schema: {
     scale: { score: number; label: string }[];

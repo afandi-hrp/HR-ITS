@@ -410,7 +410,7 @@ export default function EvaluationModal({ isOpen, onClose, candidateId, onSucces
           <button
             type="button"
             onClick={onClose}
-            className="px-6 py-2.5 text-slate-600 font-medium hover:bg-slate-200 rounded-xl transition-colors"
+            className="px-6 py-2.5 bg-rose-50 border border-rose-200 text-rose-600 font-medium hover:bg-rose-100 rounded-xl transition-colors"
           >
             Batal
           </button>
@@ -418,7 +418,7 @@ export default function EvaluationModal({ isOpen, onClose, candidateId, onSucces
             type="submit"
             form="evaluation-form"
             disabled={saving || !selectedTemplateId}
-            className="px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+            className="px-6 py-2.5 bg-[#3D2C44] text-white font-medium rounded-xl hover:bg-[#3D2C44]/90 transition-colors flex items-center gap-2 disabled:opacity-50"
           >
             {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
             Simpan Hasil

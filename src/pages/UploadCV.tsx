@@ -1,9 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { Upload, FileText, CheckCircle2, Loader2, X, AlertCircle, Search, RefreshCcw, Mail, Calendar, User, Trash2, File, Plus, Info } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import { useToast } from '../components/ui/use-toast';
-import { cn, fetchWithRetry } from '../lib/utils';
-import BulkUploadModal from '../components/BulkUploadModal';
+import React, { useState, useEffect } from "react";
+import {
+  Upload,
+  FileText,
+  CheckCircle2,
+  Loader2,
+  X,
+  AlertCircle,
+  Search,
+  RefreshCcw,
+  Mail,
+  Calendar,
+  User,
+  Trash2,
+  File,
+  Plus,
+  Info,
+} from "lucide-react";
+import { supabase } from "../lib/supabase";
+import { useToast } from "../components/ui/use-toast";
+import { cn, fetchWithRetry } from "../lib/utils";
+import BulkUploadModal from "../components/BulkUploadModal";
 
 interface CVUpload {
   id: string;
@@ -20,19 +36,22 @@ interface CVUpload {
 export default function UploadCV() {
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
-  const [candidateName, setCandidateName] = useState('');
-  const [candidateEmail, setCandidateEmail] = useState('');
-  const [position, setPosition] = useState('');
-  const [sourceInfo, setSourceInfo] = useState('');
+  const [candidateName, setCandidateName] = useState("");
+  const [candidateEmail, setCandidateEmail] = useState("");
+  const [position, setPosition] = useState("");
+  const [sourceInfo, setSourceInfo] = useState("");
   const [availablePositions, setAvailablePositions] = useState<string[]>([]);
   const [availableJobSources, setAvailableJobSources] = useState<string[]>([]);
   const [loadingPositions, setLoadingPositions] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
+  const [uploadProgress, setUploadProgress] = useState({
+    current: 0,
+    total: 0,
+  });
   const [uploads, setUploads] = useState<CVUpload[]>([]);
   const [fetchingUploads, setFetchingUploads] = useState(true);
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedUploads, setSelectedUploads] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -50,11 +69,14 @@ export default function UploadCV() {
   const fetchUploads = async () => {
     setFetchingUploads(true);
     try {
-      const response = await fetchWithRetry(`/api/cv-uploads?search=${encodeURIComponent(debouncedSearch)}&page=${currentPage}&limit=${itemsPerPage}`, {
-        headers: {
-          'Accept': 'application/json'
-        }
-      });
+      const response = await fetchWithRetry(
+        `/api/cv-uploads?search=${encodeURIComponent(debouncedSearch)}&page=${currentPage}&limit=${itemsPerPage}`,
+        {
+          headers: {
+            Accept: "application/json",
+          },
+        },
+      );
       if (response.ok) {
         const result = await response.json();
         setUploads(result.data || []);
@@ -64,7 +86,7 @@ export default function UploadCV() {
         throw new Error(errData.error || `API error: ${response.status}`);
       }
     } catch (error) {
-      console.error('Error fetching uploads:', error);
+      console.error("Error fetching uploads:", error);
     } finally {
       setFetchingUploads(false);
     }
@@ -72,43 +94,58 @@ export default function UploadCV() {
 
   const handleDelete = async (id: string) => {
     try {
-      const response = await fetchWithRetry('/api/cv-uploads', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetchWithRetry("/api/cv-uploads", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: [id] }),
       });
-      if (!response.ok) throw new Error('Gagal menghapus riwayat');
-      
-      toast({ title: 'Berhasil', description: 'Riwayat berhasil dihapus.' });
-      setSelectedUploads(prev => prev.filter(selectedId => selectedId !== id));
+      if (!response.ok) throw new Error("Gagal menghapus riwayat");
+
+      toast({ title: "Berhasil", description: "Riwayat berhasil dihapus." });
+      setSelectedUploads((prev) =>
+        prev.filter((selectedId) => selectedId !== id),
+      );
       fetchUploads();
     } catch (error: any) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
   const handleBulkDelete = async () => {
     if (selectedUploads.length === 0) return;
-    
+
     try {
-      const response = await fetchWithRetry('/api/cv-uploads', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetchWithRetry("/api/cv-uploads", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: selectedUploads }),
       });
-      if (!response.ok) throw new Error('Gagal menghapus riwayat');
-      
-      toast({ title: 'Berhasil', description: `${selectedUploads.length} riwayat berhasil dihapus.` });
+      if (!response.ok) throw new Error("Gagal menghapus riwayat");
+
+      toast({
+        title: "Berhasil",
+        description: `${selectedUploads.length} riwayat berhasil dihapus.`,
+      });
       setSelectedUploads([]);
       fetchUploads();
     } catch (error: any) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
   const toggleSelect = (id: string) => {
-    setSelectedUploads(prev => 
-      prev.includes(id) ? prev.filter(selectedId => selectedId !== id) : [...prev, id]
+    setSelectedUploads((prev) =>
+      prev.includes(id)
+        ? prev.filter((selectedId) => selectedId !== id)
+        : [...prev, id],
     );
   };
 
@@ -116,7 +153,7 @@ export default function UploadCV() {
     if (selectedUploads.length === uploads.length) {
       setSelectedUploads([]);
     } else {
-      setSelectedUploads(uploads.map(u => u.id));
+      setSelectedUploads(uploads.map((u) => u.id));
     }
   };
 
@@ -128,15 +165,17 @@ export default function UploadCV() {
     const fetchPositionsAndSources = async () => {
       try {
         const { data: positionsData, error: positionsError } = await supabase
-          .from('open_recruitment')
-          .select('position')
-          .or('is_published.eq.true,is_published.is.null')
-          .order('created_at', { ascending: false });
+          .from("open_recruitment")
+          .select("position")
+          .or("is_published.eq.true,is_published.is.null")
+          .order("created_at", { ascending: false });
 
         if (positionsError) {
-          console.error('Error fetching positions:', positionsError);
+          console.error("Error fetching positions:", positionsError);
         } else if (positionsData) {
-          const positions = Array.from(new Set(positionsData.map(item => item.position)));
+          const positions = Array.from(
+            new Set(positionsData.map((item) => item.position)),
+          );
           setAvailablePositions(positions);
           if (positions.length > 0 && !position) {
             setPosition(positions[0]);
@@ -144,39 +183,43 @@ export default function UploadCV() {
         }
 
         const { data: settingsData, error: settingsError } = await supabase
-          .from('site_settings')
-          .select('job_sources')
-          .eq('id', 1)
+          .from("site_settings")
+          .select("job_sources")
+          .eq("id", 1)
           .single();
 
         if (settingsError) {
-          console.error('Error fetching job sources:', settingsError);
+          console.error("Error fetching job sources:", settingsError);
           setAvailableJobSources([
-            'Campus Hiring',
-            'Email',
-            'Instagram',
-            'Jobstreet',
-            'LinkedIn',
-            'Referensi',
-            'Walk In',
-            'TGT Program',
-            'Head Hunter',
-            'Others'
+            "Campus Hiring",
+            "Email",
+            "Instagram",
+            "Jobstreet",
+            "LinkedIn",
+            "Referensi",
+            "Walk In",
+            "TGT Program",
+            "Head Hunter",
+            "Others",
           ]);
-        } else if (settingsData && settingsData.job_sources && settingsData.job_sources.length > 0) {
+        } else if (
+          settingsData &&
+          settingsData.job_sources &&
+          settingsData.job_sources.length > 0
+        ) {
           setAvailableJobSources(settingsData.job_sources);
         } else {
           setAvailableJobSources([
-            'Campus Hiring',
-            'Email',
-            'Instagram',
-            'Jobstreet',
-            'LinkedIn',
-            'Referensi',
-            'Walk In',
-            'TGT Program',
-            'Head Hunter',
-            'Others'
+            "Campus Hiring",
+            "Email",
+            "Instagram",
+            "Jobstreet",
+            "LinkedIn",
+            "Referensi",
+            "Walk In",
+            "TGT Program",
+            "Head Hunter",
+            "Others",
           ]);
         }
       } catch (err) {
@@ -192,55 +235,74 @@ export default function UploadCV() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selectedFiles = Array.from(e.target.files) as File[];
-      const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-      
-      const validFiles = selectedFiles.filter(f => allowedTypes.includes(f.type) && f.size <= 15 * 1024 * 1024);
-      const invalidFiles = selectedFiles.filter(f => !allowedTypes.includes(f.type) || f.size > 15 * 1024 * 1024);
+      const allowedTypes = [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ];
+
+      const validFiles = selectedFiles.filter(
+        (f) => allowedTypes.includes(f.type) && f.size <= 15 * 1024 * 1024,
+      );
+      const invalidFiles = selectedFiles.filter(
+        (f) => !allowedTypes.includes(f.type) || f.size > 15 * 1024 * 1024,
+      );
 
       if (invalidFiles.length > 0) {
-        toast({ 
-          title: 'Beberapa File Ditolak', 
-          description: 'Hanya file PDF/Word di bawah 15MB yang diperbolehkan.',
-          variant: 'destructive' 
+        toast({
+          title: "Beberapa File Ditolak",
+          description: "Hanya file PDF/Word di bawah 15MB yang diperbolehkan.",
+          variant: "destructive",
         });
       }
 
       if (validFiles.length > 0) {
-        setFiles(prev => [...prev, ...validFiles]);
+        setFiles((prev) => [...prev, ...validFiles]);
       }
-      
+
       // Reset input value so the same file can be selected again
-      e.target.value = '';
+      e.target.value = "";
     }
   };
 
   const removeFile = (index: number) => {
-    setFiles(prev => prev.filter((_, i) => i !== index));
+    setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (files.length === 0) {
-      toast({ title: 'Peringatan', description: 'Silakan pilih minimal 1 file.', variant: 'destructive' });
+      toast({
+        title: "Peringatan",
+        description: "Silakan pilih minimal 1 file.",
+        variant: "destructive",
+      });
       return;
     }
     if (!candidateName || !candidateEmail || !position) {
-      toast({ title: 'Peringatan', description: 'Silakan isi semua data kandidat.', variant: 'destructive' });
+      toast({
+        title: "Peringatan",
+        description: "Silakan isi semua data kandidat.",
+        variant: "destructive",
+      });
       return;
     }
 
     setLoading(true);
     setUploadProgress({ current: 0, total: files.length });
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       const user = session?.user;
       const webhookUrl = user?.user_metadata?.cv_webhook_url;
 
       if (!webhookUrl) {
-        toast({ 
-          title: 'Konfigurasi Diperlukan', 
-          description: 'Silakan atur n8n CV Upload Webhook URL di menu Pengaturan terlebih dahulu.',
-          variant: 'destructive' 
+        toast({
+          title: "Konfigurasi Diperlukan",
+          description:
+            "Silakan atur n8n CV Upload Webhook URL di menu Pengaturan terlebih dahulu.",
+          variant: "destructive",
         });
         setLoading(false);
         return;
@@ -251,69 +313,71 @@ export default function UploadCV() {
 
       for (const file of files) {
         const formData = new FormData();
-        formData.append('candidateName', candidateName);
-        formData.append('candidateEmail', candidateEmail);
-        formData.append('candidatePosition', position);
-        formData.append('sourceInfo', sourceInfo);
-        formData.append('fileName', file.name);
-        formData.append('mimeType', file.type);
-        formData.append('uploadedAt', new Date().toISOString());
-        formData.append('senderName', user?.user_metadata?.full_name || 'User');
-        formData.append('senderEmail', user?.email || '');
-        formData.append('file', file);
+        formData.append("candidateName", candidateName);
+        formData.append("candidateEmail", candidateEmail);
+        formData.append("candidatePosition", position);
+        formData.append("sourceInfo", sourceInfo);
+        formData.append("fileName", file.name);
+        formData.append("mimeType", file.type);
+        formData.append("uploadedAt", new Date().toISOString());
+        formData.append("senderName", user?.user_metadata?.full_name || "User");
+        formData.append("senderEmail", user?.email || "");
+        formData.append("file", file);
 
         try {
-          const response = await fetchWithRetry('/api/n8n/upload-cv', {
-            method: 'POST',
+          const response = await fetchWithRetry("/api/n8n/upload-cv", {
+            method: "POST",
             headers: {
-              'Authorization': `Bearer ${session?.access_token}`
+              Authorization: `Bearer ${session?.access_token}`,
             },
             body: formData,
           });
 
           if (!response.ok) {
             const errData = await response.json().catch(() => ({}));
-            throw new Error(errData.error || `Gagal mengirim ke n8n: ${response.statusText}`);
+            throw new Error(
+              errData.error || `Gagal mengirim ke n8n: ${response.statusText}`,
+            );
           }
-          
+
           successCount++;
         } catch (err) {
-          console.error('Error uploading CV:', err);
+          console.error("Error uploading CV:", err);
           errorCount++;
         }
-        
-        setUploadProgress(prev => ({ ...prev, current: prev.current + 1 }));
+
+        setUploadProgress((prev) => ({ ...prev, current: prev.current + 1 }));
       }
 
       if (successCount > 0) {
-        toast({ 
-          title: 'Berhasil Diunggah', 
-          description: `${successCount} CV berhasil dikirim ke antrean. Anda akan menerima notifikasi saat proses analisa selesai.` 
+        toast({
+          title: "Berhasil Diunggah",
+          description: `${successCount} CV berhasil dikirim ke antrean. Anda akan menerima notifikasi saat proses analisa selesai.`,
         });
       }
       if (errorCount > 0) {
-        toast({ 
-          title: 'Error', 
-          description: `${errorCount} CV gagal dikirim.`, 
-          variant: 'destructive' 
+        toast({
+          title: "Error",
+          description: `${errorCount} CV gagal dikirim.`,
+          variant: "destructive",
         });
       }
-      
+
       // Reset files and fields
       setFiles([]);
-      setCandidateName('');
-      setCandidateEmail('');
-      setPosition('');
-      
+      setCandidateName("");
+      setCandidateEmail("");
+      setPosition("");
+
       // Refresh list
       fetchUploads();
-      
     } catch (error: any) {
-      console.error('Error uploading CV:', error);
-      toast({ 
-        title: 'Error', 
-        description: error.message || 'Gagal mengunggah CV. Periksa koneksi n8n Anda.', 
-        variant: 'destructive' 
+      console.error("Error uploading CV:", error);
+      toast({
+        title: "Error",
+        description:
+          error.message || "Gagal mengunggah CV. Periksa koneksi n8n Anda.",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -324,10 +388,10 @@ export default function UploadCV() {
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div className="space-y-1">
-          <h1 className="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">
+          <h1 className="text-4xl font-extrabold tracking-tight text-[#3D2C44]">
             Upload CV Kandidat
           </h1>
-          <p className="text-sm font-medium text-slate-500 max-w-xl">
+          <p className="text-sm font-medium text-[#3D2C44]/70 max-w-xl">
             Unggah file CV dan teruskan ke workflow n8n Anda.
           </p>
         </div>
@@ -343,11 +407,16 @@ export default function UploadCV() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Upload Form */}
         <div className="space-y-6">
-          <form onSubmit={handleUpload} className="bg-white/40 backdrop-blur-xl rounded-3xl border border-white/60 shadow-2xl overflow-hidden">
+          <form
+            onSubmit={handleUpload}
+            className="bg-white/40 backdrop-blur-xl rounded-3xl border border-white/60 shadow-2xl overflow-hidden"
+          >
             <div className="p-8 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Nama Kandidat</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                    Nama Kandidat
+                  </label>
                   <input
                     type="text"
                     required
@@ -358,7 +427,9 @@ export default function UploadCV() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Email Kandidat</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                    Email Kandidat
+                  </label>
                   <input
                     type="email"
                     required
@@ -369,10 +440,13 @@ export default function UploadCV() {
                   />
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Posisi Dilamar</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                    Posisi Dilamar
+                  </label>
                   {loadingPositions ? (
                     <div className="flex items-center gap-2 text-sm text-slate-500 py-3">
-                      <Loader2 className="animate-spin" size={16} /> Memuat posisi...
+                      <Loader2 className="animate-spin" size={16} /> Memuat
+                      posisi...
                     </div>
                   ) : availablePositions.length > 0 ? (
                     <select
@@ -381,9 +455,13 @@ export default function UploadCV() {
                       onChange={(e) => setPosition(e.target.value)}
                       className="block w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium appearance-none"
                     >
-                      <option value="" disabled>Pilih Posisi</option>
+                      <option value="" disabled>
+                        Pilih Posisi
+                      </option>
                       {availablePositions.map((pos, idx) => (
-                        <option key={idx} value={pos}>{pos}</option>
+                        <option key={idx} value={pos}>
+                          {pos}
+                        </option>
                       ))}
                     </select>
                   ) : (
@@ -398,26 +476,36 @@ export default function UploadCV() {
                   )}
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Info Sumber Lowongan</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                    Info Sumber Lowongan
+                  </label>
                   <select
                     value={sourceInfo}
                     onChange={(e) => setSourceInfo(e.target.value)}
                     className="block w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium appearance-none"
                   >
-                    <option value="" disabled>Pilih Sumber Lowongan</option>
+                    <option value="" disabled>
+                      Pilih Sumber Lowongan
+                    </option>
                     {availableJobSources.map((source, idx) => (
-                      <option key={idx} value={source}>{source}</option>
+                      <option key={idx} value={source}>
+                        {source}
+                      </option>
                     ))}
                   </select>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">File CV (PDF/DOC)</label>
-                <div 
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  File CV (PDF/DOC)
+                </label>
+                <div
                   className={cn(
                     "relative border-2 border-dashed rounded-2xl p-10 transition-all flex flex-col items-center justify-center gap-4",
-                    files.length > 0 ? "border-emerald-300 bg-emerald-50/50" : "border-white/60 bg-white/40 hover:border-indigo-300 hover:bg-white/60"
+                    files.length > 0
+                      ? "border-emerald-300 bg-emerald-50/50"
+                      : "border-white/60 bg-white/40 hover:border-indigo-300 hover:bg-white/60",
                   )}
                 >
                   <input
@@ -427,26 +515,44 @@ export default function UploadCV() {
                     accept=".pdf,.doc,.docx"
                     className="absolute inset-0 opacity-0 cursor-pointer z-10"
                   />
-                  
+
                   {files.length > 0 ? (
                     <div className="w-full space-y-3 z-20">
                       {files.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between bg-white/50 p-3 rounded-xl border border-white/60 shadow-sm relative z-20">
+                        <div
+                          key={index}
+                          className="flex items-center justify-between bg-white/50 p-3 rounded-xl border border-white/60 shadow-sm relative z-20"
+                        >
                           <div className="flex items-center gap-3">
-                            <div className={cn(
-                              "w-10 h-10 rounded-lg flex items-center justify-center",
-                              file.type === 'application/pdf' ? "bg-red-100 text-red-600" : "bg-blue-100 text-blue-600"
-                            )}>
-                              {file.type === 'application/pdf' ? <FileText size={20} /> : <File size={20} />}
+                            <div
+                              className={cn(
+                                "w-10 h-10 rounded-lg flex items-center justify-center",
+                                file.type === "application/pdf"
+                                  ? "bg-red-100 text-red-600"
+                                  : "bg-blue-100 text-blue-600",
+                              )}
+                            >
+                              {file.type === "application/pdf" ? (
+                                <FileText size={20} />
+                              ) : (
+                                <File size={20} />
+                              )}
                             </div>
                             <div>
-                              <p className="font-bold text-slate-900 text-sm truncate max-w-[200px]">{file.name}</p>
-                              <p className="text-xs text-slate-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                              <p className="font-bold text-slate-900 text-sm truncate max-w-[200px]">
+                                {file.name}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                {(file.size / 1024 / 1024).toFixed(2)} MB
+                              </p>
                             </div>
                           </div>
-                          <button 
+                          <button
                             type="button"
-                            onClick={(e) => { e.stopPropagation(); removeFile(index); }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeFile(index);
+                            }}
                             className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
                           >
                             <X size={16} />
@@ -454,7 +560,9 @@ export default function UploadCV() {
                         </div>
                       ))}
                       <div className="text-center mt-4 pt-4 border-t border-white/40">
-                        <p className="text-sm font-medium text-indigo-600">Klik atau seret untuk menambah file lain</p>
+                        <p className="text-sm font-medium text-indigo-600">
+                          Klik atau seret untuk menambah file lain
+                        </p>
                       </div>
                     </div>
                   ) : (
@@ -463,8 +571,12 @@ export default function UploadCV() {
                         <Upload size={32} />
                       </div>
                       <div className="text-center">
-                        <p className="font-bold text-slate-900">Klik atau seret file ke sini</p>
-                        <p className="text-xs text-slate-500">Bisa pilih banyak file sekaligus (PDF, DOC, DOCX)</p>
+                        <p className="font-bold text-slate-900">
+                          Klik atau seret file ke sini
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          Bisa pilih banyak file sekaligus (PDF, DOC, DOCX)
+                        </p>
                       </div>
                     </>
                   )}
@@ -477,19 +589,29 @@ export default function UploadCV() {
                 <div className="space-y-2 mb-4">
                   <div className="flex justify-between text-xs font-medium text-slate-500">
                     <span>Mengunggah file...</span>
-                    <span>{uploadProgress.current} / {uploadProgress.total}</span>
+                    <span>
+                      {uploadProgress.current} / {uploadProgress.total}
+                    </span>
                   </div>
                   <div className="w-full bg-slate-200/50 rounded-full h-2 overflow-hidden">
-                    <div 
+                    <div
                       className="bg-indigo-600 h-full rounded-full transition-all duration-300"
-                      style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
+                      style={{
+                        width: `${(uploadProgress.current / uploadProgress.total) * 100}%`,
+                      }}
                     />
                   </div>
                 </div>
               )}
               <button
                 type="submit"
-                disabled={loading || files.length === 0 || !candidateName || !candidateEmail || !position}
+                disabled={
+                  loading ||
+                  files.length === 0 ||
+                  !candidateName ||
+                  !candidateEmail ||
+                  !position
+                }
                 className="w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
@@ -497,7 +619,9 @@ export default function UploadCV() {
                 ) : (
                   <CheckCircle2 size={24} />
                 )}
-                {loading ? `Mengirim ${uploadProgress.current}/${uploadProgress.total} CV...` : `Kirim ${files.length > 0 ? files.length : ''} CV`}
+                {loading
+                  ? `Mengirim ${uploadProgress.current}/${uploadProgress.total} CV...`
+                  : `Kirim ${files.length > 0 ? files.length : ""} CV`}
               </button>
             </div>
           </form>
@@ -508,10 +632,12 @@ export default function UploadCV() {
           <div className="bg-white/40 backdrop-blur-xl rounded-3xl border border-white/60 shadow-2xl overflow-hidden flex flex-col h-full max-h-[800px]">
             <div className="p-6 border-b border-white/40 bg-white/30 space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-slate-900">Riwayat Upload</h2>
+                <h2 className="text-xl font-bold text-slate-900">
+                  Riwayat Upload
+                </h2>
                 <div className="flex items-center gap-2">
                   {selectedUploads.length > 0 && (
-                    <button 
+                    <button
                       onClick={handleBulkDelete}
                       className="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl text-sm font-medium transition-all flex items-center gap-2"
                     >
@@ -519,34 +645,45 @@ export default function UploadCV() {
                       Hapus ({selectedUploads.length})
                     </button>
                   )}
-                  <button 
+                  <button
                     onClick={fetchUploads}
                     className="p-2.5 text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm flex items-center justify-center"
                   >
-                    <RefreshCcw size={20} className={fetchingUploads ? 'animate-spin' : ''} />
+                    <RefreshCcw
+                      size={20}
+                      className={fetchingUploads ? "animate-spin" : ""}
+                    />
                   </button>
                 </div>
               </div>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input 
-                  type="text" 
+                <Search
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  size={18}
+                />
+                <input
+                  type="text"
                   placeholder="Cari nama, email, atau posisi..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && fetchUploads()}
+                  onKeyDown={(e) => e.key === "Enter" && fetchUploads()}
                   className="w-full pl-10 pr-4 py-2.5 bg-white/50 backdrop-blur-md border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm"
                 />
               </div>
               {uploads.length > 0 && (
                 <div className="flex items-center gap-2 px-2">
-                  <input 
-                    type="checkbox" 
-                    checked={selectedUploads.length === uploads.length && uploads.length > 0}
+                  <input
+                    type="checkbox"
+                    checked={
+                      selectedUploads.length === uploads.length &&
+                      uploads.length > 0
+                    }
                     onChange={toggleSelectAll}
                     className="w-4 h-4 rounded border-white/60 bg-white/50 text-indigo-600 focus:ring-indigo-500"
                   />
-                  <span className="text-xs font-medium text-slate-500">Pilih Semua</span>
+                  <span className="text-xs font-medium text-slate-500">
+                    Pilih Semua
+                  </span>
                 </div>
               )}
             </div>
@@ -560,40 +697,53 @@ export default function UploadCV() {
               ) : uploads.length > 0 ? (
                 <>
                   {uploads.map((upload) => (
-                    <div key={upload.id} className={cn(
-                      "p-4 border rounded-2xl transition-all group relative",
-                      selectedUploads.includes(upload.id) ? "bg-indigo-50/80 border-indigo-200" : "bg-white/40 border-white/60 hover:border-indigo-300 hover:bg-white/60 hover:shadow-xl"
-                    )}>
+                    <div
+                      key={upload.id}
+                      className={cn(
+                        "p-4 border rounded-2xl transition-all group relative",
+                        selectedUploads.includes(upload.id)
+                          ? "bg-indigo-50/80 border-indigo-200"
+                          : "bg-white/40 border-white/60 hover:border-indigo-300 hover:bg-white/60 hover:shadow-xl",
+                      )}
+                    >
                       <div className="flex items-start gap-4">
                         <div className="pt-1">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             checked={selectedUploads.includes(upload.id)}
                             onChange={() => toggleSelect(upload.id)}
                             className="w-4 h-4 rounded border-white/60 bg-white/50 text-indigo-600 focus:ring-indigo-500"
                           />
                         </div>
                         <div className="flex-1 space-y-1">
-                          <h3 className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">{upload.candidate_name}</h3>
+                          <h3 className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                            {upload.candidate_name}
+                          </h3>
                           <div className="flex items-center gap-2 text-xs text-slate-500">
                             <Mail size={12} />
                             <span>{upload.candidate_email}</span>
                           </div>
                           <div className="flex items-center gap-2 text-xs text-slate-500">
                             <FileText size={12} />
-                            <span className="font-medium text-indigo-600">{upload.position}</span>
+                            <span className="font-medium text-indigo-600">
+                              {upload.position}
+                            </span>
                           </div>
                         </div>
                         <div className="text-right space-y-1">
                           <div className="flex items-center justify-end gap-1 text-[10px] text-slate-400 font-medium uppercase tracking-wider">
                             <Calendar size={10} />
-                            <span>{new Date(upload.uploaded_at).toLocaleDateString('id-ID')}</span>
+                            <span>
+                              {new Date(upload.uploaded_at).toLocaleDateString(
+                                "id-ID",
+                              )}
+                            </span>
                           </div>
                           <div className="flex items-center justify-end gap-1 text-[10px] text-slate-400">
                             <User size={10} />
                             <span>{upload.sender_name}</span>
                           </div>
-                          <button 
+                          <button
                             onClick={() => handleDelete(upload.id)}
                             className="mt-2 p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all inline-flex"
                             title="Hapus riwayat"
@@ -604,49 +754,73 @@ export default function UploadCV() {
                       </div>
                     </div>
                   ))}
-                  
+
                   {/* Pagination Controls */}
                   {totalItems > itemsPerPage && (
                     <div className="flex items-center justify-between pt-4 border-t border-white/40 mt-6">
                       <div className="text-sm text-slate-500">
-                        Menampilkan <span className="font-medium text-slate-900">{(currentPage - 1) * itemsPerPage + 1}</span> hingga <span className="font-medium text-slate-900">{Math.min(currentPage * itemsPerPage, totalItems)}</span> dari <span className="font-medium text-slate-900">{totalItems}</span>
+                        Menampilkan{" "}
+                        <span className="font-medium text-slate-900">
+                          {(currentPage - 1) * itemsPerPage + 1}
+                        </span>{" "}
+                        hingga{" "}
+                        <span className="font-medium text-slate-900">
+                          {Math.min(currentPage * itemsPerPage, totalItems)}
+                        </span>{" "}
+                        dari{" "}
+                        <span className="font-medium text-slate-900">
+                          {totalItems}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
                           disabled={currentPage === 1}
-                          onClick={() => setCurrentPage(prev => prev - 1)}
+                          onClick={() => setCurrentPage((prev) => prev - 1)}
                           className="px-3 py-1.5 rounded-lg border border-white/60 text-sm font-medium text-slate-600 hover:bg-white/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                         >
                           Sebelumnya
                         </button>
                         <div className="flex items-center gap-1">
-                          {Array.from({ length: Math.min(5, Math.ceil(totalItems / itemsPerPage)) }, (_, i) => {
-                            let pageNum = currentPage;
-                            const totalPages = Math.ceil(totalItems / itemsPerPage);
-                            if (totalPages <= 5) pageNum = i + 1;
-                            else if (currentPage <= 3) pageNum = i + 1;
-                            else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
-                            else pageNum = currentPage - 2 + i;
+                          {Array.from(
+                            {
+                              length: Math.min(
+                                5,
+                                Math.ceil(totalItems / itemsPerPage),
+                              ),
+                            },
+                            (_, i) => {
+                              let pageNum = currentPage;
+                              const totalPages = Math.ceil(
+                                totalItems / itemsPerPage,
+                              );
+                              if (totalPages <= 5) pageNum = i + 1;
+                              else if (currentPage <= 3) pageNum = i + 1;
+                              else if (currentPage >= totalPages - 2)
+                                pageNum = totalPages - 4 + i;
+                              else pageNum = currentPage - 2 + i;
 
-                            return (
-                              <button
-                                key={pageNum}
-                                onClick={() => setCurrentPage(pageNum)}
-                                className={cn(
-                                  "w-8 h-8 rounded-lg text-sm font-medium transition-all",
-                                  currentPage === pageNum 
-                                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-100" 
-                                    : "text-slate-600 hover:bg-white/50"
-                                )}
-                              >
-                                {pageNum}
-                              </button>
-                            );
-                          })}
+                              return (
+                                <button
+                                  key={pageNum}
+                                  onClick={() => setCurrentPage(pageNum)}
+                                  className={cn(
+                                    "w-8 h-8 rounded-lg text-sm font-medium transition-all",
+                                    currentPage === pageNum
+                                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-100"
+                                      : "text-slate-600 hover:bg-white/50",
+                                  )}
+                                >
+                                  {pageNum}
+                                </button>
+                              );
+                            },
+                          )}
                         </div>
                         <button
-                          disabled={currentPage === Math.ceil(totalItems / itemsPerPage)}
-                          onClick={() => setCurrentPage(prev => prev + 1)}
+                          disabled={
+                            currentPage === Math.ceil(totalItems / itemsPerPage)
+                          }
+                          onClick={() => setCurrentPage((prev) => prev + 1)}
                           className="px-3 py-1.5 rounded-lg border border-white/60 text-sm font-medium text-slate-600 hover:bg-white/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                         >
                           Selanjutnya
@@ -660,14 +834,16 @@ export default function UploadCV() {
                   <div className="p-4 bg-white/50 rounded-full border border-white/60 shadow-sm">
                     <Search size={32} />
                   </div>
-                  <p className="text-sm font-medium">Tidak ada data ditemukan</p>
+                  <p className="text-sm font-medium">
+                    Tidak ada data ditemukan
+                  </p>
                 </div>
               )}
             </div>
           </div>
         </div>
       </div>
-      <BulkUploadModal 
+      <BulkUploadModal
         isOpen={isBulkModalOpen}
         onClose={() => setIsBulkModalOpen(false)}
         onSuccess={() => {

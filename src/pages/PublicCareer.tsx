@@ -1,9 +1,42 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { supabase } from '../lib/supabase';
-import { Upload, FileText, CheckCircle2, Loader2, File, AlertCircle, Phone, User, Mail, Briefcase, KeyRound, ChevronRight, X, ArrowLeft, ClipboardList, GraduationCap, RefreshCw, MessageCircle, Heart, TrendingUp, Users, Zap, HelpCircle, ChevronDown, ChevronUp, Quote, Star, MapPin, Linkedin, Instagram, Globe, Youtube } from 'lucide-react';
-import { useToast } from '../components/ui/use-toast';
-import { cn, fetchWithRetry } from '../lib/utils';
-import { SiteSettings } from '../types';
+import React, { useState, useEffect, useRef } from "react";
+import { supabase } from "../lib/supabase";
+import {
+  Upload,
+  FileText,
+  CheckCircle2,
+  Loader2,
+  File,
+  AlertCircle,
+  Phone,
+  User,
+  Mail,
+  Briefcase,
+  KeyRound,
+  ChevronRight,
+  X,
+  ArrowLeft,
+  ClipboardList,
+  GraduationCap,
+  RefreshCw,
+  MessageCircle,
+  Heart,
+  TrendingUp,
+  Users,
+  Zap,
+  HelpCircle,
+  ChevronDown,
+  ChevronUp,
+  Quote,
+  Star,
+  MapPin,
+  Linkedin,
+  Instagram,
+  Globe,
+  Youtube,
+} from "lucide-react";
+import { useToast } from "../components/ui/use-toast";
+import { cn, fetchWithRetry } from "../lib/utils";
+import { SiteSettings } from "../types";
 
 interface OpenRecruitment {
   id: string;
@@ -15,40 +48,41 @@ interface OpenRecruitment {
 
 const formatListText = (text: string) => {
   if (!text) return [];
-  return text.split('\n')
-    .map(line => line.trim())
-    .filter(line => line.length > 0)
-    .map(line => line.replace(/^(\s*[-*•]\s*|\s*\d+[\.\)]\s*)/, '').trim());
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((line) => line.replace(/^(\s*[-*•]\s*|\s*\d+[\.\)]\s*)/, "").trim());
 };
 
 export default function PublicCareer() {
-  const [view, setView] = useState<'listing' | 'form'>('listing');
+  const [view, setView] = useState<"listing" | "form">("listing");
   const [selectedJob, setSelectedJob] = useState<OpenRecruitment | null>(null);
   const [step, setStep] = useState<1 | 2 | 3>(1); // 1: Form, 2: OTP, 3: Upload
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState<SiteSettings | null>(null);
-  
+
   // Form Data
-  const [candidateName, setCandidateName] = useState('');
-  const [candidateEmail, setCandidateEmail] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [position, setPosition] = useState('');
-  const [sourceInfo, setSourceInfo] = useState('');
-  
+  const [candidateName, setCandidateName] = useState("");
+  const [candidateEmail, setCandidateEmail] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [position, setPosition] = useState("");
+  const [sourceInfo, setSourceInfo] = useState("");
+
   // OTP Data
-  const [otpInput, setOtpInput] = useState('');
-  const [otpRequestId, setOtpRequestId] = useState('');
-  const [uploadToken, setUploadToken] = useState('');
+  const [otpInput, setOtpInput] = useState("");
+  const [otpRequestId, setOtpRequestId] = useState("");
+  const [uploadToken, setUploadToken] = useState("");
   const [countdown, setCountdown] = useState(0);
-  
+
   // Upload Data
   const [files, setFiles] = useState<File[]>([]);
-  
+
   // CAPTCHA Data
-  const [captchaText, setCaptchaText] = useState('');
-  const [captchaInput, setCaptchaInput] = useState('');
+  const [captchaText, setCaptchaText] = useState("");
+  const [captchaInput, setCaptchaInput] = useState("");
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  
+
   // Positions
   const [availablePositions, setAvailablePositions] = useState<string[]>([]);
   const [availableJobSources, setAvailableJobSources] = useState<string[]>([]);
@@ -65,39 +99,71 @@ export default function PublicCareer() {
   const faqs = [
     {
       q: "Berapa lama proses seleksi berlangsung?",
-      a: "Proses seleksi biasanya memakan waktu 1-2 minggu setelah batas waktu pendaftaran ditutup. Kami akan menghubungi Anda melalui email atau WhatsApp terkait status lamaran Anda."
+      a: "Proses seleksi biasanya memakan waktu 1-2 minggu setelah batas waktu pendaftaran ditutup. Kami akan menghubungi Anda melalui email atau WhatsApp terkait status lamaran Anda.",
     },
     {
       q: "Apakah fresh graduate bisa melamar?",
-      a: "Tentu! Kami memiliki beberapa posisi entry-level yang sangat cocok untuk fresh graduate. Silakan cek kualifikasi pada setiap lowongan."
+      a: "Tentu! Kami memiliki beberapa posisi entry-level yang sangat cocok untuk fresh graduate. Silakan cek kualifikasi pada setiap lowongan.",
     },
     {
       q: "Apakah saya bisa melamar lebih dari satu posisi?",
-      a: "Kami menyarankan Anda untuk melamar pada posisi yang paling sesuai dengan minat dan keahlian Anda. Namun, Anda diperbolehkan melamar maksimal 2 posisi yang relevan."
+      a: "Kami menyarankan Anda untuk melamar pada posisi yang paling sesuai dengan minat dan keahlian Anda. Namun, Anda diperbolehkan melamar maksimal 2 posisi yang relevan.",
     },
     {
       q: "Bagaimana tahapan interview di Waruna Group?",
-      a: "Tahapan interview meliputi interview HR untuk menilai kecocokan budaya kerja, dilanjutkan dengan interview User/Teknis untuk menilai kompetensi spesifik sesuai posisi."
-    }
+      a: "Tahapan interview meliputi interview HR untuk menilai kecocokan budaya kerja, dilanjutkan dengan interview User/Teknis untuk menilai kompetensi spesifik sesuai posisi.",
+    },
   ];
 
   const benefits = [
-    { icon: <Heart className="text-rose-500" size={24} />, title: "Asuransi Kesehatan", desc: "Perlindungan kesehatan komprehensif untuk Anda dan keluarga." },
-    { icon: <TrendingUp className="text-emerald-500" size={24} />, title: "Jenjang Karir", desc: "Kesempatan berkembang dengan program mentoring dan promosi yang jelas." },
-    { icon: <Users className="text-blue-500" size={24} />, title: "Lingkungan Positif", desc: "Budaya kerja yang kolaboratif, inklusif, dan saling mendukung." },
-    { icon: <Zap className="text-amber-500" size={24} />, title: "Pelatihan Rutin", desc: "Program pengembangan skill dan kompetensi secara berkala." }
+    {
+      icon: <Heart className="text-rose-500" size={24} />,
+      title: "Asuransi Kesehatan",
+      desc: "Perlindungan kesehatan komprehensif untuk Anda dan keluarga.",
+    },
+    {
+      icon: <TrendingUp className="text-emerald-500" size={24} />,
+      title: "Jenjang Karir",
+      desc: "Kesempatan berkembang dengan program mentoring dan promosi yang jelas.",
+    },
+    {
+      icon: <Users className="text-blue-500" size={24} />,
+      title: "Lingkungan Positif",
+      desc: "Budaya kerja yang kolaboratif, inklusif, dan saling mendukung.",
+    },
+    {
+      icon: <Zap className="text-amber-500" size={24} />,
+      title: "Pelatihan Rutin",
+      desc: "Program pengembangan skill dan kompetensi secara berkala.",
+    },
   ];
 
   const processSteps = [
-    { step: "01", title: "Seleksi Berkas", desc: "Tim HR kami akan mereview CV dan portofolio Anda." },
-    { step: "02", title: "Psikotes & Teknis", desc: "Pengerjaan tes sesuai dengan bidang yang dilamar." },
-    { step: "03", title: "Wawancara", desc: "Sesi diskusi dengan tim HR dan calon atasan Anda." },
-    { step: "04", title: "Offering", desc: "Penawaran kerja dan proses onboarding karyawan baru." }
+    {
+      step: "01",
+      title: "Seleksi Berkas",
+      desc: "Tim HR kami akan mereview CV dan portofolio Anda.",
+    },
+    {
+      step: "02",
+      title: "Psikotes & Teknis",
+      desc: "Pengerjaan tes sesuai dengan bidang yang dilamar.",
+    },
+    {
+      step: "03",
+      title: "Wawancara",
+      desc: "Sesi diskusi dengan tim HR dan calon atasan Anda.",
+    },
+    {
+      step: "04",
+      title: "Offering",
+      desc: "Penawaran kerja dan proses onboarding karyawan baru.",
+    },
   ];
 
   const generateCaptcha = () => {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-    let text = '';
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+    let text = "";
     for (let i = 0; i < 5; i++) {
       text += chars.charAt(Math.floor(Math.random() * chars.length));
     }
@@ -121,29 +187,35 @@ export default function PublicCareer() {
   useEffect(() => {
     if (step === 2 && captchaText && canvasRef.current) {
       const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext("2d");
       if (ctx) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
+
         // Background
-        ctx.fillStyle = '#f8fafc';
+        ctx.fillStyle = "#f8fafc";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
+
         // Add noise (lines)
         for (let i = 0; i < 5; i++) {
           ctx.beginPath();
-          ctx.moveTo(Math.random() * canvas.width, Math.random() * canvas.height);
-          ctx.lineTo(Math.random() * canvas.width, Math.random() * canvas.height);
-          ctx.strokeStyle = '#cbd5e1';
+          ctx.moveTo(
+            Math.random() * canvas.width,
+            Math.random() * canvas.height,
+          );
+          ctx.lineTo(
+            Math.random() * canvas.width,
+            Math.random() * canvas.height,
+          );
+          ctx.strokeStyle = "#cbd5e1";
           ctx.stroke();
         }
 
         // Add text
-        ctx.font = 'bold 24px Inter, sans-serif';
-        ctx.fillStyle = '#334155';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        
+        ctx.font = "bold 24px Inter, sans-serif";
+        ctx.fillStyle = "#334155";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
         // Draw characters with slight rotation
         for (let i = 0; i < captchaText.length; i++) {
           ctx.save();
@@ -157,55 +229,63 @@ export default function PublicCareer() {
   }, [captchaText, step]);
 
   useEffect(() => {
-    supabase.from('site_settings').select('*').eq('id', 1).single().then(({ data, error }) => {
-      if (data) {
-        setSettings(data);
-        if (data.career_job_sources && data.career_job_sources.length > 0) {
-          setAvailableJobSources(data.career_job_sources);
-        } else {
+    supabase
+      .from("site_settings")
+      .select("*")
+      .eq("id", 1)
+      .single()
+      .then(({ data, error }) => {
+        if (data) {
+          setSettings(data);
+          if (data.career_job_sources && data.career_job_sources.length > 0) {
+            setAvailableJobSources(data.career_job_sources);
+          } else {
+            setAvailableJobSources([
+              "Campus Hiring",
+              "Email",
+              "Instagram",
+              "Jobstreet",
+              "LinkedIn",
+              "Referensi",
+              "Walk In",
+              "TGT Program",
+              "Head Hunter",
+              "Others",
+            ]);
+          }
+        } else if (error) {
           setAvailableJobSources([
-            'Campus Hiring',
-            'Email',
-            'Instagram',
-            'Jobstreet',
-            'LinkedIn',
-            'Referensi',
-            'Walk In',
-            'TGT Program',
-            'Head Hunter',
-            'Others'
+            "Campus Hiring",
+            "Email",
+            "Instagram",
+            "Jobstreet",
+            "LinkedIn",
+            "Referensi",
+            "Walk In",
+            "TGT Program",
+            "Head Hunter",
+            "Others",
           ]);
         }
-      } else if (error) {
-        setAvailableJobSources([
-          'Campus Hiring',
-          'Email',
-          'Instagram',
-          'Jobstreet',
-          'LinkedIn',
-          'Referensi',
-          'Walk In',
-          'TGT Program',
-          'Head Hunter',
-          'Others'
-        ]);
-      }
-    }).catch(err => console.warn('Failed to get site settings:', err));
+      })
+      .catch((err) => console.warn("Failed to get site settings:", err));
 
     const fetchPositions = async () => {
       try {
         const { data, error } = await supabase
-          .from('open_recruitment')
-          .select('*')
+          .from("open_recruitment")
+          .select("*")
           // Using is_published = true or is_published is null (for backward compatibility if column not yet initialized)
-          .or('is_published.eq.true,is_published.is.null')
-          .order('created_at', { ascending: false });
+          .or("is_published.eq.true,is_published.is.null")
+          .order("created_at", { ascending: false });
 
         if (error) {
-          console.error('Error fetching positions:', error);
+          console.error("Error fetching positions:", error);
         } else if (data) {
           setJobs(data);
-          const positions = Array.from(new Set(data.map(item => item.position)));
+          const positions = Array.from(
+            new Set(data.map((item) => item.position)),
+          );
           setAvailablePositions(positions);
           if (positions.length > 0) {
             setPosition(positions[0]);
@@ -224,7 +304,11 @@ export default function PublicCareer() {
   const handleRequestOTPClick = (e: React.FormEvent) => {
     e.preventDefault();
     if (!candidateName || !candidateEmail || !phoneNumber || !position) {
-      toast({ title: 'Peringatan', description: 'Silakan lengkapi semua data.', variant: 'destructive' });
+      toast({
+        title: "Peringatan",
+        description: "Silakan lengkapi semua data.",
+        variant: "destructive",
+      });
       return;
     }
     setShowOtpConfirmModal(true);
@@ -235,41 +319,50 @@ export default function PublicCareer() {
     setLoading(true);
     try {
       // Request OTP via backend
-      const response = await fetchWithRetry('/api/request-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetchWithRetry("/api/request-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phone: phoneNumber
+          phone: phoneNumber,
         }),
       });
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error || 'Gagal mengirim OTP via WhatsApp');
+        throw new Error(errData.error || "Gagal mengirim OTP via WhatsApp");
       }
 
       const data = await response.json();
       setOtpRequestId(data.otpRequestId);
 
-      toast({ title: 'OTP Terkirim', description: 'Silakan periksa WhatsApp Anda untuk kode OTP.' });
+      toast({
+        title: "OTP Terkirim",
+        description: "Silakan periksa WhatsApp Anda untuk kode OTP.",
+      });
       setStep(2);
       setCountdown(120);
     } catch (error: any) {
-      console.error('Error requesting OTP:', error);
-      
-      let errorMessage = error.message || 'Gagal terhubung ke server, silakan coba kembali';
+      console.error("Error requesting OTP:", error);
+
+      let errorMessage =
+        error.message || "Gagal terhubung ke server, silakan coba kembali";
       if (
-        errorMessage.includes('Failed to fetch') || 
-        errorMessage.includes('ECONNREFUSED') ||
-        errorMessage.includes('timeout') ||
-        errorMessage.includes('NetworkError') ||
-        errorMessage.includes('automation') ||
-        errorMessage.includes('n8n')
+        errorMessage.includes("Failed to fetch") ||
+        errorMessage.includes("ECONNREFUSED") ||
+        errorMessage.includes("timeout") ||
+        errorMessage.includes("NetworkError") ||
+        errorMessage.includes("automation") ||
+        errorMessage.includes("n8n")
       ) {
-        errorMessage = 'Sistem sedang sibuk atau ada gangguan pada layanan pengiriman pesan. Silakan periksa koneksi Anda dan coba beberapa saat lagi.';
+        errorMessage =
+          "Sistem sedang sibuk atau ada gangguan pada layanan pengiriman pesan. Silakan periksa koneksi Anda dan coba beberapa saat lagi.";
       }
 
-      toast({ title: 'Gagal Mengirim OTP', description: errorMessage, variant: 'destructive' });
+      toast({
+        title: "Gagal Mengirim OTP",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -277,40 +370,51 @@ export default function PublicCareer() {
 
   const handleResendOTP = async () => {
     setLoading(true);
-    setOtpInput(''); // Clear existing input
+    setOtpInput(""); // Clear existing input
     try {
-      const response = await fetchWithRetry('/api/request-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetchWithRetry("/api/request-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phone: phoneNumber
+          phone: phoneNumber,
         }),
       });
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error || 'Gagal mengirim ulang OTP via WhatsApp');
+        throw new Error(
+          errData.error || "Gagal mengirim ulang OTP via WhatsApp",
+        );
       }
 
       const data = await response.json();
       setOtpRequestId(data.otpRequestId);
 
-      toast({ title: 'OTP Terkirim', description: 'Silakan periksa WhatsApp Anda untuk kode OTP baru.' });
+      toast({
+        title: "OTP Terkirim",
+        description: "Silakan periksa WhatsApp Anda untuk kode OTP baru.",
+      });
       setCountdown(120);
     } catch (error: any) {
-      console.error('Error resending OTP:', error);
-      let errorMessage = error.message || 'Gagal terhubung ke server, silakan coba kembali';
+      console.error("Error resending OTP:", error);
+      let errorMessage =
+        error.message || "Gagal terhubung ke server, silakan coba kembali";
       if (
-        errorMessage.includes('Failed to fetch') || 
-        errorMessage.includes('ECONNREFUSED') ||
-        errorMessage.includes('timeout') ||
-        errorMessage.includes('NetworkError') ||
-        errorMessage.includes('automation') ||
-        errorMessage.includes('n8n')
+        errorMessage.includes("Failed to fetch") ||
+        errorMessage.includes("ECONNREFUSED") ||
+        errorMessage.includes("timeout") ||
+        errorMessage.includes("NetworkError") ||
+        errorMessage.includes("automation") ||
+        errorMessage.includes("n8n")
       ) {
-        errorMessage = 'Sistem sedang sibuk atau ada gangguan pada layanan pengiriman pesan. Silakan periksa koneksi Anda dan coba beberapa saat lagi.';
+        errorMessage =
+          "Sistem sedang sibuk atau ada gangguan pada layanan pengiriman pesan. Silakan periksa koneksi Anda dan coba beberapa saat lagi.";
       }
-      toast({ title: 'Gagal Mengirim Ulang OTP', description: errorMessage, variant: 'destructive' });
+      toast({
+        title: "Gagal Mengirim Ulang OTP",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -319,53 +423,70 @@ export default function PublicCareer() {
   const handleVerifyOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!otpInput || otpInput.length !== 6) {
-      toast({ title: 'Peringatan', description: 'Masukkan 6 digit kode OTP.', variant: 'destructive' });
+      toast({
+        title: "Peringatan",
+        description: "Masukkan 6 digit kode OTP.",
+        variant: "destructive",
+      });
       return;
     }
 
     if (captchaInput !== captchaText) {
-      toast({ title: 'Peringatan', description: 'CAPTCHA tidak valid. Silakan coba lagi.', variant: 'destructive' });
+      toast({
+        title: "Peringatan",
+        description: "CAPTCHA tidak valid. Silakan coba lagi.",
+        variant: "destructive",
+      });
       generateCaptcha();
-      setCaptchaInput('');
+      setCaptchaInput("");
       return;
     }
 
     setLoading(true);
     try {
       // Verify OTP via backend
-      const response = await fetchWithRetry('/api/verify-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetchWithRetry("/api/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           otpRequestId,
-          otpInput
+          otpInput,
         }),
       });
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error || 'Gagal memverifikasi OTP');
+        throw new Error(errData.error || "Gagal memverifikasi OTP");
       }
 
       const data = await response.json();
       setUploadToken(data.uploadToken);
 
-      toast({ title: 'Berhasil', description: 'Verifikasi berhasil. Silakan unggah CV Anda.' });
+      toast({
+        title: "Berhasil",
+        description: "Verifikasi berhasil. Silakan unggah CV Anda.",
+      });
       setStep(3);
     } catch (error: any) {
-      console.error('Error verifying OTP:', error);
-      
-      let errorMessage = error.message || 'Gagal memverifikasi OTP, silakan coba kembali';
+      console.error("Error verifying OTP:", error);
+
+      let errorMessage =
+        error.message || "Gagal memverifikasi OTP, silakan coba kembali";
       if (
-        errorMessage.includes('Failed to fetch') || 
-        errorMessage.includes('ECONNREFUSED') ||
-        errorMessage.includes('timeout') ||
-        errorMessage.includes('NetworkError')
+        errorMessage.includes("Failed to fetch") ||
+        errorMessage.includes("ECONNREFUSED") ||
+        errorMessage.includes("timeout") ||
+        errorMessage.includes("NetworkError")
       ) {
-        errorMessage = 'Gagal terhubung ke server, silakan periksa koneksi Anda dan coba kembali.';
+        errorMessage =
+          "Gagal terhubung ke server, silakan periksa koneksi Anda dan coba kembali.";
       }
 
-      toast({ title: 'Error', description: errorMessage, variant: 'destructive' });
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -374,16 +495,24 @@ export default function PublicCareer() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selectedFiles = Array.from(e.target.files) as File[];
-      const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-      
-      const validFiles = selectedFiles.filter(f => allowedTypes.includes(f.type) && f.size <= 15 * 1024 * 1024);
-      const invalidFiles = selectedFiles.filter(f => !allowedTypes.includes(f.type) || f.size > 15 * 1024 * 1024);
+      const allowedTypes = [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ];
+
+      const validFiles = selectedFiles.filter(
+        (f) => allowedTypes.includes(f.type) && f.size <= 15 * 1024 * 1024,
+      );
+      const invalidFiles = selectedFiles.filter(
+        (f) => !allowedTypes.includes(f.type) || f.size > 15 * 1024 * 1024,
+      );
 
       if (invalidFiles.length > 0) {
-        toast({ 
-          title: 'Beberapa File Ditolak', 
-          description: 'Hanya file PDF/Word di bawah 15MB yang diperbolehkan.',
-          variant: 'destructive' 
+        toast({
+          title: "Beberapa File Ditolak",
+          description: "Hanya file PDF/Word di bawah 15MB yang diperbolehkan.",
+          variant: "destructive",
         });
       }
 
@@ -396,7 +525,11 @@ export default function PublicCareer() {
   const handleUploadClick = (e: React.FormEvent) => {
     e.preventDefault();
     if (files.length === 0) {
-      toast({ title: 'Peringatan', description: 'Silakan pilih file CV Anda.', variant: 'destructive' });
+      toast({
+        title: "Peringatan",
+        description: "Silakan pilih file CV Anda.",
+        variant: "destructive",
+      });
       return;
     }
     setShowUploadConfirmModal(true);
@@ -408,53 +541,56 @@ export default function PublicCareer() {
     try {
       const file = files[0];
       const formData = new FormData();
-      
-      formData.append('uploadToken', uploadToken);
-      formData.append('candidateName', candidateName);
-      formData.append('candidateEmail', candidateEmail);
-      formData.append('candidatePhone', phoneNumber);
-      formData.append('candidatePosition', position);
-      formData.append('sourceInfo', sourceInfo);
-      formData.append('fileName', file.name);
-      formData.append('mimeType', file.type);
-      formData.append('uploadedAt', new Date().toISOString());
-      formData.append('senderName', candidateName);
-      formData.append('senderEmail', candidateEmail);
-      formData.append('file', file);
 
-      const response = await fetchWithRetry('/api/n8n/upload-cv', {
-        method: 'POST',
+      formData.append("uploadToken", uploadToken);
+      formData.append("candidateName", candidateName);
+      formData.append("candidateEmail", candidateEmail);
+      formData.append("candidatePhone", phoneNumber);
+      formData.append("candidatePosition", position);
+      formData.append("sourceInfo", sourceInfo);
+      formData.append("fileName", file.name);
+      formData.append("mimeType", file.type);
+      formData.append("uploadedAt", new Date().toISOString());
+      formData.append("senderName", candidateName);
+      formData.append("senderEmail", candidateEmail);
+      formData.append("file", file);
+
+      const response = await fetchWithRetry("/api/n8n/upload-cv", {
+        method: "POST",
         body: formData,
       });
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error || `Gagal mengirim lamaran: ${response.statusText}`);
+        throw new Error(
+          errData.error || `Gagal mengirim lamaran: ${response.statusText}`,
+        );
       }
 
       const responseData = await response.json();
-      
+
       setShowSuccessModal(true);
-      
     } catch (error: any) {
-      console.error('Error uploading CV:', error);
-      
-      let errorMessage = error.message || 'Gagal terhubung ke server, silakan coba kembali';
+      console.error("Error uploading CV:", error);
+
+      let errorMessage =
+        error.message || "Gagal terhubung ke server, silakan coba kembali";
       if (
-        errorMessage.includes('Failed to fetch') || 
-        errorMessage.includes('n8n') || 
-        errorMessage.includes('Gagal mengirim') ||
-        errorMessage.includes('ECONNREFUSED') ||
-        errorMessage.includes('timeout') ||
-        errorMessage.includes('automation')
+        errorMessage.includes("Failed to fetch") ||
+        errorMessage.includes("n8n") ||
+        errorMessage.includes("Gagal mengirim") ||
+        errorMessage.includes("ECONNREFUSED") ||
+        errorMessage.includes("timeout") ||
+        errorMessage.includes("automation")
       ) {
-        errorMessage = 'Sistem sedang sibuk atau ada gangguan pada layanan pengiriman lamaran. Silakan coba beberapa saat lagi.';
+        errorMessage =
+          "Sistem sedang sibuk atau ada gangguan pada layanan pengiriman lamaran. Silakan coba beberapa saat lagi.";
       }
 
-      toast({ 
-        title: 'Gagal Mengirim Lamaran', 
-        description: errorMessage, 
-        variant: 'destructive' 
+      toast({
+        title: "Gagal Mengirim Lamaran",
+        description: errorMessage,
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -474,11 +610,11 @@ export default function PublicCareer() {
       `}</style>
 
       {/* Hero Section */}
-      <div 
+      <div
         className="relative w-full bg-cover bg-center bg-no-repeat pt-24 pb-32 px-6 md:px-16 lg:px-24"
-        style={{ 
+        style={{
           backgroundImage: `linear-gradient(to right, rgba(4, 28, 50, 0.95) 0%, rgba(4, 28, 50, 0.8) 50%, rgba(4, 28, 50, 0.2) 100%), url('https://waruna-group.com/cfind/source/thumb/images/banner2/cover_w2401_h2026_bannerpage-career.jpg')`,
-          minHeight: '600px'
+          minHeight: "600px",
         }}
       >
         <div className="max-w-7xl mx-auto">
@@ -487,18 +623,37 @@ export default function PublicCareer() {
               Career
             </h3>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif text-white leading-tight mb-12 w-full">
-              Working with us can be a great adventure – like sailing the oceans themselves
+              Working with us can be a great adventure – like sailing the oceans
+              themselves
             </h1>
-            
+
             <div className="grid md:grid-cols-2 gap-8 lg:gap-16 text-slate-300 text-sm md:text-base leading-relaxed text-justify">
               <div>
                 <p>
-                  Our long-term success is fully depended on team. We are in a constant search for talented, skilled and self-motivated personnel. We have a team of dynamic, varied background, supporting company's growth and sustainable business. While learning the processes and systems of our business, you'll benefit to access into a diverse professional job opportunity in many areas of fleets within the group. If you are inspired to develop shore-shipping career, and having relevant experience or education, you may fit as one of our future generations in one of many jobs we offer. We always open for your passion and enthusiasm.
+                  Our long-term success is fully depended on team. We are in a
+                  constant search for talented, skilled and self-motivated
+                  personnel. We have a team of dynamic, varied background,
+                  supporting company's growth and sustainable business. While
+                  learning the processes and systems of our business, you'll
+                  benefit to access into a diverse professional job opportunity
+                  in many areas of fleets within the group. If you are inspired
+                  to develop shore-shipping career, and having relevant
+                  experience or education, you may fit as one of our future
+                  generations in one of many jobs we offer. We always open for
+                  your passion and enthusiasm.
                 </p>
               </div>
               <div>
                 <p>
-                  It's more than a job, it's a journey. This exposure makes you are more knowledgeable and enabled you to grow career easily. You may also have opportunity to explore, ask for challenges and expose to so many adventures. The company's competencies and portfolios would be one of the advantages for learning and succeeding. The individual who shows their ambition and agility to grow may have the benefits of career expansion. The leaders and team of human resource would assist your development journey from the beginning of your employment.
+                  It's more than a job, it's a journey. This exposure makes you
+                  are more knowledgeable and enabled you to grow career easily.
+                  You may also have opportunity to explore, ask for challenges
+                  and expose to so many adventures. The company's competencies
+                  and portfolios would be one of the advantages for learning and
+                  succeeding. The individual who shows their ambition and
+                  agility to grow may have the benefits of career expansion. The
+                  leaders and team of human resource would assist your
+                  development journey from the beginning of your employment.
                 </p>
               </div>
             </div>
@@ -512,7 +667,7 @@ export default function PublicCareer() {
           <h3 className="text-[#041c32] font-bold tracking-[0.2em] uppercase text-sm mb-8 border-b-2 border-[#041c32] inline-block pb-2">
             Vacancies
           </h3>
-          
+
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
               <h2 className="text-4xl md:text-5xl font-serif text-[#041c32] leading-tight">
@@ -521,15 +676,22 @@ export default function PublicCareer() {
             </div>
             <div className="border-l border-[#041c32] pl-8">
               <p className="text-slate-600 text-lg leading-relaxed">
-                There are numerous opportunities available to you with a broad concept existing in our business, such as building your self-development in terms of competence and pursuing a career
+                There are numerous opportunities available to you with a broad
+                concept existing in our business, such as building your
+                self-development in terms of competence and pursuing a career
               </p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className={cn("mx-auto py-12 px-4 sm:px-6 lg:px-8", view === 'listing' ? "max-w-7xl" : "max-w-xl")}>
-        {view === 'listing' ? (
+      <div
+        className={cn(
+          "mx-auto py-12 px-4 sm:px-6 lg:px-8",
+          view === "listing" ? "max-w-7xl" : "max-w-xl",
+        )}
+      >
+        {view === "listing" ? (
           <div className="space-y-8">
             {loadingPositions ? (
               <div className="flex justify-center p-12">
@@ -538,21 +700,28 @@ export default function PublicCareer() {
             ) : jobs.length === 0 ? (
               <div className="bg-white/40 backdrop-blur-xl rounded-3xl border border-white/60 p-12 text-center shadow-xl">
                 <Briefcase className="mx-auto text-slate-400 mb-4" size={48} />
-                <h3 className="text-lg font-bold text-slate-800">Belum Ada Lowongan</h3>
-                <p className="text-slate-600 mt-2">Saat ini belum ada posisi yang dibuka. Silakan cek kembali nanti.</p>
+                <h3 className="text-lg font-bold text-slate-800">
+                  Belum Ada Lowongan
+                </h3>
+                <p className="text-slate-600 mt-2">
+                  Saat ini belum ada posisi yang dibuka. Silakan cek kembali
+                  nanti.
+                </p>
               </div>
             ) : (
               <div className="flex flex-wrap justify-center gap-6">
                 {jobs.map((job) => (
-                  <div 
-                    key={job.id} 
+                  <div
+                    key={job.id}
                     className="w-full md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] bg-white/40 backdrop-blur-xl rounded-3xl border border-white/60 shadow-xl hover:shadow-2xl hover:border-white/80 transition-all duration-300 p-6 flex flex-col cursor-pointer group"
                     onClick={() => setSelectedJob(job)}
                   >
                     <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                       <Briefcase size={24} />
                     </div>
-                    <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-indigo-600 transition-colors">{job.position}</h3>
+                    <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-indigo-600 transition-colors">
+                      {job.position}
+                    </h3>
                     <p className="text-sm text-slate-500 line-clamp-3 mb-6 flex-1">
                       {job.jobdesk}
                     </p>
@@ -568,321 +737,457 @@ export default function PublicCareer() {
           <div className="bg-white/40 backdrop-blur-xl rounded-3xl border border-white/60 shadow-xl overflow-hidden">
             {/* Back Button */}
             <div className="bg-white/30 border-b border-white/40 p-4 px-8">
-              <button 
+              <button
                 onClick={() => {
-                  setView('listing');
+                  setView("listing");
                   setStep(1);
-                  setOtpInput('');
+                  setOtpInput("");
                   setFiles([]);
                 }}
                 className="flex items-center text-sm font-medium text-slate-600 hover:text-indigo-700 transition-colors"
               >
-                <ArrowLeft size={16} className="mr-2" /> Kembali ke Daftar Lowongan
+                <ArrowLeft size={16} className="mr-2" /> Kembali ke Daftar
+                Lowongan
               </button>
             </div>
 
             {/* Progress Bar */}
             <div className="bg-white/30 border-b border-white/40 p-4 flex justify-between items-center px-8">
-            <div className={cn("flex flex-col items-center", step >= 1 ? "text-indigo-700" : "text-slate-500")}>
-              <div className={cn("w-8 h-8 rounded-full flex items-center justify-center font-bold mb-1", step >= 1 ? "bg-indigo-100/80" : "bg-white/50")}>1</div>
-              <span className="text-xs font-medium">Data Diri</span>
+              <div
+                className={cn(
+                  "flex flex-col items-center",
+                  step >= 1 ? "text-indigo-700" : "text-slate-500",
+                )}
+              >
+                <div
+                  className={cn(
+                    "w-8 h-8 rounded-full flex items-center justify-center font-bold mb-1",
+                    step >= 1 ? "bg-indigo-100/80" : "bg-white/50",
+                  )}
+                >
+                  1
+                </div>
+                <span className="text-xs font-medium">Data Diri</span>
+              </div>
+              <div
+                className={cn(
+                  "h-1 flex-1 mx-4 rounded-full",
+                  step >= 2 ? "bg-indigo-600" : "bg-white/50",
+                )}
+              />
+              <div
+                className={cn(
+                  "flex flex-col items-center",
+                  step >= 2 ? "text-indigo-700" : "text-slate-500",
+                )}
+              >
+                <div
+                  className={cn(
+                    "w-8 h-8 rounded-full flex items-center justify-center font-bold mb-1",
+                    step >= 2 ? "bg-indigo-100/80" : "bg-white/50",
+                  )}
+                >
+                  2
+                </div>
+                <span className="text-xs font-medium">Verifikasi</span>
+              </div>
+              <div
+                className={cn(
+                  "h-1 flex-1 mx-4 rounded-full",
+                  step >= 3 ? "bg-indigo-600" : "bg-white/50",
+                )}
+              />
+              <div
+                className={cn(
+                  "flex flex-col items-center",
+                  step >= 3 ? "text-indigo-700" : "text-slate-500",
+                )}
+              >
+                <div
+                  className={cn(
+                    "w-8 h-8 rounded-full flex items-center justify-center font-bold mb-1",
+                    step >= 3 ? "bg-indigo-100/80" : "bg-white/50",
+                  )}
+                >
+                  3
+                </div>
+                <span className="text-xs font-medium">Upload CV</span>
+              </div>
             </div>
-            <div className={cn("h-1 flex-1 mx-4 rounded-full", step >= 2 ? "bg-indigo-600" : "bg-white/50")} />
-            <div className={cn("flex flex-col items-center", step >= 2 ? "text-indigo-700" : "text-slate-500")}>
-              <div className={cn("w-8 h-8 rounded-full flex items-center justify-center font-bold mb-1", step >= 2 ? "bg-indigo-100/80" : "bg-white/50")}>2</div>
-              <span className="text-xs font-medium">Verifikasi</span>
-            </div>
-            <div className={cn("h-1 flex-1 mx-4 rounded-full", step >= 3 ? "bg-indigo-600" : "bg-white/50")} />
-            <div className={cn("flex flex-col items-center", step >= 3 ? "text-indigo-700" : "text-slate-500")}>
-              <div className={cn("w-8 h-8 rounded-full flex items-center justify-center font-bold mb-1", step >= 3 ? "bg-indigo-100/80" : "bg-white/50")}>3</div>
-              <span className="text-xs font-medium">Upload CV</span>
-            </div>
-          </div>
 
-          <div className="p-8">
-            {step === 1 && (
-              <form onSubmit={handleRequestOTP} className="space-y-6">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Nama Lengkap</label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <div className="p-8">
+              {step === 1 && (
+                <form onSubmit={handleRequestOTP} className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                      Nama Lengkap
+                    </label>
+                    <div className="relative">
+                      <User
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                        size={18}
+                      />
+                      <input
+                        type="text"
+                        required
+                        value={candidateName}
+                        onChange={(e) => setCandidateName(e.target.value)}
+                        placeholder="Masukkan nama lengkap"
+                        className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                      Email
+                    </label>
+                    <div className="relative">
+                      <Mail
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                        size={18}
+                      />
+                      <input
+                        type="email"
+                        required
+                        value={candidateEmail}
+                        onChange={(e) => setCandidateEmail(e.target.value)}
+                        placeholder="kandidat@email.com"
+                        className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                      Nomor WhatsApp
+                    </label>
+                    <div className="relative">
+                      <Phone
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                        size={18}
+                      />
+                      <input
+                        type="tel"
+                        required
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        placeholder="Contoh: 6281234567890"
+                        className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium"
+                      />
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      Gunakan format 628... Kode OTP akan dikirim ke nomor ini.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                      Posisi Dilamar
+                    </label>
+                    <div className="relative">
+                      <Briefcase
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                        size={18}
+                      />
+                      {loadingPositions ? (
+                        <div className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/60 rounded-xl text-sm text-slate-600">
+                          Memuat posisi...
+                        </div>
+                      ) : availablePositions.length > 0 ? (
+                        <select
+                          required
+                          value={position}
+                          onChange={(e) => setPosition(e.target.value)}
+                          className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium appearance-none"
+                        >
+                          <option value="" disabled>
+                            Pilih Posisi
+                          </option>
+                          {availablePositions.map((pos, idx) => (
+                            <option key={idx} value={pos}>
+                              {pos}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type="text"
+                          required
+                          value={position}
+                          onChange={(e) => setPosition(e.target.value)}
+                          placeholder="Contoh: Frontend Developer"
+                          className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium"
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                      Info Sumber Lowongan
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={sourceInfo}
+                        onChange={(e) => setSourceInfo(e.target.value)}
+                        className="w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium appearance-none"
+                      >
+                        <option value="" disabled>
+                          Pilih Sumber Lowongan
+                        </option>
+                        {availableJobSources.map((source, idx) => (
+                          <option key={idx} value={source}>
+                            {source}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleRequestOTPClick}
+                    disabled={loading}
+                    className="w-full py-4 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {loading ? (
+                      <Loader2 size={20} className="animate-spin" />
+                    ) : (
+                      <MessageCircle size={20} />
+                    )}
+                    Kirim OTP via WhatsApp
+                  </button>
+                </form>
+              )}
+
+              {step === 2 && (
+                <form
+                  onSubmit={handleVerifyOTP}
+                  className="space-y-6 text-center"
+                >
+                  <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <KeyRound size={32} />
+                  </div>
+                  <h2 className="text-xl font-bold text-slate-900">
+                    Verifikasi WhatsApp
+                  </h2>
+                  <p className="text-sm text-slate-500">
+                    Kami telah mengirimkan 6 digit kode OTP ke nomor <br />
+                    <span className="font-bold text-slate-700">
+                      {phoneNumber}
+                    </span>
+                  </p>
+
+                  <div className="pt-4">
                     <input
                       type="text"
                       required
-                      value={candidateName}
-                      onChange={(e) => setCandidateName(e.target.value)}
-                      placeholder="Masukkan nama lengkap"
-                      className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium"
+                      maxLength={6}
+                      value={otpInput}
+                      onChange={(e) =>
+                        setOtpInput(e.target.value.replace(/\D/g, ""))
+                      }
+                      placeholder="• • • • • •"
+                      className="w-full text-center text-3xl tracking-[1em] py-4 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all font-mono font-bold"
                     />
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Email</label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input
-                      type="email"
-                      required
-                      value={candidateEmail}
-                      onChange={(e) => setCandidateEmail(e.target.value)}
-                      placeholder="kandidat@email.com"
-                      className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Nomor WhatsApp</label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input
-                      type="tel"
-                      required
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      placeholder="Contoh: 6281234567890"
-                      className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium"
-                    />
-                  </div>
-                  <p className="text-xs text-slate-500">Gunakan format 628... Kode OTP akan dikirim ke nomor ini.</p>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Posisi Dilamar</label>
-                  <div className="relative">
-                    <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    {loadingPositions ? (
-                      <div className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/60 rounded-xl text-sm text-slate-600">
-                        Memuat posisi...
+                  {/* CAPTCHA Section */}
+                  <div className="pt-4 text-left">
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      Verifikasi Keamanan
+                    </label>
+                    <div className="flex gap-3 items-center">
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          required
+                          maxLength={5}
+                          value={captchaInput}
+                          onChange={(e) => setCaptchaInput(e.target.value)}
+                          className="block w-full px-4 py-3 bg-white/50 border border-white/40 rounded-xl text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all font-mono tracking-widest"
+                          placeholder="Ketik 5 karakter"
+                        />
                       </div>
-                    ) : availablePositions.length > 0 ? (
-                      <select
-                        required
-                        value={position}
-                        onChange={(e) => setPosition(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium appearance-none"
-                      >
-                        <option value="" disabled>Pilih Posisi</option>
-                        {availablePositions.map((pos, idx) => (
-                          <option key={idx} value={pos}>{pos}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <input
-                        type="text"
-                        required
-                        value={position}
-                        onChange={(e) => setPosition(e.target.value)}
-                        placeholder="Contoh: Frontend Developer"
-                        className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium"
-                      />
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Info Sumber Lowongan</label>
-                  <div className="relative">
-                    <select
-                      value={sourceInfo}
-                      onChange={(e) => setSourceInfo(e.target.value)}
-                      className="w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium appearance-none"
-                    >
-                      <option value="" disabled>Pilih Sumber Lowongan</option>
-                      {availableJobSources.map((source, idx) => (
-                        <option key={idx} value={source}>{source}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleRequestOTPClick}
-                  disabled={loading}
-                  className="w-full py-4 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {loading ? <Loader2 size={20} className="animate-spin" /> : <MessageCircle size={20} />}
-                  Kirim OTP via WhatsApp
-                </button>
-              </form>
-            )}
-
-            {step === 2 && (
-              <form onSubmit={handleVerifyOTP} className="space-y-6 text-center">
-                <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <KeyRound size={32} />
-                </div>
-                <h2 className="text-xl font-bold text-slate-900">Verifikasi WhatsApp</h2>
-                <p className="text-sm text-slate-500">
-                  Kami telah mengirimkan 6 digit kode OTP ke nomor <br/>
-                  <span className="font-bold text-slate-700">{phoneNumber}</span>
-                </p>
-
-                <div className="pt-4">
-                  <input
-                    type="text"
-                    required
-                    maxLength={6}
-                    value={otpInput}
-                    onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ''))}
-                    placeholder="• • • • • •"
-                    className="w-full text-center text-3xl tracking-[1em] py-4 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all font-mono font-bold"
-                  />
-                </div>
-
-                {/* CAPTCHA Section */}
-                <div className="pt-4 text-left">
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Verifikasi Keamanan</label>
-                  <div className="flex gap-3 items-center">
-                    <div className="relative flex-1">
-                      <input
-                        type="text"
-                        required
-                        maxLength={5}
-                        value={captchaInput}
-                        onChange={(e) => setCaptchaInput(e.target.value)}
-                        className="block w-full px-4 py-3 bg-white/50 border border-white/40 rounded-xl text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all font-mono tracking-widest"
-                        placeholder="Ketik 5 karakter"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2 bg-white/60 p-1.5 rounded-xl border border-white/40 shadow-sm">
-                      <canvas 
-                        ref={canvasRef} 
-                        width="120" 
-                        height="40" 
-                        className="rounded-lg cursor-pointer"
-                        onClick={generateCaptcha}
-                        title="Klik untuk mengganti CAPTCHA"
-                      />
-                      <button
-                        type="button"
-                        onClick={generateCaptcha}
-                        className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                        title="Ganti CAPTCHA"
-                      >
-                        <RefreshCw size={16} />
-                      </button>
+                      <div className="flex items-center gap-2 bg-white/60 p-1.5 rounded-xl border border-white/40 shadow-sm">
+                        <canvas
+                          ref={canvasRef}
+                          width="120"
+                          height="40"
+                          className="rounded-lg cursor-pointer"
+                          onClick={generateCaptcha}
+                          title="Klik untuk mengganti CAPTCHA"
+                        />
+                        <button
+                          type="button"
+                          onClick={generateCaptcha}
+                          className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                          title="Ganti CAPTCHA"
+                        >
+                          <RefreshCw size={16} />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <button
-                  type="submit"
-                  disabled={loading || otpInput.length !== 6}
-                  className="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {loading ? <Loader2 size={20} className="animate-spin" /> : <CheckCircle2 size={20} />}
-                  Verifikasi OTP
-                </button>
-                
-                <div className="pt-4 flex flex-col items-center gap-3">
-                  <div className="text-sm flex flex-col items-center justify-center gap-1 sm:flex-row">
-                    <span className="text-slate-500">Belum menerima kode OTP?</span>
-                    {countdown > 0 ? (
-                      <span className="text-slate-400 font-medium">
-                        Tunggu {Math.floor(countdown / 60)}:{String(countdown % 60).padStart(2, '0')}
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={handleResendOTP}
-                        disabled={loading}
-                        className="text-indigo-600 font-bold hover:underline disabled:opacity-50"
-                      >
-                        Kirim Ulang
-                      </button>
-                    )}
-                  </div>
-                  
                   <button
-                    type="button"
-                    onClick={() => setStep(1)}
-                    className="text-sm text-slate-400 font-medium hover:text-indigo-600 transition-colors"
+                    type="submit"
+                    disabled={loading || otpInput.length !== 6}
+                    className="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >
-                    Ganti Nomor WhatsApp
+                    {loading ? (
+                      <Loader2 size={20} className="animate-spin" />
+                    ) : (
+                      <CheckCircle2 size={20} />
+                    )}
+                    Verifikasi OTP
                   </button>
-                </div>
-              </form>
-            )}
 
-            {step === 3 && (
-              <form onSubmit={(e) => { e.preventDefault(); handleUploadClick(e); }} className="space-y-6">
-                <div className="text-center mb-6">
-                  <h2 className="text-xl font-bold text-slate-900">Upload CV Anda</h2>
-                  <p className="text-sm text-slate-500">Format yang didukung: PDF, DOC, DOCX (Maks. 5MB)</p>
-                </div>
+                  <div className="pt-4 flex flex-col items-center gap-3">
+                    <div className="text-sm flex flex-col items-center justify-center gap-1 sm:flex-row">
+                      <span className="text-slate-500">
+                        Belum menerima kode OTP?
+                      </span>
+                      {countdown > 0 ? (
+                        <span className="text-slate-400 font-medium">
+                          Tunggu {Math.floor(countdown / 60)}:
+                          {String(countdown % 60).padStart(2, "0")}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleResendOTP}
+                          disabled={loading}
+                          className="text-indigo-600 font-bold hover:underline disabled:opacity-50"
+                        >
+                          Kirim Ulang
+                        </button>
+                      )}
+                    </div>
 
-                <div 
-                  className={cn(
-                    "relative border-2 border-dashed rounded-2xl p-10 transition-all flex flex-col items-center justify-center gap-4",
-                    files.length > 0 ? "border-emerald-300 bg-emerald-50/50" : "border-white/60 bg-white/40 hover:border-indigo-300 hover:bg-white/60"
-                  )}
+                    <button
+                      type="button"
+                      onClick={() => setStep(1)}
+                      className="text-sm text-slate-400 font-medium hover:text-indigo-600 transition-colors"
+                    >
+                      Ganti Nomor WhatsApp
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {step === 3 && (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleUploadClick(e);
+                  }}
+                  className="space-y-6"
                 >
-                  <input
-                    type="file"
-                    onChange={handleFileChange}
-                    accept=".pdf,.doc,.docx"
-                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                  />
-                  
-                  {files.length > 0 ? (
-                    <div className="w-full space-y-3 z-20">
-                      {files.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between bg-white/50 p-3 rounded-xl border border-white/60 shadow-sm relative z-20">
-                          <div className="flex items-center gap-3">
-                            <div className={cn(
-                              "w-10 h-10 rounded-lg flex items-center justify-center",
-                              file.type === 'application/pdf' ? "bg-red-100 text-red-600" : "bg-blue-100 text-blue-600"
-                            )}>
-                              {file.type === 'application/pdf' ? <FileText size={20} /> : <File size={20} />}
-                            </div>
-                            <div>
-                              <p className="font-bold text-slate-900 text-sm truncate max-w-[200px]">{file.name}</p>
-                              <p className="text-xs text-slate-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                  <div className="text-center mb-6">
+                    <h2 className="text-xl font-bold text-slate-900">
+                      Upload CV Anda
+                    </h2>
+                    <p className="text-sm text-slate-500">
+                      Format yang didukung: PDF, DOC, DOCX (Maks. 5MB)
+                    </p>
+                  </div>
+
+                  <div
+                    className={cn(
+                      "relative border-2 border-dashed rounded-2xl p-10 transition-all flex flex-col items-center justify-center gap-4",
+                      files.length > 0
+                        ? "border-emerald-300 bg-emerald-50/50"
+                        : "border-white/60 bg-white/40 hover:border-indigo-300 hover:bg-white/60",
+                    )}
+                  >
+                    <input
+                      type="file"
+                      onChange={handleFileChange}
+                      accept=".pdf,.doc,.docx"
+                      className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                    />
+
+                    {files.length > 0 ? (
+                      <div className="w-full space-y-3 z-20">
+                        {files.map((file, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between bg-white/50 p-3 rounded-xl border border-white/60 shadow-sm relative z-20"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={cn(
+                                  "w-10 h-10 rounded-lg flex items-center justify-center",
+                                  file.type === "application/pdf"
+                                    ? "bg-red-100 text-red-600"
+                                    : "bg-blue-100 text-blue-600",
+                                )}
+                              >
+                                {file.type === "application/pdf" ? (
+                                  <FileText size={20} />
+                                ) : (
+                                  <File size={20} />
+                                )}
+                              </div>
+                              <div>
+                                <p className="font-bold text-slate-900 text-sm truncate max-w-[200px]">
+                                  {file.name}
+                                </p>
+                                <p className="text-xs text-slate-500">
+                                  {(file.size / 1024 / 1024).toFixed(2)} MB
+                                </p>
+                              </div>
                             </div>
                           </div>
+                        ))}
+                        <div className="text-center mt-4 pt-4 border-t border-white/40">
+                          <p className="text-sm font-medium text-indigo-600">
+                            Klik untuk mengganti file
+                          </p>
                         </div>
-                      ))}
-                      <div className="text-center mt-4 pt-4 border-t border-white/40">
-                        <p className="text-sm font-medium text-indigo-600">Klik untuk mengganti file</p>
                       </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="w-16 h-16 bg-white/60 text-slate-500 rounded-2xl flex items-center justify-center shadow-sm border border-white/80">
-                        <Upload size={32} />
-                      </div>
-                      <div className="text-center">
-                        <p className="font-bold text-slate-900">Klik atau seret file ke sini</p>
-                      </div>
-                    </>
-                  )}
-                </div>
+                    ) : (
+                      <>
+                        <div className="w-16 h-16 bg-white/60 text-slate-500 rounded-2xl flex items-center justify-center shadow-sm border border-white/80">
+                          <Upload size={32} />
+                        </div>
+                        <div className="text-center">
+                          <p className="font-bold text-slate-900">
+                            Klik atau seret file ke sini
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </div>
 
-                <button
-                  type="submit"
-                  disabled={loading || files.length === 0}
-                  className="w-full py-4 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {loading ? <Loader2 size={20} className="animate-spin" /> : <CheckCircle2 size={20} />}
-                  Kirim Lamaran
-                </button>
-              </form>
-            )}
+                  <button
+                    type="submit"
+                    disabled={loading || files.length === 0}
+                    className="w-full py-4 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {loading ? (
+                      <Loader2 size={20} className="animate-spin" />
+                    ) : (
+                      <CheckCircle2 size={20} />
+                    )}
+                    Kirim Lamaran
+                  </button>
+                </form>
+              )}
+            </div>
           </div>
-        </div>
         )}
       </div>
 
       {/* Job Detail Modal */}
       {selectedJob && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/20 backdrop-blur-md"
           onClick={() => setSelectedJob(null)}
         >
-          <div 
+          <div
             className="bg-white/60 backdrop-blur-2xl rounded-3xl border border-white/60 shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200"
             onClick={(e) => e.stopPropagation()}
           >
@@ -892,22 +1197,25 @@ export default function PublicCareer() {
                   <Briefcase size={24} />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900">{selectedJob.position}</h2>
+                  <h2 className="text-2xl font-bold text-slate-900">
+                    {selectedJob.position}
+                  </h2>
                   <p className="text-sm text-slate-600">Waruna Group</p>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => setSelectedJob(null)}
                 className="p-2 text-slate-500 hover:text-slate-800 hover:bg-white/50 rounded-xl transition-colors"
               >
                 <X size={24} />
               </button>
             </div>
-            
+
             <div className="p-6 overflow-y-auto flex-1 space-y-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               <div className="bg-blue-50/60 border border-blue-100/60 rounded-2xl p-6 shadow-sm">
                 <h3 className="text-sm font-bold text-blue-800 uppercase tracking-widest mb-4 flex items-center gap-2">
-                  <ClipboardList size={16} className="text-blue-600" /> Deskripsi Pekerjaan (Jobdesk)
+                  <ClipboardList size={16} className="text-blue-600" />{" "}
+                  Deskripsi Pekerjaan (Jobdesk)
                 </h3>
                 <ul className="space-y-3">
                   {formatListText(selectedJob.jobdesk).map((item, idx) => (
@@ -915,15 +1223,18 @@ export default function PublicCareer() {
                       <div className="mt-0.5 shrink-0">
                         <CheckCircle2 size={18} className="text-blue-500" />
                       </div>
-                      <span className="text-slate-700 leading-relaxed text-sm">{item}</span>
+                      <span className="text-slate-700 leading-relaxed text-sm">
+                        {item}
+                      </span>
                     </li>
                   ))}
                 </ul>
               </div>
-              
+
               <div className="bg-emerald-50/60 border border-emerald-100/60 rounded-2xl p-6 shadow-sm">
                 <h3 className="text-sm font-bold text-emerald-800 uppercase tracking-widest mb-4 flex items-center gap-2">
-                  <GraduationCap size={16} className="text-emerald-600" /> Kualifikasi
+                  <GraduationCap size={16} className="text-emerald-600" />{" "}
+                  Kualifikasi
                 </h3>
                 <ul className="space-y-3">
                   {formatListText(selectedJob.kualifikasi).map((item, idx) => (
@@ -931,13 +1242,15 @@ export default function PublicCareer() {
                       <div className="mt-0.5 shrink-0">
                         <CheckCircle2 size={18} className="text-emerald-500" />
                       </div>
-                      <span className="text-slate-700 leading-relaxed text-sm">{item}</span>
+                      <span className="text-slate-700 leading-relaxed text-sm">
+                        {item}
+                      </span>
                     </li>
                   ))}
                 </ul>
               </div>
             </div>
-            
+
             <div className="p-6 border-t border-white/40 bg-white/30 flex justify-end gap-3">
               <button
                 onClick={() => setSelectedJob(null)}
@@ -950,9 +1263,9 @@ export default function PublicCareer() {
                   setPosition(selectedJob.position);
                   setSelectedJob(null);
                   setStep(1);
-                  setOtpInput('');
+                  setOtpInput("");
                   setFiles([]);
-                  setView('form');
+                  setView("form");
                 }}
                 className="px-8 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
               >
@@ -965,30 +1278,42 @@ export default function PublicCareer() {
       {/* OTP Confirmation Modal */}
       {showOtpConfirmModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-slate-100">
-              <h2 className="text-xl font-bold text-slate-900">Konfirmasi Data</h2>
-              <p className="text-sm text-slate-500 mt-1">Pastikan data Anda sudah benar sebelum melanjutkan.</p>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-slate-100 shrink-0">
+              <h2 className="text-xl font-bold text-slate-900">
+                Konfirmasi Data
+              </h2>
+              <p className="text-sm text-slate-500 mt-1">
+                Pastikan data Anda sudah benar sebelum melanjutkan.
+              </p>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 overflow-y-auto">
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Nama Lengkap</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  Nama Lengkap
+                </p>
                 <p className="text-slate-900 font-medium">{candidateName}</p>
               </div>
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Email</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  Email
+                </p>
                 <p className="text-slate-900 font-medium">{candidateEmail}</p>
               </div>
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Nomor WhatsApp</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  Nomor WhatsApp
+                </p>
                 <p className="text-slate-900 font-medium">{phoneNumber}</p>
               </div>
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Posisi Dilamar</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  Posisi Dilamar
+                </p>
                 <p className="text-slate-900 font-medium">{position}</p>
               </div>
             </div>
-            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
               <button
                 onClick={() => setShowOtpConfirmModal(false)}
                 className="px-6 py-2.5 text-slate-600 font-bold hover:bg-slate-200 rounded-xl transition-colors"
@@ -1011,13 +1336,22 @@ export default function PublicCareer() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="p-6 border-b border-slate-100">
-              <h2 className="text-xl font-bold text-slate-900">Konfirmasi Upload CV</h2>
+              <h2 className="text-xl font-bold text-slate-900">
+                Konfirmasi Upload CV
+              </h2>
             </div>
             <div className="p-6">
-              <p className="text-slate-700">Apakah Anda yakin ingin mengunggah CV ini dan mengirimkan lamaran Anda?</p>
+              <p className="text-slate-700">
+                Apakah Anda yakin ingin mengunggah CV ini dan mengirimkan
+                lamaran Anda?
+              </p>
               <div className="mt-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <p className="text-sm font-medium text-slate-900 truncate">{files[0]?.name}</p>
-                <p className="text-xs text-slate-500">{(files[0]?.size / 1024 / 1024).toFixed(2)} MB</p>
+                <p className="text-sm font-medium text-slate-900 truncate">
+                  {files[0]?.name}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {(files[0]?.size / 1024 / 1024).toFixed(2)} MB
+                </p>
               </div>
             </div>
             <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
@@ -1046,20 +1380,24 @@ export default function PublicCareer() {
               <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-6">
                 <CheckCircle2 size={40} />
               </div>
-              <h2 className="text-2xl font-bold text-slate-900 mb-2">Berhasil Terkirim!</h2>
+              <h2 className="text-2xl font-bold text-slate-900 mb-2">
+                Berhasil Terkirim!
+              </h2>
               <p className="text-slate-600 mb-8 leading-relaxed">
-                Lamaran anda berhasil di kirim. Kami akan mengirimkan status lamaran anda Via Whatapps. Mohon cek secara berkala. Terima kasih.
+                Lamaran anda berhasil di kirim. Kami akan mengirimkan status
+                lamaran anda Via Whatapps. Mohon cek secara berkala. Terima
+                kasih.
               </p>
               <button
                 onClick={() => {
                   setShowSuccessModal(false);
                   setStep(1);
-                  setCandidateName('');
-                  setCandidateEmail('');
-                  setPhoneNumber('');
+                  setCandidateName("");
+                  setCandidateEmail("");
+                  setPhoneNumber("");
                   setFiles([]);
-                  setOtpInput('');
-                  setView('listing');
+                  setOtpInput("");
+                  setView("listing");
                 }}
                 className="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all flex items-center justify-center"
               >
@@ -1074,28 +1412,51 @@ export default function PublicCareer() {
       <footer className="bg-[#041c32] text-slate-300 py-10 px-6 md:px-16 lg:px-24 mt-12">
         <div className="max-w-4xl mx-auto flex flex-col items-center text-center space-y-6">
           <div className="space-y-2">
-            <h3 className="text-white text-xl font-bold tracking-wider uppercase">Shipyard and Shipping Company</h3>
+            <h3 className="text-white text-xl font-bold tracking-wider uppercase">
+              Shipyard and Shipping Company
+            </h3>
             <p className="text-sm leading-relaxed text-slate-400 max-w-2xl mx-auto">
-              Waruna Group is dedicated to prioritizing safety and integrity when working closely with our partners.
+              Waruna Group is dedicated to prioritizing safety and integrity
+              when working closely with our partners.
             </p>
           </div>
-          
+
           <div className="flex space-x-4 pt-2">
-            <a href="https://www.linkedin.com/company/waruna-group/" target="_blank" rel="noopener noreferrer" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
+            <a
+              href="https://www.linkedin.com/company/waruna-group/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+            >
               <Linkedin size={24} className="text-white" />
             </a>
-            <a href="https://www.instagram.com/lifeinwaruna" target="_blank" rel="noopener noreferrer" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
+            <a
+              href="https://www.instagram.com/lifeinwaruna"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+            >
               <Instagram size={24} className="text-white" />
             </a>
-            <a href="https://www.youtube.com/@lifeinwaruna" target="_blank" rel="noopener noreferrer" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
+            <a
+              href="https://www.youtube.com/@lifeinwaruna"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+            >
               <Youtube size={24} className="text-white" />
             </a>
-            <a href="https://waruna-group.com/" target="_blank" rel="noopener noreferrer" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
+            <a
+              href="https://waruna-group.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+            >
               <Globe size={24} className="text-white" />
             </a>
           </div>
         </div>
-        
+
         <div className="max-w-7xl mx-auto mt-8 pt-6 border-t border-white/10 text-center flex flex-col items-center gap-4">
           <p className="text-sm text-slate-500">
             &copy; {new Date().getFullYear()} Waruna Group. Shipyard - Shipping.

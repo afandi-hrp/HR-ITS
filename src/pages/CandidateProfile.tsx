@@ -1,17 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
-import { Candidate, CandidateEvaluation } from '../types';
-import { 
-  ArrowLeft, 
-  Mail, 
-  Phone, 
-  Briefcase, 
-  GraduationCap, 
-  Star, 
-  AlertTriangle, 
-  Lightbulb, 
-  FileText, 
+import React, { useState, useEffect, useRef } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { supabase } from "../lib/supabase";
+import { Candidate, CandidateEvaluation } from "../types";
+import {
+  ArrowLeft,
+  Mail,
+  Phone,
+  Briefcase,
+  GraduationCap,
+  Star,
+  AlertTriangle,
+  Lightbulb,
+  FileText,
   Calendar as CalendarIcon,
   CheckCircle,
   Clock,
@@ -31,13 +31,22 @@ import {
   ChevronDown,
   ChevronUp,
   Trash2,
-  UserCheck
-} from 'lucide-react';
-import { cn, formatDate, normalizeEmail, normalizeName, normalizePhone, fetchWithRetry, extractPhotoUrl, getEmbedUrl } from '../lib/utils';
-import { waitForN8nJob } from '../lib/n8n';
-import { useToast } from '../components/ui/use-toast';
-import EvaluationModal from '../components/EvaluationModal';
-import JSONRenderer from '../components/JSONRenderer';
+  UserCheck,
+} from "lucide-react";
+import {
+  cn,
+  formatDate,
+  normalizeEmail,
+  normalizeName,
+  normalizePhone,
+  fetchWithRetry,
+  extractPhotoUrl,
+  getEmbedUrl,
+} from "../lib/utils";
+import { waitForN8nJob } from "../lib/n8n";
+import { useToast } from "../components/ui/use-toast";
+import EvaluationModal from "../components/EvaluationModal";
+import JSONRenderer from "../components/JSONRenderer";
 import {
   ResponsiveContainer,
   Radar,
@@ -45,26 +54,33 @@ import {
   PolarGrid,
   PolarAngleAxis,
   PolarRadiusAxis,
-  Tooltip
-} from 'recharts';
-import ApplicationForm from './ApplicationForm';
-import { printElement, generatePdfBlob } from '../lib/print';
-import JSZip from 'jszip';
+  Tooltip,
+} from "recharts";
+import ApplicationForm from "./ApplicationForm";
+import { printElement } from "../lib/print";
 
-const extractMatchPercentage = (summary: any): { value: number | null, text: string | null } => {
+const extractMatchPercentage = (
+  summary: any,
+): { value: number | null; text: string | null } => {
   let result = { value: null as number | null, text: null as string | null };
   const search = (obj: any) => {
-    if (!obj || typeof obj !== 'object' || result.value !== null) return;
+    if (!obj || typeof obj !== "object" || result.value !== null) return;
     for (const [key, value] of Object.entries(obj)) {
       const lowerKey = key.toLowerCase();
-      if ((lowerKey.includes('persentase') || lowerKey.includes('kecocokan') || lowerKey.includes('match') || lowerKey.includes('fit')) && (typeof value === 'string' || typeof value === 'number')) {
-        const num = parseInt(String(value).replace(/[^0-9]/g, ''), 10);
+      if (
+        (lowerKey.includes("persentase") ||
+          lowerKey.includes("kecocokan") ||
+          lowerKey.includes("match") ||
+          lowerKey.includes("fit")) &&
+        (typeof value === "string" || typeof value === "number")
+      ) {
+        const num = parseInt(String(value).replace(/[^0-9]/g, ""), 10);
         if (!isNaN(num) && num >= 0 && num <= 100) {
           result = { value: num, text: String(value) };
           return;
         }
       }
-      if (typeof value === 'object') {
+      if (typeof value === "object") {
         search(value);
       }
     }
@@ -73,75 +89,215 @@ const extractMatchPercentage = (summary: any): { value: number | null, text: str
   return result;
 };
 
-const formatAsNumberedList = (text?: string | null, emptyFallback?: React.ReactNode) => {
+const formatAsNumberedList = (
+  text?: string | null,
+  emptyFallback?: React.ReactNode,
+  isAssessmentReason: boolean = false,
+) => {
   if (!text) return emptyFallback;
-  
-  const points = text
-    .split('\n')
-    .map(t => t.trim())
-    .map(t => t.replace(/^[-•*]\s*/, '').replace(/^\d+[\.\)]\s*/, '').trim())
-    .filter(t => t.length > 0);
 
-  if (points.length === 0) return emptyFallback;
+  let normalizedText = text.replace(/\\n/g, "\n");
+
+  if (isAssessmentReason) {
+    normalizedText = normalizedText
+      .replace(
+        /\s*-\s*(Relevance|Hard Skills|Experience|Business Impact|Education|Soft Skills)/gi,
+        "\n$1",
+      )
+      .replace(
+        /(?:^|\s+)\d+[\.\)]\s*(Relevance|Hard Skills|Experience|Business Impact|Education|Soft Skills)/gi,
+        "\n$1",
+      );
+  }
+
+  const lines = normalizedText
+    .split("\n")
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+  const mainPoints: string[] = [];
+  const conclusionPoints: string[] = [];
+  let passedSoftSkills = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    let isBullet =
+      /^[-•*]\s*/.test(line) || /^\d+[\.\)]\s*/.test(line) || i === 0;
+
+    if (
+      isAssessmentReason &&
+      /^(?:Relevance|Hard Skills|Experience|Business Impact|Education|Soft Skills)/i.test(
+        line,
+      )
+    ) {
+      isBullet = true;
+    }
+
+    if (!isAssessmentReason) {
+      isBullet = true;
+    } else if (passedSoftSkills) {
+      isBullet = true;
+    }
+
+    const cleanLine = line
+      .replace(/^[-•*]\s*/, "")
+      .replace(/^\d+[\.\)]\s*/, "")
+      .trim();
+
+    if (isAssessmentReason) {
+      if (passedSoftSkills) {
+        if (isBullet || conclusionPoints.length === 0) {
+          conclusionPoints.push(cleanLine);
+        } else {
+          conclusionPoints[conclusionPoints.length - 1] += " " + cleanLine;
+        }
+      } else {
+        if (isBullet || mainPoints.length === 0) {
+          mainPoints.push(cleanLine);
+        } else {
+          mainPoints[mainPoints.length - 1] += " " + cleanLine;
+        }
+        if (line.toLowerCase().includes("soft skills")) {
+          passedSoftSkills = true;
+        }
+      }
+    } else {
+      if (isBullet || mainPoints.length === 0) {
+        mainPoints.push(cleanLine);
+      } else {
+        mainPoints[mainPoints.length - 1] += " " + cleanLine;
+      }
+    }
+  }
+
+  if (mainPoints.length === 0 && conclusionPoints.length === 0)
+    return emptyFallback;
 
   return (
-    <ol className="list-decimal pl-4 space-y-1">
-      {points.map((point, idx) => (
-        <li key={idx} className="leading-relaxed pl-1">{point}</li>
-      ))}
-    </ol>
+    <div className="space-y-3">
+      {mainPoints.length > 0 && (
+        <ol className="list-decimal pl-4 space-y-1">
+          {mainPoints.map((point, idx) => {
+            if (isAssessmentReason) {
+              const match = point.match(
+                /^((?:Relevance|Hard Skills|Experience|Business Impact|Education|Soft Skills)[^:]*:\s*(?:Skor\s*\d+(?:\/\d+)?\.?)?\s*)/i,
+              );
+              if (match) {
+                return (
+                  <li key={idx} className="leading-relaxed pl-1">
+                    <span className="font-bold text-emerald-700 bg-emerald-50 px-1 rounded mr-1">
+                      {match[1].trim()}
+                    </span>
+                    {point.slice(match[1].length)}
+                  </li>
+                );
+              }
+            }
+            return (
+              <li key={idx} className="leading-relaxed pl-1">
+                {point}
+              </li>
+            );
+          })}
+        </ol>
+      )}
+      {conclusionPoints.length > 0 && (
+        <div className="mt-4 bg-indigo-100/50 border border-indigo-200 rounded-lg p-4 shadow-sm">
+          <h5 className="font-semibold text-indigo-900 mb-2 text-sm flex items-center gap-2">
+            Kesimpulan & Rekomendasi
+          </h5>
+          <ol
+            className="list-decimal pl-4 space-y-1"
+            start={mainPoints.length + 1}
+          >
+            {conclusionPoints.map((point, idx) => (
+              <li
+                key={idx}
+                className="leading-relaxed pl-1 text-indigo-950 font-medium"
+              >
+                {point}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+    </div>
   );
 };
 
-const formatLevelAndList = (text?: string | null, emptyFallback?: React.ReactNode) => {
+const formatLevelAndList = (
+  text?: string | null,
+  emptyFallback?: React.ReactNode,
+) => {
   if (!text) return emptyFallback;
 
-  const lines = text.split('\n').map(t => t.trim()).filter(t => t.length > 0);
+  const lines = text
+    .replace(/\\n/g, "\n")
+    .split("\n")
+    .map((t) => t.trim())
+    .filter((t) => t.length > 0);
   if (lines.length === 0) return emptyFallback;
 
-  const headerIndex = lines.findIndex(line => /\b(low|medium|high)\b/i.test(line));
-  
-  let preHeaderLines: string[] = [];
-  let headerText = '';
-  let pointLines = lines;
-  let badgeClass = "bg-gray-100 text-gray-800 font-medium px-2 py-1 rounded inline-block mb-2 mt-1";
+  const headerIndex = lines.findIndex((line) =>
+    /\b(low|medium|high)\b/i.test(line),
+  );
 
-  if (headerIndex !== -1 && headerIndex < 3 && lines[headerIndex].length < 100) {
+  let preHeaderLines: string[] = [];
+  let headerText = "";
+  let pointLines = lines;
+  let badgeClass =
+    "bg-gray-100 text-gray-800 font-medium px-2 py-1 rounded inline-block mb-2 mt-1";
+
+  if (
+    headerIndex !== -1 &&
+    headerIndex < 3 &&
+    lines[headerIndex].length < 100
+  ) {
     preHeaderLines = lines.slice(0, headerIndex);
     headerText = lines[headerIndex];
     pointLines = lines.slice(headerIndex + 1);
 
     if (/\blow\b/i.test(headerText)) {
-      badgeClass = "bg-red-100 text-red-800 font-semibold px-2.5 py-1 rounded-md inline-block mb-3 mt-1";
+      badgeClass =
+        "bg-red-100 text-red-800 font-semibold px-2.5 py-1 rounded-md inline-block mb-3 mt-1";
     } else if (/\bmedium\b/i.test(headerText)) {
-      badgeClass = "bg-yellow-100 text-yellow-800 font-semibold px-2.5 py-1 rounded-md inline-block mb-3 mt-1";
+      badgeClass =
+        "bg-yellow-100 text-yellow-800 font-semibold px-2.5 py-1 rounded-md inline-block mb-3 mt-1";
     } else if (/\bhigh\b/i.test(headerText)) {
-      badgeClass = "bg-green-100 text-green-800 font-semibold px-2.5 py-1 rounded-md inline-block mb-3 mt-1";
+      badgeClass =
+        "bg-green-100 text-green-800 font-semibold px-2.5 py-1 rounded-md inline-block mb-3 mt-1";
     }
   }
 
   const points = pointLines
-    .map(t => t.replace(/^[-•*]\s*/, '').replace(/^\d+[\.\)]\s*/, '').trim())
-    .filter(t => t.length > 0);
+    .map((t) =>
+      t
+        .replace(/^[-•*]\s*/, "")
+        .replace(/^\d+[\.\)]\s*/, "")
+        .trim(),
+    )
+    .filter((t) => t.length > 0);
 
   return (
     <div className="flex flex-col items-start w-full">
       {preHeaderLines.map((line, idx) => (
-        <span key={`pre-${idx}`} className="mb-2 block">{line}</span>
+        <span key={`pre-${idx}`} className="mb-2 block">
+          {line}
+        </span>
       ))}
       {headerText ? <div className={badgeClass}>{headerText}</div> : null}
       {points.length > 0 && (
         <ol className="list-decimal pl-4 space-y-1 w-full">
           {points.map((point, idx) => (
-            <li key={idx} className="leading-relaxed pl-1">{point}</li>
+            <li key={idx} className="leading-relaxed pl-1">
+              {point}
+            </li>
           ))}
         </ol>
       )}
     </div>
   );
 };
-
-
 
 export default function CandidateProfile() {
   const { id } = useParams<{ id: string }>();
@@ -151,7 +307,9 @@ export default function CandidateProfile() {
   const [evaluations, setEvaluations] = useState<CandidateEvaluation[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [editedCandidate, setEditedCandidate] = useState<Partial<Candidate>>({});
+  const [editedCandidate, setEditedCandidate] = useState<Partial<Candidate>>(
+    {},
+  );
   const [saving, setSaving] = useState(false);
   const [isEvaluationModalOpen, setIsEvaluationModalOpen] = useState(false);
   const [externalData, setExternalData] = useState<any[]>([]);
@@ -164,9 +322,12 @@ export default function CandidateProfile() {
   const [showInterviewModal, setShowInterviewModal] = useState(false);
   const [generatedQuestions, setGeneratedQuestions] = useState<any[]>([]);
   const [isUploadingPsikotes, setIsUploadingPsikotes] = useState(false);
-  const [isBiodataSummaryExpanded, setIsBiodataSummaryExpanded] = useState(false);
-  const [isPsikotesSummaryExpanded, setIsPsikotesSummaryExpanded] = useState(false);
-  const [isInterviewQuestionsExpanded, setIsInterviewQuestionsExpanded] = useState(false);
+  const [isBiodataSummaryExpanded, setIsBiodataSummaryExpanded] =
+    useState(false);
+  const [isPsikotesSummaryExpanded, setIsPsikotesSummaryExpanded] =
+    useState(false);
+  const [isInterviewQuestionsExpanded, setIsInterviewQuestionsExpanded] =
+    useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [managers, setManagers] = useState<any[]>([]);
   const [selectedManagers, setSelectedManagers] = useState<string[]>([]);
@@ -174,67 +335,142 @@ export default function CandidateProfile() {
   const [profile, setProfile] = useState<any>(null);
   const [fullScreenPdf, setFullScreenPdf] = useState<string | null>(null);
   const [fullScreenData, setFullScreenData] = useState<any | null>(null);
-  const [existingEvaluation, setExistingEvaluation] = useState<CandidateEvaluation | null>(null);
+  const [existingEvaluation, setExistingEvaluation] =
+    useState<CandidateEvaluation | null>(null);
   const [isArchived, setIsArchived] = useState(false);
-  
+
   // Internal Notes State
   const [notes, setNotes] = useState<any[]>([]);
-  const [newNote, setNewNote] = useState('');
+  const [newNote, setNewNote] = useState("");
   const [loadingNotes, setLoadingNotes] = useState(false);
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [expandedEvaluations, setExpandedEvaluations] = useState<string[]>([]);
+  const [forceHideSalary, setForceHideSalary] = useState(false);
+  const [onlyRemun, setOnlyRemun] = useState(false);
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+  const [isUpdatingApproval, setIsUpdatingApproval] = useState(false);
+
+  const handleUpdateApproval = async (status: 'accepted' | 'rejected' | 'hold') => {
+    if (!candidate || !profile) return;
+    setIsUpdatingApproval(true);
+    try {
+      const column = profile.role === 'DIRECTOR' ? 'director_status' : 'finance_status';
+      const { error } = await supabase
+        .from("candidates")
+        .update({ [column]: status })
+        .eq("id", candidate.id);
+
+      if (error) throw error;
+      setCandidate({ ...candidate, [column]: status });
+      toast({
+        title: "Status Diperbarui",
+        description: `Status approval berhasil diubah menjadi ${status}.`,
+      });
+    } catch (error) {
+      console.error("Error updating approval status:", error);
+      toast({
+        title: "Gagal",
+        description: "Terjadi kesalahan saat memperbarui status approval.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingApproval(false);
+    }
+  };
 
   const toggleEvaluation = (id: string) => {
-    setExpandedEvaluations(prev => 
-      prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id]
+    setExpandedEvaluations((prev) =>
+      prev.includes(id) ? prev.filter((e) => e !== id) : [...prev, id],
     );
   };
 
   const [isPrinting, setIsPrinting] = useState(false);
-  const [isZipping, setIsZipping] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        showDownloadMenu &&
+        !(event.target as Element).closest(".download-menu-container")
+      ) {
+        setShowDownloadMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showDownloadMenu]);
   const printRef = useRef<HTMLDivElement>(null);
-  
-  const handlePrint = async () => {
+
+  const handlePrint = async (
+    mode: "all" | "form-only" | "remun-only" = "all",
+  ) => {
+    setShowDownloadMenu(false);
+
+    if (mode === "form-only") {
+      setForceHideSalary(true);
+      setOnlyRemun(false);
+    } else if (mode === "remun-only") {
+      setForceHideSalary(false);
+      setOnlyRemun(true);
+    } else {
+      setForceHideSalary(false);
+      setOnlyRemun(false);
+    }
+
+    // Give React time to re-render with new states before printing
+    if (mode !== "all") {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    }
+
     setIsPrinting(true);
     try {
-      await printElement(printRef.current, `Form_Lamaran_${linkedData?.full_name?.replace(/\s+/g, '_') || 'Kandidat'}`);
+      await printElement(
+        printRef.current,
+        `Form_Lamaran_${linkedData?.full_name?.replace(/\s+/g, "_") || "Kandidat"}`,
+      );
       toast({
         title: "Berhasil",
         description: "Dokumen berhasil disiapkan untuk dicetak.",
       });
     } catch (error: any) {
-      if (error.message === 'POPUP_BLOCKED') {
+      if (error.message === "POPUP_BLOCKED") {
         toast({
           title: "Popup Diblokir",
-          description: "Browser Anda memblokir popup. Silakan izinkan popup (pop-up blocker) untuk situs ini agar dapat mencetak PDF.",
-          variant: "destructive"
+          description:
+            "Browser Anda memblokir popup. Silakan izinkan popup (pop-up blocker) untuk situs ini agar dapat mencetak PDF.",
+          variant: "destructive",
         });
       } else {
         toast({
           title: "Gagal",
           description: "Terjadi kesalahan saat menyiapkan dokumen.",
-          variant: "destructive"
+          variant: "destructive",
         });
       }
     } finally {
       setIsPrinting(false);
+      setForceHideSalary(false);
+      setOnlyRemun(false);
     }
   };
 
-  const handleSecureDownload = async (url: string, prefix: string, candidateName: string) => {
+  const handleSecureDownload = async (
+    url: string,
+    prefix: string,
+    candidateName: string,
+  ) => {
     try {
       toast({
         title: "Mengunduh...",
         description: "Sedang menyiapkan file untuk diunduh.",
       });
 
-      const cleanName = candidateName.replace(/[^a-zA-Z0-9]/g, '_');
+      const cleanName = candidateName.replace(/[^a-zA-Z0-9]/g, "_");
 
       // 1. Handle Google Docs links (Auto-convert to PDF)
       const docsMatch = url.match(/docs\.google\.com\/document\/d\/([^/]+)/);
       if (docsMatch) {
         const exportUrl = `https://docs.google.com/document/d/${docsMatch[1]}/export?format=pdf`;
-        const a = document.createElement('a');
+        const a = document.createElement("a");
         a.href = exportUrl;
         a.download = `${prefix}_${cleanName}.pdf`;
         document.body.appendChild(a);
@@ -247,7 +483,7 @@ export default function CandidateProfile() {
       const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
       if (driveMatch) {
         const exportUrl = `https://drive.google.com/uc?export=download&id=${driveMatch[1]}`;
-        const a = document.createElement('a');
+        const a = document.createElement("a");
         a.href = exportUrl;
         a.download = `${prefix}_${cleanName}.pdf`;
         document.body.appendChild(a);
@@ -257,24 +493,24 @@ export default function CandidateProfile() {
       }
 
       // 3. Handle standard files (Supabase, etc.) via secure blob to hide URL
-      let ext = 'pdf';
+      let ext = "pdf";
       try {
-        const urlWithoutQuery = url.split('?')[0];
-        const parts = urlWithoutQuery.split('.');
+        const urlWithoutQuery = url.split("?")[0];
+        const parts = urlWithoutQuery.split(".");
         if (parts.length > 1) {
           ext = parts[parts.length - 1].toLowerCase();
         }
       } catch (e) {
-        console.error('Gagal mengekstrak ekstensi:', e);
+        console.error("Gagal mengekstrak ekstensi:", e);
       }
 
       const filename = `${prefix}_${cleanName}.${ext}`;
 
       const response = await fetch(url);
-      if (!response.ok) throw new Error('Network response was not ok');
+      if (!response.ok) throw new Error("Network response was not ok");
       const blob = await response.blob();
       const objectUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = objectUrl;
       a.download = filename;
       document.body.appendChild(a);
@@ -282,144 +518,65 @@ export default function CandidateProfile() {
       window.URL.revokeObjectURL(objectUrl);
       document.body.removeChild(a);
     } catch (error) {
-      console.error('Download failed:', error);
+      console.error("Download failed:", error);
       toast({
         title: "Gagal Mengunduh",
-        description: "Terjadi kesalahan saat mengunduh file. Pastikan dokumen masih tersedia.",
-        variant: "destructive"
+        description:
+          "Terjadi kesalahan saat mengunduh file. Pastikan dokumen masih tersedia.",
+        variant: "destructive",
       });
-    }
-  };
-
-  const handleDownloadZip = async () => {
-    setIsZipping(true);
-    try {
-      toast({
-        title: "Menyiapkan ZIP...",
-        description: "Sedang mengumpulkan dan mengompres dokumen. Mohon tunggu.",
-      });
-
-      const zip = new JSZip();
-      const cleanName = candidate?.full_name?.replace(/[^a-zA-Z0-9]/g, '_') || 'Kandidat';
-
-      // 1. Generate PDF Biodata
-      if (printRef.current) {
-        const biodataBlob = await generatePdfBlob(printRef.current, `Biodata_${cleanName}`);
-        if (biodataBlob) {
-          zip.file(`Biodata_${cleanName}.pdf`, biodataBlob);
-        }
-      }
-
-      // Helper function to fetch file blob
-      const fetchFileBlob = async (url: string): Promise<{ blob: Blob, ext: string } | null> => {
-        try {
-          // Handle Google Docs
-          const docsMatch = url.match(/docs\.google\.com\/document\/d\/([^/]+)/);
-          if (docsMatch) {
-            const exportUrl = `https://docs.google.com/document/d/${docsMatch[1]}/export?format=pdf`;
-            const res = await fetch(exportUrl);
-            if (res.ok) return { blob: await res.blob(), ext: 'pdf' };
-          }
-          // Handle Google Drive
-          const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
-          if (driveMatch) {
-            const exportUrl = `https://drive.google.com/uc?export=download&id=${driveMatch[1]}`;
-            const res = await fetch(exportUrl);
-            if (res.ok) return { blob: await res.blob(), ext: 'pdf' };
-          }
-          
-          // Handle standard files
-          let ext = 'pdf';
-          const urlWithoutQuery = url.split('?')[0];
-          const parts = urlWithoutQuery.split('.');
-          if (parts.length > 1) ext = parts[parts.length - 1].toLowerCase();
-          
-          const res = await fetch(url);
-          if (res.ok) return { blob: await res.blob(), ext };
-        } catch (e) {
-          console.error('Failed to fetch file for zip:', url, e);
-        }
-        return null;
-      };
-
-      // 2. Fetch CV
-      if (candidate?.resume_url) {
-        const cvData = await fetchFileBlob(candidate.resume_url);
-        if (cvData) {
-          zip.file(`CV_${cleanName}.${cvData.ext}`, cvData.blob);
-        }
-      }
-
-      // 3. Fetch Psikotes
-      if (candidate?.psikotes_result_url) {
-        const psikotesData = await fetchFileBlob(candidate.psikotes_result_url);
-        if (psikotesData) {
-          zip.file(`Psikotes_${cleanName}.${psikotesData.ext}`, psikotesData.blob);
-        }
-      }
-
-      // Generate ZIP and download
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
-      const objectUrl = window.URL.createObjectURL(zipBlob);
-      const a = document.createElement('a');
-      a.href = objectUrl;
-      a.download = `Berkas_${cleanName}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(objectUrl);
-      document.body.removeChild(a);
-
-      toast({
-        title: "Berhasil",
-        description: "File ZIP berhasil diunduh.",
-      });
-    } catch (error) {
-      console.error('ZIP generation failed:', error);
-      toast({
-        title: "Gagal Mengunduh",
-        description: "Terjadi kesalahan saat membuat file ZIP.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsZipping(false);
     }
   };
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        supabase.from('profiles').select('*').eq('id', user.id).single().then(({ data }) => {
-          if (data) setProfile(data);
-        }).catch((err) => console.warn('Failed to get profile:', err));
-      }
-    }).catch((err) => console.warn('Failed to get user:', err));
+    supabase.auth
+      .getUser()
+      .then(({ data: { user } }) => {
+        if (user) {
+          supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", user.id)
+            .single()
+            .then(({ data }) => {
+              if (data) setProfile(data);
+            })
+            .catch((err) => console.warn("Failed to get profile:", err));
+        }
+      })
+      .catch((err) => console.warn("Failed to get user:", err));
   }, []);
 
   const formatValue = (val: any): string => {
-    if (val === null || val === undefined || val === '') return '-';
-    if (typeof val === 'object') {
+    if (val === null || val === undefined || val === "") return "-";
+    if (typeof val === "object") {
       if (Array.isArray(val)) {
-        if (val.length === 0) return '-';
-        const nonEmptyItems = val.filter(item => {
-          if (typeof item === 'object' && item !== null) {
-            return Object.values(item).some(v => v !== '');
+        if (val.length === 0) return "-";
+        const nonEmptyItems = val.filter((item) => {
+          if (typeof item === "object" && item !== null) {
+            return Object.values(item).some((v) => v !== "");
           }
           return true;
         });
-        if (nonEmptyItems.length === 0) return '-';
-        return nonEmptyItems.map((item, idx) => {
-          if (typeof item === 'object' && item !== null) {
-            return `[${idx + 1}] ` + Object.entries(item)
-              .filter(([_, v]) => v !== '')
-              .map(([k, v]) => `${k}: ${v}`)
-              .join(', ');
-          }
-          return String(item);
-        }).join('\n');
+        if (nonEmptyItems.length === 0) return "-";
+        return nonEmptyItems
+          .map((item, idx) => {
+            if (typeof item === "object" && item !== null) {
+              return (
+                `[${idx + 1}] ` +
+                Object.entries(item)
+                  .filter(([_, v]) => v !== "")
+                  .map(([k, v]) => `${k}: ${v}`)
+                  .join(", ")
+              );
+            }
+            return String(item);
+          })
+          .join("\n");
       }
-      const entries = Object.entries(val).filter(([_, v]) => v !== '');
-      if (entries.length === 0) return '-';
-      return entries.map(([k, v]) => `${k}: ${v}`).join('\n');
+      const entries = Object.entries(val).filter(([_, v]) => v !== "");
+      if (entries.length === 0) return "-";
+      return entries.map(([k, v]) => `${k}: ${v}`).join("\n");
     }
     return String(val);
   };
@@ -436,18 +593,20 @@ export default function CandidateProfile() {
     setLoadingNotes(true);
     try {
       const { data, error } = await supabase
-        .from('internal_notes')
-        .select('*, author:profiles(*)')
-        .eq('candidate_id', candidateId)
-        .order('created_at', { ascending: false });
-      
+        .from("internal_notes")
+        .select("*, author:profiles(*)")
+        .eq("candidate_id", candidateId)
+        .order("created_at", { ascending: false });
+
       if (error) throw error;
       if (data) {
-        const filteredNotes = data.filter(note => note.author?.role === profile?.role);
+        const filteredNotes = data.filter(
+          (note) => note.author?.role === profile?.role,
+        );
         setNotes(filteredNotes);
       }
     } catch (err) {
-      console.error('Error fetching notes:', err);
+      console.error("Error fetching notes:", err);
     } finally {
       setLoadingNotes(false);
     }
@@ -457,22 +616,27 @@ export default function CandidateProfile() {
     if (!id || !profile || !newNote.trim()) return;
     setIsAddingNote(true);
     try {
-      const { error } = await supabase
-        .from('internal_notes')
-        .insert({
-          candidate_id: id,
-          author_id: profile.id,
-          note_text: newNote.trim()
-        });
-      
+      const { error } = await supabase.from("internal_notes").insert({
+        candidate_id: id,
+        author_id: profile.id,
+        note_text: newNote.trim(),
+      });
+
       if (error) throw error;
-      
-      toast({ title: 'Berhasil', description: 'Catatan internal ditambahkan.' });
-      setNewNote('');
+
+      toast({
+        title: "Berhasil",
+        description: "Catatan internal ditambahkan.",
+      });
+      setNewNote("");
       fetchNotes(id);
     } catch (err: any) {
-      console.error('Error adding note:', err);
-      toast({ title: 'Error', description: 'Gagal menambahkan catatan.', variant: 'destructive' });
+      console.error("Error adding note:", err);
+      toast({
+        title: "Error",
+        description: "Gagal menambahkan catatan.",
+        variant: "destructive",
+      });
     } finally {
       setIsAddingNote(false);
     }
@@ -480,11 +644,11 @@ export default function CandidateProfile() {
 
   const fetchEvaluations = async (candidateId: string) => {
     const { data, error } = await supabase
-      .from('candidate_evaluations')
-      .select('*, template:evaluation_templates(*)')
-      .eq('candidate_id', candidateId)
-      .order('created_at', { ascending: false });
-    
+      .from("candidate_evaluations")
+      .select("*, template:evaluation_templates(*)")
+      .eq("candidate_id", candidateId)
+      .order("created_at", { ascending: false });
+
     if (!error && data) {
       setEvaluations(data);
     }
@@ -493,9 +657,11 @@ export default function CandidateProfile() {
   const fetchCandidate = async (candidateId: string) => {
     setLoading(true);
     const { data, error } = await supabase
-      .from('candidates')
-      .select('*, psikotes_schedules(id, is_confirmed, schedule_date), interview_schedules(id, is_confirmed, schedule_date), candidate_assignees(user_id, profiles(id, full_name, role, department))')
-      .eq('id', candidateId)
+      .from("candidates")
+      .select(
+        "*, psikotes_schedules(id, is_confirmed, schedule_date), interview_schedules(id, is_confirmed, schedule_date), candidate_assignees(user_id, profiles(id, full_name, role, department))",
+      )
+      .eq("id", candidateId)
       .single();
 
     let candidateData = data;
@@ -503,14 +669,18 @@ export default function CandidateProfile() {
     if (error || !data) {
       // Try fetching from candidate_logs if not found in active candidates
       const { data: logData, error: logError } = await supabase
-        .from('candidate_logs')
-        .select('*')
-        .eq('id', candidateId)
+        .from("candidate_logs")
+        .select("*")
+        .eq("id", candidateId)
         .single();
 
       if (logError || !logData) {
-        toast({ title: 'Error', description: 'Gagal memuat profil kandidat', variant: 'destructive' });
-        navigate('/screening');
+        toast({
+          title: "Error",
+          description: "Gagal memuat profil kandidat",
+          variant: "destructive",
+        });
+        navigate("/screening");
         setLoading(false);
         return;
       }
@@ -521,9 +691,18 @@ export default function CandidateProfile() {
     }
 
     // Access Control Check
-    if (profile?.role === 'USER_MANAGER' && !candidateData.candidate_assignees?.some((a: any) => a.user_id === profile.id)) {
-      toast({ title: 'Akses Ditolak', description: 'Anda tidak memiliki akses ke kandidat ini.', variant: 'destructive' });
-      navigate('/screening');
+    if (
+      profile?.role === "USER_MANAGER" &&
+      !candidateData.candidate_assignees?.some(
+        (a: any) => a.user_id === profile.id,
+      )
+    ) {
+      toast({
+        title: "Akses Ditolak",
+        description: "Anda tidak memiliki akses ke kandidat ini.",
+        variant: "destructive",
+      });
+      navigate("/screening");
       setLoading(false);
       return;
     }
@@ -536,11 +715,11 @@ export default function CandidateProfile() {
 
   const fetchManagers = async () => {
     const { data, error } = await supabase
-      .from('profiles')
-      .select('id, full_name, role, department')
-      .in('role', ['USER_MANAGER', 'HR_ADMIN'])
-      .order('full_name');
-    
+      .from("profiles")
+      .select("id, full_name, role, department")
+      .in("role", ["USER_MANAGER", "HR_ADMIN", "DIRECTOR", "FINANCE_DIRECTOR"])
+      .order("full_name");
+
     if (data) {
       setManagers(data);
     }
@@ -548,32 +727,32 @@ export default function CandidateProfile() {
 
   const handleAssign = async () => {
     if (!id) return;
-    
+
     try {
       setAssigning(true);
-      
+
       const { data: activeData } = await supabase
-        .from('candidates')
-        .select('id')
-        .eq('id', id)
+        .from("candidates")
+        .select("id")
+        .eq("id", id)
         .maybeSingle();
 
-      const table = activeData ? 'candidates' : 'candidate_logs';
+      const table = activeData ? "candidates" : "candidate_logs";
 
       // Delete existing assignments
       await supabase
-        .from('candidate_assignees')
+        .from("candidate_assignees")
         .delete()
-        .eq('candidate_id', id);
+        .eq("candidate_id", id);
 
       // Insert new assignments
       if (selectedManagers.length > 0) {
-        const inserts = selectedManagers.map(userId => ({
+        const inserts = selectedManagers.map((userId) => ({
           candidate_id: id,
-          user_id: userId
+          user_id: userId,
         }));
         const { error } = await supabase
-          .from('candidate_assignees')
+          .from("candidate_assignees")
           .insert(inserts);
 
         if (error) throw error;
@@ -583,15 +762,15 @@ export default function CandidateProfile() {
         title: "Berhasil",
         description: "Kandidat berhasil di-assign ke user.",
       });
-      
+
       setIsAssignModalOpen(false);
       fetchCandidate(id);
     } catch (error: any) {
-      console.error('Error assigning candidate:', error);
+      console.error("Error assigning candidate:", error);
       toast({
         title: "Gagal",
         description: error.message,
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setAssigning(false);
@@ -604,11 +783,11 @@ export default function CandidateProfile() {
       // If already linked, fetch that specific one
       if (candidateData.linked_external_id) {
         const { data, error } = await supabase
-          .from('external_data')
-          .select('*')
-          .eq('uid_sheet', candidateData.linked_external_id)
+          .from("external_data")
+          .select("*")
+          .eq("uid_sheet", candidateData.linked_external_id)
           .single();
-        
+
         if (data) {
           setLinkedData({ uid_sheet: data.uid_sheet, ...data.raw_data });
           setIsSearchingExternal(false);
@@ -621,44 +800,68 @@ export default function CandidateProfile() {
       const normPhone = normalizePhone(candidateData.phone);
       const normName = normalizeName(candidateData.full_name);
 
-      const { data, error } = await supabase
-        .from('external_data')
-        .select('*');
+      const { data, error } = await supabase.from("external_data").select("*");
 
       if (data) {
         // Filter out data that is already linked to other candidates
-        const uids = data.map(d => d.uid_sheet);
-        
+        const uids = data.map((d) => d.uid_sheet);
+
         const [activeRes, logsRes] = await Promise.all([
-          supabase.from('candidates').select('linked_external_id').in('linked_external_id', uids).neq('id', candidateData.id),
-          supabase.from('candidate_logs').select('linked_external_id').in('linked_external_id', uids).neq('id', candidateData.id)
+          supabase
+            .from("candidates")
+            .select("linked_external_id")
+            .in("linked_external_id", uids)
+            .neq("id", candidateData.id),
+          supabase
+            .from("candidate_logs")
+            .select("linked_external_id")
+            .in("linked_external_id", uids)
+            .neq("id", candidateData.id),
         ]);
 
         const usedUids = new Set([
-          ...(activeRes.data?.map(d => d.linked_external_id) || []),
-          ...(logsRes.data?.map(d => d.linked_external_id) || [])
+          ...(activeRes.data?.map((d) => d.linked_external_id) || []),
+          ...(logsRes.data?.map((d) => d.linked_external_id) || []),
         ]);
 
-        const availableData = data.filter(d => !usedUids.has(d.uid_sheet));
+        const availableData = data.filter((d) => !usedUids.has(d.uid_sheet));
 
-        const matches = availableData.filter(item => {
+        const matches = availableData.filter((item) => {
           const raw = item.raw_data;
           if (!raw) return false;
-          
+
           let match = false;
           Object.entries(raw).forEach(([key, val]) => {
-            if (typeof val !== 'string') return;
+            if (typeof val !== "string") return;
             const lowerKey = key.toLowerCase();
             const strVal = String(val);
-            
-            if (lowerKey.includes('email') && normalizeEmail(strVal) === normEmail) match = true;
-            if ((lowerKey.includes('phone') || lowerKey.includes('telepon') || lowerKey.includes('hp') || lowerKey.includes('whatsapp')) && normalizePhone(strVal) === normPhone && normPhone !== '') match = true;
-            if ((lowerKey.includes('name') || lowerKey.includes('nama')) && normalizeName(strVal) === normName) match = true;
+
+            if (
+              lowerKey.includes("email") &&
+              normalizeEmail(strVal) === normEmail
+            )
+              match = true;
+            if (
+              (lowerKey.includes("phone") ||
+                lowerKey.includes("telepon") ||
+                lowerKey.includes("hp") ||
+                lowerKey.includes("whatsapp")) &&
+              normalizePhone(strVal) === normPhone &&
+              normPhone !== ""
+            )
+              match = true;
+            if (
+              (lowerKey.includes("name") || lowerKey.includes("nama")) &&
+              normalizeName(strVal) === normName
+            )
+              match = true;
           });
           return match;
         });
-        
-        setExternalData(matches.map(m => ({ uid_sheet: m.uid_sheet, ...m.raw_data })));
+
+        setExternalData(
+          matches.map((m) => ({ uid_sheet: m.uid_sheet, ...m.raw_data })),
+        );
       }
     } catch (err) {
       console.error("Error fetching external data:", err);
@@ -672,27 +875,34 @@ export default function CandidateProfile() {
     setIsLinking(true);
     try {
       const { data: activeData } = await supabase
-        .from('candidates')
-        .select('id')
-        .eq('id', id)
+        .from("candidates")
+        .select("id")
+        .eq("id", id)
         .maybeSingle();
 
-      const table = activeData ? 'candidates' : 'candidate_logs';
+      const table = activeData ? "candidates" : "candidate_logs";
 
       const { error } = await supabase
         .from(table)
         .update({ linked_external_id: uid_sheet })
-        .eq('id', id);
+        .eq("id", id);
 
       if (error) throw error;
 
-      toast({ title: 'Berhasil', description: 'Data eksternal berhasil ditautkan.' });
-      
+      toast({
+        title: "Berhasil",
+        description: "Data eksternal berhasil ditautkan.",
+      });
+
       // Refresh
       fetchCandidate(id);
     } catch (err: any) {
-      console.error('Error linking data:', err);
-      toast({ title: 'Error', description: 'Gagal menautkan data.', variant: 'destructive' });
+      console.error("Error linking data:", err);
+      toast({
+        title: "Error",
+        description: "Gagal menautkan data.",
+        variant: "destructive",
+      });
     } finally {
       setIsLinking(false);
     }
@@ -703,26 +913,33 @@ export default function CandidateProfile() {
     setIsLinking(true);
     try {
       const { data: activeData } = await supabase
-        .from('candidates')
-        .select('id')
-        .eq('id', id)
+        .from("candidates")
+        .select("id")
+        .eq("id", id)
         .maybeSingle();
 
-      const table = activeData ? 'candidates' : 'candidate_logs';
+      const table = activeData ? "candidates" : "candidate_logs";
 
       const { error } = await supabase
         .from(table)
         .update({ linked_external_id: null })
-        .eq('id', id);
+        .eq("id", id);
 
       if (error) throw error;
 
-      toast({ title: 'Berhasil', description: 'Tautan data eksternal dilepas.' });
+      toast({
+        title: "Berhasil",
+        description: "Tautan data eksternal dilepas.",
+      });
       setLinkedData(null);
       fetchCandidate(id);
     } catch (err: any) {
-      console.error('Error unlinking data:', err);
-      toast({ title: 'Error', description: 'Gagal melepas tautan data.', variant: 'destructive' });
+      console.error("Error unlinking data:", err);
+      toast({
+        title: "Error",
+        description: "Gagal melepas tautan data.",
+        variant: "destructive",
+      });
     } finally {
       setIsLinking(false);
     }
@@ -732,36 +949,41 @@ export default function CandidateProfile() {
     if (!candidate || !linkedData) return;
     setIsAnalyzing(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       const aiWebhookUrl = user?.user_metadata?.ai_analysis_webhook_url;
       if (!aiWebhookUrl) {
-        toast({ 
-          title: 'Konfigurasi Diperlukan', 
-          description: 'Silakan atur n8n AI Analysis Webhook URL di menu Pengaturan terlebih dahulu.',
-          variant: 'destructive' 
+        toast({
+          title: "Konfigurasi Diperlukan",
+          description:
+            "Silakan atur n8n AI Analysis Webhook URL di menu Pengaturan terlebih dahulu.",
+          variant: "destructive",
         });
         setIsAnalyzing(false);
         return;
       }
 
-      const response = await fetchWithRetry('/api/n8n/trigger', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`
+      const response = await fetchWithRetry("/api/n8n/trigger", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({
-          type: 'ai_analysis',
+          type: "ai_analysis",
           payload: {
-            event: 'analyze_candidate_biodata',
+            event: "analyze_candidate_biodata",
             candidate_id: candidate.id,
             full_name: candidate.full_name,
             position: candidate.position,
             raw_data: linkedData,
-            timestamp: new Date().toISOString()
-          }
+            timestamp: new Date().toISOString(),
+          },
         }),
       });
 
@@ -770,14 +992,19 @@ export default function CandidateProfile() {
       }
 
       const responseData = await response.json();
-      
-      toast({ 
-        title: 'Analisa Dimulai', 
-        description: 'AI sedang menganalisa biodata. Hasilnya akan muncul setelah proses selesai (silakan refresh halaman ini nanti).',
+
+      toast({
+        title: "Analisa Dimulai",
+        description:
+          "AI sedang menganalisa biodata. Hasilnya akan muncul setelah proses selesai (silakan refresh halaman ini nanti).",
       });
     } catch (err: any) {
-      console.error('Error triggering AI analysis:', err);
-      toast({ title: 'Error', description: err.message || 'Gagal memulai analisa AI.', variant: 'destructive' });
+      console.error("Error triggering AI analysis:", err);
+      toast({
+        title: "Error",
+        description: err.message || "Gagal memulai analisa AI.",
+        variant: "destructive",
+      });
     } finally {
       setIsAnalyzing(false);
     }
@@ -787,36 +1014,41 @@ export default function CandidateProfile() {
     if (!candidate || !candidate.psikotes_result_url) return;
     setIsAnalyzingPsikotes(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       const aiPsikotesWebhookUrl = user?.user_metadata?.ai_psikotes_webhook_url;
       if (!aiPsikotesWebhookUrl) {
-        toast({ 
-          title: 'Konfigurasi Diperlukan', 
-          description: 'Silakan atur n8n AI Psikotes Analysis Webhook URL di menu Pengaturan terlebih dahulu.',
-          variant: 'destructive' 
+        toast({
+          title: "Konfigurasi Diperlukan",
+          description:
+            "Silakan atur n8n AI Psikotes Analysis Webhook URL di menu Pengaturan terlebih dahulu.",
+          variant: "destructive",
         });
         setIsAnalyzingPsikotes(false);
         return;
       }
 
-      const response = await fetchWithRetry('/api/n8n/trigger', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`
+      const response = await fetchWithRetry("/api/n8n/trigger", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({
-          type: 'ai_psikotes_analysis',
+          type: "ai_psikotes_analysis",
           payload: {
-            event: 'analyze_candidate_psikotes',
+            event: "analyze_candidate_psikotes",
             candidate_id: candidate.id,
             full_name: candidate.full_name,
             position: candidate.position,
             psikotes_url: candidate.psikotes_result_url,
-            timestamp: new Date().toISOString()
-          }
+            timestamp: new Date().toISOString(),
+          },
         }),
       });
 
@@ -825,14 +1057,19 @@ export default function CandidateProfile() {
       }
 
       const responseData = await response.json();
-      
-      toast({ 
-        title: 'Analisa Dimulai', 
-        description: 'AI sedang menganalisa hasil psikotes. Hasilnya akan muncul setelah proses selesai (silakan refresh halaman ini nanti).',
+
+      toast({
+        title: "Analisa Dimulai",
+        description:
+          "AI sedang menganalisa hasil psikotes. Hasilnya akan muncul setelah proses selesai (silakan refresh halaman ini nanti).",
       });
     } catch (err: any) {
-      console.error('Error triggering AI analysis:', err);
-      toast({ title: 'Error', description: err.message || 'Gagal memulai analisa AI.', variant: 'destructive' });
+      console.error("Error triggering AI analysis:", err);
+      toast({
+        title: "Error",
+        description: err.message || "Gagal memulai analisa AI.",
+        variant: "destructive",
+      });
     } finally {
       setIsAnalyzingPsikotes(false);
     }
@@ -842,33 +1079,39 @@ export default function CandidateProfile() {
     if (!candidate) return;
     setIsGeneratingInterview(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      const aiInterviewWebhookUrl = user?.user_metadata?.ai_interview_webhook_url;
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      const aiInterviewWebhookUrl =
+        user?.user_metadata?.ai_interview_webhook_url;
       if (!aiInterviewWebhookUrl) {
-        toast({ 
-          title: 'Konfigurasi Diperlukan', 
-          description: 'Silakan atur n8n AI Interview Question Generator Webhook URL di menu Pengaturan terlebih dahulu.',
-          variant: 'destructive' 
+        toast({
+          title: "Konfigurasi Diperlukan",
+          description:
+            "Silakan atur n8n AI Interview Question Generator Webhook URL di menu Pengaturan terlebih dahulu.",
+          variant: "destructive",
         });
         setIsGeneratingInterview(false);
         return;
       }
 
-      const response = await fetchWithRetry('/api/n8n/trigger', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`
+      const response = await fetchWithRetry("/api/n8n/trigger", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({
-          type: 'ai_interview',
+          type: "ai_interview",
           payload: {
             candidate_id: candidate.id,
-            action: 'generate_interview_questions',
-            ai_biodata_summary: candidate.ai_biodata_summary
-          }
+            action: "generate_interview_questions",
+            ai_biodata_summary: candidate.ai_biodata_summary,
+          },
         }),
       });
 
@@ -878,7 +1121,7 @@ export default function CandidateProfile() {
           const errData = await response.json();
           if (errData.error) errorMsg = errData.error;
           else if (errData.message) errorMsg = errData.message;
-          else if (typeof errData === 'string') errorMsg = errData;
+          else if (typeof errData === "string") errorMsg = errData;
           else errorMsg = JSON.stringify(errData);
         } catch (e) {
           // ignore
@@ -887,14 +1130,19 @@ export default function CandidateProfile() {
       }
 
       const responseData = await response.json();
-      
-      toast({ 
-        title: 'Proses Dimulai', 
-        description: 'Data berhasil dikirim untuk diproses, silahkan refresh halaman ini kembali.',
+
+      toast({
+        title: "Proses Dimulai",
+        description:
+          "Data berhasil dikirim untuk diproses, silahkan refresh halaman ini kembali.",
       });
     } catch (err: any) {
-      console.error('Error generating interview questions:', err);
-      toast({ title: 'Error', description: err.message || 'Gagal generate pertanyaan interview.', variant: 'destructive' });
+      console.error("Error generating interview questions:", err);
+      toast({
+        title: "Error",
+        description: err.message || "Gagal generate pertanyaan interview.",
+        variant: "destructive",
+      });
     } finally {
       setIsGeneratingInterview(false);
     }
@@ -904,32 +1152,52 @@ export default function CandidateProfile() {
     if (!candidate) return;
     try {
       const { error } = await supabase
-        .from('candidates')
+        .from("candidates")
         .update({ ai_interview_questions: generatedQuestions })
-        .eq('id', candidate.id);
+        .eq("id", candidate.id);
 
       if (error) throw error;
 
-      setCandidate({ ...candidate, ai_interview_questions: generatedQuestions });
+      setCandidate({
+        ...candidate,
+        ai_interview_questions: generatedQuestions,
+      });
       setShowInterviewModal(false);
-      toast({ title: 'Berhasil', description: 'Pertanyaan interview berhasil disimpan.' });
+      toast({
+        title: "Berhasil",
+        description: "Pertanyaan interview berhasil disimpan.",
+      });
     } catch (err: any) {
-      console.error('Error saving interview questions:', err);
-      toast({ title: 'Error', description: err.message || 'Gagal menyimpan pertanyaan.', variant: 'destructive' });
+      console.error("Error saving interview questions:", err);
+      toast({
+        title: "Error",
+        description: err.message || "Gagal menyimpan pertanyaan.",
+        variant: "destructive",
+      });
     }
   };
 
-  const handleUploadPsikotes = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUploadPsikotes = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = e.target.files?.[0];
     if (!file || !candidate || !id) return;
 
-    if (file.type !== 'application/pdf') {
-      toast({ title: 'Error', description: 'Hanya file PDF yang diperbolehkan.', variant: 'destructive' });
+    if (file.type !== "application/pdf") {
+      toast({
+        title: "Error",
+        description: "Hanya file PDF yang diperbolehkan.",
+        variant: "destructive",
+      });
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      toast({ title: 'Error', description: 'Ukuran file maksimal 5MB.', variant: 'destructive' });
+      toast({
+        title: "Error",
+        description: "Ukuran file maksimal 5MB.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -938,56 +1206,67 @@ export default function CandidateProfile() {
       // Delete old file if exists to prevent accumulation
       if (candidate.psikotes_result_url) {
         try {
-          const urlParts = candidate.psikotes_result_url.split('/candidate-documents/');
+          const urlParts = candidate.psikotes_result_url.split(
+            "/candidate-documents/",
+          );
           if (urlParts.length > 1) {
             const oldFilePath = urlParts[1];
-            await supabase.storage.from('candidate-documents').remove([oldFilePath]);
+            await supabase.storage
+              .from("candidate-documents")
+              .remove([oldFilePath]);
           }
         } catch (delErr) {
-          console.error('Failed to delete old file:', delErr);
+          console.error("Failed to delete old file:", delErr);
         }
       }
 
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split(".").pop();
       const fileName = `psikotes/${id}_${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('candidate-documents')
-        .upload(fileName, file, { 
+        .from("candidate-documents")
+        .upload(fileName, file, {
           upsert: true,
-          contentType: 'application/pdf'
+          contentType: "application/pdf",
         });
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('candidate-documents')
-        .getPublicUrl(fileName);
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("candidate-documents").getPublicUrl(fileName);
 
       const { data: activeData } = await supabase
-        .from('candidates')
-        .select('id')
-        .eq('id', id)
+        .from("candidates")
+        .select("id")
+        .eq("id", id)
         .maybeSingle();
 
-      const table = activeData ? 'candidates' : 'candidate_logs';
+      const table = activeData ? "candidates" : "candidate_logs";
 
       const { error: updateError } = await supabase
         .from(table)
         .update({ psikotes_result_url: publicUrl })
-        .eq('id', id);
+        .eq("id", id);
 
       if (updateError) throw updateError;
 
-      toast({ title: 'Berhasil', description: 'Hasil psikotes berhasil diunggah.' });
+      toast({
+        title: "Berhasil",
+        description: "Hasil psikotes berhasil diunggah.",
+      });
       fetchCandidate(id);
     } catch (err: any) {
-      console.error('Error uploading psikotes:', err);
-      toast({ title: 'Error', description: err.message || 'Gagal mengunggah hasil psikotes.', variant: 'destructive' });
+      console.error("Error uploading psikotes:", err);
+      toast({
+        title: "Error",
+        description: err.message || "Gagal mengunggah hasil psikotes.",
+        variant: "destructive",
+      });
     } finally {
       setIsUploadingPsikotes(false);
       // Reset input
-      e.target.value = '';
+      e.target.value = "";
     }
   };
 
@@ -1004,33 +1283,33 @@ export default function CandidateProfile() {
 
       // Check if candidate is in active candidates or logs
       const { data: activeData } = await supabase
-        .from('candidates')
-        .select('id')
-        .eq('id', id)
+        .from("candidates")
+        .select("id")
+        .eq("id", id)
         .maybeSingle();
 
-      const table = activeData ? 'candidates' : 'candidate_logs';
+      const table = activeData ? "candidates" : "candidate_logs";
 
       const { error } = await supabase
         .from(table)
         .update(updateData)
-        .eq('id', id);
+        .eq("id", id);
 
       if (error) throw error;
 
       toast({
-        title: 'Berhasil',
-        description: 'Profil kandidat berhasil diperbarui'
+        title: "Berhasil",
+        description: "Profil kandidat berhasil diperbarui",
       });
-      
+
       setIsEditing(false);
       fetchCandidate(id);
     } catch (error: any) {
-      console.error('Error updating candidate:', error);
+      console.error("Error updating candidate:", error);
       toast({
-        title: 'Error',
-        description: error.message || 'Gagal memperbarui profil kandidat',
-        variant: 'destructive',
+        title: "Error",
+        description: error.message || "Gagal memperbarui profil kandidat",
+        variant: "destructive",
       });
     } finally {
       setSaving(false);
@@ -1042,11 +1321,13 @@ export default function CandidateProfile() {
     setEditedCandidate(candidate || {});
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
     const { name, value, type } = e.target;
-    setEditedCandidate(prev => ({
+    setEditedCandidate((prev) => ({
       ...prev,
-      [name]: type === 'number' ? Number(value) : value
+      [name]: type === "number" ? Number(value) : value,
     }));
   };
 
@@ -1062,11 +1343,15 @@ export default function CandidateProfile() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
         <User className="w-16 h-16 text-slate-300 mb-4" />
-        <h2 className="text-2xl font-bold text-slate-700 mb-2">Kandidat Tidak Ditemukan</h2>
-        <p className="text-slate-500 mb-6">Profil kandidat yang Anda cari tidak ada atau telah dihapus.</p>
-        <button 
-          onClick={() => navigate('/screening')}
-          className="px-6 py-2 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors"
+        <h2 className="text-2xl font-bold text-slate-700 mb-2">
+          Kandidat Tidak Ditemukan
+        </h2>
+        <p className="text-slate-500 mb-6">
+          Profil kandidat yang Anda cari tidak ada atau telah dihapus.
+        </p>
+        <button
+          onClick={() => navigate("/screening")}
+          className="px-6 py-2 bg-[#3D2C44] text-white font-medium rounded-xl hover:bg-[#3D2C44]/90 transition-colors"
         >
           Kembali ke Screening
         </button>
@@ -1082,35 +1367,46 @@ export default function CandidateProfile() {
   const leadScore = candidate.leadership_score || 0;
   const adaptScore = candidate.adaptability_score || 0;
 
-  const totalScore = techScore + commScore + probScore + teamScore + leadScore + adaptScore;
+  const totalScore =
+    techScore + commScore + probScore + teamScore + leadScore + adaptScore;
   const averageScore = Math.round(totalScore / 6);
 
   const radarData = [
-    { subject: 'Technical', A: techScore },
-    { subject: 'Communication', A: commScore },
-    { subject: 'Problem Solving', A: probScore },
-    { subject: 'Teamwork', A: teamScore },
-    { subject: 'Leadership', A: leadScore },
-    { subject: 'Adaptability', A: adaptScore },
+    { subject: "Technical", A: techScore },
+    { subject: "Communication", A: commScore },
+    { subject: "Problem Solving", A: probScore },
+    { subject: "Teamwork", A: teamScore },
+    { subject: "Leadership", A: leadScore },
+    { subject: "Adaptability", A: adaptScore },
   ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'hired': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-      case 'accepted': return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'rejected': return 'bg-rose-100 text-rose-700 border-rose-200';
-      case 'invited': return 'bg-amber-100 text-amber-700 border-amber-200';
-      default: return 'bg-slate-100 text-slate-700 border-slate-200';
+      case "hired":
+        return "bg-emerald-100 text-emerald-700 border-emerald-200";
+      case "accepted":
+        return "bg-[#3D2C44] text-white border-[#3D2C44]";
+      case "rejected":
+        return "bg-rose-100 text-rose-700 border-rose-200";
+      case "invited":
+        return "bg-amber-100 text-amber-700 border-amber-200";
+      default:
+        return "bg-slate-100 text-slate-700 border-slate-200";
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'hired': return 'Hired';
-      case 'accepted': return 'Lolos';
-      case 'rejected': return 'Ditolak';
-      case 'invited': return 'Diundang';
-      default: return 'Menunggu';
+      case "hired":
+        return "Hired";
+      case "accepted":
+        return "Lolos";
+      case "rejected":
+        return "Ditolak";
+      case "invited":
+        return "Diundang";
+      default:
+        return "Menunggu";
     }
   };
 
@@ -1119,15 +1415,19 @@ export default function CandidateProfile() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <button 
+          <button
             onClick={() => navigate(-1)}
             className="p-2 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-colors"
           >
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Profil Kandidat</h1>
-            <p className="text-slate-500 text-sm mt-1">Detail informasi dan hasil asesmen kandidat</p>
+            <h1 className="text-3xl font-bold text-[#3D2C44]">
+              Profil Kandidat
+            </h1>
+            <p className="text-[#3D2C44]/70 text-sm mt-1">
+              Detail informasi dan hasil asesmen kandidat
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -1135,7 +1435,7 @@ export default function CandidateProfile() {
             <>
               <button
                 onClick={handleCancelEdit}
-                className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-2 text-sm font-medium"
+                className="px-4 py-2 border border-rose-200 text-rose-600 bg-rose-50 rounded-xl hover:bg-rose-100 transition-colors flex items-center gap-2 text-sm font-medium"
               >
                 <X size={16} />
                 Batal
@@ -1143,29 +1443,33 @@ export default function CandidateProfile() {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2 text-sm font-medium disabled:opacity-50"
+                className="px-4 py-2 bg-[#3D2C44] text-white rounded-xl hover:bg-[#3D2C44]/90 transition-colors flex items-center gap-2 text-sm font-medium disabled:opacity-50"
               >
-                {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                {saving ? 'Menyimpan...' : 'Simpan'}
+                {saving ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Save size={16} />
+                )}
+                {saving ? "Menyimpan..." : "Simpan"}
               </button>
             </>
           ) : (
             <>
-              {profile?.role !== 'USER_MANAGER' && !isArchived && (
+              {profile?.role !== "USER_MANAGER" && !isArchived && (
                 <>
                   <button
                     onClick={() => {
                       fetchManagers();
                       setIsAssignModalOpen(true);
                     }}
-                    className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-2 text-sm font-medium"
+                    className="px-4 py-2 bg-[#3D2C44] text-white rounded-xl hover:bg-[#3D2C44]/90 transition-colors flex items-center gap-2 text-sm font-medium"
                   >
                     <Users size={16} />
                     Assign User
                   </button>
                   <button
                     onClick={() => setIsEditing(true)}
-                    className="px-4 py-2 bg-white border border-slate-200 text-indigo-600 rounded-xl hover:bg-indigo-50 transition-colors flex items-center gap-2 text-sm font-medium"
+                    className="px-4 py-2 bg-[#3D2C44] text-white rounded-xl hover:bg-[#3D2C44]/90 transition-colors flex items-center gap-2 text-sm font-medium"
                   >
                     <Edit2 size={16} />
                     Edit Profil
@@ -1174,41 +1478,122 @@ export default function CandidateProfile() {
               )}
             </>
           )}
-          <div className={cn("px-4 py-1.5 rounded-full border text-sm font-bold uppercase tracking-wider", getStatusColor(candidate.status_screening))}>
+          <div
+            className={cn(
+              "px-4 py-1.5 rounded-full border text-sm font-bold uppercase tracking-wider",
+              getStatusColor(candidate.status_screening),
+            )}
+          >
             {getStatusText(candidate.status_screening)}
           </div>
-          <button
-            onClick={handleDownloadZip}
-            disabled={isZipping}
-            className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-colors flex items-center gap-2 text-sm font-medium shadow-sm disabled:opacity-50"
-          >
-            {isZipping ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-            {isZipping ? 'Memproses...' : 'Download Semua (ZIP)'}
-          </button>
         </div>
       </div>
 
-      {(candidate.candidate_assignees && candidate.candidate_assignees.length > 0) ? (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
-          <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
+      {/* Approval Status Card */}
+      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+        <h3 className="font-bold text-[#3D2C44] mb-4">Status Approval Manajemen</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Director Approval */}
+          <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-xl">
+            <div>
+              <p className="text-sm font-medium text-slate-700">Approval Direktur</p>
+              <div className="mt-1 flex items-center gap-2">
+                <span className={cn(
+                  "px-2.5 py-1 text-xs font-bold rounded-full",
+                  candidate.director_status === 'accepted' ? 'bg-emerald-100 text-emerald-700' :
+                  candidate.director_status === 'rejected' ? 'bg-rose-100 text-rose-700' :
+                  candidate.director_status === 'hold' ? 'bg-amber-100 text-amber-700' :
+                  'bg-slate-200 text-slate-700'
+                )}>
+                  {(candidate.director_status || 'pending').toUpperCase()}
+                </span>
+              </div>
+            </div>
+            {profile?.role === "DIRECTOR" && (
+              <div className="flex gap-2">
+                <button onClick={() => handleUpdateApproval('accepted')} disabled={isUpdatingApproval} title="Terima" className="p-2 bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors shadow-sm"><ThumbsUp size={18} /></button>
+                <button onClick={() => handleUpdateApproval('hold')} disabled={isUpdatingApproval} title="Hold" className="p-2 bg-white border border-amber-200 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors shadow-sm"><Clock size={18} /></button>
+                <button onClick={() => handleUpdateApproval('rejected')} disabled={isUpdatingApproval} title="Tolak" className="p-2 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors shadow-sm"><ThumbsDown size={18} /></button>
+              </div>
+            )}
+          </div>
+
+          {/* Finance Director Approval */}
+          <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-xl">
+            <div>
+              <p className="text-sm font-medium text-slate-700">Approval Finance Director</p>
+              <div className="mt-1 flex items-center gap-2">
+                <span className={cn(
+                  "px-2.5 py-1 text-xs font-bold rounded-full",
+                  candidate.finance_status === 'accepted' ? 'bg-emerald-100 text-emerald-700' :
+                  candidate.finance_status === 'rejected' ? 'bg-rose-100 text-rose-700' :
+                  'bg-slate-200 text-slate-700'
+                )}>
+                  {(candidate.finance_status || 'pending').toUpperCase()}
+                </span>
+              </div>
+            </div>
+            {profile?.role === "FINANCE_DIRECTOR" && (
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => handleUpdateApproval('accepted')} 
+                  disabled={isUpdatingApproval || candidate.director_status !== 'accepted'} 
+                  title={candidate.director_status !== 'accepted' ? "Menunggu Approval Direktur" : "Terima"} 
+                  className="p-2 bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ThumbsUp size={18} />
+                </button>
+                <button 
+                  onClick={() => handleUpdateApproval('rejected')} 
+                  disabled={isUpdatingApproval || candidate.director_status !== 'accepted'} 
+                  title={candidate.director_status !== 'accepted' ? "Menunggu Approval Direktur" : "Tolak"} 
+                  className="p-2 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ThumbsDown size={18} />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {candidate.candidate_assignees &&
+      candidate.candidate_assignees.length > 0 ? (
+        <div className="bg-[#3D2C44]/5 border border-[#3D2C44]/20 rounded-xl p-4 flex items-center gap-3">
+          <div className="p-2 bg-[#3D2C44]/10 rounded-lg text-[#3D2C44]">
             <Users size={20} />
           </div>
           <div>
-            <p className="text-sm font-medium text-blue-900">Kandidat ini sedang di-review oleh:</p>
-            <p className="text-sm text-blue-700">
-              {candidate.candidate_assignees.map((a: any) => `${a.profiles?.full_name} (${a.profiles?.department || 'User Manager'})`).join(', ')}
+            <p className="text-sm font-medium text-[#3D2C44]">
+              Kandidat ini sedang di-review oleh:
+            </p>
+            <p className="text-sm text-[#3D2C44]/80">
+              {candidate.candidate_assignees
+                .map(
+                  (a: any) => {
+                    let roleDisplay = "User Manager";
+                    if (a.profiles?.role === "DIRECTOR") roleDisplay = "Director";
+                    if (a.profiles?.role === "FINANCE_DIRECTOR") roleDisplay = "Finance Director";
+                    if (a.profiles?.department) roleDisplay = a.profiles.department;
+                    return `${a.profiles?.full_name} (${roleDisplay})`
+                  },
+                )
+                .join(", ")}
             </p>
           </div>
         </div>
-      ) : (candidate.assigned_history && candidate.assigned_history.length > 0) ? (
+      ) : candidate.assigned_history &&
+        candidate.assigned_history.length > 0 ? (
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center gap-3">
           <div className="p-2 bg-slate-200 rounded-lg text-slate-600">
             <Users size={20} />
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-900">Pernah di-review oleh:</p>
+            <p className="text-sm font-medium text-slate-900">
+              Pernah di-review oleh:
+            </p>
             <p className="text-sm text-slate-700">
-              {candidate.assigned_history.map((h: any) => h.name).join(', ')}
+              {candidate.assigned_history.map((h: any) => h.name).join(", ")}
             </p>
           </div>
         </div>
@@ -1219,11 +1604,16 @@ export default function CandidateProfile() {
         <div className="space-y-6">
           {/* Profile Card */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="h-24 bg-gradient-to-r from-indigo-500 to-violet-500"></div>
+            <div className="h-24 bg-[#3D2C44]"></div>
             <div className="px-6 pb-6 relative">
-              <div className="w-20 h-20 bg-white rounded-2xl border-4 border-white shadow-md flex items-center justify-center text-3xl font-bold text-indigo-600 absolute -top-10 bg-gradient-to-br from-indigo-50 to-white overflow-hidden">
+              <div className="w-20 h-20 bg-white rounded-2xl border-4 border-white shadow-md flex items-center justify-center text-3xl font-bold text-[#3D2C44] absolute -top-10 overflow-hidden">
                 {extractPhotoUrl(linkedData || candidate.source_info) ? (
-                  <img src={extractPhotoUrl(linkedData || candidate.source_info)!} alt={candidate.full_name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  <img
+                    src={extractPhotoUrl(linkedData || candidate.source_info)!}
+                    alt={candidate.full_name}
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
                 ) : (
                   candidate.full_name.charAt(0)
                 )}
@@ -1233,21 +1623,23 @@ export default function CandidateProfile() {
                   <input
                     type="text"
                     name="full_name"
-                    value={editedCandidate.full_name || ''}
+                    value={editedCandidate.full_name || ""}
                     onChange={handleInputChange}
                     className="w-full text-2xl font-bold text-slate-900 bg-white border border-slate-300 rounded-lg px-3 py-1 mb-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 ) : (
-                  <h2 className="text-2xl font-bold text-slate-900">{candidate.full_name}</h2>
+                  <h2 className="text-2xl font-bold text-slate-900">
+                    {candidate.full_name}
+                  </h2>
                 )}
-                
+
                 <div className="flex items-center gap-2 text-indigo-600 font-medium mt-1">
                   <Briefcase size={16} />
                   {isEditing ? (
                     <input
                       type="text"
                       name="position"
-                      value={editedCandidate.position || ''}
+                      value={editedCandidate.position || ""}
                       onChange={handleInputChange}
                       className="flex-1 bg-white border border-slate-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
@@ -1255,7 +1647,7 @@ export default function CandidateProfile() {
                     <span>{candidate.position}</span>
                   )}
                 </div>
-                
+
                 <div className="mt-6 space-y-3">
                   <div className="flex items-center gap-3 text-slate-600">
                     <Mail size={16} className="text-slate-400 shrink-0" />
@@ -1263,12 +1655,17 @@ export default function CandidateProfile() {
                       <input
                         type="email"
                         name="email"
-                        value={editedCandidate.email || ''}
+                        value={editedCandidate.email || ""}
                         onChange={handleInputChange}
                         className="flex-1 bg-white border border-slate-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       />
                     ) : (
-                      <a href={`mailto:${candidate.email}`} className="hover:text-indigo-600 transition-colors truncate">{candidate.email}</a>
+                      <a
+                        href={`mailto:${candidate.email}`}
+                        className="hover:text-indigo-600 transition-colors truncate"
+                      >
+                        {candidate.email}
+                      </a>
                     )}
                   </div>
                   <div className="flex items-center gap-3 text-slate-600">
@@ -1277,16 +1674,21 @@ export default function CandidateProfile() {
                       <input
                         type="text"
                         name="phone"
-                        value={editedCandidate.phone || ''}
+                        value={editedCandidate.phone || ""}
                         onChange={handleInputChange}
                         className="flex-1 bg-white border border-slate-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       />
+                    ) : candidate.phone ? (
+                      <a
+                        href={`tel:${candidate.phone}`}
+                        className="hover:text-indigo-600 transition-colors"
+                      >
+                        {candidate.phone}
+                      </a>
                     ) : (
-                      candidate.phone ? (
-                        <a href={`tel:${candidate.phone}`} className="hover:text-indigo-600 transition-colors">{candidate.phone}</a>
-                      ) : (
-                        <span className="text-slate-400 italic">Belum ada nomor telepon</span>
-                      )
+                      <span className="text-slate-400 italic">
+                        Belum ada nomor telepon
+                      </span>
                     )}
                   </div>
                   <div className="flex items-center gap-3 text-slate-600">
@@ -1296,7 +1698,22 @@ export default function CandidateProfile() {
                   {candidate.source_info && (
                     <div className="flex items-center gap-3 text-slate-600">
                       <div className="w-4 h-4 flex items-center justify-center shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="text-slate-400"
+                        >
+                          <circle cx="12" cy="12" r="10" />
+                          <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+                          <path d="M2 12h20" />
+                        </svg>
                       </div>
                       <span>Sumber: {candidate.source_info}</span>
                     </div>
@@ -1312,15 +1729,23 @@ export default function CandidateProfile() {
                       </h4>
                       <div className="flex gap-2">
                         <button
-                          onClick={() => setFullScreenPdf(candidate.resume_url!)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors text-xs font-medium"
+                          onClick={() =>
+                            setFullScreenPdf(candidate.resume_url!)
+                          }
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#3D2C44]/5 hover:bg-[#3D2C44]/10 text-[#3D2C44] rounded-lg transition-colors text-xs font-medium"
                         >
                           <ExternalLink size={14} />
                           Full Screen
                         </button>
-                        <button 
-                          onClick={() => handleSecureDownload(candidate.resume_url!, 'CV', candidate.full_name)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg transition-colors text-xs font-medium"
+                        <button
+                          onClick={() =>
+                            handleSecureDownload(
+                              candidate.resume_url!,
+                              "CV",
+                              candidate.full_name,
+                            )
+                          }
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#3D2C44]/10 hover:bg-[#3D2C44]/20 text-[#3D2C44] rounded-lg transition-colors text-xs font-medium"
                         >
                           <Download size={14} />
                           Unduh
@@ -1328,8 +1753,8 @@ export default function CandidateProfile() {
                       </div>
                     </div>
                     <div className="w-full h-[400px] border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
-                      <iframe 
-                        src={getEmbedUrl(candidate.resume_url)} 
+                      <iframe
+                        src={getEmbedUrl(candidate.resume_url)}
                         className="w-full h-full"
                         title="Preview CV"
                       />
@@ -1350,16 +1775,30 @@ export default function CandidateProfile() {
                 {(() => {
                   const analysis = candidate.ai_cv_analysis as string;
                   if (!analysis) return null;
-                  const parts = analysis.split('\n').map(s => s.trim()).filter(Boolean);
-                  
+                  const parts = analysis
+                    .split("\n")
+                    .map((s) => s.trim())
+                    .filter(Boolean);
+
                   if (parts.length >= 3) {
-                    const percentage = parts[0].replace('%', ''); // In case it already has %
+                    const percentage = parts[0].replace("%", ""); // In case it already has %
                     const probability = parts[1];
-                    const reason = parts.slice(2).join(' ');
-                    
+                    const reason = parts.slice(2).join(" ");
+
                     return (
                       <span>
-                        Persentase AI <span className="font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded-md border border-indigo-100">{percentage}%</span>, probabilitas penggunaan AI <span className="font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded-md border border-indigo-100">{probability}</span>, dengan Alasan: <span className="font-medium text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded-md border border-slate-200">{reason}</span>
+                        Persentase AI{" "}
+                        <span className="font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded-md border border-indigo-100">
+                          {percentage}%
+                        </span>
+                        , probabilitas penggunaan AI{" "}
+                        <span className="font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded-md border border-indigo-100">
+                          {probability}
+                        </span>
+                        , dengan Alasan:{" "}
+                        <span className="font-medium text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded-md border border-slate-200">
+                          {reason}
+                        </span>
                       </span>
                     );
                   }
@@ -1385,10 +1824,12 @@ export default function CandidateProfile() {
                     {candidate.work_experience}
                   </div>
                 ) : (
-                  <p className="text-slate-400 italic text-sm">Tidak ada data pengalaman kerja.</p>
+                  <p className="text-slate-400 italic text-sm">
+                    Tidak ada data pengalaman kerja.
+                  </p>
                 )}
               </div>
-              
+
               <div>
                 <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
                   <GraduationCap className="text-indigo-500" size={20} />
@@ -1399,7 +1840,9 @@ export default function CandidateProfile() {
                     {candidate.education}
                   </div>
                 ) : (
-                  <p className="text-slate-400 italic text-sm">Tidak ada data pendidikan.</p>
+                  <p className="text-slate-400 italic text-sm">
+                    Tidak ada data pendidikan.
+                  </p>
                 )}
               </div>
             </div>
@@ -1411,14 +1854,38 @@ export default function CandidateProfile() {
               </h3>
               {candidate.skills ? (
                 <div className="flex flex-wrap gap-2">
-                  {candidate.skills.split(',').map((skill, index) => (
-                    <span key={index} className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-medium border border-indigo-100">
-                      {skill.trim()}
+                  {(() => {
+                    const rawSkills = candidate.skills.replace(/\\n/g, "\n");
+                    let parsed: string[] = [];
+                    if (/(?:^|\s|\n)\d+[\.\)]\s+/.test(rawSkills)) {
+                      parsed = rawSkills.split(/(?:^|\s+|\n)\d+[\.\)]\s+/);
+                    } else if (rawSkills.includes("\n")) {
+                      parsed = rawSkills.split("\n");
+                    } else {
+                      parsed = rawSkills.split(",");
+                    }
+                    return parsed
+                      .map((s) =>
+                        s
+                          .replace(/^[-•*]\s*/, "")
+                          .trim()
+                          .replace(/,$/, "")
+                          .trim(),
+                      )
+                      .filter(Boolean);
+                  })().map((skill, index) => (
+                    <span
+                      key={index}
+                      className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-medium border border-indigo-100"
+                    >
+                      {skill}
                     </span>
                   ))}
                 </div>
               ) : (
-                <p className="text-slate-400 italic text-sm">Tidak ada data keahlian.</p>
+                <p className="text-slate-400 italic text-sm">
+                  Tidak ada data keahlian.
+                </p>
               )}
             </div>
           </div>
@@ -1429,7 +1896,7 @@ export default function CandidateProfile() {
               <FileText className="text-indigo-500" size={20} />
               CV Summary
             </h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4">
                 <h4 className="font-bold text-emerald-800 flex items-center gap-2 mb-2">
@@ -1437,37 +1904,49 @@ export default function CandidateProfile() {
                   Kekuatan (Strengths)
                 </h4>
                 <div className="text-sm text-emerald-700">
-                  {formatAsNumberedList(candidate.strengths, <span className="italic opacity-70">Belum dianalisis</span>)}
+                  {formatAsNumberedList(
+                    candidate.strengths,
+                    <span className="italic opacity-70">Belum dianalisis</span>,
+                  )}
                 </div>
               </div>
-              
+
               <div className="bg-rose-50/50 border border-rose-100 rounded-xl p-4">
                 <h4 className="font-bold text-rose-800 flex items-center gap-2 mb-2">
                   <ThumbsDown size={16} />
                   Kelemahan (Weaknesses)
                 </h4>
                 <div className="text-sm text-rose-700">
-                  {formatAsNumberedList(candidate.weaknesses, <span className="italic opacity-70">Belum dianalisis</span>)}
+                  {formatAsNumberedList(
+                    candidate.weaknesses,
+                    <span className="italic opacity-70">Belum dianalisis</span>,
+                  )}
                 </div>
               </div>
-              
-              <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4">
-                <h4 className="font-bold text-blue-800 flex items-center gap-2 mb-2">
+
+              <div className="bg-[#3D2C44]/5 border border-[#3D2C44]/20 rounded-xl p-4">
+                <h4 className="font-bold text-[#3D2C44] flex items-center gap-2 mb-2">
                   <Star size={16} />
                   Potensi
                 </h4>
-                <div className="text-sm text-blue-700">
-                  {formatLevelAndList(candidate.potential_factors, <span className="italic opacity-70">Belum dianalisis</span>)}
+                <div className="text-sm text-[#3D2C44]/80">
+                  {formatLevelAndList(
+                    candidate.potential_factors,
+                    <span className="italic opacity-70">Belum dianalisis</span>,
+                  )}
                 </div>
               </div>
-              
+
               <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-4">
                 <h4 className="font-bold text-amber-800 flex items-center gap-2 mb-2">
                   <AlertTriangle size={16} />
                   Faktor Risiko
                 </h4>
                 <div className="text-sm text-amber-700">
-                  {formatLevelAndList(candidate.risk_factors, <span className="italic opacity-70">Belum dianalisis</span>)}
+                  {formatLevelAndList(
+                    candidate.risk_factors,
+                    <span className="italic opacity-70">Belum dianalisis</span>,
+                  )}
                 </div>
               </div>
             </div>
@@ -1478,7 +1957,13 @@ export default function CandidateProfile() {
                 Alasan Penilaian
               </h4>
               <div className="text-sm text-indigo-800">
-                {formatAsNumberedList(candidate.assessment_reason, <span className="italic opacity-70">Tidak ada alasan penilaian yang diberikan.</span>)}
+                {formatAsNumberedList(
+                  candidate.assessment_reason,
+                  <span className="italic opacity-70">
+                    Tidak ada alasan penilaian yang diberikan.
+                  </span>,
+                  true,
+                )}
               </div>
             </div>
           </div>
@@ -1486,9 +1971,11 @@ export default function CandidateProfile() {
           {/* AI Biodata Summary Section */}
           {candidate.ai_biodata_summary && (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6">
-              <div 
+              <div
                 className="flex items-center justify-between p-6 cursor-pointer hover:bg-slate-50 transition-colors"
-                onClick={() => setIsBiodataSummaryExpanded(!isBiodataSummaryExpanded)}
+                onClick={() =>
+                  setIsBiodataSummaryExpanded(!isBiodataSummaryExpanded)
+                }
               >
                 <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                   <Sparkles className="text-indigo-500" size={20} />
@@ -1511,9 +1998,11 @@ export default function CandidateProfile() {
           {/* AI Psikotes Summary Section */}
           {candidate.ai_psikotes_summary && (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6">
-              <div 
+              <div
                 className="flex items-center justify-between p-6 cursor-pointer hover:bg-slate-50 transition-colors flex-wrap gap-2"
-                onClick={() => setIsPsikotesSummaryExpanded(!isPsikotesSummaryExpanded)}
+                onClick={() =>
+                  setIsPsikotesSummaryExpanded(!isPsikotesSummaryExpanded)
+                }
               >
                 <div className="flex items-center gap-2">
                   <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -1521,15 +2010,24 @@ export default function CandidateProfile() {
                     Ringkasan AI (Berdasarkan Psikotes)
                   </h3>
                   {(() => {
-                    const matchData = extractMatchPercentage(candidate.ai_psikotes_summary);
+                    const matchData = extractMatchPercentage(
+                      candidate.ai_psikotes_summary,
+                    );
                     if (matchData.value !== null) {
                       const isGood = matchData.value > 60;
                       return (
-                        <span className={cn(
-                          "ml-2 text-sm font-bold px-2 py-0.5 rounded-full border",
-                          isGood ? "text-emerald-700 bg-emerald-50 border-emerald-200" : "text-red-700 bg-red-50 border-red-200"
-                        )}>
-                          Persentase Kecocokan: {matchData.text?.includes('%') ? matchData.text : `${matchData.value}%`}
+                        <span
+                          className={cn(
+                            "ml-2 text-sm font-bold px-2 py-0.5 rounded-full border",
+                            isGood
+                              ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+                              : "text-red-700 bg-red-50 border-red-200",
+                          )}
+                        >
+                          Persentase Kecocokan:{" "}
+                          {matchData.text?.includes("%")
+                            ? matchData.text
+                            : `${matchData.value}%`}
                         </span>
                       );
                     }
@@ -1552,9 +2050,11 @@ export default function CandidateProfile() {
 
           {/* AI Interview Questions Section */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6">
-            <div 
+            <div
               className="flex items-center justify-between p-6 cursor-pointer hover:bg-slate-50 transition-colors"
-              onClick={() => setIsInterviewQuestionsExpanded(!isInterviewQuestionsExpanded)}
+              onClick={() =>
+                setIsInterviewQuestionsExpanded(!isInterviewQuestionsExpanded)
+              }
             >
               <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                 <Sparkles className="text-indigo-500" size={20} />
@@ -1565,15 +2065,24 @@ export default function CandidateProfile() {
                   <ChevronDown size={20} className="text-slate-400 ml-2" />
                 )}
               </h3>
-              <div className="flex items-center gap-4" onClick={(e) => e.stopPropagation()}>
-                {profile?.role !== 'USER_MANAGER' && !isArchived && (
+              <div
+                className="flex items-center gap-4"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {profile?.role !== "USER_MANAGER" && !isArchived && (
                   <button
                     onClick={handleGenerateInterviewQuestions}
                     disabled={isGeneratingInterview}
-                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-bold rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all shadow-sm shrink-0"
+                    className="flex items-center gap-2 px-4 py-2 bg-[#3D2C44] text-white text-sm font-bold rounded-xl hover:bg-[#3D2C44]/90 disabled:opacity-50 transition-all shadow-sm shrink-0"
                   >
-                    {isGeneratingInterview ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
-                    {isGeneratingInterview ? 'AI sedang menyusun...' : 'Generate (AI)'}
+                    {isGeneratingInterview ? (
+                      <Loader2 className="animate-spin" size={16} />
+                    ) : (
+                      <Sparkles size={16} />
+                    )}
+                    {isGeneratingInterview
+                      ? "AI sedang menyusun..."
+                      : "Generate (AI)"}
                   </button>
                 )}
               </div>
@@ -1585,17 +2094,24 @@ export default function CandidateProfile() {
                   let questions: any[] = [];
                   if (candidate.ai_interview_questions) {
                     try {
-                      const parsed = typeof candidate.ai_interview_questions === 'string' 
-                        ? JSON.parse(candidate.ai_interview_questions) 
-                        : candidate.ai_interview_questions;
-                      
+                      const parsed =
+                        typeof candidate.ai_interview_questions === "string"
+                          ? JSON.parse(candidate.ai_interview_questions)
+                          : candidate.ai_interview_questions;
+
                       if (Array.isArray(parsed)) {
                         questions = parsed;
-                      } else if (parsed && Array.isArray(parsed.interview_questions)) {
+                      } else if (
+                        parsed &&
+                        Array.isArray(parsed.interview_questions)
+                      ) {
                         questions = parsed.interview_questions;
                       }
                     } catch (e) {
-                      console.error("Failed to parse ai_interview_questions", e);
+                      console.error(
+                        "Failed to parse ai_interview_questions",
+                        e,
+                      );
                     }
                   }
 
@@ -1603,22 +2119,30 @@ export default function CandidateProfile() {
                     return (
                       <div className="space-y-4">
                         {questions.map((q: any, index: number) => (
-                          <div key={index} className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
+                          <div
+                            key={index}
+                            className="p-4 bg-slate-50 border border-slate-100 rounded-xl"
+                          >
                             <div className="flex items-center gap-2 mb-2">
                               <span className="px-2.5 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-md">
-                                {q.category || 'General'}
+                                {q.category || "General"}
                               </span>
                             </div>
-                            <p className="text-slate-800 font-medium mb-2">{q.question}</p>
+                            <p className="text-slate-800 font-medium mb-2">
+                              {q.question}
+                            </p>
                             {q.reasoning && (
                               <div className="flex gap-2 text-sm text-slate-500 bg-white p-3 rounded-lg border border-slate-100">
-                                <Sparkles size={16} className="text-indigo-400 shrink-0 mt-0.5" />
+                                <Sparkles
+                                  size={16}
+                                  className="text-indigo-400 shrink-0 mt-0.5"
+                                />
                                 <p className="italic">{q.reasoning}</p>
                               </div>
                             )}
                           </div>
                         ))}
-                        {profile?.role !== 'USER_MANAGER' && !isArchived && (
+                        {profile?.role !== "USER_MANAGER" && !isArchived && (
                           <div className="flex justify-end mt-4">
                             <button
                               onClick={(e) => {
@@ -1626,7 +2150,7 @@ export default function CandidateProfile() {
                                 setGeneratedQuestions(questions);
                                 setShowInterviewModal(true);
                               }}
-                              className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                              className="text-sm font-medium text-[#3D2C44] hover:text-[#3D2C44]/80"
                             >
                               Edit Daftar Pertanyaan
                             </button>
@@ -1639,8 +2163,13 @@ export default function CandidateProfile() {
                   return (
                     <div className="text-center py-8 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
                       <Sparkles className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                      <p className="text-slate-500 font-medium">Belum ada pertanyaan interview</p>
-                      <p className="text-sm text-slate-400 mt-1">Klik tombol "Generate (AI)" untuk membuat daftar pertanyaan yang terpersonalisasi.</p>
+                      <p className="text-slate-500 font-medium">
+                        Belum ada pertanyaan interview
+                      </p>
+                      <p className="text-sm text-slate-400 mt-1">
+                        Klik tombol "Generate (AI)" untuk membuat daftar
+                        pertanyaan yang terpersonalisasi.
+                      </p>
                     </div>
                   );
                 })()}
@@ -1655,14 +2184,18 @@ export default function CandidateProfile() {
                 <FileText className="text-indigo-500" size={20} />
                 Hasil Psikotes Eksternal
               </h3>
-              {profile?.role !== 'USER_MANAGER' && !isArchived && (
+              {profile?.role !== "USER_MANAGER" && !isArchived && (
                 <div>
-                  <label className="cursor-pointer px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl transition-colors flex items-center gap-2 text-sm font-medium">
-                    {isUploadingPsikotes ? <Loader2 className="animate-spin" size={16} /> : <PlusCircle size={16} />}
-                    {isUploadingPsikotes ? 'Mengunggah...' : 'Upload PDF'}
-                    <input 
-                      type="file" 
-                      className="hidden" 
+                  <label className="cursor-pointer px-4 py-2 bg-[#3D2C44]/10 text-[#3D2C44] hover:bg-[#3D2C44]/20 rounded-xl transition-colors flex items-center gap-2 text-sm font-medium">
+                    {isUploadingPsikotes ? (
+                      <Loader2 className="animate-spin" size={16} />
+                    ) : (
+                      <PlusCircle size={16} />
+                    )}
+                    {isUploadingPsikotes ? "Mengunggah..." : "Upload PDF"}
+                    <input
+                      type="file"
+                      className="hidden"
                       accept="application/pdf"
                       onChange={handleUploadPsikotes}
                       disabled={isUploadingPsikotes}
@@ -1675,26 +2208,40 @@ export default function CandidateProfile() {
             {candidate.psikotes_result_url ? (
               <div className="space-y-4">
                 <div className="flex justify-end gap-2">
-                  {profile?.role !== 'USER_MANAGER' && !isArchived && (
+                  {profile?.role !== "USER_MANAGER" && !isArchived && (
                     <button
                       onClick={handleAnalyzePsikotes}
                       disabled={isAnalyzingPsikotes}
-                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-bold rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all shadow-sm"
+                      className="flex items-center gap-2 px-4 py-2 bg-[#3D2C44] text-white text-sm font-bold rounded-xl hover:bg-[#3D2C44]/90 disabled:opacity-50 transition-all shadow-sm"
                     >
-                      {isAnalyzingPsikotes ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
-                      {isAnalyzingPsikotes ? 'AI sedang menganalisa...' : 'Analisa Psikotes dengan AI'}
+                      {isAnalyzingPsikotes ? (
+                        <Loader2 className="animate-spin" size={16} />
+                      ) : (
+                        <Sparkles size={16} />
+                      )}
+                      {isAnalyzingPsikotes
+                        ? "AI sedang menganalisa..."
+                        : "Analisa Psikotes dengan AI"}
                     </button>
                   )}
                   <button
-                    onClick={() => setFullScreenPdf(candidate.psikotes_result_url!)}
-                    className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors text-sm font-medium shadow-sm"
+                    onClick={() =>
+                      setFullScreenPdf(candidate.psikotes_result_url!)
+                    }
+                    className="flex items-center gap-2 px-4 py-2 bg-[#3D2C44]/5 hover:bg-[#3D2C44]/10 text-[#3D2C44] rounded-xl transition-colors text-sm font-medium shadow-sm"
                   >
                     <ExternalLink size={16} />
                     Full Screen
                   </button>
                   <button
-                    onClick={() => handleSecureDownload(candidate.psikotes_result_url!, 'Psikotes', candidate.full_name)}
-                    className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl transition-colors text-sm font-medium shadow-sm"
+                    onClick={() =>
+                      handleSecureDownload(
+                        candidate.psikotes_result_url!,
+                        "Psikotes",
+                        candidate.full_name,
+                      )
+                    }
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-[#3D2C44]/20 text-[#3D2C44] hover:bg-[#3D2C44]/5 rounded-xl transition-colors text-sm font-medium shadow-sm"
                   >
                     <Download size={16} />
                     Unduh
@@ -1702,8 +2249,8 @@ export default function CandidateProfile() {
                 </div>
 
                 <div className="w-full h-[600px] border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
-                  <iframe 
-                    src={getEmbedUrl(candidate.psikotes_result_url)} 
+                  <iframe
+                    src={getEmbedUrl(candidate.psikotes_result_url)}
                     className="w-full h-full"
                     title="Hasil Psikotes"
                   />
@@ -1712,8 +2259,13 @@ export default function CandidateProfile() {
             ) : (
               <div className="text-center py-8 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
                 <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <p className="text-slate-500 font-medium">Belum ada hasil psikotes</p>
-                <p className="text-sm text-slate-400 mt-1">Klik tombol "Upload PDF" untuk menambahkan dokumen hasil psikotes eksternal.</p>
+                <p className="text-slate-500 font-medium">
+                  Belum ada hasil psikotes
+                </p>
+                <p className="text-sm text-slate-400 mt-1">
+                  Klik tombol "Upload PDF" untuk menambahkan dokumen hasil
+                  psikotes eksternal.
+                </p>
               </div>
             )}
           </div>
@@ -1724,7 +2276,7 @@ export default function CandidateProfile() {
               <Database className="text-indigo-500" size={20} />
               Data Eksternal
             </h3>
-            
+
             {isSearchingExternal ? (
               <div className="flex items-center justify-center py-6 text-slate-500">
                 <Loader2 size={24} className="animate-spin text-indigo-600" />
@@ -1732,48 +2284,99 @@ export default function CandidateProfile() {
             ) : linkedData ? (
               <div className="space-y-4">
                 <div className="flex justify-end gap-2">
-                  {profile?.role !== 'USER_MANAGER' && !isArchived && (
+                  {profile?.role !== "USER_MANAGER" && !isArchived && (
                     <button
                       onClick={handleAnalyzeBiodata}
                       disabled={isAnalyzing}
-                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-bold rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all shadow-sm"
+                      className="flex items-center gap-2 px-4 py-2 bg-[#3D2C44] text-white text-sm font-bold rounded-xl hover:bg-[#3D2C44]/90 disabled:opacity-50 transition-all shadow-sm"
                     >
-                      {isAnalyzing ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
-                      {isAnalyzing ? 'AI sedang menganalisa...' : 'Analisa Biodata dengan AI'}
+                      {isAnalyzing ? (
+                        <Loader2 className="animate-spin" size={16} />
+                      ) : (
+                        <Sparkles size={16} />
+                      )}
+                      {isAnalyzing
+                        ? "AI sedang menganalisa..."
+                        : "Analisa Biodata dengan AI"}
                     </button>
                   )}
                   <button
                     onClick={() => setFullScreenData(linkedData)}
-                    className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors text-sm font-medium shadow-sm"
+                    className="flex items-center gap-2 px-4 py-2 bg-[#3D2C44]/5 hover:bg-[#3D2C44]/10 text-[#3D2C44] rounded-xl transition-colors text-sm font-medium shadow-sm"
                   >
                     <ExternalLink size={16} />
                     Full Screen
                   </button>
-                  <button
-                    onClick={() => handlePrint()}
-                    disabled={isPrinting}
-                    className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl transition-colors text-sm font-medium shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
-                  >
-                    {isPrinting ? (
-                      <>
-                        <Loader2 size={16} className="animate-spin" />
-                        Mengunduh...
-                      </>
-                    ) : (
-                      <>
-                        <Download size={16} />
-                        Unduh PDF
-                      </>
-                    )}
-                  </button>
-                  {profile?.role !== 'USER_MANAGER' && !isArchived && (
-                    <button 
+
+                  <div className="relative download-menu-container">
+                    <button
+                      onClick={() =>
+                        profile?.role !== "USER_MANAGER"
+                          ? setShowDownloadMenu(!showDownloadMenu)
+                          : handlePrint("form-only")
+                      }
+                      disabled={isPrinting}
+                      className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl transition-colors text-sm font-medium shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
+                    >
+                      {isPrinting ? (
+                        <>
+                          <Loader2 size={16} className="animate-spin" />
+                          Mengunduh...
+                        </>
+                      ) : (
+                        <>
+                          <Download size={16} />
+                          Unduh PDF
+                          {profile?.role !== "USER_MANAGER" && (
+                            <svg
+                              className={`w-4 h-4 ml-1 transition-transform ${showDownloadMenu ? "rotate-180" : ""}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M19 9l-7 7-7-7"
+                              ></path>
+                            </svg>
+                          )}
+                        </>
+                      )}
+                    </button>
+                    {showDownloadMenu &&
+                      profile?.role !== "USER_MANAGER" &&
+                      !isPrinting && (
+                        <div className="absolute top-full right-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden z-50">
+                          <button
+                            onClick={() => handlePrint("form-only")}
+                            className="w-full text-left px-4 py-3 hover:bg-slate-50 text-sm font-medium text-slate-700 border-b border-slate-100 transition-colors"
+                          >
+                            Unduh Form Pelamar Saja
+                          </button>
+                          <button
+                            onClick={() => handlePrint("remun-only")}
+                            className="w-full text-left px-4 py-3 hover:bg-slate-50 text-sm font-medium text-slate-700 transition-colors"
+                          >
+                            Unduh Remunerasi
+                          </button>
+                        </div>
+                      )}
+                  </div>
+
+                  {profile?.role !== "USER_MANAGER" && !isArchived && (
+                    <button
                       onClick={handleUnlinkExternalData}
                       disabled={isLinking}
                       className="flex items-center gap-2 px-4 py-2 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-xl transition-colors text-sm font-medium shadow-sm disabled:opacity-50"
                     >
-                      {isLinking ? <Loader2 className="animate-spin" size={16} /> : <X size={16} />}
-                      {isLinking ? 'Memproses...' : 'Lepas Tautan'}
+                      {isLinking ? (
+                        <Loader2 className="animate-spin" size={16} />
+                      ) : (
+                        <X size={16} />
+                      )}
+                      {isLinking ? "Memproses..." : "Lepas Tautan"}
                     </button>
                   )}
                 </div>
@@ -1784,28 +2387,53 @@ export default function CandidateProfile() {
                   </div>
                 </div>
                 <div className="max-h-[600px] overflow-y-auto custom-scrollbar -mx-2 px-2">
-                  <div ref={printRef} className="print:p-0 print:bg-white print:w-full">
-                    <ApplicationForm readOnly initialData={linkedData} hideSalary={profile?.role === 'USER_MANAGER'} />
+                  <div
+                    ref={printRef}
+                    className="print:p-0 print:bg-white print:w-full"
+                  >
+                    <ApplicationForm
+                      readOnly
+                      initialData={linkedData}
+                      hideSalary={
+                        forceHideSalary || profile?.role === "USER_MANAGER"
+                      }
+                      onlyRemuneration={onlyRemun}
+                    />
                   </div>
                 </div>
               </div>
             ) : externalData.length > 0 ? (
               <div className="space-y-4">
                 <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl flex items-start gap-3">
-                  <AlertTriangle className="text-amber-600 shrink-0 mt-0.5" size={16} />
+                  <AlertTriangle
+                    className="text-amber-600 shrink-0 mt-0.5"
+                    size={16}
+                  />
                   <div className="text-sm text-amber-800">
-                    <span className="font-bold">Ditemukan {externalData.length} data yang mungkin cocok.</span>
-                    <p className="mt-1 opacity-80">Pilih salah satu data di bawah ini untuk ditautkan ke profil ini.</p>
+                    <span className="font-bold">
+                      Ditemukan {externalData.length} data yang mungkin cocok.
+                    </span>
+                    <p className="mt-1 opacity-80">
+                      Pilih salah satu data di bawah ini untuk ditautkan ke
+                      profil ini.
+                    </p>
                   </div>
                 </div>
                 <div className="space-y-3">
                   {externalData.map((data, idx) => (
-                    <div key={idx} className="border border-slate-200 rounded-xl p-4 hover:border-indigo-300 transition-colors">
+                    <div
+                      key={idx}
+                      className="border border-slate-200 rounded-xl p-4 hover:border-indigo-300 transition-colors"
+                    >
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-md">Opsi {idx + 1}</span>
-                        {profile?.role !== 'USER_MANAGER' && !isArchived && (
+                        <span className="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-md">
+                          Opsi {idx + 1}
+                        </span>
+                        {profile?.role !== "USER_MANAGER" && !isArchived && (
                           <button
-                            onClick={() => handleLinkExternalData(data.uid_sheet)}
+                            onClick={() =>
+                              handleLinkExternalData(data.uid_sheet)
+                            }
                             disabled={isLinking}
                             className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 disabled:opacity-50"
                           >
@@ -1815,39 +2443,75 @@ export default function CandidateProfile() {
                       </div>
                       <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-2">
                         {(() => {
-                          let nama = '-';
-                          let email = '-';
-                          let telepon = '-';
-                          let posisi = '-';
+                          let nama = "-";
+                          let email = "-";
+                          let telepon = "-";
+                          let posisi = "-";
 
                           Object.entries(data).forEach(([key, val]) => {
-                            if (typeof val !== 'string' && typeof val !== 'number') return;
+                            if (
+                              typeof val !== "string" &&
+                              typeof val !== "number"
+                            )
+                              return;
                             const lowerKey = key.toLowerCase();
                             const strVal = String(val);
 
-                            if ((lowerKey.includes('nama') || lowerKey.includes('name')) && nama === '-') nama = strVal;
-                            else if ((lowerKey.includes('email') || lowerKey.includes('e-mail')) && email === '-') email = strVal;
-                            else if ((lowerKey.includes('telepon') || lowerKey.includes('phone') || lowerKey.includes('hp') || lowerKey.includes('whatsapp')) && telepon === '-') telepon = strVal;
-                            else if ((lowerKey.includes('posisi') || lowerKey.includes('position') || lowerKey.includes('jabatan') || lowerKey.includes('melamar')) && posisi === '-') posisi = strVal;
+                            if (
+                              (lowerKey.includes("nama") ||
+                                lowerKey.includes("name")) &&
+                              nama === "-"
+                            )
+                              nama = strVal;
+                            else if (
+                              (lowerKey.includes("email") ||
+                                lowerKey.includes("e-mail")) &&
+                              email === "-"
+                            )
+                              email = strVal;
+                            else if (
+                              (lowerKey.includes("telepon") ||
+                                lowerKey.includes("phone") ||
+                                lowerKey.includes("hp") ||
+                                lowerKey.includes("whatsapp")) &&
+                              telepon === "-"
+                            )
+                              telepon = strVal;
+                            else if (
+                              (lowerKey.includes("posisi") ||
+                                lowerKey.includes("position") ||
+                                lowerKey.includes("jabatan") ||
+                                lowerKey.includes("melamar")) &&
+                              posisi === "-"
+                            )
+                              posisi = strVal;
                           });
 
                           const previewFields = [
-                            { label: 'Nama', value: nama },
-                            { label: 'Email', value: email },
-                            { label: 'Nomor Telepon', value: telepon },
-                            { label: 'Posisi yang Dilamar', value: posisi }
+                            { label: "Nama", value: nama },
+                            { label: "Email", value: email },
+                            { label: "Nomor Telepon", value: telepon },
+                            { label: "Posisi yang Dilamar", value: posisi },
                           ];
 
                           return previewFields.map((field, i) => (
                             <div key={i} className="text-sm">
-                              <span className="font-medium text-slate-500 block text-xs uppercase tracking-wider mb-0.5">{field.label}</span>
-                              <span className="text-slate-800 whitespace-pre-wrap">{field.value}</span>
+                              <span className="font-medium text-slate-500 block text-xs uppercase tracking-wider mb-0.5">
+                                {field.label}
+                              </span>
+                              <span className="text-slate-800 whitespace-pre-wrap">
+                                {field.value}
+                              </span>
                             </div>
                           ));
                         })()}
-                        {Object.keys(data).filter(k => k !== 'uid_sheet').length > 4 && (
+                        {Object.keys(data).filter((k) => k !== "uid_sheet")
+                          .length > 4 && (
                           <div className="text-xs text-indigo-600 font-medium italic mt-2">
-                            + {Object.keys(data).filter(k => k !== 'uid_sheet').length - 4} field lainnya
+                            +{" "}
+                            {Object.keys(data).filter((k) => k !== "uid_sheet")
+                              .length - 4}{" "}
+                            field lainnya
                           </div>
                         )}
                       </div>
@@ -1858,8 +2522,13 @@ export default function CandidateProfile() {
             ) : (
               <div className="text-center py-6 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
                 <Database className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                <p className="text-sm text-slate-500 font-medium">Tidak ada data eksternal yang cocok</p>
-                <p className="text-xs text-slate-400 mt-1">Sistem tidak menemukan data dengan email, nomor telepon, atau nama yang sama.</p>
+                <p className="text-sm text-slate-500 font-medium">
+                  Tidak ada data eksternal yang cocok
+                </p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Sistem tidak menemukan data dengan email, nomor telepon, atau
+                  nama yang sama.
+                </p>
               </div>
             )}
           </div>
@@ -1872,7 +2541,7 @@ export default function CandidateProfile() {
                 Catatan Internal
               </h3>
             </div>
-            
+
             <div className="space-y-4">
               {/* Note input area */}
               {!isArchived && (
@@ -1891,9 +2560,13 @@ export default function CandidateProfile() {
                       <button
                         onClick={handleAddNote}
                         disabled={!newNote.trim() || isAddingNote}
-                        className="px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+                        className="px-4 py-2 bg-[#3D2C44] text-white text-sm font-bold rounded-xl hover:bg-[#3D2C44]/90 disabled:opacity-50 transition-colors flex items-center gap-2"
                       >
-                        {isAddingNote ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                        {isAddingNote ? (
+                          <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                          <Save size={16} />
+                        )}
                         Simpan Catatan
                       </button>
                     </div>
@@ -1905,28 +2578,46 @@ export default function CandidateProfile() {
               <div className="space-y-4 mt-6">
                 {loadingNotes ? (
                   <div className="flex justify-center py-4">
-                    <Loader2 size={24} className="animate-spin text-indigo-600" />
+                    <Loader2
+                      size={24}
+                      className="animate-spin text-indigo-600"
+                    />
                   </div>
                 ) : notes.length === 0 ? (
                   <div className="text-center py-6 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
-                    <p className="text-slate-500 font-medium">Belum ada catatan internal</p>
+                    <p className="text-slate-500 font-medium">
+                      Belum ada catatan internal
+                    </p>
                   </div>
                 ) : (
                   notes.map((note) => (
-                    <div key={note.id} className="flex gap-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <div
+                      key={note.id}
+                      className="flex gap-3 p-4 bg-slate-50 rounded-xl border border-slate-100"
+                    >
                       <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center shrink-0 overflow-hidden">
                         {note.author?.avatar_url ? (
-                          <img src={note.author.avatar_url} alt={note.author.full_name || 'User'} className="w-full h-full object-cover" />
+                          <img
+                            src={note.author.avatar_url}
+                            alt={note.author.full_name || "User"}
+                            className="w-full h-full object-cover"
+                          />
                         ) : (
                           <User size={20} className="text-slate-500" />
                         )}
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-1">
-                          <p className="font-bold text-slate-900 text-sm">{note.author?.full_name || 'Unknown User'}</p>
-                          <p className="text-xs text-slate-500">{formatDate(note.created_at)}</p>
+                          <p className="font-bold text-slate-900 text-sm">
+                            {note.author?.full_name || "Unknown User"}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {formatDate(note.created_at)}
+                          </p>
                         </div>
-                        <p className="text-sm text-slate-700 whitespace-pre-wrap">{note.note_text}</p>
+                        <p className="text-sm text-slate-700 whitespace-pre-wrap">
+                          {note.note_text}
+                        </p>
                       </div>
                     </div>
                   ))
@@ -1942,104 +2633,160 @@ export default function CandidateProfile() {
                 <FileText className="text-indigo-500" size={20} />
                 Hasil Interview
               </h3>
-              {['accepted', 'hired'].includes(candidate.status_screening) && !isArchived && (
-                <button
-                  onClick={() => {
-                    setExistingEvaluation(null);
-                    setIsEvaluationModalOpen(true);
-                  }}
-                  className="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl transition-colors flex items-center gap-2 text-sm font-medium"
-                >
-                  <PlusCircle size={16} />
-                  Input Hasil
-                </button>
-              )}
+              {["accepted", "hired"].includes(candidate.status_screening) &&
+                !isArchived && (
+                  <button
+                    onClick={() => {
+                      setExistingEvaluation(null);
+                      setIsEvaluationModalOpen(true);
+                    }}
+                    className="px-4 py-2 bg-[#3D2C44]/10 text-[#3D2C44] hover:bg-[#3D2C44]/20 rounded-xl transition-colors flex items-center gap-2 text-sm font-medium"
+                  >
+                    <PlusCircle size={16} />
+                    Input Hasil
+                  </button>
+                )}
             </div>
 
             {evaluations.length === 0 ? (
               <div className="text-center py-8 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
                 <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <p className="text-slate-500 font-medium">Belum ada hasil interview</p>
-                {['accepted', 'hired'].includes(candidate.status_screening) ? (
-                  <p className="text-sm text-slate-400 mt-1">Klik tombol "Input Hasil" untuk menambahkan penilaian.</p>
+                <p className="text-slate-500 font-medium">
+                  Belum ada hasil interview
+                </p>
+                {["accepted", "hired"].includes(candidate.status_screening) ? (
+                  <p className="text-sm text-slate-400 mt-1">
+                    Klik tombol "Input Hasil" untuk menambahkan penilaian.
+                  </p>
                 ) : (
-                  <p className="text-sm text-slate-400 mt-1">Kandidat harus diterima (Lolos Screening) terlebih dahulu untuk mengisi evaluasi.</p>
+                  <p className="text-sm text-slate-400 mt-1">
+                    Kandidat harus diterima (Lolos Screening) terlebih dahulu
+                    untuk mengisi evaluasi.
+                  </p>
                 )}
               </div>
             ) : (
               <div className="space-y-4">
                 {evaluations.map((evalItem) => (
-                  <div key={evalItem.id} className="border border-slate-200 rounded-xl overflow-hidden">
+                  <div
+                    key={evalItem.id}
+                    className="border border-slate-200 rounded-xl overflow-hidden"
+                  >
                     <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <span className={cn(
-                          "px-2.5 py-1 rounded-md text-xs font-bold tracking-wider",
-                          evalItem.evaluation_type === 'HR' ? "bg-blue-100 text-blue-700" : "bg-violet-100 text-violet-700"
-                        )}>
+                        <span
+                          className={cn(
+                            "px-2.5 py-1 rounded-md text-xs font-bold tracking-wider",
+                            evalItem.evaluation_type === "HR"
+                              ? "bg-[#3D2C44]/10 text-[#3D2C44]"
+                              : "bg-violet-100 text-violet-700",
+                          )}
+                        >
                           {evalItem.evaluation_type}
                         </span>
                         <div>
-                          <p className="text-sm font-bold text-slate-900">{evalItem.template?.name}</p>
-                          <p className="text-xs text-slate-500">Oleh: {evalItem.interviewer_name} • {formatDate(evalItem.created_at)}</p>
+                          <p className="text-sm font-bold text-slate-900">
+                            {evalItem.template?.name}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            Oleh: {evalItem.interviewer_name} •{" "}
+                            {formatDate(evalItem.created_at)}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="text-right">
-                          <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-0.5">Total Skor</p>
-                          <p className="text-lg font-black text-indigo-600">{evalItem.total_score}</p>
+                          <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-0.5">
+                            Total Skor
+                          </p>
+                          <p className="text-lg font-black text-indigo-600">
+                            {evalItem.total_score}
+                          </p>
                         </div>
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => toggleEvaluation(evalItem.id)}
-                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                            title={expandedEvaluations.includes(evalItem.id) ? "Tutup Preview" : "Buka Preview"}
+                            className="p-2 text-slate-400 hover:text-[#3D2C44] hover:bg-[#3D2C44]/10 rounded-lg transition-colors"
+                            title={
+                              expandedEvaluations.includes(evalItem.id)
+                                ? "Tutup Preview"
+                                : "Buka Preview"
+                            }
                           >
-                            {expandedEvaluations.includes(evalItem.id) ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                            {expandedEvaluations.includes(evalItem.id) ? (
+                              <ChevronUp size={18} />
+                            ) : (
+                              <ChevronDown size={18} />
+                            )}
                           </button>
-                          {!isArchived && evalItem.evaluator_id === profile?.id && (
-                            <button
-                              onClick={() => {
-                                setExistingEvaluation(evalItem);
-                                setIsEvaluationModalOpen(true);
-                              }}
-                              className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                              title="Edit Penilaian"
-                            >
-                              <Edit2 size={18} />
-                            </button>
-                          )}
+                          {!isArchived &&
+                            evalItem.evaluator_id === profile?.id && (
+                              <button
+                                onClick={() => {
+                                  setExistingEvaluation(evalItem);
+                                  setIsEvaluationModalOpen(true);
+                                }}
+                                className="p-2 text-slate-400 hover:text-[#3D2C44] hover:bg-[#3D2C44]/10 rounded-lg transition-colors"
+                                title="Edit Penilaian"
+                              >
+                                <Edit2 size={18} />
+                              </button>
+                            )}
                         </div>
                       </div>
                     </div>
                     {expandedEvaluations.includes(evalItem.id) && (
                       <div className="p-4 bg-white border-b border-slate-100">
-                        {evalItem.template?.form_schema?.categories?.map((category, catIdx) => (
-                          <div key={catIdx} className="mb-6 last:mb-0">
-                            <h4 className="font-bold text-slate-800 mb-3 pb-2 border-b border-slate-100">{category.name}</h4>
-                            <div className="space-y-3">
-                              {category.criteria.map((crit, critIdx) => {
-                                const score = evalItem.evaluation_data[`cat_${catIdx}_crit_${critIdx}`];
-                                const scaleItem = evalItem.template?.form_schema?.scale?.find(s => s.score === score);
-                                return (
-                                  <div key={critIdx} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-sm bg-slate-50 p-3 rounded-lg">
-                                    <span className="text-slate-700 font-medium">{crit.name}</span>
-                                    <div className="flex items-center gap-3 shrink-0">
-                                      {scaleItem && <span className="text-xs text-slate-500 bg-white border border-slate-200 px-2 py-1 rounded-md">{scaleItem.label}</span>}
-                                      <span className="font-bold text-indigo-700 bg-indigo-50 px-3 py-1 rounded-md min-w-[40px] text-center">{score || '-'}</span>
+                        {evalItem.template?.form_schema?.categories?.map(
+                          (category, catIdx) => (
+                            <div key={catIdx} className="mb-6 last:mb-0">
+                              <h4 className="font-bold text-slate-800 mb-3 pb-2 border-b border-slate-100">
+                                {category.name}
+                              </h4>
+                              <div className="space-y-3">
+                                {category.criteria.map((crit, critIdx) => {
+                                  const score =
+                                    evalItem.evaluation_data[
+                                      `cat_${catIdx}_crit_${critIdx}`
+                                    ];
+                                  const scaleItem =
+                                    evalItem.template?.form_schema?.scale?.find(
+                                      (s) => s.score === score,
+                                    );
+                                  return (
+                                    <div
+                                      key={critIdx}
+                                      className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-sm bg-slate-50 p-3 rounded-lg"
+                                    >
+                                      <span className="text-slate-700 font-medium">
+                                        {crit.name}
+                                      </span>
+                                      <div className="flex items-center gap-3 shrink-0">
+                                        {scaleItem && (
+                                          <span className="text-xs text-slate-500 bg-white border border-slate-200 px-2 py-1 rounded-md">
+                                            {scaleItem.label}
+                                          </span>
+                                        )}
+                                        <span className="font-bold text-indigo-700 bg-indigo-50 px-3 py-1 rounded-md min-w-[40px] text-center">
+                                          {score || "-"}
+                                        </span>
+                                      </div>
                                     </div>
-                                  </div>
-                                )
-                              })}
+                                  );
+                                })}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          ),
+                        )}
                         {evalItem.notes && (
                           <div className="mt-6 pt-4 border-t border-slate-200">
                             <h4 className="font-bold text-slate-800 mb-2 text-sm flex items-center gap-2">
                               <FileText size={16} className="text-slate-400" />
                               Catatan Tambahan
                             </h4>
-                            <p className="text-sm text-slate-600 whitespace-pre-wrap bg-amber-50 p-4 rounded-xl border border-amber-100">{evalItem.notes}</p>
+                            <p className="text-sm text-slate-600 whitespace-pre-wrap bg-amber-50 p-4 rounded-xl border border-amber-100">
+                              {evalItem.notes}
+                            </p>
                           </div>
                         )}
                       </div>
@@ -2048,41 +2795,69 @@ export default function CandidateProfile() {
                       {/* Display Summary Fields if they exist */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {Object.entries(evalItem.evaluation_data)
-                          .filter(([key]) => key.startsWith('summary_'))
+                          .filter(([key]) => key.startsWith("summary_"))
                           .map(([key, value]) => {
-                            const fieldName = key.replace('summary_', '');
+                            const fieldName = key.replace("summary_", "");
                             const valStr = String(value);
                             const valLower = valStr.toLowerCase().trim();
-                            
-                            let highlightClass = "text-sm text-slate-700 whitespace-pre-wrap";
-                            if (valLower === 'not recommended' || valLower === 'ditolak') {
-                              highlightClass = "text-sm font-bold text-red-600 bg-red-50 px-2 py-1 rounded inline-block whitespace-pre-wrap";
-                            } else if (valLower === 'to be considered') {
-                              highlightClass = "text-sm font-bold text-yellow-600 bg-yellow-50 px-2 py-1 rounded inline-block whitespace-pre-wrap";
-                            } else if (valLower === 'recommended' || valLower === 'diterima') {
-                              highlightClass = "text-sm font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded inline-block whitespace-pre-wrap";
+
+                            let highlightClass =
+                              "text-sm text-slate-700 whitespace-pre-wrap";
+                            if (
+                              valLower === "not recommended" ||
+                              valLower === "ditolak"
+                            ) {
+                              highlightClass =
+                                "text-sm font-bold text-red-600 bg-red-50 px-2 py-1 rounded inline-block whitespace-pre-wrap";
+                            } else if (valLower === "to be considered") {
+                              highlightClass =
+                                "text-sm font-bold text-yellow-600 bg-yellow-50 px-2 py-1 rounded inline-block whitespace-pre-wrap";
+                            } else if (
+                              valLower === "recommended" ||
+                              valLower === "diterima"
+                            ) {
+                              highlightClass =
+                                "text-sm font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded inline-block whitespace-pre-wrap";
                             }
 
-                            const isObject = typeof value === 'object' && value !== null;
-                            const isScoring = isObject && !(Object.keys(value).every(k => !isNaN(Number(k))) || Array.isArray(value));
+                            const isObject =
+                              typeof value === "object" && value !== null;
+                            const isScoring =
+                              isObject &&
+                              !(
+                                Object.keys(value).every(
+                                  (k) => !isNaN(Number(k)),
+                                ) || Array.isArray(value)
+                              );
 
                             return (
-                              <div key={key} className={`space-y-2 bg-slate-50 border border-slate-100 rounded-xl p-4 ${isScoring ? 'col-span-1 md:col-span-2' : ''}`}>
-                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">{fieldName}</p>
+                              <div
+                                key={key}
+                                className={`space-y-2 bg-slate-50 border border-slate-100 rounded-xl p-4 ${isScoring ? "col-span-1 md:col-span-2" : ""}`}
+                              >
+                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+                                  {fieldName}
+                                </p>
                                 {isObject ? (
                                   !isScoring ? (
                                     <ul className="list-disc list-inside text-sm text-slate-700 space-y-1">
-                                      {Object.values(value).map((v, i) => <li key={i}>{String(v)}</li>)}
+                                      {Object.values(value).map((v, i) => (
+                                        <li key={i}>{String(v)}</li>
+                                      ))}
                                     </ul>
                                   ) : (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                       {Object.entries(value)
-                                        .filter(([, v]) => !isNaN(Number(v)) && String(v).trim() !== '')
+                                        .filter(
+                                          ([, v]) =>
+                                            !isNaN(Number(v)) &&
+                                            String(v).trim() !== "",
+                                        )
                                         .map(([k, v]) => {
                                           return {
                                             score: Number(v),
                                             label: String(k),
-                                            originalKey: k
+                                            originalKey: k,
                                           };
                                         })
                                         .sort((a, b) => {
@@ -2091,17 +2866,24 @@ export default function CandidateProfile() {
                                           return a.score - b.score;
                                         })
                                         .map((item) => (
-                                        <div key={item.originalKey} className="flex items-start gap-3 text-sm text-slate-700 bg-white border border-slate-200 p-3 rounded-lg shadow-sm font-medium h-full break-words">
-                                          <div className="min-w-[32px] w-8 h-8 rounded border border-indigo-100 bg-indigo-50 flex items-center justify-center font-bold text-indigo-700 shrink-0 mt-0.5">
-                                            {item.score}
+                                          <div
+                                            key={item.originalKey}
+                                            className="flex items-start gap-3 text-sm text-slate-700 bg-white border border-slate-200 p-3 rounded-lg shadow-sm font-medium h-full break-words"
+                                          >
+                                            <div className="min-w-[32px] w-8 h-8 rounded border border-indigo-100 bg-indigo-50 flex items-center justify-center font-bold text-indigo-700 shrink-0 mt-0.5">
+                                              {item.score}
+                                            </div>
+                                            <span className="flex-1 leading-snug pt-1.5 break-words whitespace-normal break-all sm:break-normal">
+                                              {item.label}
+                                            </span>
                                           </div>
-                                          <span className="flex-1 leading-snug pt-1.5 break-words whitespace-normal break-all sm:break-normal">{item.label}</span>
-                                        </div>
-                                      ))}
+                                        ))}
                                     </div>
                                   )
                                 ) : (
-                                  <div className={highlightClass}>{valStr || '-'}</div>
+                                  <div className={highlightClass}>
+                                    {valStr || "-"}
+                                  </div>
                                 )}
                               </div>
                             );
@@ -2120,7 +2902,7 @@ export default function CandidateProfile() {
               <CalendarIcon className="text-indigo-500" size={20} />
               Jadwal & Status
             </h3>
-            
+
             <div className="space-y-4">
               <div className="flex items-start gap-4 p-4 rounded-xl border border-slate-100 bg-slate-50">
                 <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
@@ -2128,10 +2910,14 @@ export default function CandidateProfile() {
                 </div>
                 <div className="flex-1">
                   <h4 className="font-bold text-slate-900 text-sm">Psikotes</h4>
-                  {candidate.psikotes_schedules && candidate.psikotes_schedules.length > 0 ? (
+                  {candidate.psikotes_schedules &&
+                  candidate.psikotes_schedules.length > 0 ? (
                     <div className="mt-2 space-y-2">
                       {candidate.psikotes_schedules.map((schedule, idx) => (
-                        <div key={idx} className="flex items-center justify-between text-sm">
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between text-sm"
+                        >
                           <div className="flex items-center gap-2 text-slate-600">
                             <Clock size={14} />
                             <span>{formatDate(schedule.schedule_date)}</span>
@@ -2149,9 +2935,16 @@ export default function CandidateProfile() {
                       ))}
                     </div>
                   ) : candidate.psikotes_status ? (
-                    <p className="text-sm text-slate-500 mt-1">Status: <span className="font-medium text-slate-700">{candidate.psikotes_status}</span></p>
+                    <p className="text-sm text-slate-500 mt-1">
+                      Status:{" "}
+                      <span className="font-medium text-slate-700">
+                        {candidate.psikotes_status}
+                      </span>
+                    </p>
                   ) : (
-                    <p className="text-sm text-slate-500 mt-1">Belum ada jadwal psikotes.</p>
+                    <p className="text-sm text-slate-500 mt-1">
+                      Belum ada jadwal psikotes.
+                    </p>
                   )}
                 </div>
               </div>
@@ -2161,11 +2954,17 @@ export default function CandidateProfile() {
                   <Users size={18} />
                 </div>
                 <div className="flex-1">
-                  <h4 className="font-bold text-slate-900 text-sm">Interview</h4>
-                  {candidate.interview_schedules && candidate.interview_schedules.length > 0 ? (
+                  <h4 className="font-bold text-slate-900 text-sm">
+                    Interview
+                  </h4>
+                  {candidate.interview_schedules &&
+                  candidate.interview_schedules.length > 0 ? (
                     <div className="mt-2 space-y-2">
                       {candidate.interview_schedules.map((schedule, idx) => (
-                        <div key={idx} className="flex items-center justify-between text-sm">
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between text-sm"
+                        >
                           <div className="flex items-center gap-2 text-slate-600">
                             <Clock size={14} />
                             <span>{formatDate(schedule.schedule_date)}</span>
@@ -2183,15 +2982,21 @@ export default function CandidateProfile() {
                       ))}
                     </div>
                   ) : candidate.interview_status ? (
-                    <p className="text-sm text-slate-500 mt-1">Status: <span className="font-medium text-slate-700">{candidate.interview_status}</span></p>
+                    <p className="text-sm text-slate-500 mt-1">
+                      Status:{" "}
+                      <span className="font-medium text-slate-700">
+                        {candidate.interview_status}
+                      </span>
+                    </p>
                   ) : (
-                    <p className="text-sm text-slate-500 mt-1">Belum ada jadwal interview.</p>
+                    <p className="text-sm text-slate-500 mt-1">
+                      Belum ada jadwal interview.
+                    </p>
                   )}
                 </div>
               </div>
             </div>
           </div>
-
         </div>
       </div>
 
@@ -2205,7 +3010,11 @@ export default function CandidateProfile() {
         onSuccess={() => fetchEvaluations(id!)}
         existingEvaluation={existingEvaluation}
         userProfile={profile}
-        isAssignedToMe={candidate?.candidate_assignees?.some((a: any) => a.user_id === profile?.id) || false}
+        isAssignedToMe={
+          candidate?.candidate_assignees?.some(
+            (a: any) => a.user_id === profile?.id,
+          ) || false
+        }
       />
 
       {/* AI Interview Questions Modal */}
@@ -2218,19 +3027,25 @@ export default function CandidateProfile() {
                   <Sparkles className="text-indigo-600" size={24} />
                   Kurasi Pertanyaan Interview
                 </h2>
-                <p className="text-sm text-slate-500 mt-1">Review, edit, atau hapus pertanyaan yang dihasilkan AI sebelum disimpan.</p>
+                <p className="text-sm text-slate-500 mt-1">
+                  Review, edit, atau hapus pertanyaan yang dihasilkan AI sebelum
+                  disimpan.
+                </p>
               </div>
-              <button 
+              <button
                 onClick={() => setShowInterviewModal(false)}
                 className="text-slate-400 hover:text-slate-600 p-2 rounded-lg hover:bg-slate-100 transition-colors"
               >
                 <X size={24} />
               </button>
             </div>
-            
+
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {generatedQuestions.map((q, index) => (
-                <div key={index} className="p-4 bg-white border border-slate-200 rounded-xl shadow-sm relative group">
+                <div
+                  key={index}
+                  className="p-4 bg-white border border-slate-200 rounded-xl shadow-sm relative group"
+                >
                   <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => {
@@ -2244,7 +3059,7 @@ export default function CandidateProfile() {
                       <Trash2 size={16} />
                     </button>
                   </div>
-                  
+
                   <div className="mb-3">
                     <select
                       value={q.category}
@@ -2260,7 +3075,7 @@ export default function CandidateProfile() {
                       <option value="Risk Mitigation">Risk Mitigation</option>
                     </select>
                   </div>
-                  
+
                   <textarea
                     value={q.question}
                     onChange={(e) => {
@@ -2272,21 +3087,28 @@ export default function CandidateProfile() {
                     rows={2}
                     placeholder="Tulis pertanyaan di sini..."
                   />
-                  
+
                   {q.reasoning && (
                     <div className="mt-3 flex gap-2 text-sm text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                      <Sparkles size={16} className="text-indigo-400 shrink-0 mt-0.5" />
+                      <Sparkles
+                        size={16}
+                        className="text-indigo-400 shrink-0 mt-0.5"
+                      />
                       <p className="italic">{q.reasoning}</p>
                     </div>
                   )}
                 </div>
               ))}
-              
+
               <button
                 onClick={() => {
                   setGeneratedQuestions([
                     ...generatedQuestions,
-                    { category: 'Technical', question: '', reasoning: 'Ditambahkan manual oleh HR.' }
+                    {
+                      category: "Technical",
+                      question: "",
+                      reasoning: "Ditambahkan manual oleh HR.",
+                    },
                   ]);
                 }}
                 className="w-full py-4 border-2 border-dashed border-slate-200 rounded-xl text-slate-500 font-medium hover:bg-slate-50 hover:border-indigo-300 hover:text-indigo-600 transition-all flex items-center justify-center gap-2"
@@ -2295,17 +3117,17 @@ export default function CandidateProfile() {
                 Tambah Pertanyaan Manual
               </button>
             </div>
-            
+
             <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
               <button
                 onClick={() => setShowInterviewModal(false)}
-                className="px-6 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors"
+                className="px-6 py-2.5 text-sm font-bold text-rose-600 bg-rose-50 border border-rose-200 hover:bg-rose-100 rounded-xl transition-colors"
               >
                 Batal
               </button>
               <button
                 onClick={handleSaveInterviewQuestions}
-                className="px-6 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors shadow-sm flex items-center gap-2"
+                className="px-6 py-2.5 text-sm font-bold text-white bg-[#3D2C44] hover:bg-[#3D2C44]/90 rounded-xl transition-colors shadow-sm flex items-center gap-2"
               >
                 <Save size={18} />
                 Simpan Daftar Pertanyaan
@@ -2323,7 +3145,7 @@ export default function CandidateProfile() {
               <FileText className="text-indigo-400" size={20} />
               Preview Dokumen
             </h3>
-            <button 
+            <button
               onClick={() => setFullScreenPdf(null)}
               className="text-white/70 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-colors"
             >
@@ -2332,8 +3154,8 @@ export default function CandidateProfile() {
           </div>
           <div className="flex-1 w-full h-full p-4 md:p-8">
             <div className="w-full h-full bg-white rounded-xl overflow-hidden shadow-2xl">
-              <iframe 
-                src={getEmbedUrl(fullScreenPdf)} 
+              <iframe
+                src={getEmbedUrl(fullScreenPdf)}
                 className="w-full h-full"
                 title="Preview Dokumen"
               />
@@ -2350,7 +3172,7 @@ export default function CandidateProfile() {
               <Database className="text-indigo-400" size={20} />
               Preview Data Eksternal
             </h3>
-            <button 
+            <button
               onClick={() => setFullScreenData(null)}
               className="text-white/70 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-colors"
             >
@@ -2359,7 +3181,11 @@ export default function CandidateProfile() {
           </div>
           <div className="flex-1 w-full h-full p-4 md:p-8 overflow-hidden">
             <div className="w-full h-full bg-slate-50 rounded-xl overflow-y-auto shadow-2xl p-6 custom-scrollbar">
-              <ApplicationForm readOnly initialData={fullScreenData} hideSalary={profile?.role === 'USER_MANAGER'} />
+              <ApplicationForm
+                readOnly
+                initialData={fullScreenData}
+                hideSalary={profile?.role === "USER_MANAGER"}
+              />
             </div>
           </div>
         </div>
@@ -2367,20 +3193,24 @@ export default function CandidateProfile() {
 
       {isAssignModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="p-6 border-b border-slate-200 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-900">Assign Kandidat ke User</h3>
-              <button 
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[90vh] overflow-hidden">
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
+              <h3 className="text-lg font-bold text-slate-900">
+                Assign Kandidat ke User
+              </h3>
+              <button
                 onClick={() => setIsAssignModalOpen(false)}
                 className="text-slate-400 hover:text-slate-600"
               >
                 <X size={20} />
               </button>
             </div>
-            
-            <div className="p-6 space-y-4">
+
+            <div className="p-6 space-y-4 overflow-y-auto">
               <p className="text-sm text-slate-600">
-                Pilih User Manager untuk me-review kandidat ini. User yang dipilih akan dapat melihat profil kandidat ini di halaman mereka.
+                Pilih User Manager untuk me-review kandidat ini. User yang
+                dipilih akan dapat melihat profil kandidat ini di halaman
+                mereka.
               </p>
 
               <div className="space-y-3">
@@ -2388,13 +3218,20 @@ export default function CandidateProfile() {
                   Assign To (PIC)
                 </label>
                 <div className="flex flex-wrap gap-2 mb-2">
-                  {selectedManagers.map(userId => {
-                    const user = managers.find(u => u.id === userId);
+                  {selectedManagers.map((userId) => {
+                    const user = managers.find((u) => u.id === userId);
                     return (
-                      <div key={userId} className="flex items-center gap-1 bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg text-sm font-medium border border-indigo-100">
-                        <span>{user?.full_name || 'Unknown User'}</span>
-                        <button 
-                          onClick={() => setSelectedManagers(prev => prev.filter(id => id !== userId))}
+                      <div
+                        key={userId}
+                        className="flex items-center gap-1 bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg text-sm font-medium border border-indigo-100"
+                      >
+                        <span>{user?.full_name || "Unknown User"}</span>
+                        <button
+                          onClick={() =>
+                            setSelectedManagers((prev) =>
+                              prev.filter((id) => id !== userId),
+                            )
+                          }
                           className="p-0.5 hover:bg-indigo-200 rounded-md transition-colors ml-1"
                         >
                           <X size={14} />
@@ -2406,35 +3243,51 @@ export default function CandidateProfile() {
                 <select
                   value=""
                   onChange={(e) => {
-                    if (e.target.value && !selectedManagers.includes(e.target.value)) {
-                      setSelectedManagers(prev => [...prev, e.target.value]);
+                    if (
+                      e.target.value &&
+                      !selectedManagers.includes(e.target.value)
+                    ) {
+                      setSelectedManagers((prev) => [...prev, e.target.value]);
                     }
                   }}
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 >
                   <option value="">-- Tambah PIC --</option>
-                  {managers.filter(m => !selectedManagers.includes(m.id)).map(manager => (
-                    <option key={manager.id} value={manager.id}>
-                      {manager.full_name} {manager.department ? `(${manager.department})` : ''}
-                    </option>
-                  ))}
+                  {managers
+                    .filter((m) => !selectedManagers.includes(m.id))
+                    .map((manager) => {
+                      let roleDisplay = "User Manager";
+                      if (manager.role === "DIRECTOR") roleDisplay = "Director";
+                      if (manager.role === "FINANCE_DIRECTOR") roleDisplay = "Finance Director";
+                      if (manager.department) roleDisplay = manager.department;
+                      
+                      return (
+                        <option key={manager.id} value={manager.id}>
+                          {manager.full_name} ({roleDisplay})
+                        </option>
+                      );
+                    })}
                 </select>
               </div>
             </div>
 
-            <div className="p-6 border-t border-slate-200 bg-slate-50 flex justify-end gap-3">
+            <div className="p-6 border-t border-slate-200 bg-slate-50 flex justify-end gap-3 shrink-0">
               <button
                 onClick={() => setIsAssignModalOpen(false)}
-                className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-200 rounded-xl transition-colors"
+                className="px-4 py-2 text-rose-600 bg-rose-50 border border-rose-200 font-medium hover:bg-rose-100 rounded-xl transition-colors"
               >
                 Batal
               </button>
               <button
                 onClick={handleAssign}
                 disabled={assigning}
-                className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+                className="px-4 py-2 bg-[#3D2C44] text-white font-medium rounded-xl hover:bg-[#3D2C44]/90 transition-colors flex items-center gap-2 disabled:opacity-50"
               >
-                {assigning ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                {assigning ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Save size={16} />
+                )}
                 Assign Kandidat
               </button>
             </div>

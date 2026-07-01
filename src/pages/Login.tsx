@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
-import { Mail, Lock, Loader2, RefreshCw } from 'lucide-react';
-import { SiteSettings } from '../types';
-import { cn } from '../lib/utils';
+import React, { useState, useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
+import { supabase } from "../lib/supabase";
+import { Mail, Lock, Loader2, RefreshCw } from "lucide-react";
+import { SiteSettings } from "../types";
+import { cn } from "../lib/utils";
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -16,13 +16,13 @@ export default function Login() {
   const location = useLocation();
 
   // CAPTCHA states
-  const [captchaText, setCaptchaText] = useState('');
-  const [captchaInput, setCaptchaInput] = useState('');
+  const [captchaText, setCaptchaText] = useState("");
+  const [captchaInput, setCaptchaInput] = useState("");
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const generateCaptcha = () => {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-    let text = '';
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+    let text = "";
     for (let i = 0; i < 4; i++) {
       text += chars.charAt(Math.floor(Math.random() * chars.length));
     }
@@ -36,29 +36,35 @@ export default function Login() {
   useEffect(() => {
     if (captchaText && canvasRef.current) {
       const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext("2d");
       if (ctx) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
+
         // Background
-        ctx.fillStyle = '#f8fafc';
+        ctx.fillStyle = "#f8fafc";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
+
         // Add noise (lines)
         for (let i = 0; i < 4; i++) {
           ctx.strokeStyle = `rgba(${Math.random() * 255},${Math.random() * 255},${Math.random() * 255}, 0.5)`;
           ctx.beginPath();
-          ctx.moveTo(Math.random() * canvas.width, Math.random() * canvas.height);
-          ctx.lineTo(Math.random() * canvas.width, Math.random() * canvas.height);
+          ctx.moveTo(
+            Math.random() * canvas.width,
+            Math.random() * canvas.height,
+          );
+          ctx.lineTo(
+            Math.random() * canvas.width,
+            Math.random() * canvas.height,
+          );
           ctx.stroke();
         }
 
         // Add text
-        ctx.font = 'bold 24px Inter, sans-serif';
-        ctx.fillStyle = '#334155';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        
+        ctx.font = "bold 24px Inter, sans-serif";
+        ctx.fillStyle = "#334155";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
         // Draw characters with slight rotation
         for (let i = 0; i < captchaText.length; i++) {
           ctx.save();
@@ -72,16 +78,22 @@ export default function Login() {
   }, [captchaText]);
 
   useEffect(() => {
-    supabase.from('site_settings').select('*').eq('id', 1).single().then(({ data }) => {
-      if (data) {
-        setSettings(data);
-      }
-      // Trigger animation after a tiny delay for smooth entry
-      setTimeout(() => setIsLoaded(true), 100);
-    }).catch(err => {
-      console.warn('Failed to get site settings:', err);
-      setTimeout(() => setIsLoaded(true), 100);
-    });
+    supabase
+      .from("site_settings")
+      .select("*")
+      .eq("id", 1)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setSettings(data);
+        }
+        // Trigger animation after a tiny delay for smooth entry
+        setTimeout(() => setIsLoaded(true), 100);
+      })
+      .catch((err) => {
+        console.warn("Failed to get site settings:", err);
+        setTimeout(() => setIsLoaded(true), 100);
+      });
 
     if (location.state?.message) {
       setMessage(location.state.message);
@@ -90,11 +102,11 @@ export default function Login() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (captchaInput !== captchaText) {
       setError("CAPTCHA tidak valid. Silakan coba lagi.");
       generateCaptcha();
-      setCaptchaInput('');
+      setCaptchaInput("");
       return;
     }
 
@@ -116,19 +128,26 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-transparent p-4 relative overflow-hidden">
       {/* Login Form Layer */}
-      <div 
+      <div
         className={cn(
           "w-full max-w-md relative z-10 transition-all duration-700 ease-out",
-          !isLoaded ? "opacity-0 scale-90" : "opacity-100 scale-100"
+          !isLoaded ? "opacity-0 scale-90" : "opacity-100 scale-100",
         )}
       >
         <div className="bg-white/40 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/60 p-8">
           <div className="text-center mb-8">
             {settings?.login_logo_url && (
-              <img src={settings.login_logo_url} alt="Logo" className="h-24 mx-auto mb-4 object-contain drop-shadow-sm" referrerPolicy="no-referrer" />
+              <img
+                src={settings.login_logo_url}
+                alt="Logo"
+                className="h-24 mx-auto mb-4 object-contain drop-shadow-sm"
+                referrerPolicy="no-referrer"
+              />
             )}
-            <h1 className="text-2xl font-bold text-slate-900">Welcome</h1>
-            <p className="text-slate-500 mt-2">Login to ATS Waruna Group Dashboard</p>
+            <h1 className="text-2xl font-bold text-[#3D2C44]">Welcome</h1>
+            <p className="text-[#3D2C44]/70 mt-2">
+              Login to ATS Waruna Group Dashboard
+            </p>
           </div>
 
           {error && (
@@ -151,7 +170,9 @@ export default function Login() {
 
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Email</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Email
+              </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <Mail className="h-5 w-5 text-slate-400" />
@@ -168,7 +189,9 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Password</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Password
+              </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <Lock className="h-5 w-5 text-slate-400" />
@@ -185,7 +208,9 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Verifikasi Keamanan</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Verifikasi Keamanan
+              </label>
               <div className="flex gap-3 items-center">
                 <div className="relative flex-1">
                   <input
@@ -199,10 +224,10 @@ export default function Login() {
                   />
                 </div>
                 <div className="flex items-center gap-2 bg-white/60 p-1.5 rounded-xl border border-white/40 shadow-sm">
-                  <canvas 
-                    ref={canvasRef} 
-                    width="140" 
-                    height="40" 
+                  <canvas
+                    ref={canvasRef}
+                    width="140"
+                    height="40"
                     className="rounded-lg bg-slate-50 border border-slate-200"
                   />
                   <button
@@ -225,7 +250,7 @@ export default function Login() {
               {loading ? (
                 <Loader2 className="animate-spin h-5 w-5" />
               ) : (
-                'Masuk Sekarang'
+                "Masuk Sekarang"
               )}
             </button>
           </form>

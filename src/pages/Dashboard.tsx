@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
-import { 
-  Users, 
-  Briefcase, 
-  UserCheck, 
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "../lib/supabase";
+import {
+  Users,
+  Briefcase,
+  UserCheck,
   UserX,
   TrendingUp,
   Clock,
@@ -17,9 +17,9 @@ import {
   Star,
   X,
   RefreshCcw,
-  BarChart3
-} from 'lucide-react';
-import { cn, formatDate } from '../lib/utils';
+  BarChart3,
+} from "lucide-react";
+import { cn, formatDate } from "../lib/utils";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -30,42 +30,53 @@ export default function Dashboard() {
     rejected: 0,
     openPositions: 0,
     upcomingPsikotes: 0,
-    upcomingInterview: 0
+    upcomingInterview: 0,
   });
   const [funnelData, setFunnelData] = useState<any[]>([]);
   const [upcomingNotifications, setUpcomingNotifications] = useState<any[]>([]);
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
-  const [topCandidatesByPosition, setTopCandidatesByPosition] = useState<Record<string, any[]>>({});
-  const [topCandidatesByDetailed, setTopCandidatesByDetailed] = useState<Record<string, any[]>>({});
+  const [topCandidatesByPosition, setTopCandidatesByPosition] = useState<
+    Record<string, any[]>
+  >({});
+  const [topCandidatesByDetailed, setTopCandidatesByDetailed] = useState<
+    Record<string, any[]>
+  >({});
   const [newCandidatesList, setNewCandidatesList] = useState<any[]>([]);
-  const [dismissedNewCandidates, setDismissedNewCandidates] = useState<string[]>(() => {
-    const saved = localStorage.getItem('dismissedNewCandidates');
+  const [dismissedNewCandidates, setDismissedNewCandidates] = useState<
+    string[]
+  >(() => {
+    const saved = localStorage.getItem("dismissedNewCandidates");
     return saved ? JSON.parse(saved) : [];
   });
   const [loading, setLoading] = useState(true);
 
   // Filters
   const [positions, setPositions] = useState<string[]>([]);
-  const [selectedPosition, setSelectedPosition] = useState('all');
-  const [dateFilter, setDateFilter] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedPosition, setSelectedPosition] = useState("all");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const handleReset = () => {
-    setSearchQuery('');
-    setSelectedPosition('all');
-    setDateFilter('all');
+    setSearchQuery("");
+    setSelectedPosition("all");
+    setDateFilter("all");
   };
 
   // Fetch unique positions once on mount
   useEffect(() => {
     const fetchPositions = async () => {
-      // Note: Supabase JS doesn't have a native SELECT DISTINCT. 
+      // Note: Supabase JS doesn't have a native SELECT DISTINCT.
       // For 100k+ rows, this should ideally be an RPC call or a separate 'positions' table.
       // We limit to 1000 here to prevent crashing on huge datasets, assuming positions are repetitive.
-      const { data } = await supabase.from('candidates').select('position').limit(1000);
+      const { data } = await supabase
+        .from("candidates")
+        .select("position")
+        .limit(1000);
       if (data) {
-        const unique = Array.from(new Set(data.map(d => d.position))).filter(Boolean).sort();
+        const unique = Array.from(new Set(data.map((d) => d.position)))
+          .filter(Boolean)
+          .sort();
         setPositions(unique);
       }
     };
@@ -77,29 +88,35 @@ export default function Dashboard() {
       setLoading(true);
       try {
         let startDate: Date | null = null;
-        if (dateFilter !== 'all') {
+        if (dateFilter !== "all") {
           const now = new Date();
           startDate = new Date();
-          if (dateFilter === '7days') startDate.setDate(now.getDate() - 7);
-          else if (dateFilter === '30days') startDate.setDate(now.getDate() - 30);
-          else if (dateFilter === 'this_month') startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          if (dateFilter === "7days") startDate.setDate(now.getDate() - 7);
+          else if (dateFilter === "30days")
+            startDate.setDate(now.getDate() - 30);
+          else if (dateFilter === "this_month")
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
         }
 
         // Helper to build base query for counting
-        const buildCountQuery = (table: string, select = '*') => {
-          let q = supabase.from(table).select(select, { count: 'exact', head: true });
-          if (selectedPosition !== 'all') q = q.eq('position', selectedPosition);
-          if (startDate) q = q.gte('created_at', startDate.toISOString());
-          if (searchQuery) q = q.ilike('full_name', `%${searchQuery}%`);
+        const buildCountQuery = (table: string, select = "*") => {
+          let q = supabase
+            .from(table)
+            .select(select, { count: "exact", head: true });
+          if (selectedPosition !== "all")
+            q = q.eq("position", selectedPosition);
+          if (startDate) q = q.gte("created_at", startDate.toISOString());
+          if (searchQuery) q = q.ilike("full_name", `%${searchQuery}%`);
           return q;
         };
 
         // Helper to build base query for fetching data
-        const buildDataQuery = (table: string, select = '*') => {
+        const buildDataQuery = (table: string, select = "*") => {
           let q = supabase.from(table).select(select);
-          if (selectedPosition !== 'all') q = q.eq('position', selectedPosition);
-          if (startDate) q = q.gte('created_at', startDate.toISOString());
-          if (searchQuery) q = q.ilike('full_name', `%${searchQuery}%`);
+          if (selectedPosition !== "all")
+            q = q.eq("position", selectedPosition);
+          if (startDate) q = q.gte("created_at", startDate.toISOString());
+          if (searchQuery) q = q.ilike("full_name", `%${searchQuery}%`);
           return q;
         };
 
@@ -109,25 +126,59 @@ export default function Dashboard() {
         next7Days.setDate(nowForQuery.getDate() + 7);
 
         const [
-          { count: cTotal }, { count: lTotal },
-          { count: cHired }, { count: lHired },
-          { count: cRej }, { count: lRej },
-          { count: cAcc }, { count: lAcc },
-          { count: cPsi }, { count: lPsi },
-          { count: cInt }, { count: lInt },
+          { count: cTotal },
+          { count: lTotal },
+          { count: cHired },
+          { count: lHired },
+          { count: cRej },
+          { count: lRej },
+          { count: cAcc },
+          { count: lAcc },
+          { count: cPsi },
+          { count: lPsi },
+          { count: cInt },
+          { count: lInt },
           { count: upcomingPsiCount },
           { count: upcomingIntCount },
-          { count: openRecruitmentCount }
+          { count: openRecruitmentCount },
         ] = await Promise.all([
-          buildCountQuery('candidates'), buildCountQuery('candidate_logs'),
-          buildCountQuery('candidates').eq('status_screening', 'hired'), buildCountQuery('candidate_logs').eq('status_screening', 'hired'),
-          buildCountQuery('candidates').eq('status_screening', 'rejected'), buildCountQuery('candidate_logs').eq('status_screening', 'rejected'),
-          buildCountQuery('candidates').in('status_screening', ['accepted', 'hired']), buildCountQuery('candidate_logs').in('status_screening', ['accepted', 'hired']),
-          buildCountQuery('candidates', 'id, psikotes_schedules!inner(id)'), buildCountQuery('candidate_logs').eq('psikotes_status', 'Sudah Psikotes'),
-          buildCountQuery('candidates', 'id, interview_schedules!inner(id)'), buildCountQuery('candidate_logs').eq('interview_status', 'Sudah Interview'),
-          supabase.from('psikotes_schedules').select('*', { count: 'exact', head: true }).gte('schedule_date', nowForQuery.toISOString()).lte('schedule_date', next7Days.toISOString()),
-          supabase.from('interview_schedules').select('*', { count: 'exact', head: true }).gte('schedule_date', nowForQuery.toISOString()).lte('schedule_date', next7Days.toISOString()),
-          supabase.from('open_recruitment').select('*', { count: 'exact', head: true })
+          buildCountQuery("candidates"),
+          buildCountQuery("candidate_logs"),
+          buildCountQuery("candidates").eq("status_screening", "hired"),
+          buildCountQuery("candidate_logs").eq("status_screening", "hired"),
+          buildCountQuery("candidates").eq("status_screening", "rejected"),
+          buildCountQuery("candidate_logs").eq("status_screening", "rejected"),
+          buildCountQuery("candidates").in("status_screening", [
+            "accepted",
+            "hired",
+          ]),
+          buildCountQuery("candidate_logs").in("status_screening", [
+            "accepted",
+            "hired",
+          ]),
+          buildCountQuery("candidates", "id, psikotes_schedules!inner(id)"),
+          buildCountQuery("candidate_logs").eq(
+            "psikotes_status",
+            "Sudah Psikotes",
+          ),
+          buildCountQuery("candidates", "id, interview_schedules!inner(id)"),
+          buildCountQuery("candidate_logs").eq(
+            "interview_status",
+            "Sudah Interview",
+          ),
+          supabase
+            .from("psikotes_schedules")
+            .select("*", { count: "exact", head: true })
+            .gte("schedule_date", nowForQuery.toISOString())
+            .lte("schedule_date", next7Days.toISOString()),
+          supabase
+            .from("interview_schedules")
+            .select("*", { count: "exact", head: true })
+            .gte("schedule_date", nowForQuery.toISOString())
+            .lte("schedule_date", next7Days.toISOString()),
+          supabase
+            .from("open_recruitment")
+            .select("*", { count: "exact", head: true }),
         ]);
 
         const totalApplied = (cTotal || 0) + (lTotal || 0);
@@ -145,15 +196,40 @@ export default function Dashboard() {
           rejected,
           openPositions: openRecruitmentCount || 0,
           upcomingPsikotes: upcomingPsiCount || 0,
-          upcomingInterview: upcomingIntCount || 0
+          upcomingInterview: upcomingIntCount || 0,
         });
 
         setFunnelData([
-          { stage: 'Total Pelamar', count: totalApplied, color: 'bg-indigo-500', icon: Users },
-          { stage: 'Lolos Screening', count: lolosScreening, color: 'bg-blue-500', icon: Filter },
-          { stage: 'Tahap Psikotes', count: totalPsikotes, color: 'bg-amber-500', icon: TrendingUp },
-          { stage: 'Tahap Interview', count: totalInterview, color: 'bg-purple-500', icon: Users },
-          { stage: 'Direkrut', count: hired, color: 'bg-emerald-500', icon: CheckCircle2 },
+          {
+            stage: "Total Pelamar",
+            count: totalApplied,
+            color: "bg-indigo-500",
+            icon: Users,
+          },
+          {
+            stage: "Lolos Screening",
+            count: lolosScreening,
+            color: "bg-blue-500",
+            icon: Filter,
+          },
+          {
+            stage: "Tahap Psikotes",
+            count: totalPsikotes,
+            color: "bg-amber-500",
+            icon: TrendingUp,
+          },
+          {
+            stage: "Tahap Interview",
+            count: totalInterview,
+            color: "bg-purple-500",
+            icon: Users,
+          },
+          {
+            stage: "Direkrut",
+            count: hired,
+            color: "bg-emerald-500",
+            icon: CheckCircle2,
+          },
         ]);
 
         // Fetch Recent Activities (Server-Side Limit)
@@ -170,50 +246,94 @@ export default function Dashboard() {
           { data: allActiveCandidates },
           { data: upcomingPsiData },
           { data: upcomingIntData },
-          { data: newCandidatesData }
+          { data: newCandidatesData },
         ] = await Promise.all([
-          buildDataQuery('candidates', 'id, full_name, position, created_at').order('created_at', { ascending: false }).limit(10),
-          buildDataQuery('candidate_logs', 'id, full_name, position, created_at, status_screening').order('created_at', { ascending: false }).limit(10),
-          supabase.from('psikotes_schedules').select('id, created_at, candidates!inner(id, full_name, position)').order('created_at', { ascending: false }).limit(10),
-          supabase.from('interview_schedules').select('id, created_at, candidates!inner(id, full_name, position)').order('created_at', { ascending: false }).limit(10),
-          supabase.from('candidates').select('id, full_name, email, position, assessment_score, status_screening, technical_score, communication_score, problem_solving_score, teamwork_score, leadership_score, adaptability_score').not('status_screening', 'in', '("rejected","hired")'),
-          supabase.from('psikotes_schedules').select('id, schedule_date, status, candidates!inner(id, full_name, position)').gte('schedule_date', nowForQuery.toISOString()).lte('schedule_date', next24Hours.toISOString()),
-          supabase.from('interview_schedules').select('id, schedule_date, status, candidates!inner(id, full_name, position)').gte('schedule_date', nowForQuery.toISOString()).lte('schedule_date', next24Hours.toISOString()),
-          buildDataQuery('candidates', 'id, full_name, position, created_at, status_screening').eq('status_screening', 'pending').order('created_at', { ascending: false }).limit(100)
+          buildDataQuery("candidates", "id, full_name, position, created_at")
+            .order("created_at", { ascending: false })
+            .limit(10),
+          buildDataQuery(
+            "candidate_logs",
+            "id, full_name, position, created_at, status_screening",
+          )
+            .order("created_at", { ascending: false })
+            .limit(10),
+          supabase
+            .from("psikotes_schedules")
+            .select("id, created_at, candidates!inner(id, full_name, position)")
+            .order("created_at", { ascending: false })
+            .limit(10),
+          supabase
+            .from("interview_schedules")
+            .select("id, created_at, candidates!inner(id, full_name, position)")
+            .order("created_at", { ascending: false })
+            .limit(10),
+          supabase
+            .from("candidates")
+            .select(
+              "id, full_name, email, position, assessment_score, status_screening, technical_score, communication_score, problem_solving_score, teamwork_score, leadership_score, adaptability_score",
+            )
+            .not("status_screening", "in", '("rejected","hired")'),
+          supabase
+            .from("psikotes_schedules")
+            .select(
+              "id, schedule_date, status, candidates!inner(id, full_name, position)",
+            )
+            .gte("schedule_date", nowForQuery.toISOString())
+            .lte("schedule_date", next24Hours.toISOString()),
+          supabase
+            .from("interview_schedules")
+            .select(
+              "id, schedule_date, status, candidates!inner(id, full_name, position)",
+            )
+            .gte("schedule_date", nowForQuery.toISOString())
+            .lte("schedule_date", next24Hours.toISOString()),
+          buildDataQuery(
+            "candidates",
+            "id, full_name, position, created_at, status_screening",
+          )
+            .eq("status_screening", "pending")
+            .order("created_at", { ascending: false })
+            .limit(100),
         ]);
 
         // Process Top Candidates
         if (allActiveCandidates) {
           const grouped: Record<string, any[]> = {};
-          allActiveCandidates.forEach(c => {
+          allActiveCandidates.forEach((c) => {
             if (!grouped[c.position]) grouped[c.position] = [];
-            
+
             const tech = c.technical_score || 0;
             const comm = c.communication_score || 0;
             const prob = c.problem_solving_score || 0;
             const team = c.teamwork_score || 0;
             const lead = c.leadership_score || 0;
             const adapt = c.adaptability_score || 0;
-            const detailed_average = Math.round((tech + comm + prob + team + lead + adapt) / 6);
+            const detailed_average = Math.round(
+              (tech + comm + prob + team + lead + adapt) / 6,
+            );
 
             grouped[c.position].push({
               ...c,
-              detailed_average
+              detailed_average,
             });
           });
 
           const top5: Record<string, any[]> = {};
           const top5Detailed: Record<string, any[]> = {};
-          
-          Object.keys(grouped).forEach(pos => {
-            const sortedByScore = [...grouped[pos]].sort((a, b) => (b.assessment_score || 0) - (a.assessment_score || 0));
+
+          Object.keys(grouped).forEach((pos) => {
+            const sortedByScore = [...grouped[pos]].sort(
+              (a, b) => (b.assessment_score || 0) - (a.assessment_score || 0),
+            );
             if (sortedByScore.length > 0) {
               top5[pos] = sortedByScore.slice(0, 5);
             }
-            
+
             const sortedByDetailed = [...grouped[pos]]
-              .filter(c => c.detailed_average > 0)
-              .sort((a, b) => (b.detailed_average || 0) - (a.detailed_average || 0));
+              .filter((c) => c.detailed_average > 0)
+              .sort(
+                (a, b) => (b.detailed_average || 0) - (a.detailed_average || 0),
+              );
             if (sortedByDetailed.length > 0) {
               top5Detailed[pos] = sortedByDetailed.slice(0, 5);
             }
@@ -225,19 +345,33 @@ export default function Dashboard() {
         let activities: any[] = [];
 
         (recentLogs || []).forEach((l: any) => {
-          if (l.status_screening === 'hired') {
+          if (l.status_screening === "hired") {
             activities.push({
-              id: `log-${l.id}`, type: 'hired', title: 'Kandidat Direkrut',
-              name: l.full_name, position: l.position, date: new Date(l.created_at),
-              icon: CheckCircle2, color: 'text-emerald-500', bgColor: 'bg-emerald-50', path: 'logs',
-              recordId: l.id
+              id: `log-${l.id}`,
+              type: "hired",
+              title: "Kandidat Direkrut",
+              name: l.full_name,
+              position: l.position,
+              date: new Date(l.created_at),
+              icon: CheckCircle2,
+              color: "text-emerald-500",
+              bgColor: "bg-emerald-50",
+              path: "logs",
+              recordId: l.id,
             });
-          } else if (l.status_screening === 'rejected') {
+          } else if (l.status_screening === "rejected") {
             activities.push({
-              id: `log-${l.id}`, type: 'rejected', title: 'Kandidat Ditolak',
-              name: l.full_name, position: l.position, date: new Date(l.created_at),
-              icon: XCircle, color: 'text-red-500', bgColor: 'bg-red-50', path: 'logs',
-              recordId: l.id
+              id: `log-${l.id}`,
+              type: "rejected",
+              title: "Kandidat Ditolak",
+              name: l.full_name,
+              position: l.position,
+              date: new Date(l.created_at),
+              icon: XCircle,
+              color: "text-red-500",
+              bgColor: "bg-red-50",
+              path: "logs",
+              recordId: l.id,
             });
           }
         });
@@ -245,10 +379,17 @@ export default function Dashboard() {
         (recentPsi || []).forEach((p: any) => {
           if (p.candidates) {
             activities.push({
-              id: `psi-${p.id}`, type: 'psikotes', title: 'Jadwal Psikotes dibuat',
-              name: p.candidates.full_name, position: p.candidates.position, date: new Date(p.created_at),
-              icon: FileText, color: 'text-amber-500', bgColor: 'bg-amber-50', path: 'psikotes',
-              recordId: p.id
+              id: `psi-${p.id}`,
+              type: "psikotes",
+              title: "Jadwal Psikotes dibuat",
+              name: p.candidates.full_name,
+              position: p.candidates.position,
+              date: new Date(p.created_at),
+              icon: FileText,
+              color: "text-amber-500",
+              bgColor: "bg-amber-50",
+              path: "psikotes",
+              recordId: p.id,
             });
           }
         });
@@ -256,10 +397,17 @@ export default function Dashboard() {
         (recentInt || []).forEach((i: any) => {
           if (i.candidates) {
             activities.push({
-              id: `int-${i.id}`, type: 'interview', title: 'Jadwal Interview dibuat',
-              name: i.candidates.full_name, position: i.candidates.position, date: new Date(i.created_at),
-              icon: Calendar, color: 'text-purple-500', bgColor: 'bg-purple-50', path: 'interview',
-              recordId: i.id
+              id: `int-${i.id}`,
+              type: "interview",
+              title: "Jadwal Interview dibuat",
+              name: i.candidates.full_name,
+              position: i.candidates.position,
+              date: new Date(i.created_at),
+              icon: Calendar,
+              color: "text-purple-500",
+              bgColor: "bg-purple-50",
+              path: "interview",
+              recordId: i.id,
             });
           }
         });
@@ -272,17 +420,17 @@ export default function Dashboard() {
           if (p.candidates) {
             notifications.push({
               id: `psi-notif-${p.id}`,
-              type: 'psikotes',
-              title: 'Jadwal Psikotes Mendatang',
+              type: "psikotes",
+              title: "Jadwal Psikotes Mendatang",
               name: p.candidates.full_name,
               position: p.candidates.position,
               date: new Date(p.schedule_date),
               icon: FileText,
-              color: 'text-amber-500',
-              bgColor: 'bg-amber-50',
-              path: 'psikotes',
+              color: "text-amber-500",
+              bgColor: "bg-amber-50",
+              path: "psikotes",
               recordId: p.id,
-              status: p.status
+              status: p.status,
             });
           }
         });
@@ -291,17 +439,17 @@ export default function Dashboard() {
           if (i.candidates) {
             notifications.push({
               id: `int-notif-${i.id}`,
-              type: 'interview',
-              title: 'Jadwal Interview Mendatang',
+              type: "interview",
+              title: "Jadwal Interview Mendatang",
               name: i.candidates.full_name,
               position: i.candidates.position,
               date: new Date(i.schedule_date),
               icon: Calendar,
-              color: 'text-purple-500',
-              bgColor: 'bg-purple-50',
-              path: 'interview',
+              color: "text-purple-500",
+              bgColor: "bg-purple-50",
+              path: "interview",
               recordId: i.id,
-              status: i.status
+              status: i.status,
             });
           }
         });
@@ -314,72 +462,77 @@ export default function Dashboard() {
           if (!dismissedNewCandidates.includes(c.id)) {
             newCands.push({
               id: `new-cand-${c.id}`,
-              type: 'new_candidate',
-              title: 'Kandidat Baru',
+              type: "new_candidate",
+              title: "Kandidat Baru",
               name: c.full_name,
               position: c.position,
               date: new Date(c.created_at),
               icon: Users,
-              color: 'text-blue-500',
-              bgColor: 'bg-blue-50',
-              path: 'screening',
-              recordId: c.id
+              color: "text-blue-500",
+              bgColor: "bg-blue-50",
+              path: "screening",
+              recordId: c.id,
             });
           }
         });
         setNewCandidatesList(newCands);
-
       } catch (error) {
-        console.error('Error fetching stats:', error);
+        console.error("Error fetching stats:", error);
       } finally {
         setLoading(false);
       }
     };
 
     fetchStats();
-  }, [selectedPosition, dateFilter, searchQuery, positions.length, refreshTrigger]);
+  }, [
+    selectedPosition,
+    dateFilter,
+    searchQuery,
+    positions.length,
+    refreshTrigger,
+  ]);
 
   const statCards = [
     {
-      title: 'Posisi Terbuka',
+      title: "Posisi Terbuka",
       value: stats.openPositions,
       icon: Briefcase,
-      color: 'bg-indigo-500',
-      bgColor: 'bg-indigo-50',
-      textColor: 'text-indigo-600'
+      color: "bg-indigo-500",
+      bgColor: "bg-indigo-50",
+      textColor: "text-indigo-600",
     },
     {
-      title: 'Kandidat Aktif',
+      title: "Kandidat Aktif",
       value: stats.inPipeline,
       icon: Clock,
-      color: 'bg-amber-500',
-      bgColor: 'bg-amber-50',
-      textColor: 'text-amber-600'
+      color: "bg-amber-500",
+      bgColor: "bg-amber-50",
+      textColor: "text-amber-600",
     },
     {
-      title: 'Interview (7 Hari)',
+      title: "Interview (7 Hari)",
       value: stats.upcomingInterview,
       icon: Calendar,
-      color: 'bg-emerald-500',
-      bgColor: 'bg-emerald-50',
-      textColor: 'text-emerald-600'
+      color: "bg-emerald-500",
+      bgColor: "bg-emerald-50",
+      textColor: "text-emerald-600",
     },
     {
-      title: 'Psikotes (7 Hari)',
+      title: "Psikotes (7 Hari)",
       value: stats.upcomingPsikotes,
       icon: Calendar,
-      color: 'bg-purple-500',
-      bgColor: 'bg-purple-50',
-      textColor: 'text-purple-600'
-    }
+      color: "bg-purple-500",
+      bgColor: "bg-purple-50",
+      textColor: "text-purple-600",
+    },
   ];
 
   const dismissNewCandidate = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     const updated = [...dismissedNewCandidates, id];
     setDismissedNewCandidates(updated);
-    localStorage.setItem('dismissedNewCandidates', JSON.stringify(updated));
-    setNewCandidatesList(prev => prev.filter(cand => cand.recordId !== id));
+    localStorage.setItem("dismissedNewCandidates", JSON.stringify(updated));
+    setNewCandidatesList((prev) => prev.filter((cand) => cand.recordId !== id));
   };
 
   if (loading && stats.totalApplications === 0) {
@@ -394,18 +547,21 @@ export default function Dashboard() {
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
         <div className="space-y-1">
-          <h1 className="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">
+          <h1 className="text-4xl font-extrabold tracking-tight text-[#3D2C44]">
             Dashboard
           </h1>
-          <p className="text-sm font-medium text-slate-500 max-w-xl">
+          <p className="text-sm font-medium text-[#3D2C44]/70 max-w-xl">
             Ringkasan aktivitas rekrutmen dan status kandidat.
           </p>
         </div>
         <button
-          onClick={() => navigate('/funnel')}
+          onClick={() => navigate("/funnel")}
           className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:shadow-xl hover:shadow-indigo-300 hover:-translate-y-1 transition-all flex items-center gap-2 group"
         >
-          <BarChart3 size={20} className="group-hover:scale-110 transition-transform" />
+          <BarChart3
+            size={20}
+            className="group-hover:scale-110 transition-transform"
+          />
           Recruitment Funnel
         </button>
       </div>
@@ -413,9 +569,12 @@ export default function Dashboard() {
       {/* Panel Pencarian & Filter */}
       <div className="bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row gap-4 mb-6">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-          <input 
-            type="text" 
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            size={18}
+          />
+          <input
+            type="text"
             placeholder="Cari kandidat..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -423,17 +582,19 @@ export default function Dashboard() {
           />
         </div>
         <div className="flex flex-col sm:flex-row gap-4">
-          <select 
+          <select
             value={selectedPosition}
             onChange={(e) => setSelectedPosition(e.target.value)}
             className="w-full sm:w-auto px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
           >
             <option value="all">Semua Posisi</option>
-            {positions.map(pos => (
-              <option key={pos} value={pos}>{pos}</option>
+            {positions.map((pos) => (
+              <option key={pos} value={pos}>
+                {pos}
+              </option>
             ))}
           </select>
-          <select 
+          <select
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
             className="w-full sm:w-auto px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
@@ -443,34 +604,43 @@ export default function Dashboard() {
             <option value="30days">30 Hari Terakhir</option>
             <option value="this_month">Bulan Ini</option>
           </select>
-          <button 
+          <button
             onClick={handleReset}
             className="px-4 py-2.5 text-sm font-bold text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm whitespace-nowrap"
           >
             Reset
           </button>
-          <button 
-            onClick={() => setRefreshTrigger(prev => prev + 1)}
+          <button
+            onClick={() => setRefreshTrigger((prev) => prev + 1)}
             className="p-2.5 text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm flex items-center justify-center"
             title="Refresh Data"
           >
-            <RefreshCcw size={20} className={loading ? 'animate-spin' : ''} />
+            <RefreshCcw size={20} className={loading ? "animate-spin" : ""} />
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {statCards.map((stat, index) => (
-          <div 
+          <div
             key={index}
             className="bg-white/70 backdrop-blur-md p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 transition-all hover:-translate-y-1 hover:shadow-md"
           >
-            <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center shrink-0", stat.bgColor)}>
+            <div
+              className={cn(
+                "w-14 h-14 rounded-2xl flex items-center justify-center shrink-0",
+                stat.bgColor,
+              )}
+            >
               <stat.icon className={stat.textColor} size={28} />
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">{stat.title}</p>
-              <h3 className="text-3xl font-black text-slate-900 mt-1">{stat.value}</h3>
+              <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+                {stat.title}
+              </p>
+              <h3 className="text-3xl font-black text-slate-900 mt-1">
+                {stat.value}
+              </h3>
             </div>
           </div>
         ))}
@@ -484,61 +654,88 @@ export default function Dashboard() {
             Top 5 Kandidat Terkuat
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Object.entries(topCandidatesByPosition).map(([pos, topCands]: [string, any]) => (
-              <div key={pos} className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                <div className="bg-gradient-to-r from-indigo-50 to-white border-b border-slate-100 p-5">
-                  <h3 className="font-bold text-slate-800 text-lg">{pos}</h3>
-                  <p className="text-xs text-slate-500 mt-1">Berdasarkan skor assessment tertinggi</p>
-                </div>
-                <div className="divide-y divide-slate-100 flex-1">
-                  {topCands.map((c, idx) => (
-                    <div 
-                      key={c.id} 
-                      onClick={() => navigate(`/candidates/${c.id}`)}
-                      className={cn(
-                        "p-4 flex items-center justify-between cursor-pointer transition-all duration-300 group border-l-4 relative overflow-x-auto custom-scrollbar hover:scale-[1.02] hover:shadow-md hover:z-10",
-                        idx === 0 ? "bg-amber-50/50 hover:bg-amber-50 border-amber-400" : 
-                        idx === 1 ? "bg-slate-50/80 hover:bg-slate-100 border-slate-300" : 
-                        idx === 2 ? "bg-orange-50/30 hover:bg-orange-50 border-orange-300" : 
-                        "bg-white hover:bg-slate-50 border-transparent"
-                      )}
-                    >
-                      <div className="flex items-center gap-4 min-w-max">
-                        <div className={cn(
-                          "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0",
-                          idx === 0 ? "bg-amber-100 text-amber-700" : 
-                          idx === 1 ? "bg-slate-200 text-slate-700" : 
-                          idx === 2 ? "bg-orange-100 text-orange-800" : 
-                          "bg-indigo-50 text-indigo-600"
-                        )}>
-                          {idx + 1}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-bold text-sm text-slate-900 whitespace-nowrap group-hover:text-indigo-600 transition-colors">{c.full_name}</p>
-                            {idx < 3 && (
-                              <div className={cn(
-                                "px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm border",
-                                idx === 0 ? "bg-amber-100 text-amber-700 border-amber-200" :
-                                idx === 1 ? "bg-slate-100 text-slate-700 border-slate-200" :
-                                "bg-orange-100 text-orange-700 border-orange-200"
-                              )}>
-                                Top {idx + 1}
-                              </div>
+            {Object.entries(topCandidatesByPosition).map(
+              ([pos, topCands]: [string, any]) => (
+                <div
+                  key={pos}
+                  className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col"
+                >
+                  <div className="bg-gradient-to-r from-indigo-50 to-white border-b border-slate-100 p-5">
+                    <h3 className="font-bold text-slate-800 text-lg">{pos}</h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Berdasarkan skor assessment tertinggi
+                    </p>
+                  </div>
+                  <div className="divide-y divide-slate-100 flex-1">
+                    {topCands.map((c, idx) => (
+                      <div
+                        key={c.id}
+                        onClick={() => navigate(`/candidates/${c.id}`)}
+                        className={cn(
+                          "p-4 flex items-center justify-between cursor-pointer transition-all duration-300 group border-l-4 relative overflow-x-auto custom-scrollbar hover:scale-[1.02] hover:shadow-md hover:z-10",
+                          idx === 0
+                            ? "bg-amber-50/50 hover:bg-amber-50 border-amber-400"
+                            : idx === 1
+                              ? "bg-slate-50/80 hover:bg-slate-100 border-slate-300"
+                              : idx === 2
+                                ? "bg-orange-50/30 hover:bg-orange-50 border-orange-300"
+                                : "bg-white hover:bg-slate-50 border-transparent",
+                        )}
+                      >
+                        <div className="flex items-center gap-4 min-w-max">
+                          <div
+                            className={cn(
+                              "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0",
+                              idx === 0
+                                ? "bg-amber-100 text-amber-700"
+                                : idx === 1
+                                  ? "bg-slate-200 text-slate-700"
+                                  : idx === 2
+                                    ? "bg-orange-100 text-orange-800"
+                                    : "bg-indigo-50 text-indigo-600",
                             )}
+                          >
+                            {idx + 1}
                           </div>
-                          <p className="text-xs text-slate-500 whitespace-nowrap">{c.email}</p>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-bold text-sm text-slate-900 whitespace-nowrap group-hover:text-indigo-600 transition-colors">
+                                {c.full_name}
+                              </p>
+                              {idx < 3 && (
+                                <div
+                                  className={cn(
+                                    "px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm border",
+                                    idx === 0
+                                      ? "bg-amber-100 text-amber-700 border-amber-200"
+                                      : idx === 1
+                                        ? "bg-slate-100 text-slate-700 border-slate-200"
+                                        : "bg-orange-100 text-orange-700 border-orange-200",
+                                  )}
+                                >
+                                  Top {idx + 1}
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-500 whitespace-nowrap">
+                              {c.email}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end shrink-0 ml-4 min-w-max">
+                          <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400">
+                            Skor
+                          </span>
+                          <span className="font-bold text-indigo-600 text-lg">
+                            {c.assessment_score || 0}
+                          </span>
                         </div>
                       </div>
-                      <div className="flex flex-col items-end shrink-0 ml-4 min-w-max">
-                        <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400">Skor</span>
-                        <span className="font-bold text-indigo-600 text-lg">{c.assessment_score || 0}</span>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ),
+            )}
           </div>
         </div>
       )}
@@ -551,61 +748,88 @@ export default function Dashboard() {
             Top 5 Rata-rata Asesmen Detail
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Object.entries(topCandidatesByDetailed).map(([pos, topCands]: [string, any]) => (
-              <div key={pos} className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                <div className="bg-gradient-to-r from-indigo-50 to-white border-b border-slate-100 p-5">
-                  <h3 className="font-bold text-slate-800 text-lg">{pos}</h3>
-                  <p className="text-xs text-slate-500 mt-1">Berdasarkan rata-rata 6 kriteria asesmen</p>
-                </div>
-                <div className="divide-y divide-slate-100 flex-1">
-                  {topCands.map((c, idx) => (
-                    <div 
-                      key={c.id} 
-                      onClick={() => navigate(`/candidates/${c.id}`)}
-                      className={cn(
-                        "p-4 flex items-center justify-between cursor-pointer transition-all duration-300 group border-l-4 relative overflow-x-auto custom-scrollbar hover:scale-[1.02] hover:shadow-md hover:z-10",
-                        idx === 0 ? "bg-indigo-50/50 hover:bg-indigo-50 border-indigo-400" : 
-                        idx === 1 ? "bg-slate-50/80 hover:bg-slate-100 border-slate-300" : 
-                        idx === 2 ? "bg-blue-50/30 hover:bg-blue-50 border-blue-300" : 
-                        "bg-white hover:bg-slate-50 border-transparent"
-                      )}
-                    >
-                      <div className="flex items-center gap-4 min-w-max">
-                        <div className={cn(
-                          "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0",
-                          idx === 0 ? "bg-indigo-100 text-indigo-700" : 
-                          idx === 1 ? "bg-slate-200 text-slate-700" : 
-                          idx === 2 ? "bg-blue-100 text-blue-800" : 
-                          "bg-slate-50 text-slate-600"
-                        )}>
-                          {idx + 1}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-bold text-sm text-slate-900 whitespace-nowrap group-hover:text-indigo-600 transition-colors">{c.full_name}</p>
-                            {idx < 3 && (
-                              <div className={cn(
-                                "px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm border",
-                                idx === 0 ? "bg-indigo-100 text-indigo-700 border-indigo-200" :
-                                idx === 1 ? "bg-slate-100 text-slate-700 border-slate-200" :
-                                "bg-blue-100 text-blue-700 border-blue-200"
-                              )}>
-                                Top {idx + 1}
-                              </div>
+            {Object.entries(topCandidatesByDetailed).map(
+              ([pos, topCands]: [string, any]) => (
+                <div
+                  key={pos}
+                  className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col"
+                >
+                  <div className="bg-gradient-to-r from-indigo-50 to-white border-b border-slate-100 p-5">
+                    <h3 className="font-bold text-slate-800 text-lg">{pos}</h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Berdasarkan rata-rata 6 kriteria asesmen
+                    </p>
+                  </div>
+                  <div className="divide-y divide-slate-100 flex-1">
+                    {topCands.map((c, idx) => (
+                      <div
+                        key={c.id}
+                        onClick={() => navigate(`/candidates/${c.id}`)}
+                        className={cn(
+                          "p-4 flex items-center justify-between cursor-pointer transition-all duration-300 group border-l-4 relative overflow-x-auto custom-scrollbar hover:scale-[1.02] hover:shadow-md hover:z-10",
+                          idx === 0
+                            ? "bg-indigo-50/50 hover:bg-indigo-50 border-indigo-400"
+                            : idx === 1
+                              ? "bg-slate-50/80 hover:bg-slate-100 border-slate-300"
+                              : idx === 2
+                                ? "bg-blue-50/30 hover:bg-blue-50 border-blue-300"
+                                : "bg-white hover:bg-slate-50 border-transparent",
+                        )}
+                      >
+                        <div className="flex items-center gap-4 min-w-max">
+                          <div
+                            className={cn(
+                              "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0",
+                              idx === 0
+                                ? "bg-indigo-100 text-indigo-700"
+                                : idx === 1
+                                  ? "bg-slate-200 text-slate-700"
+                                  : idx === 2
+                                    ? "bg-blue-100 text-blue-800"
+                                    : "bg-slate-50 text-slate-600",
                             )}
+                          >
+                            {idx + 1}
                           </div>
-                          <p className="text-xs text-slate-500 whitespace-nowrap">{c.email}</p>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-bold text-sm text-slate-900 whitespace-nowrap group-hover:text-indigo-600 transition-colors">
+                                {c.full_name}
+                              </p>
+                              {idx < 3 && (
+                                <div
+                                  className={cn(
+                                    "px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm border",
+                                    idx === 0
+                                      ? "bg-indigo-100 text-indigo-700 border-indigo-200"
+                                      : idx === 1
+                                        ? "bg-slate-100 text-slate-700 border-slate-200"
+                                        : "bg-blue-100 text-blue-700 border-blue-200",
+                                  )}
+                                >
+                                  Top {idx + 1}
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-500 whitespace-nowrap">
+                              {c.email}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end shrink-0 ml-4 min-w-max">
+                          <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400">
+                            Rata-rata
+                          </span>
+                          <span className="font-bold text-indigo-600 text-lg">
+                            {c.detailed_average || 0}
+                          </span>
                         </div>
                       </div>
-                      <div className="flex flex-col items-end shrink-0 ml-4 min-w-max">
-                        <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400">Rata-rata</span>
-                        <span className="font-bold text-indigo-600 text-lg">{c.detailed_average || 0}</span>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ),
+            )}
           </div>
         </div>
       )}
@@ -623,12 +847,24 @@ export default function Dashboard() {
               {upcomingNotifications.length > 0 ? (
                 upcomingNotifications.map((notif, i) => {
                   return (
-                    <div 
-                      key={notif.id} 
-                      onClick={() => navigate(`/${notif.path}`, { state: { highlightId: notif.recordId, status: notif.status } })}
+                    <div
+                      key={notif.id}
+                      onClick={() =>
+                        navigate(`/${notif.path}`, {
+                          state: {
+                            highlightId: notif.recordId,
+                            status: notif.status,
+                          },
+                        })
+                      }
                       className="flex items-start gap-4 p-4 rounded-xl transition-all cursor-pointer border bg-white border-indigo-100 shadow-sm hover:border-indigo-300 hover:shadow-md"
                     >
-                      <div className={cn("w-12 h-12 rounded-full flex items-center justify-center shrink-0", notif.bgColor)}>
+                      <div
+                        className={cn(
+                          "w-12 h-12 rounded-full flex items-center justify-center shrink-0",
+                          notif.bgColor,
+                        )}
+                      >
                         <notif.icon size={24} className={notif.color} />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -636,12 +872,18 @@ export default function Dashboard() {
                           {notif.title}
                         </p>
                         <p className="text-sm text-slate-600 truncate mt-0.5">
-                          <span className="font-bold text-slate-800">{notif.name}</span> • {notif.position}
+                          <span className="font-bold text-slate-800">
+                            {notif.name}
+                          </span>{" "}
+                          • {notif.position}
                         </p>
                       </div>
                       <div className="flex flex-col items-end shrink-0 ml-4">
                         <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg">
-                          {notif.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {notif.date.toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                         </span>
                         <span className="text-[10px] font-medium text-slate-400 mt-1">
                           {notif.date.toLocaleDateString()}
@@ -653,8 +895,12 @@ export default function Dashboard() {
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-center text-slate-500">
                   <CheckCircle2 size={40} className="text-emerald-300 mb-3" />
-                  <p className="font-medium text-slate-600">Tidak ada jadwal dalam 24 jam kedepan</p>
-                  <p className="text-sm text-slate-400 mt-1">Semua jadwal sudah diselesaikan atau belum ada jadwal baru.</p>
+                  <p className="font-medium text-slate-600">
+                    Tidak ada jadwal dalam 24 jam kedepan
+                  </p>
+                  <p className="text-sm text-slate-400 mt-1">
+                    Semua jadwal sudah diselesaikan atau belum ada jadwal baru.
+                  </p>
                 </div>
               )}
             </div>
@@ -663,32 +909,51 @@ export default function Dashboard() {
 
         <div className="bg-white/70 backdrop-blur-md p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[400px]">
           <div className="flex items-center justify-between mb-4 shrink-0">
-            <h3 className="text-lg font-bold text-slate-900">10 Aktivitas Terbaru</h3>
+            <h3 className="text-lg font-bold text-slate-900">
+              10 Aktivitas Terbaru
+            </h3>
           </div>
           <div className="space-y-3 overflow-y-auto pr-2 flex-1 custom-scrollbar">
             {recentActivities.length > 0 ? (
               recentActivities.map((activity, i) => {
                 const isHighlight = i < 3;
                 return (
-                  <div 
-                    key={activity.id} 
-                    onClick={() => navigate(`/${activity.path}`, { state: { highlightId: activity.recordId } })}
+                  <div
+                    key={activity.id}
+                    onClick={() =>
+                      navigate(`/${activity.path}`, {
+                        state: { highlightId: activity.recordId },
+                      })
+                    }
                     className={cn(
                       "flex items-start gap-4 p-3 rounded-xl transition-all cursor-pointer border",
-                      isHighlight 
-                        ? "bg-white border-indigo-100 shadow-sm hover:border-indigo-300 hover:shadow-md" 
-                        : "bg-slate-50/50 border-transparent hover:bg-slate-50 hover:border-slate-200"
+                      isHighlight
+                        ? "bg-white border-indigo-100 shadow-sm hover:border-indigo-300 hover:shadow-md"
+                        : "bg-slate-50/50 border-transparent hover:bg-slate-50 hover:border-slate-200",
                     )}
                   >
-                    <div className={cn("w-10 h-10 rounded-full flex items-center justify-center shrink-0", activity.bgColor)}>
+                    <div
+                      className={cn(
+                        "w-10 h-10 rounded-full flex items-center justify-center shrink-0",
+                        activity.bgColor,
+                      )}
+                    >
                       <activity.icon size={18} className={activity.color} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={cn("text-sm font-bold truncate", isHighlight ? "text-slate-900" : "text-slate-700")}>
+                      <p
+                        className={cn(
+                          "text-sm font-bold truncate",
+                          isHighlight ? "text-slate-900" : "text-slate-700",
+                        )}
+                      >
                         {activity.title}
                       </p>
                       <p className="text-xs text-slate-500 truncate">
-                        <span className="font-medium text-slate-700">{activity.name}</span> • {activity.position}
+                        <span className="font-medium text-slate-700">
+                          {activity.name}
+                        </span>{" "}
+                        • {activity.position}
                       </p>
                     </div>
                     <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap pt-1">
@@ -717,12 +982,21 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto pr-2 flex-1 custom-scrollbar content-start">
           {newCandidatesList.length > 0 ? (
             newCandidatesList.map((cand) => (
-              <div 
-                key={cand.id} 
-                onClick={() => navigate(`/${cand.path}`, { state: { highlightId: cand.recordId } })}
+              <div
+                key={cand.id}
+                onClick={() =>
+                  navigate(`/${cand.path}`, {
+                    state: { highlightId: cand.recordId },
+                  })
+                }
                 className="flex items-start gap-4 p-4 rounded-xl transition-all cursor-pointer border bg-white border-blue-100 shadow-sm hover:border-blue-300 hover:shadow-md group h-fit"
               >
-                <div className={cn("w-12 h-12 rounded-full flex items-center justify-center shrink-0", cand.bgColor)}>
+                <div
+                  className={cn(
+                    "w-12 h-12 rounded-full flex items-center justify-center shrink-0",
+                    cand.bgColor,
+                  )}
+                >
                   <cand.icon size={24} className={cand.color} />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -730,14 +1004,17 @@ export default function Dashboard() {
                     {cand.title}
                   </p>
                   <p className="text-sm text-slate-600 truncate mt-0.5">
-                    <span className="font-bold text-slate-800">{cand.name}</span> • {cand.position}
+                    <span className="font-bold text-slate-800">
+                      {cand.name}
+                    </span>{" "}
+                    • {cand.position}
                   </p>
                 </div>
                 <div className="flex flex-col items-end shrink-0 ml-4">
                   <span className="text-[10px] font-medium text-slate-400 mt-1 mb-2">
                     {formatDate(cand.date.toISOString())}
                   </span>
-                  <button 
+                  <button
                     onClick={(e) => dismissNewCandidate(e, cand.recordId)}
                     className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md hover:bg-red-50 opacity-0 group-hover:opacity-100"
                     title="Hapus aktivitas"
@@ -750,8 +1027,12 @@ export default function Dashboard() {
           ) : (
             <div className="col-span-full flex flex-col items-center justify-center h-full text-center text-slate-500 min-h-[200px]">
               <Users size={40} className="text-slate-300 mb-3" />
-              <p className="font-medium text-slate-600">Tidak ada kandidat baru</p>
-              <p className="text-sm text-slate-400 mt-1">Semua kandidat baru sudah dilihat atau dihapus.</p>
+              <p className="font-medium text-slate-600">
+                Tidak ada kandidat baru
+              </p>
+              <p className="text-sm text-slate-400 mt-1">
+                Semua kandidat baru sudah dilihat atau dihapus.
+              </p>
             </div>
           )}
         </div>
