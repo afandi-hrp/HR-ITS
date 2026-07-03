@@ -212,6 +212,7 @@ app.use((req: any, res, next) => {
         interview_schedules, 
         candidate_assignees,
         ai_cv_analysis,
+        career_fit_recommendation,
         psikotes_result_url,
         source_info,
         director_status,
