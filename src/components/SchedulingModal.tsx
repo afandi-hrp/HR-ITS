@@ -119,6 +119,7 @@ export default function SchedulingModal({ candidate, type, initialData, onClose,
     if (result.error) {
       toast({ title: 'Error', description: result.error.message, variant: 'destructive' });
     } else {
+
       toast({ 
         title: 'Berhasil', 
         description: `Jadwal ${type === 'psikotes' ? 'Psikotes' : 'Interview'} telah ${initialData ? 'diperbarui' : 'disimpan'}.` 

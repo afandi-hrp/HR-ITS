@@ -59,13 +59,17 @@ export default function App() {
       }
       setSession(session);
       if (session?.user) {
-        supabase.from('profiles').select('*').eq('id', session.user.id).single().then(({ data }) => {
-          setProfile(data);
-          setLoading(false);
-        }).catch((err) => {
-          console.warn('Failed to load profile (1):', err);
-          setLoading(false);
-        });
+        const fetchProfile1 = async () => {
+          try {
+            const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+            setProfile(data);
+            setLoading(false);
+          } catch (err) {
+            console.warn('Failed to load profile (1):', err);
+            setLoading(false);
+          }
+        };
+        fetchProfile1();
       } else {
         setLoading(false);
       }
@@ -97,32 +101,40 @@ export default function App() {
       }
       setSession(session);
       if (session?.user) {
-        supabase.from('profiles').select('*').eq('id', session.user.id).single().then(({ data }) => {
-          setProfile(data);
-        }).catch((err) => {
-          console.warn('Failed to load profile (2):', err);
-        });
+        const fetchProfile2 = async () => {
+          try {
+            const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+            setProfile(data);
+          } catch (err) {
+            console.warn('Failed to load profile (2):', err);
+          }
+        };
+        fetchProfile2();
       } else {
         setProfile(null);
       }
     });
 
     // Fetch site settings for favicon
-    supabase.from('site_settings').select('favicon_url').eq('id', 1).single().then(({ data }) => {
-      if (data?.favicon_url) {
-        const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
-        if (link) {
-          link.href = data.favicon_url;
-        } else {
-          const newLink = document.createElement('link');
-          newLink.rel = 'icon';
-          newLink.href = data.favicon_url;
-          document.head.appendChild(newLink);
+    const fetchSettings = async () => {
+      try {
+        const { data } = await supabase.from('site_settings').select('favicon_url').eq('id', 1).single();
+        if (data?.favicon_url) {
+          const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+          if (link) {
+            link.href = data.favicon_url;
+          } else {
+            const newLink = document.createElement('link');
+            newLink.rel = 'icon';
+            newLink.href = data.favicon_url;
+            document.head.appendChild(newLink);
+          }
         }
+      } catch (err) {
+        console.warn('Failed to fetch favicon settings:', err);
       }
-    }).catch((err) => {
-      console.warn('Failed to fetch favicon settings:', err);
-    });
+    };
+    fetchSettings();
 
     return () => subscription.unsubscribe();
   }, []);

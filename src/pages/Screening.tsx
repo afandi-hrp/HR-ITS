@@ -122,22 +122,26 @@ export default function Screening() {
   const [profile, setProfile] = useState<any>(null);
 
   useEffect(() => {
-    supabase.auth
-      .getUser()
-      .then(({ data: { user } }) => {
+    const fetchUserAndProfile = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", user.id)
-            .single()
-            .then(({ data }) => {
-              if (data) setProfile(data);
-            })
-            .catch((err) => console.warn("Failed to get profile:", err));
+          try {
+            const { data } = await supabase
+              .from("profiles")
+              .select("*")
+              .eq("id", user.id)
+              .single();
+            if (data) setProfile(data);
+          } catch (err) {
+            console.warn("Failed to get profile:", err);
+          }
         }
-      })
-      .catch((err) => console.warn("Failed to get user:", err));
+      } catch (err) {
+        console.warn("Failed to get user:", err);
+      }
+    };
+    fetchUserAndProfile();
   }, []);
 
   useEffect(() => {
@@ -163,7 +167,7 @@ export default function Screening() {
     let query = supabase
       .from("candidates")
       .select(selectQuery, { count: "exact" })
-      .order("created_at", { ascending: false });
+      .order("updated_at", { ascending: false });
 
     if (profile.role === "USER_MANAGER" || profile.role === "DIRECTOR" || profile.role === "FINANCE_DIRECTOR") {
       query = query.eq("filter_assignees.user_id", profile.id);
@@ -301,7 +305,10 @@ export default function Screening() {
       // Set status to rejected first so it's recorded as rejected in the log
       const { error: updateError } = await supabase
         .from("candidates")
-        .update({ status_screening: "rejected" })
+        .update({ 
+          status_screening: "rejected",
+          updated_at: new Date().toISOString()
+        })
         .eq("id", rejectModalData.id);
 
       if (updateError) throw updateError;
@@ -465,14 +472,18 @@ export default function Screening() {
         setRejectModalData(candidate);
         setSendRejectEmail(false);
         setSelectedRejectTemplate("");
-        supabase
-          .from("email_templates")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .then(({ data }) => {
+        const fetchTemplates = async () => {
+          try {
+            const { data } = await supabase
+              .from("email_templates")
+              .select("*")
+              .order("created_at", { ascending: false });
             if (data) setRejectEmailTemplates(data);
-          })
-          .catch((err) => console.warn("Failed to fetch templates:", err));
+          } catch (err) {
+            console.warn("Failed to fetch templates:", err);
+          }
+        };
+        fetchTemplates();
       }
       return;
     }
@@ -501,7 +512,10 @@ export default function Screening() {
     try {
       const { error } = await supabase
         .from("candidates")
-        .update({ status_screening: "accepted" })
+        .update({ 
+          status_screening: "accepted",
+          updated_at: new Date().toISOString()
+        })
         .eq("id", acceptModalData.id);
 
       if (error) {
@@ -531,7 +545,10 @@ export default function Screening() {
       // Set status to hired first
       const { error: updateError } = await supabase
         .from("candidates")
-        .update({ status_screening: "hired" })
+        .update({ 
+          status_screening: "hired",
+          updated_at: new Date().toISOString()
+        })
         .eq("id", hireModalData.id);
 
       if (updateError) throw updateError;
@@ -623,6 +640,7 @@ export default function Screening() {
           teamwork_score: assessmentScores.teamwork_score,
           leadership_score: assessmentScores.leadership_score,
           adaptability_score: assessmentScores.adaptability_score,
+          updated_at: new Date().toISOString(),
         })
         .eq("id", assessmentModalData.id);
 

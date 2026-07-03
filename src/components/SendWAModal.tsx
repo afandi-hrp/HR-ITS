@@ -188,7 +188,7 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
             
           await supabase
             .from('candidates')
-            .update({ confirmation_token: selectedToken })
+            .update({ confirmation_token: selectedToken, updated_at: new Date().toISOString() })
             .eq('id', candidate.id);
         }
       }

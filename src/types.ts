@@ -4,6 +4,7 @@ export interface Profile {
   avatar_url: string | null;
   role?: 'HR_ADMIN' | 'USER_MANAGER' | 'DIRECTOR' | 'FINANCE_DIRECTOR' | string;
   department?: string | null;
+  phone?: string | null;
 }
 
 export interface Candidate {
@@ -47,6 +48,7 @@ export interface Candidate {
   ai_psikotes_summary?: any | null;
   ai_interview_questions?: any | null;
   ai_cv_analysis?: string | null;
+  career_fit_recommendation?: string | null;
   psikotes_result_url?: string | null;
   source_info?: string | null;
   external_data?: { raw_data: any } | null;

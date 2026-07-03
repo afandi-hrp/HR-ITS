@@ -49,7 +49,7 @@ export default function OpenRecruitment() {
       let query = supabase
         .from("open_recruitment")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("position", { ascending: true });
 
       if (search) {
         query = query.ilike("position", `%${search}%`);

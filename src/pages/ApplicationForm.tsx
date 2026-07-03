@@ -730,6 +730,10 @@ export default function ApplicationForm({
     if (!sigCanvas.current || sigCanvas.current.isEmpty()) {
       errors.push("Tanda tangan deklarasi (Pelamar) wajib diisi.");
     }
+    if (!hideSalary && payslipFiles.length === 0) {
+      errors.push("Lampiran slip gaji terakhir wajib diunggah.");
+    }
+
     if (
       !hideSalary &&
       (!remunerationSigCanvas.current ||
@@ -905,12 +909,13 @@ export default function ApplicationForm({
     // Bahasa Asing / Daerah
     formData.languages.forEach((lang, index) => {
       const hasAnyValue =
-        lang.name?.trim() || lang.spoken?.trim() || lang.written?.trim();
+        lang.language?.trim() || lang.speaking?.trim() || lang.writing?.trim() || lang.reading?.trim();
       if (hasAnyValue) {
         if (
-          !lang.name?.trim() ||
-          !lang.spoken?.trim() ||
-          !lang.written?.trim()
+          !lang.language?.trim() ||
+          !lang.speaking?.trim() ||
+          !lang.writing?.trim() ||
+          !lang.reading?.trim()
         ) {
           errors.push(
             `Bahasa Asing / Daerah: Pada baris ke-${index + 1}, seluruh kolom harus diisi jika salah satu diisi.`,
@@ -4570,7 +4575,7 @@ export default function ApplicationForm({
                   </div>
 
                   {/* Section VI: Dokumen Kelengkapan */}
-                  <div>
+                  <div className="print:break-before-page">
                     <h2 className="text-lg font-bold text-slate-900 mb-4 bg-slate-100 py-2 px-4 rounded-lg">
                       VI. DOKUMEN KELENGKAPAN{" "}
                       <span className="text-slate-500 font-normal italic">
@@ -4849,8 +4854,7 @@ export default function ApplicationForm({
 
             {readOnly && (
               <div
-                className="w-full block max-w-4xl mx-auto bg-white p-4 sm:p-8 mt-8 border-t-4 border-slate-100 print:border-none"
-                style={{ pageBreakBefore: "always" }}
+                className="w-full block max-w-4xl mx-auto bg-white p-4 sm:p-8 mt-8 border-t-4 border-slate-100 print:border-none print:break-before-page"
               >
                 <h2 className="text-xl font-bold text-slate-900 mb-6 border-b pb-2">
                   LAMPIRAN DOKUMEN
@@ -5034,9 +5038,7 @@ export default function ApplicationForm({
                 <div className="space-y-2">
                   <label className="block text-sm font-bold text-slate-700">
                     Upload Slip Gaji Terakhir{" "}
-                    <span className="text-slate-400 font-normal italic">
-                      *Diisi jika ada
-                    </span>{" "}
+                    {!readOnly && <span className="text-red-500">*</span>}{" "}
                     {!readOnly && (
                       <span className="text-xs text-red-500">
                         *Maks. 2 File, masing-masing 3MB
@@ -5186,8 +5188,7 @@ export default function ApplicationForm({
 
         {readOnly && !hideSalary && initialData?.payslip_url && (
           <div
-            className="w-full block max-w-4xl mx-auto bg-white p-4 sm:p-8 mt-8 border-t-4 border-slate-100 print:border-none"
-            style={{ pageBreakBefore: "always" }}
+            className="w-full block max-w-4xl mx-auto bg-white p-4 sm:p-8 mt-8 border-t-4 border-slate-100 print:border-none print:break-before-page"
           >
             <h2 className="text-xl font-bold text-slate-900 mb-6 border-b pb-2">
               LAMPIRAN SLIP GAJI

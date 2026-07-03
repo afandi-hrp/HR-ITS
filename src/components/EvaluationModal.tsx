@@ -200,6 +200,7 @@ export default function EvaluationModal({ isOpen, onClose, candidateId, onSucces
         toast({ title: 'Berhasil', description: 'Hasil evaluasi berhasil disimpan' });
       }
 
+
       onSuccess();
       onClose();
     } catch (error: any) {

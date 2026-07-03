@@ -80,6 +80,31 @@ export default function CandidateArchive() {
         }
         return d;
       });
+
+      try {
+        const { data: blacklistData } = await supabase
+          .from("blacklisted_candidates")
+          .select("email, phone, identity_number, reason");
+
+        if (blacklistData && blacklistData.length > 0) {
+          data = data.map((d) => {
+            const nik = d.external_data?.raw_data?.identity_number;
+            const blacklistedRecord = blacklistData.find(
+              (b) =>
+                (b.email && b.email === d.email) ||
+                (b.phone && b.phone === d.phone) ||
+                (nik && b.identity_number && b.identity_number === nik),
+            );
+            return {
+              ...d,
+              is_blacklisted: !!blacklistedRecord,
+              blacklist_reason: blacklistedRecord?.reason,
+            };
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching blacklist:", err);
+      }
     }
 
     if (error) {
@@ -236,14 +261,27 @@ export default function CandidateArchive() {
                       )}
                     </Link>
                     <div className="min-w-0">
-                      <h3 className="text-base font-bold text-slate-900 truncate">
-                        <Link
-                          to={`/candidates/${log.id}`}
-                          className="hover:text-indigo-600 transition-colors"
-                        >
-                          {log.full_name}
-                        </Link>
-                      </h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-bold text-slate-900 truncate">
+                          <Link
+                            to={`/candidates/${log.id}`}
+                            className="hover:text-indigo-600 transition-colors"
+                          >
+                            {log.full_name}
+                          </Link>
+                        </h3>
+                        {log.is_blacklisted && (
+                          <span
+                            className="px-1.5 py-0.5 bg-black text-white text-[10px] font-bold rounded shrink-0"
+                            title={
+                              log.blacklist_reason ||
+                              "Kandidat berada dalam daftar blacklist"
+                            }
+                          >
+                            BLACKLIST
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-slate-500 truncate">
                         {log.email}
                       </p>
@@ -361,14 +399,27 @@ export default function CandidateArchive() {
                         )}
                       </Link>
                       <div className="min-w-0">
-                        <h3 className="text-lg font-bold text-slate-900 truncate">
-                          <Link
-                            to={`/candidates/${log.id}`}
-                            className="hover:text-indigo-600 transition-colors"
-                          >
-                            {log.full_name}
-                          </Link>
-                        </h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-lg font-bold text-slate-900 truncate">
+                            <Link
+                              to={`/candidates/${log.id}`}
+                              className="hover:text-indigo-600 transition-colors"
+                            >
+                              {log.full_name}
+                            </Link>
+                          </h3>
+                          {log.is_blacklisted && (
+                            <span
+                              className="px-1.5 py-0.5 bg-black text-white text-[10px] font-bold rounded shrink-0"
+                              title={
+                                log.blacklist_reason ||
+                                "Kandidat berada dalam daftar blacklist"
+                              }
+                            >
+                              BLACKLIST
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-slate-500 font-medium">
                           {log.position}
                         </p>

@@ -46,14 +46,26 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
   const currentPath = location.pathname.substring(1) || 'dashboard';
 
   useEffect(() => {
-    supabase.from('site_settings').select('*').eq('id', 1).single().then(({ data }) => {
-      if (data) setSettings(data);
-    }).catch(err => console.warn('Failed to get site settings:', err));
+    const fetchData = async () => {
+      try {
+        const { data } = await supabase.from('site_settings').select('*').eq('id', 1).single();
+        if (data) setSettings(data);
+      } catch (err) {
+        console.warn('Failed to get site settings:', err);
+      }
+    };
+    fetchData();
     
     if (user) {
-      supabase.from('profiles').select('*').eq('id', user.id).single().then(({ data }) => {
-        if (data) setProfile(data);
-      }).catch(err => console.warn('Failed to get profile:', err));
+      const fetchProfile = async () => {
+        try {
+          const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+          if (data) setProfile(data);
+        } catch (err) {
+          console.warn('Failed to get profile:', err);
+        }
+      };
+      fetchProfile();
     }
   }, [user]);
 

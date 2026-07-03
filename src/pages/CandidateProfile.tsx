@@ -208,7 +208,6 @@ const formatAsNumberedList = (
           </h5>
           <ol
             className="list-decimal pl-4 space-y-1"
-            start={mainPoints.length + 1}
           >
             {conclusionPoints.map((point, idx) => (
               <li
@@ -329,6 +328,7 @@ export default function CandidateProfile() {
   const [isInterviewQuestionsExpanded, setIsInterviewQuestionsExpanded] =
     useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
   const [managers, setManagers] = useState<any[]>([]);
   const [selectedManagers, setSelectedManagers] = useState<string[]>([]);
   const [assigning, setAssigning] = useState(false);
@@ -355,9 +355,18 @@ export default function CandidateProfile() {
     setIsUpdatingApproval(true);
     try {
       const column = profile.role === 'DIRECTOR' ? 'director_status' : 'finance_status';
-      const { error } = await supabase
+      
+      const { data: activeData } = await supabase
         .from("candidates")
-        .update({ [column]: status })
+        .select("id")
+        .eq("id", candidate.id)
+        .maybeSingle();
+
+      const table = activeData ? "candidates" : "candidate_logs";
+
+      const { error } = await supabase
+        .from(table)
+        .update({ [column]: status, updated_at: new Date().toISOString() })
         .eq("id", candidate.id);
 
       if (error) throw error;
@@ -529,22 +538,26 @@ export default function CandidateProfile() {
   };
 
   useEffect(() => {
-    supabase.auth
-      .getUser()
-      .then(({ data: { user } }) => {
+    const fetchUserAndProfile = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", user.id)
-            .single()
-            .then(({ data }) => {
-              if (data) setProfile(data);
-            })
-            .catch((err) => console.warn("Failed to get profile:", err));
+          try {
+            const { data } = await supabase
+              .from("profiles")
+              .select("*")
+              .eq("id", user.id)
+              .single();
+            if (data) setProfile(data);
+          } catch (err) {
+            console.warn("Failed to get profile:", err);
+          }
         }
-      })
-      .catch((err) => console.warn("Failed to get user:", err));
+      } catch (err) {
+        console.warn("Failed to get user:", err);
+      }
+    };
+    fetchUserAndProfile();
   }, []);
 
   const formatValue = (val: any): string => {
@@ -716,12 +729,40 @@ export default function CandidateProfile() {
   const fetchManagers = async () => {
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, full_name, role, department")
+      .select("id, full_name, role, department, phone")
       .in("role", ["USER_MANAGER", "HR_ADMIN", "DIRECTOR", "FINANCE_DIRECTOR"])
       .order("full_name");
 
     if (data) {
       setManagers(data);
+    }
+  };
+
+  const handleUnassign = async (userId: string) => {
+    if (!id) return;
+    
+    try {
+      const { error } = await supabase
+        .from("candidate_assignees")
+        .delete()
+        .eq("candidate_id", id)
+        .eq("user_id", userId);
+
+      if (error) throw error;
+      
+      toast({
+        title: "Berhasil",
+        description: "Reviewer berhasil dihapus.",
+      });
+      
+      fetchCandidate(id);
+    } catch (error: any) {
+      console.error("Error unassigning:", error);
+      toast({
+        title: "Gagal",
+        description: "Gagal menghapus reviewer.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -756,6 +797,46 @@ export default function CandidateProfile() {
           .insert(inserts);
 
         if (error) throw error;
+
+        // Send WhatsApp notification to assigned users
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        for (const userId of selectedManagers) {
+          const manager = managers.find(m => m.id === userId);
+          if (manager && manager.phone) {
+            try {
+              await fetchWithRetry("/api/n8n/trigger", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${session?.access_token}`
+                },
+                body: JSON.stringify({
+                  type: 'wa',
+                  payload: {
+                    event: 'assign_candidate_notification',
+                    manager: {
+                      id: manager.id,
+                      name: manager.full_name,
+                      phone: manager.phone
+                    },
+                    candidate: {
+                      id: candidate?.id,
+                      full_name: candidate?.full_name,
+                      position: candidate?.position
+                    },
+                    whatsapp: {
+                      phone: manager.phone,
+                      body: `Halo ${manager.full_name},\n\nAnda telah di-assign untuk me-review kandidat:\n\nNama: ${candidate?.full_name}\nPosisi: ${candidate?.position}\n\nSilakan cek aplikasi untuk informasi lebih lanjut.`
+                    }
+                  }
+                })
+              });
+            } catch (e) {
+              console.error("Failed to send WA notification to manager", manager.full_name, e);
+            }
+          }
+        }
       }
 
       toast({
@@ -884,7 +965,7 @@ export default function CandidateProfile() {
 
       const { error } = await supabase
         .from(table)
-        .update({ linked_external_id: uid_sheet })
+        .update({ linked_external_id: uid_sheet, updated_at: new Date().toISOString() })
         .eq("id", id);
 
       if (error) throw error;
@@ -922,7 +1003,7 @@ export default function CandidateProfile() {
 
       const { error } = await supabase
         .from(table)
-        .update({ linked_external_id: null })
+        .update({ linked_external_id: null, updated_at: new Date().toISOString() })
         .eq("id", id);
 
       if (error) throw error;
@@ -1151,9 +1232,17 @@ export default function CandidateProfile() {
   const handleSaveInterviewQuestions = async () => {
     if (!candidate) return;
     try {
-      const { error } = await supabase
+      const { data: activeData } = await supabase
         .from("candidates")
-        .update({ ai_interview_questions: generatedQuestions })
+        .select("id")
+        .eq("id", candidate.id)
+        .maybeSingle();
+
+      const table = activeData ? "candidates" : "candidate_logs";
+
+      const { error } = await supabase
+        .from(table)
+        .update({ ai_interview_questions: generatedQuestions, updated_at: new Date().toISOString() })
         .eq("id", candidate.id);
 
       if (error) throw error;
@@ -1246,7 +1335,7 @@ export default function CandidateProfile() {
 
       const { error: updateError } = await supabase
         .from(table)
-        .update({ psikotes_result_url: publicUrl })
+        .update({ psikotes_result_url: publicUrl, updated_at: new Date().toISOString() })
         .eq("id", id);
 
       if (updateError) throw updateError;
@@ -1458,6 +1547,13 @@ export default function CandidateProfile() {
               {profile?.role !== "USER_MANAGER" && !isArchived && (
                 <>
                   <button
+                    onClick={() => setIsApprovalModalOpen(true)}
+                    className="px-4 py-2 bg-white text-[#3D2C44] border border-[#3D2C44] rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-2 text-sm font-medium"
+                  >
+                    <UserCheck size={16} />
+                    Approval & Review
+                  </button>
+                  <button
                     onClick={() => {
                       fetchManagers();
                       setIsAssignModalOpen(true);
@@ -1488,116 +1584,6 @@ export default function CandidateProfile() {
           </div>
         </div>
       </div>
-
-      {/* Approval Status Card */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-        <h3 className="font-bold text-[#3D2C44] mb-4">Status Approval Manajemen</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Director Approval */}
-          <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-xl">
-            <div>
-              <p className="text-sm font-medium text-slate-700">Approval Direktur</p>
-              <div className="mt-1 flex items-center gap-2">
-                <span className={cn(
-                  "px-2.5 py-1 text-xs font-bold rounded-full",
-                  candidate.director_status === 'accepted' ? 'bg-emerald-100 text-emerald-700' :
-                  candidate.director_status === 'rejected' ? 'bg-rose-100 text-rose-700' :
-                  candidate.director_status === 'hold' ? 'bg-amber-100 text-amber-700' :
-                  'bg-slate-200 text-slate-700'
-                )}>
-                  {(candidate.director_status || 'pending').toUpperCase()}
-                </span>
-              </div>
-            </div>
-            {profile?.role === "DIRECTOR" && (
-              <div className="flex gap-2">
-                <button onClick={() => handleUpdateApproval('accepted')} disabled={isUpdatingApproval} title="Terima" className="p-2 bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors shadow-sm"><ThumbsUp size={18} /></button>
-                <button onClick={() => handleUpdateApproval('hold')} disabled={isUpdatingApproval} title="Hold" className="p-2 bg-white border border-amber-200 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors shadow-sm"><Clock size={18} /></button>
-                <button onClick={() => handleUpdateApproval('rejected')} disabled={isUpdatingApproval} title="Tolak" className="p-2 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors shadow-sm"><ThumbsDown size={18} /></button>
-              </div>
-            )}
-          </div>
-
-          {/* Finance Director Approval */}
-          <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-xl">
-            <div>
-              <p className="text-sm font-medium text-slate-700">Approval Finance Director</p>
-              <div className="mt-1 flex items-center gap-2">
-                <span className={cn(
-                  "px-2.5 py-1 text-xs font-bold rounded-full",
-                  candidate.finance_status === 'accepted' ? 'bg-emerald-100 text-emerald-700' :
-                  candidate.finance_status === 'rejected' ? 'bg-rose-100 text-rose-700' :
-                  'bg-slate-200 text-slate-700'
-                )}>
-                  {(candidate.finance_status || 'pending').toUpperCase()}
-                </span>
-              </div>
-            </div>
-            {profile?.role === "FINANCE_DIRECTOR" && (
-              <div className="flex gap-2">
-                <button 
-                  onClick={() => handleUpdateApproval('accepted')} 
-                  disabled={isUpdatingApproval || candidate.director_status !== 'accepted'} 
-                  title={candidate.director_status !== 'accepted' ? "Menunggu Approval Direktur" : "Terima"} 
-                  className="p-2 bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <ThumbsUp size={18} />
-                </button>
-                <button 
-                  onClick={() => handleUpdateApproval('rejected')} 
-                  disabled={isUpdatingApproval || candidate.director_status !== 'accepted'} 
-                  title={candidate.director_status !== 'accepted' ? "Menunggu Approval Direktur" : "Tolak"} 
-                  className="p-2 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <ThumbsDown size={18} />
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {candidate.candidate_assignees &&
-      candidate.candidate_assignees.length > 0 ? (
-        <div className="bg-[#3D2C44]/5 border border-[#3D2C44]/20 rounded-xl p-4 flex items-center gap-3">
-          <div className="p-2 bg-[#3D2C44]/10 rounded-lg text-[#3D2C44]">
-            <Users size={20} />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-[#3D2C44]">
-              Kandidat ini sedang di-review oleh:
-            </p>
-            <p className="text-sm text-[#3D2C44]/80">
-              {candidate.candidate_assignees
-                .map(
-                  (a: any) => {
-                    let roleDisplay = "User Manager";
-                    if (a.profiles?.role === "DIRECTOR") roleDisplay = "Director";
-                    if (a.profiles?.role === "FINANCE_DIRECTOR") roleDisplay = "Finance Director";
-                    if (a.profiles?.department) roleDisplay = a.profiles.department;
-                    return `${a.profiles?.full_name} (${roleDisplay})`
-                  },
-                )
-                .join(", ")}
-            </p>
-          </div>
-        </div>
-      ) : candidate.assigned_history &&
-        candidate.assigned_history.length > 0 ? (
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center gap-3">
-          <div className="p-2 bg-slate-200 rounded-lg text-slate-600">
-            <Users size={20} />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-slate-900">
-              Pernah di-review oleh:
-            </p>
-            <p className="text-sm text-slate-700">
-              {candidate.assigned_history.map((h: any) => h.name).join(", ")}
-            </p>
-          </div>
-        </div>
-      ) : null}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Basic Info */}
@@ -1807,6 +1793,18 @@ export default function CandidateProfile() {
               </p>
             </div>
           )}
+
+          {candidate.career_fit_recommendation && (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 overflow-hidden">
+              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2 mb-4">
+                <Briefcase className="text-sky-500" size={20} />
+                Rekomendasi Kecocokan Karier (Career Fit)
+              </h3>
+              <div className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
+                {candidate.career_fit_recommendation}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right Column - Details */}
@@ -1952,18 +1950,33 @@ export default function CandidateProfile() {
             </div>
 
             <div className="mt-6 p-4 bg-indigo-50/50 rounded-xl border border-indigo-100">
-              <h4 className="font-bold text-indigo-900 mb-2 flex items-center gap-2">
-                <FileText size={16} className="text-indigo-500" />
-                Alasan Penilaian
-              </h4>
-              <div className="text-sm text-indigo-800">
-                {formatAsNumberedList(
-                  candidate.assessment_reason,
-                  <span className="italic opacity-70">
-                    Tidak ada alasan penilaian yang diberikan.
-                  </span>,
-                  true,
-                )}
+              <div className="flex items-start gap-4">
+                <div className="shrink-0 flex flex-col items-center mt-1">
+                  <div
+                    className="w-14 h-14 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-2xl font-bold shadow-lg shadow-indigo-200"
+                    title="Skor CV (AI)"
+                  >
+                    {candidate.assessment_score || 0}
+                  </div>
+                  <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider mt-2">
+                    Skor AI
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-bold text-indigo-900 mb-2 flex items-center gap-2">
+                    <FileText size={16} className="text-indigo-500" />
+                    Alasan Penilaian
+                  </h4>
+                  <div className="text-sm text-indigo-800">
+                    {formatAsNumberedList(
+                      candidate.assessment_reason,
+                      <span className="italic opacity-70">
+                        Tidak ada alasan penilaian yang diberikan.
+                      </span>,
+                      true,
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -3186,6 +3199,152 @@ export default function CandidateProfile() {
                 initialData={fullScreenData}
                 hideSalary={profile?.role === "USER_MANAGER"}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isApprovalModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh] overflow-hidden">
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
+              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <Users size={20} className="text-[#3D2C44]" />
+                Status Approval & Review
+              </h3>
+              <button
+                onClick={() => setIsApprovalModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto space-y-6">
+              {/* Approval Status Card */}
+              <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
+                <h3 className="text-sm font-semibold text-slate-800 mb-3">Status Approval Manajemen</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Director Approval */}
+                  <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-lg">
+                    <div>
+                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Direktur</p>
+                      <div className="flex items-center gap-2">
+                        <span className={cn(
+                          "px-2.5 py-1 text-xs font-bold rounded-md",
+                          candidate.director_status === 'accepted' ? 'bg-emerald-100 text-emerald-700' :
+                          candidate.director_status === 'rejected' ? 'bg-rose-100 text-rose-700' :
+                          candidate.director_status === 'hold' ? 'bg-amber-100 text-amber-700' :
+                          'bg-slate-200 text-slate-700'
+                        )}>
+                          {(candidate.director_status || 'pending').toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+                    {profile?.role === "DIRECTOR" && (
+                      <div className="flex gap-1.5">
+                        <button onClick={() => handleUpdateApproval('accepted')} disabled={isUpdatingApproval} title="Terima" className="p-2 bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors shadow-sm"><ThumbsUp size={16} /></button>
+                        <button onClick={() => handleUpdateApproval('hold')} disabled={isUpdatingApproval} title="Hold" className="p-2 bg-white border border-amber-200 text-amber-600 hover:bg-amber-50 rounded-md transition-colors shadow-sm"><Clock size={16} /></button>
+                        <button onClick={() => handleUpdateApproval('rejected')} disabled={isUpdatingApproval} title="Tolak" className="p-2 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-md transition-colors shadow-sm"><ThumbsDown size={16} /></button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Finance Director Approval */}
+                  <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-lg">
+                    <div>
+                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Finance Director</p>
+                      <div className="flex items-center gap-2">
+                        <span className={cn(
+                          "px-2.5 py-1 text-xs font-bold rounded-md",
+                          candidate.finance_status === 'accepted' ? 'bg-emerald-100 text-emerald-700' :
+                          candidate.finance_status === 'rejected' ? 'bg-rose-100 text-rose-700' :
+                          'bg-slate-200 text-slate-700'
+                        )}>
+                          {(candidate.finance_status || 'pending').toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+                    {profile?.role === "FINANCE_DIRECTOR" && (
+                      <div className="flex gap-1.5">
+                        <button 
+                          onClick={() => handleUpdateApproval('accepted')} 
+                          disabled={isUpdatingApproval || candidate.director_status !== 'accepted'} 
+                          title={candidate.director_status !== 'accepted' ? "Menunggu Approval Direktur" : "Terima"} 
+                          className="p-2 bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <ThumbsUp size={16} />
+                        </button>
+                        <button 
+                          onClick={() => handleUpdateApproval('rejected')} 
+                          disabled={isUpdatingApproval || candidate.director_status !== 'accepted'} 
+                          title={candidate.director_status !== 'accepted' ? "Menunggu Approval Direktur" : "Tolak"} 
+                          className="p-2 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-md transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <ThumbsDown size={16} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {candidate.candidate_assignees &&
+              candidate.candidate_assignees.length > 0 ? (
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex flex-col sm:flex-row sm:items-start gap-4 shadow-sm">
+                  <div className="flex items-center gap-2 text-slate-700 shrink-0 mt-1">
+                    <Users size={18} className="text-slate-400" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">
+                      Di-review oleh:
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {candidate.candidate_assignees.map((a: any) => {
+                      let roleDisplay = "User Manager";
+                      if (a.profiles?.role === "DIRECTOR") roleDisplay = "Director";
+                      if (a.profiles?.role === "FINANCE_DIRECTOR") roleDisplay = "Finance Director";
+                      if (a.profiles?.department) roleDisplay = a.profiles.department;
+                      return (
+                        <div key={a.user_id} className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 shadow-sm">
+                          {a.profiles?.full_name} <span className="text-slate-400 font-normal text-xs ml-0.5">({roleDisplay})</span>
+                          {profile?.role !== "USER_MANAGER" && !isArchived && (
+                            <button 
+                              onClick={() => handleUnassign(a.user_id)}
+                              className="ml-1.5 p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-500 rounded-md transition-colors"
+                              title="Hapus dari review"
+                            >
+                              <X size={14} />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : candidate.assigned_history &&
+                candidate.assigned_history.length > 0 ? (
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex flex-col sm:flex-row sm:items-start gap-4 shadow-sm opacity-80">
+                  <div className="flex items-center gap-2 text-slate-500 shrink-0 mt-1">
+                    <Users size={18} className="text-slate-400" />
+                    <span className="text-xs font-semibold uppercase tracking-wider">
+                      Pernah di-review oleh:
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {candidate.assigned_history.map((h: any, idx: number) => (
+                      <div key={idx} className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-500 shadow-sm">
+                        {h.name}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-slate-50 border border-slate-200 border-dashed rounded-lg p-8 flex flex-col items-center justify-center text-center shadow-sm">
+                  <Users size={32} className="text-slate-300 mb-3" />
+                  <p className="text-sm font-medium text-slate-600">Belum ada reviewer</p>
+                  <p className="text-xs text-slate-400 mt-1">Kandidat ini belum di-assign ke user manapun.</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

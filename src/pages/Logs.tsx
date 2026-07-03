@@ -122,6 +122,31 @@ export default function Logs() {
         }
         return d;
       });
+
+      try {
+        const { data: blacklistData } = await supabase
+          .from("blacklisted_candidates")
+          .select("email, phone, identity_number, reason");
+
+        if (blacklistData && blacklistData.length > 0) {
+          data = data.map((d) => {
+            const nik = d.external_data?.raw_data?.identity_number;
+            const blacklistedRecord = blacklistData.find(
+              (b) =>
+                (b.email && b.email === d.email) ||
+                (b.phone && b.phone === d.phone) ||
+                (nik && b.identity_number && b.identity_number === nik),
+            );
+            return {
+              ...d,
+              is_blacklisted: !!blacklistedRecord,
+              blacklist_reason: blacklistedRecord?.reason,
+            };
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching blacklist:", err);
+      }
     }
 
     if (error) {
@@ -650,9 +675,22 @@ export default function Logs() {
                   log.full_name[0]
                 )}
               </div>
-              <h3 className="text-lg font-bold text-slate-900 line-clamp-1">
-                {log.full_name}
-              </h3>
+              <div className="flex flex-col items-center gap-1 mt-1">
+                <h3 className="text-lg font-bold text-slate-900 line-clamp-1">
+                  {log.full_name}
+                </h3>
+                {log.is_blacklisted && (
+                  <span
+                    className="px-2 py-0.5 bg-black text-white text-[10px] font-bold rounded"
+                    title={
+                      log.blacklist_reason ||
+                      "Kandidat berada dalam daftar blacklist"
+                    }
+                  >
+                    BLACKLIST
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-slate-500 mt-1 line-clamp-1">
                 {log.position}
               </p>

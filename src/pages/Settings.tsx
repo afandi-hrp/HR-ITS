@@ -16,6 +16,7 @@ import { useToast } from "../components/ui/use-toast";
 export default function Settings() {
   const [user, setUser] = useState<User | null>(null);
   const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
   const [n8nWebhookUrl, setN8nWebhookUrl] = useState("");
   const [cvWebhookUrl, setCvWebhookUrl] = useState("");
   const [publicCvWebhookUrl, setPublicCvWebhookUrl] = useState("");
@@ -66,17 +67,29 @@ export default function Settings() {
   const [displayPin, setDisplayPin] = useState("Waruna#10"); // Default PIN
   const [newWebhookPin, setNewWebhookPin] = useState("");
   const [newDisplayPin, setNewDisplayPin] = useState("");
+  const [profile, setProfile] = useState<any>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    supabase.auth
-      .getUser()
-      .then(({ data: { user }, error }) => {
+    const fetchUserData = async () => {
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
         if (error) {
           console.warn("Settings getUser error:", error.message);
         }
         setUser(user);
+        
+        if (user) {
+          try {
+            const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+            setProfile(data);
+          } catch (err) {
+            console.warn("Settings getProfile error:", err);
+          }
+        }
+
         setFullName(user?.user_metadata.full_name || "");
+        setPhone(user?.user_metadata.phone || "");
         setN8nWebhookUrl(user?.user_metadata.n8n_webhook_url || "");
         setCvWebhookUrl(user?.user_metadata.cv_webhook_url || "");
         setPublicCvWebhookUrl(user?.user_metadata.public_cv_webhook_url || "");
@@ -99,17 +112,19 @@ export default function Settings() {
           setWebhookPin(user.user_metadata.webhook_pin);
         if (user?.user_metadata.display_pin)
           setDisplayPin(user.user_metadata.display_pin);
-      })
-      .catch((err) => {
+      } catch (err) {
         console.warn("Settings failed to get user:", err);
-      });
+      }
+    };
+    fetchUserData();
 
-    supabase
-      .from("site_settings")
-      .select("*")
-      .eq("id", 1)
-      .single()
-      .then(({ data }) => {
+    const fetchSettings = async () => {
+      try {
+        const { data } = await supabase
+          .from("site_settings")
+          .select("*")
+          .eq("id", 1)
+          .single();
         if (data) {
           setLoginLogoUrl(data.login_logo_url || "");
           setCareerLogoUrl(data.career_logo_url || "");
@@ -150,8 +165,11 @@ export default function Settings() {
                 ],
           );
         }
-      })
-      .catch((err) => console.warn("Failed to get site settings:", err));
+      } catch (err) {
+        console.warn("Failed to get site settings:", err);
+      }
+    };
+    fetchSettings();
   }, []);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
@@ -173,6 +191,7 @@ export default function Settings() {
     const { error } = await supabase.auth.updateUser({
       data: {
         full_name: fullName,
+        phone: phone.trim(),
         n8n_webhook_url: n8nWebhookUrl.trim(),
         cv_webhook_url: cvWebhookUrl.trim(),
         public_cv_webhook_url: publicCvWebhookUrl.trim(),
@@ -195,6 +214,10 @@ export default function Settings() {
     if (newDisplayPin) {
       setDisplayPin(newDisplayPin);
       setNewDisplayPin("");
+    }
+    
+    if (user) {
+      await supabase.from("profiles").update({ full_name: fullName, phone: phone.trim() }).eq("id", user.id);
     }
 
     const { error: settingsError } = await supabase
@@ -571,9 +594,24 @@ export default function Settings() {
                   placeholder="Masukkan nama lengkap"
                 />
               </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Nomor WhatsApp
+                </label>
+                <input
+                  type="text"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                  placeholder="Contoh: 081234567890 (Hanya untuk internal)"
+                />
+              </div>
 
-              {/* Webhook Settings Block */}
-              {!showWebhookSettings ? (
+              {profile?.role !== "USER_MANAGER" && (
+                <>
+                  {/* Webhook Settings Block */}
+                  {!showWebhookSettings ? (
                 <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl">
                   <div>
                     <h3 className="text-sm font-semibold text-slate-700">
@@ -1260,6 +1298,8 @@ export default function Settings() {
                     </div>
                   </div>
                 </div>
+              )}
+                </>
               )}
 
               <button

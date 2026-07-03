@@ -214,6 +214,8 @@ app.use((req: any, res, next) => {
         ai_cv_analysis,
         psikotes_result_url,
         source_info,
+        director_status,
+        finance_status,
         ...baseData 
       } = candidate;
       

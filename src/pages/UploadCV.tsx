@@ -168,7 +168,7 @@ export default function UploadCV() {
           .from("open_recruitment")
           .select("position")
           .or("is_published.eq.true,is_published.is.null")
-          .order("created_at", { ascending: false });
+          .order("position", { ascending: true });
 
         if (positionsError) {
           console.error("Error fetching positions:", positionsError);

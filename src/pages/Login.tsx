@@ -78,22 +78,23 @@ export default function Login() {
   }, [captchaText]);
 
   useEffect(() => {
-    supabase
-      .from("site_settings")
-      .select("*")
-      .eq("id", 1)
-      .single()
-      .then(({ data }) => {
+    const fetchSettings = async () => {
+      try {
+        const { data } = await supabase
+          .from("site_settings")
+          .select("*")
+          .eq("id", 1)
+          .single();
         if (data) {
           setSettings(data);
         }
-        // Trigger animation after a tiny delay for smooth entry
-        setTimeout(() => setIsLoaded(true), 100);
-      })
-      .catch((err) => {
+      } catch (err) {
         console.warn("Failed to get site settings:", err);
+      } finally {
         setTimeout(() => setIsLoaded(true), 100);
-      });
+      }
+    };
+    fetchSettings();
 
     if (location.state?.message) {
       setMessage(location.state.message);

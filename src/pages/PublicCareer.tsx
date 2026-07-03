@@ -229,12 +229,13 @@ export default function PublicCareer() {
   }, [captchaText, step]);
 
   useEffect(() => {
-    supabase
-      .from("site_settings")
-      .select("*")
-      .eq("id", 1)
-      .single()
-      .then(({ data, error }) => {
+    const fetchSettings = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("site_settings")
+          .select("*")
+          .eq("id", 1)
+          .single();
         if (data) {
           setSettings(data);
           if (data.career_job_sources && data.career_job_sources.length > 0) {
@@ -267,8 +268,11 @@ export default function PublicCareer() {
             "Others",
           ]);
         }
-      })
-      .catch((err) => console.warn("Failed to get site settings:", err));
+      } catch (err) {
+        console.warn("Failed to get site settings:", err);
+      }
+    };
+    fetchSettings();
 
     const fetchPositions = async () => {
       try {
@@ -277,7 +281,7 @@ export default function PublicCareer() {
           .select("*")
           // Using is_published = true or is_published is null (for backward compatibility if column not yet initialized)
           .or("is_published.eq.true,is_published.is.null")
-          .order("created_at", { ascending: false });
+          .order("position", { ascending: true });
 
         if (error) {
           console.error("Error fetching positions:", error);

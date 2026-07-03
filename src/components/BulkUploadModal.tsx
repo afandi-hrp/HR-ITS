@@ -33,7 +33,7 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
         const { data, error } = await supabase
           .from('open_recruitment')
           .select('position')
-          .order('created_at', { ascending: false });
+          .order('position', { ascending: true });
 
         if (error) {
           console.error('Error fetching positions:', error);

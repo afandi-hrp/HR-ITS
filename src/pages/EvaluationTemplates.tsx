@@ -106,8 +106,8 @@ export default function EvaluationTemplates() {
       query = query.ilike("name", `%${debouncedSearch}%`);
     }
 
-    const { data, error } = await query.order("created_at", {
-      ascending: false,
+    const { data, error } = await query.order("name", {
+      ascending: true,
     });
 
     if (error) {
@@ -389,32 +389,37 @@ export default function EvaluationTemplates() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="flex flex-col gap-3">
         {templates.map((template) => (
           <div
             key={template.id}
             onClick={() => handleOpenModal(template)}
-            className="bg-white/70 backdrop-blur-md p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-indigo-500 hover:ring-2 hover:ring-indigo-200 hover:shadow-md transition-all group cursor-pointer flex flex-col"
+            className="bg-white/70 backdrop-blur-md p-4 rounded-xl border border-slate-200 shadow-sm hover:border-indigo-500 hover:shadow-md transition-all group cursor-pointer flex items-center gap-4"
           >
-            <div className="flex items-start justify-between mb-4 gap-3">
-              <div className="flex items-start gap-3 min-w-0 flex-1">
-                <div
-                  className={cn(
-                    "p-2 rounded-lg shrink-0",
-                    template.type === "HR"
-                      ? "bg-blue-50 text-blue-600"
-                      : "bg-violet-50 text-violet-600",
-                  )}
-                >
-                  <FileText size={20} />
-                </div>
-                <h3 className="font-bold text-slate-900 break-words mt-0.5">
-                  {template.name}
-                </h3>
-              </div>
+            <div
+              className={cn(
+                "p-3 rounded-lg shrink-0",
+                template.type === "HR"
+                  ? "bg-blue-50 text-blue-600"
+                  : "bg-violet-50 text-violet-600",
+              )}
+            >
+              <FileText size={24} />
+            </div>
+            
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-slate-900 truncate">
+                {template.name}
+              </h3>
+              <p className="text-sm text-slate-500 mt-0.5">
+                Dibuat: {new Date(template.created_at).toLocaleDateString()}
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-4 shrink-0">
               <span
                 className={cn(
-                  "px-2.5 py-1 rounded-md text-xs font-bold tracking-wider shrink-0",
+                  "px-3 py-1 rounded-md text-xs font-bold tracking-wider",
                   template.type === "HR"
                     ? "bg-blue-100 text-blue-700"
                     : "bg-violet-100 text-violet-700",
@@ -422,30 +427,22 @@ export default function EvaluationTemplates() {
               >
                 {template.type}
               </span>
-            </div>
-
-            <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-auto">
-              <span className="text-xs text-slate-400">
-                Dibuat: {new Date(template.created_at).toLocaleDateString()}
-              </span>
-              <div className="flex gap-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(template.id);
-                  }}
-                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                  title="Hapus Template"
-                >
-                  <Trash2 size={18} />
-                </button>
-              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete(template.id);
+                }}
+                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                title="Hapus Template"
+              >
+                <Trash2 size={18} />
+              </button>
             </div>
           </div>
         ))}
 
         {templates.length === 0 && !loading && (
-          <div className="col-span-full text-center py-20 bg-white/70 backdrop-blur-md rounded-2xl border border-dashed border-slate-300">
+          <div className="text-center py-20 bg-white/70 backdrop-blur-md rounded-2xl border border-dashed border-slate-300">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
               <FileText className="text-slate-400" size={32} />
             </div>
