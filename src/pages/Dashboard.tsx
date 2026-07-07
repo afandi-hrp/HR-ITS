@@ -18,6 +18,7 @@ import {
   X,
   RefreshCcw,
   BarChart3,
+  Sunrise, Sun, Sunset, Moon
 } from "lucide-react";
 import { cn, formatDate } from "../lib/utils";
 
@@ -38,6 +39,7 @@ export default function Dashboard() {
   const [topCandidatesByPosition, setTopCandidatesByPosition] = useState<
     Record<string, any[]>
   >({});
+  const [userName, setUserName] = useState<string>("");
   const [topCandidatesByDetailed, setTopCandidatesByDetailed] = useState<
     Record<string, any[]>
   >({});
@@ -81,6 +83,16 @@ export default function Dashboard() {
       }
     };
     fetchPositions();
+  }, []);
+
+useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserName(user.user_metadata?.full_name || user.email?.split('@')[0] || "");
+      }
+    };
+    fetchUser();
   }, []);
 
   useEffect(() => {
@@ -547,11 +559,36 @@ export default function Dashboard() {
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
         <div className="space-y-1">
+          {userName && (
+            <div className="text-xl font-semibold text-[#3D2C44]/80 mb-1 flex items-center flex-wrap gap-2">
+              <span className="tracking-tight">
+                {(() => {
+                  const hour = new Date().getHours();
+                  if (hour >= 5 && hour < 11) return 'Selamat pagi,';
+                  if (hour >= 11 && hour < 15) return 'Selamat siang,';
+                  if (hour >= 15 && hour < 18) return 'Selamat sore,';
+                  return 'Selamat malam,';
+                })()}
+              </span>
+              <span className="text-[#3D2C44] font-bold">
+                {userName.split(' ')[0]}
+              </span>
+              <span className="ml-1 inline-flex items-center">
+                {(() => {
+                  const hour = new Date().getHours();
+                  if (hour >= 5 && hour < 11) return <Sunrise className="text-amber-500 drop-shadow-sm" size={22} />;
+                  if (hour >= 11 && hour < 15) return <Sun className="text-amber-500 drop-shadow-sm" size={22} />;
+                  if (hour >= 15 && hour < 18) return <Sunset className="text-amber-500 drop-shadow-sm" size={22} />;
+                  return <Moon className="text-indigo-500 drop-shadow-sm" size={22} />;
+                })()}
+              </span>
+            </div>
+          )}
           <h1 className="text-4xl font-extrabold tracking-tight text-[#3D2C44]">
             Dashboard
           </h1>
-          <p className="text-sm font-medium text-[#3D2C44]/70 max-w-xl">
-            Ringkasan aktivitas rekrutmen dan status kandidat.
+          <p className="text-sm font-medium text-slate-500 max-w-xl">
+            Ringkasan aktivitas rekrutmen dan status kandidat untuk hari ini, {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.
           </p>
         </div>
         <button

@@ -33,6 +33,8 @@ interface DashboardLayoutProps {
 }
 
 export default function DashboardLayout({ children, user }: DashboardLayoutProps) {
+
+
   const [isHovered, setIsHovered] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const showFullSidebar = isMobileMenuOpen || isHovered;
@@ -123,6 +125,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
       icon: Database,
       items: [
         { id: 'external-data', label: 'Data Eksternal', icon: Database },
+        { id: 'tracking', label: 'Live Tracking', icon: BarChart3 },
         { id: 'archive', label: 'Candidate Archive', icon: Archive },
         { id: 'logs', label: 'Log Kandidat', icon: ClipboardList },
       ]

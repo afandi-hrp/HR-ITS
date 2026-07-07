@@ -355,6 +355,8 @@ export default function CandidateProfile() {
     setIsUpdatingApproval(true);
     try {
       const column = profile.role === 'DIRECTOR' ? 'director_status' : 'finance_status';
+      const dateColumn = profile.role === 'DIRECTOR' ? 'director_approval_date' : 'finance_approval_date';
+      const now = new Date().toISOString();
       
       const { data: activeData } = await supabase
         .from("candidates")
@@ -363,14 +365,24 @@ export default function CandidateProfile() {
         .maybeSingle();
 
       const table = activeData ? "candidates" : "candidate_logs";
+      
+      const updatePayload: any = { 
+        [column]: status, 
+        updated_at: now 
+      };
+      
+      // Update date only when accepting. (You could also update it for rejecting if needed)
+      if (status === 'accepted') {
+         updatePayload[dateColumn] = now;
+      }
 
       const { error } = await supabase
         .from(table)
-        .update({ [column]: status, updated_at: new Date().toISOString() })
+        .update(updatePayload)
         .eq("id", candidate.id);
 
       if (error) throw error;
-      setCandidate({ ...candidate, [column]: status });
+      setCandidate({ ...candidate, ...updatePayload });
       toast({
         title: "Status Diperbarui",
         description: `Status approval berhasil diubah menjadi ${status}.`,

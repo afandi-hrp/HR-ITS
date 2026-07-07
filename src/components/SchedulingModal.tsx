@@ -25,11 +25,16 @@ interface SchedulingModalProps {
 export default function SchedulingModal({ candidate, type, initialData, onClose, onSuccess }: SchedulingModalProps) {
   const [selectedCandidateId, setSelectedCandidateId] = useState<string>(candidate?.id || '');
   const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const initialNotesMatch = initialData?.additional_notes?.match(/^\[(HR|USER)\]\s*(.*)$/);
+  const initialInterviewType = initialNotesMatch ? (initialNotesMatch[1] as 'HR' | 'USER') : 'HR';
+  const initialNotesText = initialNotesMatch ? initialNotesMatch[2] : (initialData?.additional_notes || '');
+
   const [date, setDate] = useState(initialData ? new Date(initialData.schedule_date).toISOString().split('T')[0] : '');
   const [time, setTime] = useState(initialData ? new Date(initialData.schedule_date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '');
+  const [interviewType, setInterviewType] = useState<'HR' | 'USER'>(initialInterviewType);
   const [locationType, setLocationType] = useState<'online' | 'offline'>(initialData?.location_type || 'online');
   const [locationDetail, setLocationDetail] = useState(initialData?.location_detail || '');
-  const [notes, setNotes] = useState(initialData?.additional_notes || '');
+  const [notes, setNotes] = useState(initialNotesText);
   const [loading, setLoading] = useState(false);
   const [fetchingCandidates, setFetchingCandidates] = useState(false);
   const { toast } = useToast();
@@ -92,6 +97,8 @@ export default function SchedulingModal({ candidate, type, initialData, onClose,
     setLoading(true);
     const scheduleDate = scheduleDateObj.toISOString();
     const tableName = type === 'psikotes' ? 'psikotes_schedules' : 'interview_schedules';
+    
+    const finalNotes = type === 'interview' ? `[${interviewType}] ${notes}` : notes;
 
     let result;
     if (initialData) {
@@ -101,7 +108,7 @@ export default function SchedulingModal({ candidate, type, initialData, onClose,
           schedule_date: scheduleDate,
           location_type: locationType,
           location_detail: locationDetail,
-          additional_notes: notes
+          additional_notes: finalNotes
         })
         .eq('id', initialData.id);
     } else {
@@ -112,7 +119,7 @@ export default function SchedulingModal({ candidate, type, initialData, onClose,
           schedule_date: scheduleDate,
           location_type: locationType,
           location_detail: locationDetail,
-          additional_notes: notes
+          additional_notes: finalNotes
         }]);
     }
 
@@ -207,6 +214,36 @@ export default function SchedulingModal({ candidate, type, initialData, onClose,
               />
             </div>
           </div>
+
+          {type === 'interview' && (
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700">Tipe Interview</label>
+              <div className="flex gap-2 p-1 bg-slate-100 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setInterviewType('HR')}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold transition-all",
+                    interviewType === 'HR' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                  )}
+                >
+                  <User size={16} />
+                  Interview HR
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInterviewType('USER')}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold transition-all",
+                    interviewType === 'USER' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                  )}
+                >
+                  <User size={16} />
+                  Interview User
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700">Tipe Lokasi</label>

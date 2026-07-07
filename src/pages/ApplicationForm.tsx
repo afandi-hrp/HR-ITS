@@ -1358,7 +1358,7 @@ export default function ApplicationForm({
                   : "w-full max-w-4xl rounded-2xl shadow-xl",
               )}
             >
-              <div className="bg-[#8E4585] px-4 sm:px-8 py-4 sm:py-6 text-white flex items-center gap-4">
+              <div className="bg-[#8E4585] px-4 sm:px-8 py-4 sm:py-6 text-white flex flex-col sm:flex-row items-center gap-4">
                 {siteSettings?.career_logo_url && (
                   <img
                     src={siteSettings.career_logo_url}
@@ -1366,18 +1366,17 @@ export default function ApplicationForm({
                     className="w-12 h-12 sm:w-16 sm:h-16 object-contain bg-white rounded-xl p-1.5 shadow-sm shrink-0"
                   />
                 )}
-                <div>
+                <div className="flex-1 text-center">
                   <h1 className="text-xl sm:text-2xl font-bold">
-                    Formulir Data Pribadi Calon Karyawan{" "}
-                    <span className="font-normal italic text-lg opacity-90 block sm:inline sm:ml-2">
+                    Formulir Data Pribadi Calon Karyawan
+                    <span className="font-normal italic text-lg opacity-90 block mt-1">
                       (Job Applicant Personal Information Form)
                     </span>
                   </h1>
-                  <p className="text-fuchsia-100 mt-1 text-sm sm:text-base">
-                    Harap isi data berikut dengan lengkap dan benar.{" "}
-                    <span className="italic opacity-90 block sm:inline sm:ml-1">
-                      (Please ensure all the following details are filled out
-                      fully and correctly.)
+                  <p className="text-fuchsia-100 mt-2 text-sm sm:text-base">
+                    Harap isi data berikut dengan lengkap dan benar.
+                    <span className="italic opacity-90 block mt-1">
+                      (Please ensure all the following details are filled out fully and correctly.)
                     </span>
                   </p>
                 </div>

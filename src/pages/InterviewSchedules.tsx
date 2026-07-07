@@ -619,6 +619,9 @@ export default function InterviewSchedules() {
                           Posisi
                         </th>
                         <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                          Tipe Interview
+                        </th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                           Waktu Pelaksanaan
                         </th>
                         <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
@@ -667,6 +670,11 @@ export default function InterviewSchedules() {
                           <td className="px-6 py-4">
                             <span className="text-sm text-slate-600 font-medium">
                               {schedule.candidate?.position}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700">
+                              {schedule.additional_notes?.startsWith('[USER]') ? 'USER' : 'HR'}
                             </span>
                           </td>
                           <td className="px-6 py-4">
@@ -754,7 +762,7 @@ export default function InterviewSchedules() {
                       {schedules.length === 0 && !loading && (
                         <tr>
                           <td
-                            colSpan={5}
+                            colSpan={6}
                             className="px-6 py-12 text-center text-slate-500"
                           >
                             Tidak ada jadwal yang telah selesai.
@@ -889,9 +897,14 @@ export default function InterviewSchedules() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-100 shrink-0">
-              <h2 className="text-lg sm:text-xl font-bold text-slate-900">
-                Detail Jadwal Interview
-              </h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900">
+                  Detail Jadwal Interview
+                </h2>
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700">
+                  {previewSchedule.additional_notes?.startsWith('[USER]') ? 'USER' : 'HR'}
+                </span>
+              </div>
               <button
                 onClick={() => setPreviewSchedule(null)}
                 className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all"
@@ -986,7 +999,7 @@ export default function InterviewSchedules() {
                   Catatan Tambahan
                 </p>
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 text-sm text-slate-700 leading-relaxed italic">
-                  "{previewSchedule.additional_notes || "Tidak ada catatan."}"
+                  "{previewSchedule.additional_notes?.replace(/^\[(HR|USER)\]\s*/, '') || "Tidak ada catatan."}"
                 </div>
               </div>
             </div>

@@ -16,6 +16,7 @@ import RegistrationTokens from './pages/RegistrationTokens';
 import PsikotesSchedules from './pages/PsikotesSchedules';
 import InterviewSchedules from './pages/InterviewSchedules';
 import CandidateArchive from './pages/CandidateArchive';
+import CandidateTracking from './pages/CandidateTracking';
 import CandidateProfile from './pages/CandidateProfile';
 import UploadCV from './pages/UploadCV';
 import OpenRecruitment from './pages/OpenRecruitment';
@@ -180,6 +181,7 @@ export default function App() {
                       <Route path="/funnel" element={<RecruitmentFunnel />} />
                       <Route path="/psikotes" element={<PsikotesSchedules />} />
                       <Route path="/interview" element={<InterviewSchedules />} />
+                      <Route path="/tracking" element={<CandidateTracking />} />
                       <Route path="/logs" element={<Logs />} />
                       <Route path="/archive" element={<CandidateArchive />} />
                       <Route path="/upload-cv" element={<UploadCV />} />

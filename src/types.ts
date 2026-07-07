@@ -33,6 +33,16 @@ export interface Candidate {
   status_screening: 'pending' | 'invited' | 'rejected' | 'accepted' | 'hired';
   director_status?: 'pending' | 'accepted' | 'rejected' | 'hold';
   finance_status?: 'pending' | 'accepted' | 'rejected';
+  director_approval_date?: string | null;
+  finance_approval_date?: string | null;
+  join_date?: string | null;
+  finance_reject_reason?: string | null;
+  trial_1_date?: string | null;
+  trial_2_date?: string | null;
+  trial_3_date?: string | null;
+  trial_result?: string | null;
+  background_check_date?: string | null;
+  background_check_result?: string | null;
   confirmation_status: 'unconfirmed' | 'confirmed';
   confirmation_token: string | null;
   psikotes_schedules?: { id: string, is_confirmed: boolean, schedule_date: string, location_type?: string, location_detail?: string | null }[];
