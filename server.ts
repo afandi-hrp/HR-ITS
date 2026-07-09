@@ -232,7 +232,7 @@ app.use((req: any, res, next) => {
         trial_result: candidate.trial_result,
         background_check_date: candidate.background_check_date,
         background_check_result: candidate.background_check_result,
-        ai_cv_analysis: candidate.ai_cv_analysis,
+
         career_fit_recommendation: candidate.career_fit_recommendation,
         psikotes_result_url: candidate.psikotes_result_url,
         source_info: candidate.source_info,
