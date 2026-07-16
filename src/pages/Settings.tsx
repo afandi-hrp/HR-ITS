@@ -548,7 +548,7 @@ export default function Settings() {
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-indigo-50 text-indigo-700 text-4xl font-bold">
-                    {fullName?.[0] || user.email?.[0].toUpperCase()}
+                    {fullName?.[0] || user.email?.[0]?.toUpperCase()}
                   </div>
                 )}
               </div>

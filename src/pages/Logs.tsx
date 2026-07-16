@@ -672,7 +672,7 @@ export default function Logs() {
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  log.full_name[0]
+                  log.full_name?.[0] || "?"
                 )}
               </div>
               <div className="flex flex-col items-center gap-1 mt-1">
@@ -951,7 +951,7 @@ export default function Logs() {
                       referrerPolicy="no-referrer"
                     />
                   ) : (
-                    selectedLog.full_name[0]
+                    selectedLog.full_name?.[0] || "?"
                   )}
                 </div>
                 <div className="flex-1">

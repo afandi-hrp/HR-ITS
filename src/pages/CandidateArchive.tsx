@@ -257,7 +257,7 @@ export default function CandidateArchive() {
                           referrerPolicy="no-referrer"
                         />
                       ) : (
-                        log.full_name[0]
+                        log.full_name?.[0] || "?"
                       )}
                     </Link>
                     <div className="min-w-0">
@@ -395,7 +395,7 @@ export default function CandidateArchive() {
                             referrerPolicy="no-referrer"
                           />
                         ) : (
-                          log.full_name[0]
+                          log.full_name?.[0] || "?"
                         )}
                       </Link>
                       <div className="min-w-0">

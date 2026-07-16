@@ -1358,27 +1358,40 @@ export default function ApplicationForm({
                   : "w-full max-w-4xl rounded-2xl shadow-xl",
               )}
             >
-              <div className="bg-[#8E4585] px-4 sm:px-8 py-4 sm:py-6 text-white flex flex-col sm:flex-row items-center gap-4">
+              <div className="bg-[#5D1F57] relative overflow-hidden px-6 sm:px-10 py-6 sm:py-8 text-white flex flex-col sm:flex-row items-center gap-6 sm:gap-8 rounded-t-2xl">
+                {/* Dotted pattern decoration */}
+                <div 
+                  className="absolute right-0 top-0 bottom-0 w-64 opacity-20 pointer-events-none hidden sm:block" 
+                  style={{ 
+                    backgroundImage: 'radial-gradient(circle, white 1.5px, transparent 1.5px)', 
+                    backgroundSize: '12px 12px', 
+                    maskImage: 'linear-gradient(to left, black, transparent)',
+                    WebkitMaskImage: 'linear-gradient(to left, black, transparent)'
+                  }}
+                ></div>
+
                 {siteSettings?.career_logo_url && (
-                  <img
-                    src={siteSettings.career_logo_url}
-                    alt="Logo"
-                    className="w-12 h-12 sm:w-16 sm:h-16 object-contain bg-white rounded-xl p-1.5 shadow-sm shrink-0"
-                  />
+                  <div className="shrink-0 flex items-center z-10">
+                    <img
+                      src={siteSettings.career_logo_url}
+                      alt="Logo"
+                      className="h-12 sm:h-16 w-auto object-contain"
+                    />
+                  </div>
                 )}
-                <div className="flex-1 text-center">
-                  <h1 className="text-xl sm:text-2xl font-bold">
-                    Formulir Data Pribadi Calon Karyawan
-                    <span className="font-normal italic text-lg opacity-90 block mt-1">
-                      (Job Applicant Personal Information Form)
-                    </span>
+                
+                {/* Divider */}
+                <div className="hidden sm:block w-px h-16 bg-white/40 shrink-0 z-10"></div>
+                <div className="block sm:hidden h-px w-full bg-white/40 shrink-0 z-10"></div>
+
+                <div className="flex-1 flex flex-col justify-center text-center sm:text-left z-10">
+                  <h1 className="text-lg sm:text-xl md:text-2xl font-bold tracking-wide uppercase">
+                    Formulir Data Pelamar Kerja
                   </h1>
-                  <p className="text-fuchsia-100 mt-2 text-sm sm:text-base">
-                    Harap isi data berikut dengan lengkap dan benar.
-                    <span className="italic opacity-90 block mt-1">
-                      (Please ensure all the following details are filled out fully and correctly.)
-                    </span>
-                  </p>
+                  <div className="h-px bg-white/40 w-full sm:w-[90%] my-2 mx-auto sm:mx-0"></div>
+                  <span className="font-normal italic text-sm sm:text-base opacity-90">
+                    Job Applicant Information Form
+                  </span>
                 </div>
               </div>
 

@@ -89,7 +89,7 @@ useEffect(() => {
     const fetchUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        setUserName(user.user_metadata?.full_name || user.email?.split('@')[0] || "");
+        setUserName(user.user_metadata?.full_name || user.email?.split('@')?.[0] || "");
       }
     };
     fetchUser();

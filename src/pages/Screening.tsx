@@ -995,7 +995,7 @@ export default function Screening() {
                                   referrerPolicy="no-referrer"
                                 />
                               ) : (
-                                candidate.full_name[0]
+                                candidate.full_name?.[0] || "?"
                               )}
                             </Link>
                             <div className="min-w-0">
@@ -1273,7 +1273,7 @@ export default function Screening() {
                                 referrerPolicy="no-referrer"
                               />
                             ) : (
-                              candidate.full_name[0]
+                              candidate.full_name?.[0] || "?"
                             )}
                           </Link>
                           <div className="flex-1 min-w-0">

@@ -648,7 +648,7 @@ export default function PsikotesSchedules() {
                                 to={`/candidates/${schedule.candidate_id}`}
                                 className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs hover:bg-indigo-200 transition-colors"
                               >
-                                {schedule.candidate?.full_name[0]}
+                                {schedule.candidate?.full_name?.[0] || "?"}
                               </Link>
                               <div>
                                 <p className="font-bold text-slate-900 text-sm">
@@ -909,7 +909,7 @@ export default function PsikotesSchedules() {
                     </p>
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold shrink-0">
-                        {previewSchedule.candidate?.full_name[0]}
+                        {previewSchedule.candidate?.full_name?.[0] || "?"}
                       </div>
                       <div className="min-w-0">
                         <h3 className="font-bold text-slate-900 truncate">
