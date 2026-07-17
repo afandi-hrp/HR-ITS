@@ -1358,10 +1358,10 @@ export default function ApplicationForm({
                   : "w-full max-w-4xl rounded-2xl shadow-xl",
               )}
             >
-              <div className="bg-[#5D1F57] relative overflow-hidden px-6 sm:px-10 py-6 sm:py-8 text-white flex flex-col sm:flex-row items-center gap-6 sm:gap-8 rounded-t-2xl">
+              <div className="bg-[#5D1F57] relative overflow-hidden px-5 sm:px-8 py-5 sm:py-7 text-white flex flex-row items-center gap-4 sm:gap-6 rounded-t-2xl print:rounded-none print:px-8 print:py-7">
                 {/* Dotted pattern decoration */}
                 <div 
-                  className="absolute right-0 top-0 bottom-0 w-64 opacity-20 pointer-events-none hidden sm:block" 
+                  className="absolute right-0 top-0 bottom-0 w-64 opacity-20 pointer-events-none block" 
                   style={{ 
                     backgroundImage: 'radial-gradient(circle, white 1.5px, transparent 1.5px)', 
                     backgroundSize: '12px 12px', 
@@ -1371,27 +1371,28 @@ export default function ApplicationForm({
                 ></div>
 
                 {siteSettings?.career_logo_url && (
-                  <div className="shrink-0 flex items-center z-10">
+                  <div className="shrink-0 flex items-center z-10 h-10 sm:h-14 print:h-14">
                     <img
                       src={siteSettings.career_logo_url}
                       alt="Logo"
-                      className="h-12 sm:h-16 w-auto object-contain"
+                      className="h-full w-auto max-w-[120px] sm:max-w-[180px] object-contain print:max-w-[180px]"
                     />
                   </div>
                 )}
                 
                 {/* Divider */}
-                <div className="hidden sm:block w-px h-16 bg-white/40 shrink-0 z-10"></div>
-                <div className="block sm:hidden h-px w-full bg-white/40 shrink-0 z-10"></div>
+                <div className="w-px h-10 sm:h-14 bg-white/40 shrink-0 z-10 print:h-14"></div>
 
-                <div className="flex-1 flex flex-col justify-center text-center sm:text-left z-10">
-                  <h1 className="text-lg sm:text-xl md:text-2xl font-bold tracking-wide uppercase">
-                    Formulir Data Pelamar Kerja
-                  </h1>
-                  <div className="h-px bg-white/40 w-full sm:w-[90%] my-2 mx-auto sm:mx-0"></div>
-                  <span className="font-normal italic text-sm sm:text-base opacity-90">
-                    Job Applicant Information Form
-                  </span>
+                <div className="flex-1 flex flex-col justify-center text-left z-10 items-start overflow-hidden">
+                  <div className="inline-block w-full">
+                    <h1 className="text-[13px] sm:text-lg md:text-xl font-bold tracking-wide uppercase leading-tight whitespace-nowrap print:text-xl">
+                      Formulir Data Pelamar Kerja
+                    </h1>
+                    <div className="h-px bg-white/60 w-full my-1 sm:my-1.5"></div>
+                    <span className="font-normal italic text-[10px] sm:text-sm opacity-90 leading-tight block whitespace-nowrap print:text-sm">
+                      Job Applicant Information Form
+                    </span>
+                  </div>
                 </div>
               </div>
 

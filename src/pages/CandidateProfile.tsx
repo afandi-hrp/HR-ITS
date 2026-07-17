@@ -179,16 +179,42 @@ const formatAsNumberedList = (
         <ol className="list-decimal pl-4 space-y-1">
           {mainPoints.map((point, idx) => {
             if (isAssessmentReason) {
-              const match = point.match(
-                /^((?:Relevance|Hard Skills|Experience|Business Impact|Education|Soft Skills)[^:]*:\s*(?:Skor\s*\d+(?:\/\d+)?\.?)?\s*)/i,
-              );
+              const prefixRegex = /^(Relevance(?: to the Position)?|Hard Skills(?: \/ Core Competencies)?|Experience(?: & Seniority Level)?|Business Impact(?: \/ Performance)?|Education(?:\/Cert\/Legal)?|Soft Skills(?: & Karakter)?)(.*)/i;
+              const match = point.match(prefixRegex);
               if (match) {
+                const titlePart = match[1];
+                let restOfLine = match[2];
+                let scorePart = "";
+
+                const scoreRegex = /^(\s*:\s*|\s+)?(\(\s*[\d\.\s]+\s*\/\s*[\d\.\s]+\s*\)|\bSkor\s*[\d\.\s]+(?:\s*\/\s*[\d\.\s]+)?\b|\b[\d\.\s]+\s*\/\s*[\d\.\s]+\b)(.*)/i;
+                const scoreMatch = restOfLine.match(scoreRegex);
+                
+                let separator = "";
+                let description = restOfLine;
+
+                if (scoreMatch) {
+                  separator = scoreMatch[1] || "";
+                  scorePart = scoreMatch[2];
+                  description = scoreMatch[3];
+                }
+
+                const hasColon = separator.includes(":") || description.match(/^\s*:/);
+                description = description.replace(/^\s*[:\-]\s*/, "").trim();
+
                 return (
-                  <li key={idx} className="leading-relaxed pl-1">
-                    <span className="font-bold text-emerald-700 bg-emerald-50 px-1 rounded mr-1">
-                      {match[1].trim()}
+                  <li key={idx} className="leading-relaxed pl-1 mb-1.5">
+                    <span className="font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded mr-1 inline-block mb-1 sm:mb-0">
+                      {titlePart.trim()}
                     </span>
-                    {point.slice(match[1].length)}
+                    {scorePart && (
+                      <span className="font-bold text-yellow-800 bg-yellow-100 px-1.5 py-0.5 rounded mr-1 inline-block mb-1 sm:mb-0">
+                        {scorePart.trim()}
+                      </span>
+                    )}
+                    <span className="text-slate-700">
+                      {hasColon ? ": " : " "}
+                      {description}
+                    </span>
                   </li>
                 );
               }

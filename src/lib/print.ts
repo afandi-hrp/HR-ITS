@@ -96,7 +96,6 @@ export const printElement = async (element: HTMLElement | null, title: string = 
           }
           img, svg, canvas, video, iframe {
             max-width: 100% !important;
-            height: auto !important;
             max-height: 240mm !important;
             object-fit: contain !important;
           }
