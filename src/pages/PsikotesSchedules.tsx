@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { Schedule, Candidate } from "../types";
 import {
@@ -32,6 +32,7 @@ import { startOfMonth, endOfMonth, startOfWeek, endOfWeek } from "date-fns";
 
 export default function PsikotesSchedules() {
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const highlightId = location.state?.highlightId;
   const highlightStatus = location.state?.status;
   const [blinkingId, setBlinkingId] = useState<string | null>(null);
@@ -56,12 +57,12 @@ export default function PsikotesSchedules() {
 
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [search, setSearch] = useState(searchParams.get("q") || "");
+  const [debouncedSearch, setDebouncedSearch] = useState(searchParams.get("q") || "");
+  const [startDate, setStartDate] = useState(searchParams.get("startDate") || "");
+  const [endDate, setEndDate] = useState(searchParams.get("endDate") || "");
   const [activeTab, setActiveTab] = useState<"pending" | "confirmed">(
-    highlightStatus === "confirmed" ? "confirmed" : "pending",
+    highlightStatus === "confirmed" ? "confirmed" : (searchParams.get("tab") as "pending" | "confirmed" || "pending"),
   );
   const [previewSchedule, setPreviewSchedule] = useState<Schedule | null>(null);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
@@ -73,9 +74,35 @@ export default function PsikotesSchedules() {
     candidate: Candidate;
     schedule: Schedule;
   } | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
+
+  // Sync to URL
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    
+    if (search) params.set("q", search);
+    else params.delete("q");
+    
+    if (startDate) params.set("startDate", startDate);
+    else params.delete("startDate");
+    
+    if (endDate) params.set("endDate", endDate);
+    else params.delete("endDate");
+    
+    if (activeTab !== "pending" && !highlightStatus) params.set("tab", activeTab);
+    else if (activeTab === "pending") params.delete("tab");
+    
+    if (currentPage !== 1) params.set("page", currentPage.toString());
+    else params.delete("page");
+
+    const currentParams = searchParams.toString();
+    const newParams = params.toString();
+    if (currentParams !== newParams) {
+      setSearchParams(params, { replace: true });
+    }
+  }, [search, startDate, endDate, activeTab, currentPage, setSearchParams, searchParams, highlightStatus]);
   const { toast } = useToast();
 
   const [isScheduling, setIsScheduling] = useState(false);
@@ -91,10 +118,15 @@ export default function PsikotesSchedules() {
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [calendarSchedules, setCalendarSchedules] = useState<Schedule[]>([]);
 
+  const isFirstRender = React.useRef(true);
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(search);
-      setCurrentPage(1); // Reset to page 1 on search
+      if (isFirstRender.current) {
+        isFirstRender.current = false;
+      } else {
+        setCurrentPage(1); // Reset to page 1 on search
+      }
     }, 500);
     return () => clearTimeout(handler);
   }, [search]);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { Candidate } from "../types";
 import {
@@ -30,6 +30,7 @@ import * as XLSX from "xlsx";
 
 export default function Logs() {
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const highlightId = location.state?.highlightId;
   const [blinkingId, setBlinkingId] = useState<string | null>(null);
 
@@ -52,14 +53,40 @@ export default function Logs() {
 
   const [logs, setLogs] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [search, setSearch] = useState(searchParams.get("q") || "");
+  const [debouncedSearch, setDebouncedSearch] = useState(searchParams.get("q") || "");
+  const [startDate, setStartDate] = useState(searchParams.get("startDate") || "");
+  const [endDate, setEndDate] = useState(searchParams.get("endDate") || "");
+  const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "all");
+  const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
+
+  // Sync to URL
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    
+    if (search) params.set("q", search);
+    else params.delete("q");
+    
+    if (startDate) params.set("startDate", startDate);
+    else params.delete("startDate");
+    
+    if (endDate) params.set("endDate", endDate);
+    else params.delete("endDate");
+    
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    else params.delete("status");
+    
+    if (currentPage !== 1) params.set("page", currentPage.toString());
+    else params.delete("page");
+
+    const currentParams = searchParams.toString();
+    const newParams = params.toString();
+    if (currentParams !== newParams) {
+      setSearchParams(params, { replace: true });
+    }
+  }, [search, startDate, endDate, statusFilter, currentPage, setSearchParams, searchParams]);
   const [selectedLog, setSelectedLog] = useState<Candidate | null>(null);
   const [isBulkDeleteMode, setIsBulkDeleteMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -75,10 +102,15 @@ export default function Logs() {
 
   const { toast } = useToast();
 
+  const isFirstRender = React.useRef(true);
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
-      setCurrentPage(1); // Reset to first page on new search
+      if (isFirstRender.current) {
+        isFirstRender.current = false;
+      } else {
+        setCurrentPage(1); // Reset to first page on new search
+      }
     }, 500);
     return () => clearTimeout(timer);
   }, [search]);

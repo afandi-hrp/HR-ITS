@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { EmailTemplate } from "../types";
 import {
@@ -19,13 +20,31 @@ import ConfirmModal from "../components/ConfirmModal";
 import { cn } from "../lib/utils";
 
 export default function Templates() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [search, setSearch] = useState(searchParams.get("q") || "");
+  const [debouncedSearch, setDebouncedSearch] = useState(searchParams.get("q") || "");
+  const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
+
+  // Sync to URL
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    
+    if (search) params.set("q", search);
+    else params.delete("q");
+    
+    if (currentPage !== 1) params.set("page", currentPage.toString());
+    else params.delete("page");
+
+    const currentParams = searchParams.toString();
+    const newParams = params.toString();
+    if (currentParams !== newParams) {
+      setSearchParams(params, { replace: true });
+    }
+  }, [search, currentPage, setSearchParams, searchParams]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(
     null,
@@ -43,10 +62,15 @@ export default function Templates() {
   }>({ isOpen: false, id: "", loading: false });
   const { toast } = useToast();
 
+  const isFirstRender = React.useRef(true);
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
-      setCurrentPage(1);
+      if (isFirstRender.current) {
+        isFirstRender.current = false;
+      } else {
+        setCurrentPage(1);
+      }
     }, 500);
     return () => clearTimeout(timer);
   }, [search]);

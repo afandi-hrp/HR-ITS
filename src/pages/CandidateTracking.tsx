@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { Download, Search, Loader2, Edit2, Check, X } from "lucide-react";
 
@@ -7,19 +8,37 @@ import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 
 export default function CandidateTracking() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [candidates, setCandidates] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("q") || "");
   const [isExporting, setIsExporting] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<any>({});
   
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
   const [pageSize, setPageSize] = useState(50);
 
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState<any[]>([]);
+
+  // Sync to URL
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    
+    if (searchTerm) params.set("q", searchTerm);
+    else params.delete("q");
+    
+    if (currentPage !== 1) params.set("page", currentPage.toString());
+    else params.delete("page");
+
+    const currentParams = searchParams.toString();
+    const newParams = params.toString();
+    if (currentParams !== newParams) {
+      setSearchParams(params, { replace: true });
+    }
+  }, [searchTerm, currentPage, setSearchParams, searchParams]);
 
   
 const topScrollRef = useRef<HTMLDivElement>(null);

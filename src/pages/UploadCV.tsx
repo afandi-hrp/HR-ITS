@@ -58,10 +58,15 @@ export default function UploadCV() {
   const [totalItems, setTotalItems] = useState(0);
   const { toast } = useToast();
 
+  const isFirstRender = React.useRef(true);
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
-      setCurrentPage(1);
+      if (isFirstRender.current) {
+        isFirstRender.current = false;
+      } else {
+        setCurrentPage(1);
+      }
     }, 500);
     return () => clearTimeout(timer);
   }, [search]);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { Candidate } from "../types";
 import {
@@ -27,22 +27,48 @@ import { useToast } from "../components/ui/use-toast";
 import JSONRenderer from "../components/JSONRenderer";
 
 export default function CandidateArchive() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [logs, setLogs] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [dateFilter, setDateFilter] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [search, setSearch] = useState(searchParams.get("q") || "");
+  const [debouncedSearch, setDebouncedSearch] = useState(searchParams.get("q") || "");
+  const [dateFilter, setDateFilter] = useState(searchParams.get("date") || "");
+  const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
+
+  // Sync to URL
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    
+    if (search) params.set("q", search);
+    else params.delete("q");
+    
+    if (dateFilter) params.set("date", dateFilter);
+    else params.delete("date");
+    
+    if (currentPage !== 1) params.set("page", currentPage.toString());
+    else params.delete("page");
+
+    const currentParams = searchParams.toString();
+    const newParams = params.toString();
+    if (currentParams !== newParams) {
+      setSearchParams(params, { replace: true });
+    }
+  }, [search, dateFilter, currentPage, setSearchParams, searchParams]);
   const [expandedCards, setExpandedCards] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<"list" | "card">("card");
   const { toast } = useToast();
 
+  const isFirstRender = React.useRef(true);
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(search);
-      setCurrentPage(1); // Reset to first page on new search
+      if (isFirstRender.current) {
+        isFirstRender.current = false;
+      } else {
+        setCurrentPage(1); // Reset to first page on new search
+      }
     }, 500);
     return () => clearTimeout(handler);
   }, [search]);

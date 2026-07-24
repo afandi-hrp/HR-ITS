@@ -1477,10 +1477,10 @@ export default function CandidateProfile() {
           Profil kandidat yang Anda cari tidak ada atau telah dihapus.
         </p>
         <button
-          onClick={() => navigate("/screening")}
+          onClick={() => navigate(-1)}
           className="px-6 py-2 bg-[#3D2C44] text-white font-medium rounded-xl hover:bg-[#3D2C44]/90 transition-colors"
         >
-          Kembali ke Screening
+          Kembali
         </button>
       </div>
     );

@@ -12,7 +12,7 @@ interface PdfToImagesProps {
 export const PdfToImages: React.FC<PdfToImagesProps> = ({ url, title }) => {
   const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -47,7 +47,11 @@ export const PdfToImages: React.FC<PdfToImagesProps> = ({ url, title }) => {
       } catch (err) {
         console.error('Error rendering PDF:', err);
         if (isMounted) {
-          setError(true);
+          if (err && err.name === 'PasswordException' || (err && err.message && err.message.includes('No password given'))) {
+            setError('Dokumen PDF ini dilindungi sandi. Tidak dapat dipratinjau.');
+          } else {
+            setError('Gagal memuat dokumen PDF.');
+          }
           setLoading(false);
         }
       }
@@ -59,7 +63,7 @@ export const PdfToImages: React.FC<PdfToImagesProps> = ({ url, title }) => {
   }, [url]);
 
   if (loading) return <div className="text-sm text-slate-500 italic animate-pulse">Memuat dokumen PDF ({title})...</div>;
-  if (error) return <div className="text-sm text-red-500 italic">Gagal memuat dokumen PDF. <a href={url} target="_blank" rel="noreferrer" className="underline text-indigo-600">Buka manual</a></div>;
+  if (error) return <div className="text-sm text-red-500 italic">{error} <a href={url} target="_blank" rel="noreferrer" className="underline text-indigo-600">Buka manual</a></div>;
 
   return (
     <div className="space-y-6">

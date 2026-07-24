@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { Profile } from "../types";
 import {
@@ -13,9 +14,24 @@ import {
 import { useToast } from "../components/ui/use-toast";
 
 export default function UserManagement() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
+
+  // Sync to URL
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    
+    if (searchQuery) params.set("q", searchQuery);
+    else params.delete("q");
+
+    const currentParams = searchParams.toString();
+    const newParams = params.toString();
+    if (currentParams !== newParams) {
+      setSearchParams(params, { replace: true });
+    }
+  }, [searchQuery, setSearchParams, searchParams]);
   const [editingUser, setEditingUser] = useState<Profile | null>(null);
   const [editRole, setEditRole] = useState("");
   const [editDepartment, setEditDepartment] = useState("");

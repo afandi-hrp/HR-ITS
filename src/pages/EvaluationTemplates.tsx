@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { EvaluationTemplate } from "../types";
 import {
@@ -43,10 +44,25 @@ interface SummaryField {
 }
 
 export default function EvaluationTemplates() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [templates, setTemplates] = useState<EvaluationTemplate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [search, setSearch] = useState(searchParams.get("q") || "");
+  const [debouncedSearch, setDebouncedSearch] = useState(searchParams.get("q") || "");
+
+  // Sync to URL
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    
+    if (search) params.set("q", search);
+    else params.delete("q");
+
+    const currentParams = searchParams.toString();
+    const newParams = params.toString();
+    if (currentParams !== newParams) {
+      setSearchParams(params, { replace: true });
+    }
+  }, [search, setSearchParams, searchParams]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] =
     useState<EvaluationTemplate | null>(null);

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { Candidate } from "../types";
 import {
   Search,
   Filter,
+  FilterX,
   RefreshCcw,
   Send,
   FolderInput,
@@ -42,6 +43,7 @@ import SchedulingModal from "../components/SchedulingModal";
 
 export default function Screening() {
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const highlightId = location.state?.highlightId;
   const [blinkingId, setBlinkingId] = useState<string | null>(null);
   const [expandedCandidates, setExpandedCandidates] = useState<string[]>([]);
@@ -69,16 +71,65 @@ export default function Screening() {
 
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [positionFilter, setPositionFilter] = useState("all");
+  const [search, setSearch] = useState(searchParams.get("q") || "");
+  const [debouncedSearch, setDebouncedSearch] = useState(searchParams.get("q") || "");
+  const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "all");
+  const [positionFilter, setPositionFilter] = useState(searchParams.get("position") || "all");
+  const [positionStatusFilters, setPositionStatusFilters] = useState<Record<string, string>>(() => {
+    const pos = searchParams.get("selectedPosition");
+    const sub = searchParams.get("subStatus");
+    if (pos && sub) return { [pos]: sub };
+    return {};
+  });
   const [openPositions, setOpenPositions] = useState<string[]>([]);
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [startDate, setStartDate] = useState(searchParams.get("startDate") || "");
+  const [isStatusExpanded, setIsStatusExpanded] = useState(true);
+  const [endDate, setEndDate] = useState(searchParams.get("endDate") || "");
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  const [selectedPosition, setSelectedPosition] = useState<string | null>(searchParams.get("selectedPosition") || null);
+  // Sync to URL
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    
+    if (search) params.set("q", search);
+    else params.delete("q");
+    
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    else params.delete("status");
+    
+    if (positionFilter !== "all") params.set("position", positionFilter);
+    else params.delete("position");
+    
+    if (startDate) params.set("startDate", startDate);
+    else params.delete("startDate");
+    
+    if (endDate) params.set("endDate", endDate);
+    else params.delete("endDate");
+    
+    if (currentPage !== 1) params.set("page", currentPage.toString());
+    else params.delete("page");
+    
+    if (selectedPosition) {
+      params.set("selectedPosition", selectedPosition);
+      if (positionStatusFilters[selectedPosition] && positionStatusFilters[selectedPosition] !== "Semua") {
+        params.set("subStatus", positionStatusFilters[selectedPosition]);
+      } else {
+        params.delete("subStatus");
+      }
+    } else {
+      params.delete("selectedPosition");
+      params.delete("subStatus");
+    }
+
+    const currentParams = searchParams.toString();
+    const newParams = params.toString();
+    if (currentParams !== newParams) {
+      setSearchParams(params, { replace: true });
+    }
+  }, [search, statusFilter, positionFilter, startDate, endDate, currentPage, selectedPosition, positionStatusFilters, setSearchParams]);
   const [schedulingData, setSchedulingData] = useState<{
     candidate: Candidate;
     type: "psikotes" | "interview";
@@ -117,7 +168,8 @@ export default function Screening() {
   const [savingAssessment, setSavingAssessment] = useState(false);
   const { toast } = useToast();
 
-  const [viewMode, setViewMode] = useState<"list" | "card">("card");
+  const [sortOption, setSortOption] = useState<"skor" | "interview" | "psikotes" | "terbaru">("terbaru");
+
   const [totalItems, setTotalItems] = useState(0);
   const [profile, setProfile] = useState<any>(null);
 
@@ -144,10 +196,15 @@ export default function Screening() {
     fetchUserAndProfile();
   }, []);
 
+  const isFirstRender = React.useRef(true);
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(search);
-      setCurrentPage(1); // Reset to page 1 on search
+      if (isFirstRender.current) {
+        isFirstRender.current = false;
+      } else {
+        setCurrentPage(1); // Reset to page 1 on search
+      }
     }, 500);
     return () => clearTimeout(handler);
   }, [search]);
@@ -191,12 +248,12 @@ export default function Screening() {
       query = query.eq("position", positionFilter);
     }
 
-    // Apply pagination
-    const from = (currentPage - 1) * itemsPerPage;
-    const to = from + itemsPerPage - 1;
-    query = query.range(from, to);
+    // Apply pagination (Moved to frontend for grouping/filtering)
+    // const from = (currentPage - 1) * itemsPerPage;
+    // const to = from + itemsPerPage - 1;
+    // query = query.range(from, to);
 
-    let { data, count, error } = await query;
+    let { data, count, error } = await query.limit(2000);
     let typedData = data as any[] | null;
 
     // Handle array case if relationship returns an array
@@ -663,10 +720,96 @@ export default function Screening() {
     }
   };
 
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const getCandidateDerivedStatus = (candidate: any) => {
+    if (candidate.status_screening === "hired") return "Hired";
+    if (candidate.status_screening === "rejected") return "Rejected";
+    
+    // If they already have an interview status/result, it means interview is done
+    if (candidate.interview_status && candidate.interview_status.trim() !== '') return "Interview Selesai";
+    
+    // Schedule checks come first so we see them in the pipeline correctly
+    if (candidate.interview_schedules && candidate.interview_schedules.length > 0) {
+      if (candidate.interview_schedules.some((s: any) => s.is_confirmed)) return "Interview Selesai";
+      return "Jadwal Interview";
+    }
+    
+    // If they already have a psikotes status/result, it means psikotes is done
+    if (candidate.psikotes_status && candidate.psikotes_status.trim() !== '') return "Psikotes Selesai";
+    
+    if (candidate.psikotes_schedules && candidate.psikotes_schedules.length > 0) {
+      if (candidate.psikotes_schedules.some((s: any) => s.is_confirmed)) return "Psikotes Selesai";
+      return "Jadwal Psikotes";
+    }
+    
+    if (candidate.status_screening === "accepted") return "Lolos"; // Lolos screening awal
+    
+    // We can also assume "invited" might mean they are waiting for schedule?
+    // We will just default to Belum Diproses for now if they don't have schedules yet
+    return "Belum Diproses"; 
+  };
+
+  const allGroupedCandidates = candidates.reduce(
+    (acc: Record<string, Candidate[]>, c) => {
+      if (!acc[c.position]) acc[c.position] = [];
+      acc[c.position].push(c);
+      return acc;
+    },
+    {} as Record<string, Candidate[]>,
+  );
+
+  const candidatesForSelectedPosition = selectedPosition ? (allGroupedCandidates[selectedPosition] || []) : [];
+  
+  const filteredCandidatesForPosition = candidatesForSelectedPosition.filter((c) => {
+    const selectedStatus = positionStatusFilters[selectedPosition!] || "Semua";
+    if (selectedStatus === "Semua") return true;
+    return getCandidateDerivedStatus(c) === selectedStatus;
+  });
+
+  const getManualAssessmentScoreLocal = (candidate: any) => {
+    const scores = [
+      candidate.technical_score || 0,
+      candidate.communication_score || 0,
+      candidate.problem_solving_score || 0,
+      candidate.teamwork_score || 0,
+      candidate.leadership_score || 0,
+      candidate.adaptability_score || 0,
+    ];
+    const totalScore = scores.reduce((sum, score) => sum + score, 0);
+    return Math.round((totalScore / 600) * 100);
+  };
+
+  const sortedCandidatesForPosition = [...filteredCandidatesForPosition].sort((a, b) => {
+    if (sortOption === "skor") {
+      const scoreA = a.assessment_score || 0;
+      const scoreB = b.assessment_score || 0;
+      if (scoreB !== scoreA) return scoreB - scoreA;
+    } else if (sortOption === "interview") {
+      const statusA = getCandidateDerivedStatus(a);
+      const statusB = getCandidateDerivedStatus(b);
+      const isInterviewA = statusA === "Interview Selesai" || statusA === "Jadwal Interview" ? 1 : 0;
+      const isInterviewB = statusB === "Interview Selesai" || statusB === "Jadwal Interview" ? 1 : 0;
+      if (isInterviewA !== isInterviewB) return isInterviewB - isInterviewA;
+    } else if (sortOption === "psikotes") {
+      const statusA = getCandidateDerivedStatus(a);
+      const statusB = getCandidateDerivedStatus(b);
+      const isPsikotesA = statusA === "Psikotes Selesai" || statusA === "Jadwal Psikotes" ? 1 : 0;
+      const isPsikotesB = statusB === "Psikotes Selesai" || statusB === "Jadwal Psikotes" ? 1 : 0;
+      if (isPsikotesA !== isPsikotesB) return isPsikotesB - isPsikotesA;
+    }
+    // Default to "terbaru"
+    return new Date(b.created_at || b.date).getTime() - new Date(a.created_at || a.date).getTime();
+  });
+
+  const totalFilteredItems = selectedPosition ? sortedCandidatesForPosition.length : Object.keys(allGroupedCandidates).length;
+  const totalPages = Math.ceil(totalFilteredItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  // We already paginated on the server, so paginatedCandidates is just candidates
-  const paginatedCandidates = candidates;
+  
+  const paginatedCandidates = selectedPosition ? sortedCandidatesForPosition.slice(startIndex, startIndex + itemsPerPage) : [];
+  const paginatedPositions = !selectedPosition ? Object.keys(allGroupedCandidates).sort((a, b) => {
+    const maxA = Math.max(...(allGroupedCandidates[a] || []).map(c => new Date(c.updated_at || c.created_at || 0).getTime()));
+    const maxB = Math.max(...(allGroupedCandidates[b] || []).map(c => new Date(c.updated_at || c.created_at || 0).getTime()));
+    return maxB - maxA;
+  }).slice(startIndex, startIndex + itemsPerPage) : [];
 
   const getManualAssessmentScore = (candidate: Candidate) => {
     const scores = [
@@ -680,15 +823,6 @@ export default function Screening() {
     const total = scores.reduce((a, b) => a + b, 0);
     return Math.round(total / 6);
   };
-
-  const groupedCandidates = paginatedCandidates.reduce(
-    (acc: Record<string, Candidate[]>, c) => {
-      if (!acc[c.position]) acc[c.position] = [];
-      acc[c.position].push(c);
-      return acc;
-    },
-    {} as Record<string, Candidate[]>,
-  );
 
   const topCandidatesByPosition = React.useMemo(() => {
     const grouped: Record<string, Candidate[]> = {};
@@ -762,983 +896,603 @@ export default function Screening() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
-        <div className="space-y-1">
-          <h1 className="text-4xl font-extrabold tracking-tight text-[#3D2C44]">
-            Screening Awal
-          </h1>
-          <p className="text-sm font-medium text-[#3D2C44]/70 max-w-xl">
-            Kelola dan tinjau kandidat baru yang masuk.
-          </p>
-        </div>
-      </div>
+      {!selectedPosition ? (
+        <>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
+            <div className="space-y-1">
+              <h1 className="text-4xl font-extrabold tracking-tight text-[#3D2C44]">
+                Screening Awal
+              </h1>
+              <p className="text-sm font-medium text-[#3D2C44]/70 max-w-xl">
+                Kelola dan tinjau kandidat berdasarkan lowongan.
+              </p>
+            </div>
+          </div>
 
-      {/* Filter Bar */}
-      <div className="bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col xl:flex-row gap-4">
-        <div className="flex-1 min-w-[200px]">
-          <div className="relative w-full">
-            <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-              size={18}
-            />
-            <input
-              type="text"
-              placeholder="Cari nama atau posisi..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
-            />
+          {/* Filter Bar */}
+          <div className="bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-sm mb-6">
+            <div className="flex items-center gap-4 overflow-x-auto custom-scrollbar pb-2">
+              <div className="flex-1 min-w-[250px] shrink-0">
+                <div className="relative w-full">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <input
+                    type="text"
+                    placeholder="Cari nama kandidat atau posisi..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3D2C44] transition-all text-sm"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 max-w-[200px]">
+                <Filter size={16} className="text-slate-400 shrink-0" />
+                <select
+                  value={positionFilter}
+                  onChange={(e) => setPositionFilter(e.target.value)}
+                  className="bg-transparent text-sm focus:outline-none text-slate-700 w-full truncate"
+                >
+                  <option value="all">Semua Lowongan</option>
+                  {openPositions.map((pos) => (
+                    <option key={pos} value={pos}>{pos}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
+                <Filter size={16} className="text-slate-400 shrink-0" />
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="bg-transparent text-sm focus:outline-none text-slate-700 w-full"
+                >
+                  <option value="all">Semua Status</option>
+                  <option value="pending">Pending</option>
+                  <option value="invited">Invited</option>
+                  <option value="accepted">Accepted</option>
+                  <option value="rejected">Rejected</option>
+                  <option value="hired">Hired</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
+                <CalendarIcon size={16} className="text-slate-400 shrink-0" />
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="bg-transparent text-sm focus:outline-none text-slate-700"
+                />
+                <span className="text-slate-400">-</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="bg-transparent text-sm focus:outline-none text-slate-700"
+                />
+              </div>
+              <button
+                onClick={() => {
+                  setSearch("");
+                  setStatusFilter("all");
+                  setPositionFilter("all");
+                  setStartDate("");
+                  setEndDate("");
+                  setCurrentPage(1);
+                }}
+                className="p-2.5 text-slate-500 hover:text-red-600 bg-white border border-slate-200 hover:bg-red-50 hover:border-red-200 rounded-xl transition-all shadow-sm flex items-center gap-2"
+                title="Reset Filter"
+              >
+                <FilterX size={18} />
+                <span className="font-medium hidden sm:inline">Reset</span>
+              </button>
+
+              <button
+                onClick={fetchCandidates}
+                className="p-2.5 text-[#3D2C44] bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 rounded-xl transition-all shadow-sm flex items-center gap-2"
+                title="Refresh Data"
+              >
+                <RefreshCcw size={18} className={loading ? "animate-spin" : ""} />
+                <span className="font-medium hidden sm:inline">Refresh</span>
+              </button>
+            </div>
+            </div>
           </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 max-w-[200px]">
-            <Filter size={16} className="text-slate-400 shrink-0" />
-            <select
-              value={positionFilter}
-              onChange={(e) => setPositionFilter(e.target.value)}
-              className="bg-transparent text-sm focus:outline-none text-slate-700 w-full truncate"
-            >
-              <option value="all">Semua Lowongan</option>
-              {openPositions.map((pos) => (
-                <option key={pos} value={pos}>
-                  {pos}
-                </option>
-              ))}
-            </select>
+
+          <div className="flex flex-col gap-4">
+             {paginatedPositions.length === 0 && !loading ? (
+                <div className="py-12 text-center bg-white/50 backdrop-blur-sm rounded-2xl border border-dashed border-slate-300">
+                  <p className="text-slate-500 font-medium">Tidak ada lowongan ditemukan.</p>
+                </div>
+             ) : (
+               paginatedPositions.map(position => {
+                 const allCands = allGroupedCandidates[position] || [];
+                 const total = allCands.length;
+                 const newCount = allCands.filter((c: any) => getCandidateDerivedStatus(c) === "Belum Diproses").length;
+                 const highFitCount = allCands.filter((c: any) => getCandidateDerivedStatus(c) === "Lolos").length;
+                 
+                 const jadwalPsikotesCount = allCands.filter((c: any) => getCandidateDerivedStatus(c) === "Jadwal Psikotes").length;
+                 const selesaiPsikotesCount = allCands.filter((c: any) => getCandidateDerivedStatus(c) === "Psikotes Selesai").length;
+                 
+                 const jadwalInterviewCount = allCands.filter((c: any) => getCandidateDerivedStatus(c) === "Jadwal Interview").length;
+                 const selesaiInterviewCount = allCands.filter((c: any) => getCandidateDerivedStatus(c) === "Interview Selesai").length;
+                 
+                 return (
+                   <div 
+                     key={position}
+                     onClick={() => { setSelectedPosition(position); setCurrentPage(1); setSearch(""); }}
+                     className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4 group"
+                   >
+                     <div className="space-y-2">
+                       <h3 className="text-xl font-bold text-slate-900 underline decoration-slate-300 decoration-2 underline-offset-4 group-hover:text-[#3D2C44] transition-colors">{position}</h3>
+                       <div className="text-sm text-slate-500 flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3 sm:gap-4 mt-2">
+                         <span className="flex items-center gap-1.5"><Users size={16} className="text-slate-400" /> <span className="font-medium">{total} Total Pelamar</span></span>
+                         
+                         <span className="flex items-center gap-1.5 bg-slate-100 px-2 py-1 rounded-lg"><Search size={14} className="text-indigo-500" /> <span className="font-medium text-indigo-700">{newCount} Baru</span></span>
+                         <span className="flex items-center gap-1.5 bg-emerald-50 px-2 py-1 rounded-lg text-emerald-700 font-medium" title="Lolos screening awal tetapi belum dijadwalkan test/interview"><Star size={14} /> {highFitCount} Lolos Awal</span>
+                         
+                         <div className="flex items-center gap-2 bg-sky-50 px-2 py-1 rounded-lg text-sky-700 font-medium">
+                           <FileText size={14} /> Psikotes: 
+                           <span className="text-xs bg-sky-200 px-1.5 rounded">{jadwalPsikotesCount} Jadwal</span>
+                           <span className="text-xs bg-sky-200 px-1.5 rounded">{selesaiPsikotesCount} Selesai</span>
+                         </div>
+                         
+                         <div className="flex items-center gap-2 bg-amber-50 px-2 py-1 rounded-lg text-amber-700 font-medium">
+                           <Users size={14} /> Interview: 
+                           <span className="text-xs bg-amber-200 px-1.5 rounded">{jadwalInterviewCount} Jadwal</span>
+                           <span className="text-xs bg-amber-200 px-1.5 rounded">{selesaiInterviewCount} Selesai</span>
+                         </div>
+                       </div>
+                     </div>
+                     <div className="flex items-center gap-4">
+                        <span className="text-sm text-slate-400 group-hover:text-[#3D2C44] font-medium transition-colors hidden sm:block">Lihat kandidat &rarr;</span>
+                     </div>
+                   </div>
+                 );
+               })
+             )}
           </div>
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
-            <Filter size={16} className="text-slate-400 shrink-0" />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-transparent text-sm focus:outline-none text-slate-700 w-full"
-            >
-              <option value="all">Semua Status</option>
-              <option value="pending">Pending</option>
-              <option value="invited">Invited</option>
-              <option value="accepted">Accepted</option>
-              <option value="rejected">Rejected</option>
-              <option value="hired">Hired</option>
-            </select>
-          </div>
-          <Popover>
-            <PopoverTrigger
-              className={cn(
-                "flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none hover:bg-slate-100 transition-colors h-[42px] max-w-[280px] truncate",
-                !startDate && !endDate && "text-slate-500",
-                (startDate || endDate) && "text-slate-900 font-medium",
-              )}
-            >
-              <CalendarIcon size={16} className="text-slate-400 shrink-0" />
-              <span className="truncate">
-                {startDate && endDate
-                  ? `${formatDate(startDate)} - ${formatDate(endDate)}`
-                  : startDate
-                    ? `Mulai: ${formatDate(startDate)}`
-                    : endDate
-                      ? `Sampai: ${formatDate(endDate)}`
-                      : "Filter Tanggal"}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-8">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 disabled:opacity-50 hover:bg-slate-50 transition-colors"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <span className="text-sm font-medium text-slate-600">
+                Halaman {currentPage} dari {totalPages}
               </span>
-            </PopoverTrigger>
-            <PopoverContent className="w-[280px] p-4 bg-white border border-slate-200 shadow-xl rounded-xl z-50">
-              <div className="flex flex-col gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase">
-                    Tanggal Mulai
-                  </label>
-                  <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
-                    <CalendarIcon
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 disabled:opacity-50 hover:bg-slate-50 transition-colors"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+            <div className="space-y-1">
+              <button 
+                onClick={() => { setSelectedPosition(null); setCurrentPage(1); setSearch(""); }}
+                className="text-sm text-slate-600 hover:text-[#3D2C44] font-bold flex items-center gap-1.5 mb-2 transition-colors border border-slate-200 bg-white/70 backdrop-blur-md hover:bg-white px-3 py-1.5 rounded-xl w-fit shadow-sm"
+              >
+                <ChevronLeft size={16} /> Kembali ke Lowongan
+              </button>
+              <h1 className="text-3xl font-extrabold tracking-tight text-[#3D2C44]">
+                {selectedPosition}
+              </h1>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center bg-white/70 backdrop-blur-md border border-slate-200 rounded-xl px-3 h-[42px] gap-2 shadow-sm">
+                <span className="text-sm font-medium text-slate-500">Urutkan:</span>
+                <select
+                  value={sortOption}
+                  onChange={(e) => setSortOption(e.target.value as any)}
+                  className="bg-transparent text-sm font-bold text-slate-800 focus:outline-none cursor-pointer"
+                >
+                  <option value="terbaru">Terbaru</option>
+                  <option value="skor">Skor Tertinggi</option>
+                  <option value="interview">Sudah Interview</option>
+                  <option value="psikotes">Sudah Psikotes</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col xl:flex-row gap-6">
+            <div className="w-full xl:w-64 shrink-0 space-y-4">
+              <div className="bg-white/70 backdrop-blur-md border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-4 xl:max-h-[calc(100vh-200px)] overflow-y-auto">
+                
+                {/* Search */}
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 mb-2 px-1">Cari Kandidat</h3>
+                  <div className="relative w-full">
+                    <Search
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
                       size={16}
-                      className="text-slate-400 shrink-0"
                     />
                     <input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      className="bg-transparent text-sm focus:outline-none w-full"
+                      type="text"
+                      placeholder="Nama atau posisi..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3D2C44] transition-all text-sm"
                     />
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase">
-                    Tanggal Akhir
-                  </label>
-                  <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
-                    <CalendarIcon
-                      size={16}
-                      className="text-slate-400 shrink-0"
-                    />
-                    <input
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      className="bg-transparent text-sm focus:outline-none w-full"
-                    />
+
+                {/* Date Filter */}
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 mb-2 px-1">Tanggal Apply</h3>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 w-full">
+                      <CalendarIcon size={14} className="text-slate-400 shrink-0" />
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="bg-transparent text-sm focus:outline-none text-slate-700 w-full"
+                        placeholder="Mulai"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 w-full">
+                      <CalendarIcon size={14} className="text-slate-400 shrink-0" />
+                      <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="bg-transparent text-sm focus:outline-none text-slate-700 w-full"
+                        placeholder="Selesai"
+                      />
+                    </div>
                   </div>
                 </div>
-                {(startDate || endDate) && (
+
+                {/* Status Filter */}
+                <div>
+                  <button 
+                    onClick={() => setIsStatusExpanded(!isStatusExpanded)}
+                    className="w-full flex items-center justify-between text-sm font-bold text-slate-900 mb-2 px-1 hover:text-indigo-600 transition-colors"
+                  >
+                    <span>Status</span>
+                    <ChevronDown size={16} className={cn("transition-transform duration-300", !isStatusExpanded && "rotate-180")} />
+                  </button>
+                  {isStatusExpanded && (
+                    <div className="space-y-1">
+                      {(() => {
+                      const allCandidatesInThisPosition = allGroupedCandidates[selectedPosition] || [];
+                      const filterOptions = ["Semua", "Belum Diproses", "Lolos", "Jadwal Psikotes", "Psikotes Selesai", "Jadwal Interview", "Interview Selesai", "Rejected", "Hired"];
+                      return filterOptions.map(opt => {
+                        const count = opt === "Semua" ? allCandidatesInThisPosition.length : allCandidatesInThisPosition.filter((c: any) => getCandidateDerivedStatus(c) === opt).length;
+                        const currentFilter = positionStatusFilters[selectedPosition] || "Semua";
+                        
+                        let filterLabel = opt;
+                        if (opt === "Belum Diproses") filterLabel = "Inbox (Baru)";
+                        if (opt === "Lolos") filterLabel = "Lolos Awal (Menunggu Jadwal)";
+                        
+                        return (
+                          <button
+                            key={opt}
+                            onClick={() => {
+                              setPositionStatusFilters(prev => ({ ...prev, [selectedPosition]: opt }));
+                              setCurrentPage(1);
+                            }}
+                            className={cn(
+                              "w-full flex items-center justify-between px-3 py-2 text-sm rounded-xl transition-all duration-200",
+                              currentFilter === opt ? "bg-[#3D2C44]/10 text-[#3D2C44] font-bold" : "text-slate-600 hover:bg-slate-50"
+                            )}
+                          >
+                            <span className="text-left leading-tight truncate mr-2">{filterLabel}</span>
+                            <span className={cn(
+                              "text-xs px-2 py-0.5 rounded-full font-medium transition-colors shrink-0",
+                              currentFilter === opt ? "bg-[#3D2C44]/20 text-[#3D2C44] font-bold" : "bg-slate-100 text-slate-500"
+                            )}>{count}</span>
+                          </button>
+                        );
+                      });
+                      })()}
+                    </div>
+                  )}
+                </div>
+
+                {/* Reset Button */}
+                <div className="pt-2">
                   <button
                     onClick={() => {
+                      setSearch("");
                       setStartDate("");
                       setEndDate("");
+                      setPositionStatusFilters(prev => {
+                        const next = { ...prev };
+                        delete next[selectedPosition!];
+                        return next;
+                      });
+                      setCurrentPage(1);
                     }}
-                    className="mt-1 w-full px-3 py-2 text-xs font-bold text-rose-600 bg-rose-50 rounded-lg hover:bg-rose-100 transition-colors"
+                    className="w-full flex items-center justify-center gap-2 p-2 text-slate-500 hover:text-red-600 bg-white border border-slate-200 hover:bg-red-50 hover:border-red-200 rounded-xl transition-all shadow-sm"
                   >
-                    Reset Tanggal
+                    <FilterX size={16} />
+                    <span className="font-medium text-sm">Reset Filter</span>
                   </button>
-                )}
-              </div>
-            </PopoverContent>
-          </Popover>
-          <button
-            onClick={() => {
-              setSearch("");
-              setStartDate("");
-              setEndDate("");
-              setStatusFilter("all");
-              setPositionFilter("all");
-            }}
-            className="px-4 py-2.5 text-sm font-bold text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm"
-          >
-            Reset
-          </button>
-          <button
-            onClick={fetchCandidates}
-            className="p-2.5 text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm flex items-center justify-center"
-            title="Refresh Data"
-          >
-            <RefreshCcw size={20} className={loading ? "animate-spin" : ""} />
-          </button>
-          <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl p-1 h-[42px]">
-            <button
-              onClick={() => setViewMode("list")}
-              className={cn(
-                "p-1.5 rounded-lg transition-all h-full flex items-center justify-center",
-                viewMode === "list"
-                  ? "bg-white text-indigo-600 shadow-sm"
-                  : "text-slate-400 hover:text-slate-600",
-              )}
-              title="Tampilan Daftar"
-            >
-              <LayoutList size={18} />
-            </button>
-            <button
-              onClick={() => setViewMode("card")}
-              className={cn(
-                "p-1.5 rounded-lg transition-all h-full flex items-center justify-center",
-                viewMode === "card"
-                  ? "bg-white text-indigo-600 shadow-sm"
-                  : "text-slate-400 hover:text-slate-600",
-              )}
-              title="Tampilan Kartu"
-            >
-              <LayoutGrid size={18} />
-            </button>
-          </div>
-        </div>
-      </div>
+                </div>
 
-      {/* Candidate List */}
-      <div className="space-y-8">
-        {Object.entries(groupedCandidates).map(
-          ([position, candidatesInGroup]: [string, any]) => (
-            <div key={position} className="space-y-4">
-              <div className="flex items-center justify-between bg-[#3D2C44] px-5 py-3.5 rounded-xl shadow-md border border-[#3D2C44]/20 mb-2">
-                <h2 className="text-lg font-bold text-white flex items-center gap-3">
-                  <Briefcase className="text-white/70" size={20} />
-                  {position}
-                </h2>
-                <span className="text-xs font-semibold px-3 py-1 rounded-full bg-white/10 text-white backdrop-blur-sm border border-white/20">
-                  {candidatesInGroup.length} Pelamar Aktif
-                </span>
               </div>
-              <div
-                className={cn(
-                  "grid gap-6",
-                  viewMode === "list"
-                    ? "grid-cols-1"
-                    : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
-                )}
-              >
-                {candidatesInGroup.map((candidate) => {
+            </div>
+            <div className="flex-1 space-y-6 xl:max-h-[calc(100vh-200px)] overflow-y-auto pr-2 pb-10 custom-scrollbar">
+              <div className="flex flex-col gap-6">
+{paginatedCandidates.map((candidate: any) => {
                   const isExpanded = expandedCandidates.includes(candidate.id);
-
-                  if (viewMode === "card") {
-                    return (
-                      <div
-                        key={candidate.id}
-                        id={`candidate-${candidate.id}`}
-                        className={cn(
-                          "bg-white/70 backdrop-blur-md border border-[#3D2C44]/20 rounded-2xl overflow-hidden hover:border-[#3D2C44]/50 hover:shadow-xl transition-all duration-300 flex flex-col",
-                          blinkingId === candidate.id
-                            ? "animate-pulse ring-2 ring-indigo-500 ring-inset"
-                            : "",
-                        )}
-                      >
-                        <div className="p-5 border-b border-[#3D2C44]/20 flex items-start justify-between">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <Link
-                              to={`/candidates/${candidate.id}`}
-                              className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0 text-indigo-700 font-bold hover:bg-indigo-200 transition-colors overflow-hidden"
-                            >
-                              {extractPhotoUrl(
-                                candidate.external_data?.raw_data ||
-                                  candidate.source_info,
-                              ) ? (
-                                <img
-                                  src={extractPhotoUrl(
-                                    candidate.external_data?.raw_data ||
-                                      candidate.source_info,
-                                  )!}
-                                  alt={candidate.full_name}
-                                  className="w-full h-full object-cover"
-                                  referrerPolicy="no-referrer"
-                                />
-                              ) : (
-                                candidate.full_name?.[0] || "?"
-                              )}
-                            </Link>
-                            <div className="min-w-0">
-                              <h3 className="text-base font-bold text-slate-900 truncate flex items-center gap-2">
-                                <Link
-                                  to={`/candidates/${candidate.id}`}
-                                  className="hover:text-indigo-600 transition-colors"
-                                >
-                                  {candidate.full_name}
-                                </Link>
-                              </h3>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                {candidate.is_blacklisted && (
-                                  <span
-                                    className="px-1.5 py-0.5 bg-black text-white text-[10px] font-bold rounded"
-                                    title={
-                                      candidate.blacklist_reason ||
-                                      "Kandidat berada dalam daftar blacklist"
-                                    }
-                                  >
-                                    BLACKLIST
-                                  </span>
-                                )}
-                                <p className="text-xs text-slate-500 truncate">
-                                  {candidate.email}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex flex-col items-end gap-1 shrink-0">
-                            <div
-                              className="flex items-center gap-1.5 bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100"
-                              title="Skor CV (AI)"
-                            >
-                              <span className="text-[10px] font-bold text-indigo-400 uppercase">
-                                CV
-                              </span>
-                              <span className="text-xs font-bold text-indigo-700">
-                                {candidate.assessment_score || 0}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="p-5 flex-1 space-y-3">
-                          <div className="flex items-center gap-2 text-xs text-slate-600">
-                            <CalendarIcon
-                              size={14}
-                              className="text-slate-400 shrink-0"
-                            />
-                            <span className="truncate">
-                              Melamar: {formatDate(candidate.date)}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-slate-600">
-                            <Briefcase
-                              size={14}
-                              className="text-slate-400 shrink-0"
-                            />
-                            <span className="font-medium text-indigo-600 truncate">
-                              {candidate.position}
-                            </span>
-                          </div>
-                          {candidate.source_info && (
-                            <div className="flex items-center gap-2 text-xs text-slate-600">
-                              <div className="w-3.5 h-3.5 flex items-center justify-center shrink-0">
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  width="14"
-                                  height="14"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  className="text-slate-400"
-                                >
-                                  <circle cx="12" cy="12" r="10" />
-                                  <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
-                                  <path d="M2 12h20" />
-                                </svg>
-                              </div>
-                              <span className="truncate">
-                                Sumber: {candidate.source_info}
-                              </span>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-2 text-xs text-slate-600">
-                            <Phone
-                              size={14}
-                              className="text-slate-400 shrink-0"
-                            />
-                            <span className="truncate">
-                              {candidate.phone || "-"}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-slate-600">
-                            <GraduationCap
-                              size={14}
-                              className="text-slate-400 shrink-0"
-                            />
-                            <span className="truncate">
-                              {candidate.education || "-"}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-slate-600">
-                            <Briefcase
-                              size={14}
-                              className="text-slate-400 shrink-0"
-                            />
-                            <span className="truncate">
-                              {candidate.work_experience || "-"}
-                            </span>
-                          </div>
-
-                          <div className="pt-2 flex flex-wrap gap-1">
-                            {candidate.status_screening === "accepted" && (
-                              <span className="px-2 py-1 bg-emerald-50 text-emerald-700 rounded-md text-[9px] font-bold uppercase tracking-wider border border-emerald-100">
-                                Lolos
-                              </span>
-                            )}
-                            {candidate.status_screening === "hired" && (
-                              <span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded-md text-[9px] font-bold uppercase tracking-wider border border-indigo-100">
-                                Direkrut
-                              </span>
-                            )}
-                            {candidate.status_screening === "rejected" && (
-                              <span className="px-2 py-1 bg-red-50 text-red-700 rounded-md text-[9px] font-bold uppercase tracking-wider border border-red-100">
-                                Ditolak
-                              </span>
-                            )}
-                            {candidate.interview_schedules?.filter(
-                              (s) => s.is_confirmed,
-                            ).length > 0 && (
-                              <span className="px-2 py-1 bg-sky-50 text-sky-700 rounded-md text-[9px] font-bold uppercase tracking-wider border border-sky-100">
-                                Selesai Interview{" "}
-                                {candidate.interview_schedules.filter(
-                                  (s) => s.is_confirmed,
-                                ).length > 1
-                                  ? candidate.interview_schedules.filter(
-                                      (s) => s.is_confirmed,
-                                    ).length
-                                  : ""}
-                              </span>
-                            )}
-                            {candidate.director_status && candidate.director_status !== 'pending' && (
-                              <span className={cn("px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider border", 
-                                candidate.director_status === 'accepted' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 
-                                candidate.director_status === 'rejected' ? 'bg-rose-50 text-rose-700 border-rose-100' : 
-                                'bg-amber-50 text-amber-700 border-amber-100'
-                              )}>
-                                Dir: {candidate.director_status}
-                              </span>
-                            )}
-                            {candidate.finance_status && candidate.finance_status !== 'pending' && (
-                              <span className={cn("px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider border", 
-                                candidate.finance_status === 'accepted' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 
-                                'bg-rose-50 text-rose-700 border-rose-100'
-                              )}>
-                                Fin: {candidate.finance_status}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="p-4 bg-slate-50/80 border-t border-[#3D2C44]/10 flex justify-end gap-2 flex-wrap">
-                          {profile?.role !== "USER_MANAGER" && (
-                            <>
-                              <button
-                                onClick={() =>
-                                  handleUpdateStatus(candidate.id, "accepted")
-                                }
-                                title="Terima Kandidat (Lolos Screening)"
-                                className="p-2 border border-[#3D2C44]/20 text-[#3D2C44] bg-white rounded-xl hover:bg-[#3D2C44] hover:text-white transition-all"
-                              >
-                                <ThumbsUp size={16} />
-                              </button>
-                              <button
-                                onClick={() =>
-                                  handleUpdateStatus(candidate.id, "hired")
-                                }
-                                title="Rekrut Kandidat (Hired)"
-                                className="p-2 border border-[#3D2C44]/20 text-[#3D2C44] bg-white rounded-xl hover:bg-[#3D2C44] hover:text-white transition-all"
-                              >
-                                <Briefcase size={16} />
-                              </button>
-                              <button
-                                onClick={() =>
-                                  handleUpdateStatus(candidate.id, "rejected")
-                                }
-                                title="Tolak Kandidat"
-                                className="p-2 border border-[#3D2C44]/20 text-rose-600 bg-white rounded-xl hover:bg-rose-600 hover:text-white transition-all"
-                              >
-                                <ThumbsDown size={16} />
-                              </button>
-                              {candidate.status_screening === "accepted" &&
-                                (!candidate.psikotes_schedules ||
-                                  candidate.psikotes_schedules.length ===
-                                    0) && (
-                                  <button
-                                    onClick={() =>
-                                      setSchedulingData({
-                                        candidate,
-                                        type: "psikotes",
-                                      })
-                                    }
-                                    title="Jadwalkan Psikotes"
-                                    className="p-2 border border-[#3D2C44]/20 text-[#3D2C44] bg-white rounded-xl hover:bg-[#3D2C44] hover:text-white transition-all"
-                                  >
-                                    <FileText size={16} />
-                                  </button>
-                                )}
-                              {candidate.status_screening === "accepted" &&
-                                (!candidate.interview_schedules ||
-                                  candidate.interview_schedules.length === 0 ||
-                                  candidate.interview_schedules.every(
-                                    (s) => s.is_confirmed,
-                                  )) && (
-                                  <button
-                                    onClick={() =>
-                                      setSchedulingData({
-                                        candidate,
-                                        type: "interview",
-                                      })
-                                    }
-                                    title="Jadwalkan Interview"
-                                    className="p-2 border border-[#3D2C44]/20 text-[#3D2C44] bg-white rounded-xl hover:bg-[#3D2C44] hover:text-white transition-all"
-                                  >
-                                    <Users size={16} />
-                                  </button>
-                                )}
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  }
-
+                  
                   return (
                     <div
-                      id={`candidate-${candidate.id}`}
                       key={candidate.id}
+                      id={`candidate-${candidate.id}`}
                       className={cn(
-                        "group relative bg-white/70 backdrop-blur-md border border-[#3D2C44]/20 rounded-2xl overflow-hidden hover:border-[#3D2C44]/50 hover:shadow-xl transition-all duration-300",
+                        "group bg-white/70 backdrop-blur-md border border-[#3D2C44]/20 rounded-2xl overflow-hidden hover:border-[#3D2C44]/50 hover:shadow-xl transition-all duration-300 flex flex-col",
                         blinkingId === candidate.id
                           ? "animate-pulse ring-2 ring-indigo-500 ring-inset"
-                          : "",
+                          : ""
                       )}
                     >
-                      {/* Accordion Header */}
-                      <button
-                        onClick={() => toggleCandidate(candidate.id)}
-                        className={cn(
-                          "w-full flex items-center justify-between p-6 text-left transition-colors",
-                          isExpanded
-                            ? "bg-slate-50/50 border-b border-[#3D2C44]/20"
-                            : "hover:bg-slate-50/30",
-                        )}
-                      >
-                        <div className="flex items-center gap-4 flex-1 min-w-0">
+                      <div className="p-5 flex flex-col lg:flex-row gap-6">
+                        
+                        {/* Avatar & Header */}
+                        <div className="flex flex-col sm:flex-row items-start gap-4 flex-1 min-w-0">
                           <Link
                             to={`/candidates/${candidate.id}`}
-                            className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0 text-indigo-700 font-bold hover:bg-indigo-200 transition-colors overflow-hidden"
+                            className="w-14 h-14 rounded-2xl bg-indigo-100 flex items-center justify-center shrink-0 text-indigo-700 font-bold hover:bg-indigo-200 transition-colors overflow-hidden border border-indigo-200 shadow-sm"
                           >
                             {extractPhotoUrl(
-                              candidate.external_data?.raw_data ||
-                                candidate.source_info,
+                              candidate.external_data?.raw_data || candidate.source_info
                             ) ? (
                               <img
                                 src={extractPhotoUrl(
-                                  candidate.external_data?.raw_data ||
-                                    candidate.source_info,
+                                  candidate.external_data?.raw_data || candidate.source_info
                                 )!}
                                 alt={candidate.full_name}
                                 className="w-full h-full object-cover"
                                 referrerPolicy="no-referrer"
                               />
                             ) : (
-                              candidate.full_name?.[0] || "?"
+                              <span className="text-xl">{candidate.full_name?.[0] || "?"}</span>
                             )}
                           </Link>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="text-lg font-bold text-slate-900 truncate flex items-center gap-2">
-                              <Link
-                                to={`/candidates/${candidate.id}`}
-                                className="hover:text-indigo-600 transition-colors"
-                              >
-                                {candidate.full_name}
-                              </Link>
-                              {candidate.is_blacklisted && (
-                                <span
-                                  className="px-2 py-0.5 bg-black text-white text-[10px] font-bold rounded"
-                                  title={
-                                    candidate.blacklist_reason ||
-                                    "Kandidat berada dalam daftar blacklist"
-                                  }
+                          
+                          <div className="space-y-2 flex-1 min-w-0">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <Link
+                                  to={`/candidates/${candidate.id}`}
+                                  className="text-lg font-bold text-slate-900 hover:text-indigo-600 transition-colors truncate min-w-0"
                                 >
-                                  BLACKLIST
+                                  {candidate.full_name}
+                                </Link>
+                                {candidate.is_blacklisted && (
+                                  <span
+                                    className="px-2 py-0.5 bg-black text-white text-[10px] font-bold rounded"
+                                    title={candidate.blacklist_reason || "Kandidat berada dalam daftar blacklist"}
+                                  >
+                                    BLACKLIST
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                Applied: {formatDate(candidate.date)} • ID: {candidate.id.substring(0, 8)}
+                              </p>
+                            </div>
+                            
+                            {/* Info Grid */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 mt-2 w-full">
+                              <div className="flex items-center gap-2 text-sm text-slate-600 min-w-0">
+                                <Mail size={14} className="text-slate-400 shrink-0" />
+                                <span className="truncate">{candidate.email || "-"}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-sm text-slate-600 min-w-0">
+                                <Phone size={14} className="text-slate-400 shrink-0" />
+                                <span className="truncate">{candidate.phone || "-"}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-sm text-slate-600 min-w-0 sm:col-span-2">
+                                <GraduationCap size={14} className="text-slate-400 shrink-0" />
+                                <span className="truncate">{candidate.education || "-"}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-sm text-slate-600 min-w-0 sm:col-span-2">
+                                <Briefcase size={14} className="text-slate-400 shrink-0" />
+                                <span className="truncate">{candidate.work_experience || "-"}</span>
+                              </div>
+                            </div>
+                            
+                            {/* Badges / Status */}
+                            <div className="pt-3 flex flex-wrap gap-2">
+                              {candidate.status_screening === "accepted" && (
+                                <span className="px-2 py-1 bg-emerald-50 text-emerald-700 rounded-md text-[10px] font-bold uppercase tracking-wider border border-emerald-100 flex items-center gap-1.5">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                  Lolos Screening
                                 </span>
                               )}
-                              <span className="text-slate-400 font-normal">
-                                :
-                              </span>{" "}
-                              <span className="text-slate-500 font-medium text-sm">
-                                {candidate.email}
-                              </span>
-                            </h3>
-                            {!isExpanded && (
-                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                  {formatDate(candidate.date)}
-                                </p>
-                                {candidate.psikotes_schedules &&
-                                  candidate.psikotes_schedules.length > 0 && (
-                                    <span className="text-[10px] font-bold text-amber-600 uppercase tracking-widest flex items-center gap-1">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                                      Telah dibuat jadwal psikotes
-                                    </span>
-                                  )}
-                                {candidate.interview_schedules &&
-                                  candidate.interview_schedules.length > 0 && (
-                                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest flex items-center gap-1">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                      Telah dibuat jadwal interview
-                                    </span>
-                                  )}
-                                {candidate.psikotes_schedules?.some(
-                                  (s) => s.is_confirmed,
-                                ) && (
-                                  <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                                    Telah Dilakukan Psikotes (
-                                    {formatDate(
-                                      candidate.psikotes_schedules.find(
-                                        (s) => s.is_confirmed,
-                                      )!.schedule_date,
-                                    )}
-                                    )
-                                  </span>
-                                )}
-                                {candidate.interview_schedules?.some(
-                                  (s) => s.is_confirmed,
-                                ) && (
-                                  <span className="text-[10px] font-bold text-sky-600 uppercase tracking-widest flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-sky-500" />
-                                    Selesai Interview{" "}
-                                    {candidate.interview_schedules.filter(
-                                      (s) => s.is_confirmed,
-                                    ).length > 1
-                                      ? candidate.interview_schedules.filter(
-                                          (s) => s.is_confirmed,
-                                        ).length
-                                      : ""}
-                                  </span>
-                                )}
-                                {candidate.status_screening === "accepted" && (
-                                  <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                    Lolos Screening
-                                  </span>
-                                )}
-                                {candidate.status_screening === "hired" && (
-                                  <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                                    Telah Direkrut
-                                  </span>
-                                )}
-                                {candidate.status_screening === "rejected" && (
-                                  <span className="text-[10px] font-bold text-red-600 uppercase tracking-widest flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                                    Ditolak
-                                  </span>
-                                )}
-                                {candidate.director_status && candidate.director_status !== 'pending' && (
-                                  <span className={cn("text-[10px] font-bold uppercase tracking-widest flex items-center gap-1",
-                                    candidate.director_status === 'accepted' ? 'text-emerald-600' :
-                                    candidate.director_status === 'rejected' ? 'text-rose-600' : 'text-amber-600'
-                                  )}>
-                                    <span className={cn("w-1.5 h-1.5 rounded-full",
-                                      candidate.director_status === 'accepted' ? 'bg-emerald-500' :
-                                      candidate.director_status === 'rejected' ? 'bg-rose-500' : 'bg-amber-500'
-                                    )} />
-                                    Dir: {candidate.director_status}
-                                  </span>
-                                )}
-                                {candidate.finance_status && candidate.finance_status !== 'pending' && (
-                                  <span className={cn("text-[10px] font-bold uppercase tracking-widest flex items-center gap-1",
-                                    candidate.finance_status === 'accepted' ? 'text-emerald-600' : 'text-rose-600'
-                                  )}>
-                                    <span className={cn("w-1.5 h-1.5 rounded-full",
-                                      candidate.finance_status === 'accepted' ? 'bg-emerald-500' : 'bg-rose-500'
-                                    )} />
-                                    Fin: {candidate.finance_status}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-6">
-                          <div className="flex flex-col items-end gap-1">
-                            <div
-                              className="flex items-center gap-2 bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100"
-                              title="Skor CV (AI)"
-                            >
-                              <span className="text-[10px] font-bold text-indigo-400 uppercase">
-                                CV
-                              </span>
-                              <span className="text-sm font-bold text-indigo-700">
-                                {candidate.assessment_score || 0}
-                              </span>
-                            </div>
-                          </div>
-                          <div
-                            className={cn(
-                              "p-2 rounded-lg bg-slate-100 text-slate-400 transition-transform duration-300",
-                              isExpanded && "rotate-180",
-                            )}
-                          >
-                            <ChevronDown size={18} />
-                          </div>
-                        </div>
-                      </button>
+                              {candidate.status_screening === "hired" && (
+                                <span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded-md text-[10px] font-bold uppercase tracking-wider border border-indigo-100 flex items-center gap-1.5">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                                  Direkrut
+                                </span>
+                              )}
+                              {candidate.status_screening === "rejected" && (
+                                <span className="px-2 py-1 bg-red-50 text-red-700 rounded-md text-[10px] font-bold uppercase tracking-wider border border-red-100 flex items-center gap-1.5">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                  Ditolak
+                                </span>
+                              )}
+                              
+                              {/* Psikotes Badge */}
+                              {candidate.psikotes_schedules?.filter((s: any) => s.is_confirmed).length > 0 ? (
+                                <span className="px-2 py-1 bg-sky-50 text-sky-700 rounded-md text-[10px] font-bold uppercase tracking-wider border border-sky-100 flex items-center gap-1">
+                                  Selesai Psikotes
+                                </span>
+                              ) : candidate.psikotes_schedules?.length > 0 ? (
+                                <span className="px-2 py-1 bg-amber-50 text-amber-700 rounded-md text-[10px] font-bold uppercase tracking-wider border border-amber-100 flex items-center gap-1">
+                                  Jadwal Psikotes
+                                </span>
+                              ) : null}
+                              
+                              {/* Interview Badge */}
+                              {candidate.interview_schedules?.filter((s: any) => s.is_confirmed).length > 0 ? (
+                                <span className="px-2 py-1 bg-sky-50 text-sky-700 rounded-md text-[10px] font-bold uppercase tracking-wider border border-sky-100 flex items-center gap-1">
+                                  Selesai Interview {candidate.interview_schedules.filter((s: any) => s.is_confirmed).length > 1 ? `(${candidate.interview_schedules.filter((s: any) => s.is_confirmed).length})` : ""}
+                                </span>
+                              ) : candidate.interview_schedules?.length > 0 ? (
+                                <span className="px-2 py-1 bg-amber-50 text-amber-700 rounded-md text-[10px] font-bold uppercase tracking-wider border border-amber-100 flex items-center gap-1">
+                                  Jadwal Interview
+                                </span>
+                              ) : null}
 
-                      {/* Accordion Body */}
-                      {isExpanded && (
-                        <div className="p-6 animate-in slide-in-from-top-2 duration-300">
-                          <div className="flex flex-col lg:flex-row gap-8">
-                            {/* Left: Basic Info */}
-                            <div className="lg:w-1/3 space-y-5">
-                              <div className="space-y-3">
-                                <div className="flex items-center gap-3 text-sm text-slate-600">
-                                  <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                                    <Mail
-                                      size={16}
-                                      className="text-slate-400"
-                                    />
-                                  </div>
-                                  <span className="truncate">
-                                    {candidate.email}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-3 text-sm text-slate-600">
-                                  <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                                    <Phone
-                                      size={16}
-                                      className="text-slate-400"
-                                    />
-                                  </div>
-                                  {candidate.phone || "-"}
-                                </div>
-                                <div className="flex items-center gap-3 text-sm text-slate-600">
-                                  <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                                    <GraduationCap
-                                      size={16}
-                                      className="text-slate-400"
-                                    />
-                                  </div>
-                                  {candidate.education || "-"}
-                                </div>
-                                <div className="flex items-center gap-3 text-sm text-slate-600">
-                                  <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                                    <Briefcase
-                                      size={16}
-                                      className="text-slate-400"
-                                    />
-                                  </div>
-                                  {candidate.work_experience || "-"}
-                                </div>
-                                {candidate.source_info && (
-                                  <div className="flex items-center gap-3 text-sm text-slate-600">
-                                    <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                                      <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        width="16"
-                                        height="16"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        className="text-slate-400"
-                                      >
-                                        <circle cx="12" cy="12" r="10" />
-                                        <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
-                                        <path d="M2 12h20" />
-                                      </svg>
-                                    </div>
-                                    Sumber: {candidate.source_info}
-                                  </div>
-                                )}
-                                {candidate.resume_url && (
-                                  <div className="pt-2">
-                                    <a
-                                      href={candidate.resume_url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-sm font-bold hover:bg-indigo-100 transition-all border border-indigo-100"
-                                    >
-                                      <FileText size={16} />
-                                      Lihat Resume CV
-                                    </a>
-                                  </div>
-                                )}
-                                {(candidate.psikotes_schedules?.length || 0) >
-                                  0 ||
-                                (candidate.interview_schedules?.length || 0) >
-                                  0 ||
-                                candidate.psikotes_schedules?.some(
-                                  (s) => s.is_confirmed,
-                                ) ||
-                                candidate.interview_schedules?.some(
-                                  (s) => s.is_confirmed,
-                                ) ? (
-                                  <div className="pt-2 space-y-2">
-                                    {candidate.psikotes_schedules &&
-                                      candidate.psikotes_schedules.length >
-                                        0 && (
-                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-amber-100">
-                                          <FileText size={12} />
-                                          Telah dibuat jadwal Psikotes
-                                        </div>
-                                      )}
-                                    {candidate.interview_schedules &&
-                                      candidate.interview_schedules.length >
-                                        0 && (
-                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-emerald-100">
-                                          <Users size={12} />
-                                          Telah dibuat jadwal Interview
-                                        </div>
-                                      )}
-                                    {candidate.psikotes_schedules?.some(
-                                      (s) => s.is_confirmed,
-                                    ) && (
-                                      <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-indigo-100">
-                                        <CheckCircle size={12} />
-                                        Telah Dilakukan Psikotes (
-                                        {formatDate(
-                                          candidate.psikotes_schedules.find(
-                                            (s) => s.is_confirmed,
-                                          )!.schedule_date,
-                                        )}
-                                        )
-                                      </div>
-                                    )}
-                                    {candidate.interview_schedules?.some(
-                                      (s) => s.is_confirmed,
-                                    ) && (
-                                      <div className="flex items-center gap-2 px-3 py-1.5 bg-sky-50 text-sky-700 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-sky-100">
-                                        <CheckCircle size={12} />
-                                        Telah Dilakukan interview (
-                                        {formatDate(
-                                          candidate.interview_schedules.find(
-                                            (s) => s.is_confirmed,
-                                          )!.schedule_date,
-                                        )}
-                                        )
-                                      </div>
-                                    )}
-                                    {candidate.status_screening ===
-                                      "accepted" && (
-                                      <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-emerald-100">
-                                        <ThumbsUp size={12} />
-                                        Lolos Screening
-                                      </div>
-                                    )}
-                                    {candidate.status_screening === "hired" && (
-                                      <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-indigo-100">
-                                        <Briefcase size={12} />
-                                        Telah Direkrut (Hired)
-                                      </div>
-                                    )}
-                                    {candidate.status_screening ===
-                                      "rejected" && (
-                                      <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-700 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-red-100">
-                                        <ThumbsDown size={12} />
-                                        Ditolak
-                                      </div>
-                                    )}
-                                  </div>
-                                ) : null}
-                              </div>
-                            </div>
-
-                            {/* Right: Assessment Details */}
-                            <div className="flex-1 space-y-6 bg-slate-50/50 p-6 rounded-2xl border border-[#3D2C44]/20">
-                              <div className="grid grid-cols-1 gap-6">
-                                <div className="flex items-start gap-4">
-                                  <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
-                                    <Star
-                                      className="text-indigo-600"
-                                      size={20}
-                                    />
-                                  </div>
-                                  <div>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                      Kekuatan
-                                    </p>
-                                    <p className="text-sm text-slate-700 mt-1 leading-relaxed font-medium">
-                                      {candidate.strengths || "-"}
-                                    </p>
-                                  </div>
-                                </div>
-
-                                <div className="flex items-start gap-4">
-                                  <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
-                                    <AlertTriangle
-                                      className="text-amber-600"
-                                      size={20}
-                                    />
-                                  </div>
-                                  <div>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                      Faktor Risiko
-                                    </p>
-                                    <p className="text-sm text-slate-700 mt-1 leading-relaxed font-medium">
-                                      {candidate.risk_factors || "-"}
-                                    </p>
-                                  </div>
-                                </div>
-
-                                <div className="flex items-start gap-4">
-                                  <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
-                                    <Lightbulb
-                                      className="text-emerald-600"
-                                      size={20}
-                                    />
-                                  </div>
-                                  <div>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                      Potensi
-                                    </p>
-                                    <p className="text-sm text-slate-700 mt-1 leading-relaxed font-medium">
-                                      {candidate.potential_factors || "-"}
-                                    </p>
-                                  </div>
-                                </div>
-
-                                <div className="flex items-start gap-4 bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100">
-                                  <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
-                                    <FileText
-                                      className="text-indigo-600"
-                                      size={20}
-                                    />
-                                  </div>
-                                  <div className="flex-1">
-                                    <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">
-                                      Skor CV (AI) & Alasan Penilaian
-                                    </p>
-                                    <div className="flex items-center gap-4 mt-2">
-                                      <div
-                                        className="w-12 h-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-xl font-bold shadow-lg shadow-indigo-200"
-                                        title="Skor CV (AI)"
-                                      >
-                                        {candidate.assessment_score || 0}
-                                      </div>
-                                      <p className="text-sm text-indigo-900 leading-relaxed italic flex-1">
-                                        "{candidate.assessment_reason || "-"}"
-                                      </p>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex lg:flex-col gap-3 justify-end lg:justify-start">
-                              {profile?.role !== "USER_MANAGER" && (
-                                <>
-                                  <button
-                                    onClick={() =>
-                                      handleUpdateStatus(
-                                        candidate.id,
-                                        "accepted",
-                                      )
-                                    }
-                                    title="Terima Kandidat (Lolos Screening)"
-                                    className="p-3.5 border border-[#3D2C44]/20 text-[#3D2C44] bg-white rounded-2xl hover:bg-[#3D2C44] hover:text-white transition-all hover:-translate-y-0.5"
-                                  >
-                                    <ThumbsUp size={22} />
-                                  </button>
-                                  <button
-                                    onClick={() =>
-                                      handleUpdateStatus(candidate.id, "hired")
-                                    }
-                                    title="Rekrut Kandidat (Hired)"
-                                    className="p-3.5 border border-[#3D2C44]/20 text-[#3D2C44] bg-white rounded-2xl hover:bg-[#3D2C44] hover:text-white transition-all hover:-translate-y-0.5"
-                                  >
-                                    <Briefcase size={22} />
-                                  </button>
-                                  <button
-                                    onClick={() =>
-                                      handleUpdateStatus(
-                                        candidate.id,
-                                        "rejected",
-                                      )
-                                    }
-                                    title="Tolak Kandidat"
-                                    className="p-3.5 border border-[#3D2C44]/20 text-rose-600 bg-white rounded-2xl hover:bg-rose-600 hover:text-white transition-all hover:-translate-y-0.5"
-                                  >
-                                    <ThumbsDown size={22} />
-                                  </button>
-                                  <div className="h-px bg-slate-200 my-2 hidden lg:block" />
-                                  {candidate.status_screening === "accepted" &&
-                                    (!candidate.psikotes_schedules ||
-                                      candidate.psikotes_schedules.length ===
-                                        0) && (
-                                      <button
-                                        onClick={() =>
-                                          setSchedulingData({
-                                            candidate,
-                                            type: "psikotes",
-                                          })
-                                        }
-                                        title="Jadwalkan Psikotes"
-                                        className="p-3.5 border border-[#3D2C44]/20 text-[#3D2C44] bg-white rounded-2xl hover:bg-[#3D2C44] hover:text-white transition-all hover:-translate-y-0.5"
-                                      >
-                                        <FileText size={22} />
-                                      </button>
-                                    )}
-                                  {candidate.status_screening === "accepted" &&
-                                    (!candidate.interview_schedules ||
-                                      candidate.interview_schedules.length ===
-                                        0 ||
-                                      candidate.interview_schedules.every(
-                                        (s) => s.is_confirmed,
-                                      )) && (
-                                      <button
-                                        onClick={() =>
-                                          setSchedulingData({
-                                            candidate,
-                                            type: "interview",
-                                          })
-                                        }
-                                        title="Jadwalkan Interview"
-                                        className="p-3.5 border border-[#3D2C44]/20 text-[#3D2C44] bg-white rounded-2xl hover:bg-[#3D2C44] hover:text-white transition-all hover:-translate-y-0.5"
-                                      >
-                                        <Users size={22} />
-                                      </button>
-                                    )}
-                                </>
+                              {candidate.director_status && candidate.director_status !== 'pending' && (
+                                <span className={cn("px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border",
+                                   candidate.director_status === 'accepted' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                                   candidate.director_status === 'rejected' ? 'bg-rose-50 text-rose-700 border-rose-100' :
+                                   'bg-amber-50 text-amber-700 border-amber-100'
+                                )}>
+                                  Dir: {candidate.director_status}
+                                </span>
+                              )}
+                              {candidate.finance_status && candidate.finance_status !== 'pending' && (
+                                <span className={cn("px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border",
+                                   candidate.finance_status === 'accepted' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                                   'bg-rose-50 text-rose-700 border-rose-100'
+                                )}>
+                                  Fin: {candidate.finance_status}
+                                </span>
                               )}
                             </div>
+                          </div>
+                        </div>
+
+                        {/* Right: Scores & Actions */}
+                        <div className="flex flex-col gap-3 justify-between shrink-0 lg:w-48 lg:border-l lg:border-slate-100 lg:pl-6 border-t border-slate-100 pt-4 lg:pt-0 lg:border-t-0">
+                          {/* CV Score Preview */}
+                          <div className="flex items-center justify-between lg:justify-start gap-3">
+                             <div className="bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 flex items-center gap-2">
+                               <span className="text-[10px] font-bold text-indigo-400 uppercase">Skor CV</span>
+                               <span className="text-lg font-black text-indigo-700">{candidate.assessment_score || 0}</span>
+                             </div>
+                             
+                             <button
+                               onClick={() => toggleCandidate(candidate.id)}
+                               className="p-1.5 rounded-lg bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all flex items-center gap-1"
+                               title="Lihat Detail & Resume"
+                             >
+                               <span className="text-[10px] font-bold uppercase hidden sm:block">{isExpanded ? "Tutup" : "Preview"}</span>
+                               <ChevronDown size={16} className={cn("transition-transform duration-300", isExpanded && "rotate-180")} />
+                             </button>
+                          </div>
+                          
+                          {/* Buttons */}
+                          <div className="flex items-center lg:grid lg:grid-cols-2 gap-2 mt-auto">
+                            {profile?.role !== "USER_MANAGER" && (
+                              <>
+                                <button
+                                  onClick={() => handleUpdateStatus(candidate.id, "accepted")}
+                                  title="Terima Kandidat (Lolos Screening)"
+                                  className="flex-1 flex justify-center items-center p-2 border border-[#3D2C44]/20 text-[#3D2C44] bg-white rounded-xl hover:bg-[#3D2C44] hover:text-white transition-all hover:-translate-y-0.5 shadow-sm"
+                                >
+                                  <ThumbsUp size={16} />
+                                </button>
+                                <button
+                                  onClick={() => handleUpdateStatus(candidate.id, "hired")}
+                                  title="Rekrut Kandidat (Hired)"
+                                  className="flex-1 flex justify-center items-center p-2 border border-[#3D2C44]/20 text-[#3D2C44] bg-white rounded-xl hover:bg-[#3D2C44] hover:text-white transition-all hover:-translate-y-0.5 shadow-sm"
+                                >
+                                  <Briefcase size={16} />
+                                </button>
+                                <button
+                                  onClick={() => handleUpdateStatus(candidate.id, "rejected")}
+                                  title="Tolak Kandidat"
+                                  className="flex-1 flex justify-center items-center p-2 border border-red-200 text-red-600 bg-white rounded-xl hover:bg-red-600 hover:text-white transition-all hover:-translate-y-0.5 shadow-sm"
+                                >
+                                  <ThumbsDown size={16} />
+                                </button>
+                              </>
+                            )}
+                            
+                            <button
+                              onClick={() => {
+                                setSchedulingData({
+                                  candidate,
+                                  type: "psikotes",
+                                });
+                              }}
+                              title="Jadwalkan Psikotes"
+                              className="flex-1 flex justify-center items-center p-2 border border-[#3D2C44]/20 text-[#3D2C44] bg-white rounded-xl hover:bg-[#3D2C44] hover:text-white transition-all hover:-translate-y-0.5 shadow-sm"
+                            >
+                              <FileText size={16} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSchedulingData({
+                                  candidate,
+                                  type: "interview",
+                                });
+                              }}
+                              title="Jadwalkan Interview"
+                              className="flex-1 flex justify-center items-center p-2 border border-[#3D2C44]/20 text-[#3D2C44] bg-white rounded-xl hover:bg-[#3D2C44] hover:text-white transition-all hover:-translate-y-0.5 shadow-sm"
+                            >
+                              <Users size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Expanded Section (Preview) */}
+                      {isExpanded && (
+                        <div className="px-5 pb-5 pt-4 border-t border-slate-100 bg-slate-50/50 animate-in slide-in-from-top-2 duration-300">
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* Left: Experience & Resume */}
+                            <div className="space-y-4">
+                              <div>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Ringkasan Pengalaman</p>
+                                <p className="text-sm text-slate-700 leading-relaxed font-medium">
+                                  {candidate.resume_summary || "Tidak ada ringkasan"}
+                                </p>
+                              </div>
+                              <div className="flex flex-col sm:flex-row gap-4">
+                                <div className="flex-1">
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Faktor Risiko</p>
+                                  <p className="text-sm text-slate-700 leading-relaxed font-medium bg-white p-3 rounded-xl border border-slate-200 min-h-[80px]">
+                                    {candidate.risk_factors || "-"}
+                                  </p>
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Potensi Utama</p>
+                                  <p className="text-sm text-slate-700 leading-relaxed font-medium bg-white p-3 rounded-xl border border-slate-200 min-h-[80px]">
+                                    {candidate.potential_factors || "-"}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Right: AI Analysis Details */}
+                            <div>
+                               <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1.5">Alasan Penilaian AI</p>
+                               <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 flex gap-4 h-full">
+                                  <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
+                                    <Lightbulb className="text-indigo-600" size={20} />
+                                  </div>
+                                  <p className="text-sm text-indigo-900 leading-relaxed italic flex-1 mt-1">
+                                    "{candidate.assessment_reason || "-"}"
+                                  </p>
+                               </div>
+                            </div>
+                          </div>
+                          
+                          <div className="mt-6 flex justify-end gap-3">
+                            <Link
+                              to={`/candidates/${candidate.id}`}
+                              className="px-4 py-2 bg-indigo-50 text-indigo-600 font-bold text-sm rounded-xl hover:bg-indigo-100 transition-colors"
+                            >
+                              Buka Profil Lengkap
+                            </Link>
                           </div>
                         </div>
                       )}
@@ -1747,9 +1501,10 @@ export default function Screening() {
                 })}
               </div>
             </div>
-          ),
-        )}
-      </div>
+          </div>
+        </>
+      )}
+
 
       {schedulingData && (
         <SchedulingModal
@@ -1864,10 +1619,10 @@ export default function Screening() {
               <span className="font-bold text-slate-900">{startIndex + 1}</span>{" "}
               -{" "}
               <span className="font-bold text-slate-900">
-                {Math.min(startIndex + itemsPerPage, totalItems)}
+                {Math.min(startIndex + itemsPerPage, totalFilteredItems)}
               </span>{" "}
               dari{" "}
-              <span className="font-bold text-slate-900">{totalItems}</span>{" "}
+              <span className="font-bold text-slate-900">{totalFilteredItems}</span>{" "}
               kandidat
             </p>
             <div className="h-4 w-px bg-slate-200 hidden md:block" />
@@ -1879,7 +1634,7 @@ export default function Screening() {
                   setItemsPerPage(Number(e.target.value));
                   setCurrentPage(1);
                 }}
-                className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D2C44]"
               >
                 {[5, 10, 20, 50, 100].map((val) => (
                   <option key={val} value={val}>
@@ -1915,7 +1670,7 @@ export default function Screening() {
                     className={cn(
                       "w-8 h-8 rounded-lg text-sm font-medium transition-all",
                       currentPage === pageNum
-                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-100"
+                        ? "bg-[#3D2C44] text-white shadow-md shadow-[#3D2C44]/20"
                         : "text-slate-600 hover:bg-slate-50 border border-transparent hover:border-slate-200",
                     )}
                   >

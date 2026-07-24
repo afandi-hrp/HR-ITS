@@ -1098,7 +1098,7 @@ export default function ApplicationForm({
       !mp.self_actualization?.trim() ||
       !mp.challenge?.trim() ||
       !mp.working_environment?.trim() ||
-      (!hideSalary && !mp.salary_benefit?.trim())
+      !mp.salary_benefit?.trim()
     ) {
       errors.push(
         "Keterangan Lainnya: Pertanyaan 10 (Skala Prioritas Motivasi Bergabung) wajib diisi secara lengkap (semua kotak).",
@@ -4536,31 +4536,29 @@ export default function ApplicationForm({
                                 </span>
                               </span>
                             </div>
-                            {!hideSalary && (
-                              <div className="flex items-center gap-3">
-                                <input
-                                  type="text"
-                                  inputMode="numeric"
-                                  maxLength={1}
-                                  value={
-                                    formData.motivation_priority.salary_benefit
-                                  }
-                                  onChange={(e) =>
-                                    handleMotivationPriorityChange(
-                                      "salary_benefit",
-                                      e.target.value,
-                                    )
-                                  }
-                                  className="w-12 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-                                />
-                                <span className="text-sm text-slate-700">
-                                  Salary & Benefit{" "}
-                                  <span className="text-slate-400 italic">
-                                    (Compensation & Benefit)
-                                  </span>
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                maxLength={1}
+                                value={
+                                  formData.motivation_priority.salary_benefit
+                                }
+                                onChange={(e) =>
+                                  handleMotivationPriorityChange(
+                                    "salary_benefit",
+                                    e.target.value,
+                                  )
+                                }
+                                className="w-12 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                              />
+                              <span className="text-sm text-slate-700">
+                                Salary & Benefit{" "}
+                                <span className="text-slate-400 italic">
+                                  (Compensation & Benefit)
                                 </span>
-                              </div>
-                            )}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>

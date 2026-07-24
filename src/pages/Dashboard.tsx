@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import {
   Users,
@@ -24,6 +24,7 @@ import { cn, formatDate } from "../lib/utils";
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [stats, setStats] = useState({
     totalApplications: 0,
     inPipeline: 0,
@@ -54,10 +55,29 @@ export default function Dashboard() {
 
   // Filters
   const [positions, setPositions] = useState<string[]>([]);
-  const [selectedPosition, setSelectedPosition] = useState("all");
-  const [dateFilter, setDateFilter] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedPosition, setSelectedPosition] = useState(searchParams.get("position") || "all");
+  const [dateFilter, setDateFilter] = useState(searchParams.get("date") || "all");
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Sync to URL
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    if (selectedPosition !== "all") params.set("position", selectedPosition);
+    else params.delete("position");
+    
+    if (dateFilter !== "all") params.set("date", dateFilter);
+    else params.delete("date");
+    
+    if (searchQuery) params.set("q", searchQuery);
+    else params.delete("q");
+    
+    const currentParams = searchParams.toString();
+    const newParams = params.toString();
+    if (currentParams !== newParams) {
+      setSearchParams(params, { replace: true });
+    }
+  }, [selectedPosition, dateFilter, searchQuery, setSearchParams, searchParams]);
 
   const handleReset = () => {
     setSearchQuery("");
