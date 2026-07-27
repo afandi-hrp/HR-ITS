@@ -127,32 +127,32 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-transparent p-4 relative overflow-hidden">
+    <div className="h-screen flex items-center justify-center bg-transparent p-3 relative overflow-y-auto">
       {/* Login Form Layer */}
       <div
         className={cn(
-          "w-full max-w-md relative z-10 transition-all duration-700 ease-out",
+          "w-full max-w-md relative z-10 transition-all duration-700 ease-out my-auto",
           !isLoaded ? "opacity-0 scale-90" : "opacity-100 scale-100",
         )}
       >
-        <div className="bg-white/40 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/60 p-8">
-          <div className="text-center mb-8">
+        <div className="bg-white/40 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/60 p-4 sm:p-6">
+          <div className="text-center mb-3">
             {settings?.login_logo_url && (
               <img
                 src={settings.login_logo_url}
                 alt="Logo"
-                className="h-24 mx-auto mb-4 object-contain drop-shadow-sm"
+                className="h-10 sm:h-12 mx-auto mb-2 object-contain drop-shadow-sm"
                 referrerPolicy="no-referrer"
               />
             )}
-            <h1 className="text-2xl font-bold text-[#3D2C44]">Welcome</h1>
-            <p className="text-[#3D2C44]/70 mt-2">
+            <h1 className="text-xl font-bold text-[#3D2C44]">Welcome</h1>
+            <p className="text-[#3D2C44]/70 mt-1 text-sm">
               Login to ATS Waruna Group Dashboard
             </p>
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-50/80 backdrop-blur-sm border border-red-200 text-red-600 text-sm rounded-xl flex items-center gap-3 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="mb-4 p-3 bg-red-50/80 backdrop-blur-sm border border-red-200 text-red-600 text-sm rounded-xl flex items-center gap-3 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
               <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center shrink-0">
                 <span className="text-red-600 font-bold">!</span>
               </div>
@@ -161,7 +161,7 @@ export default function Login() {
           )}
 
           {message && !error && (
-            <div className="mb-6 p-4 bg-indigo-50/80 backdrop-blur-sm border border-indigo-200 text-indigo-700 text-sm rounded-xl flex items-center gap-3 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="mb-4 p-3 bg-indigo-50/80 backdrop-blur-sm border border-indigo-200 text-indigo-700 text-sm rounded-xl flex items-center gap-3 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
               <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center shrink-0">
                 <span className="text-indigo-600 font-bold">i</span>
               </div>
@@ -169,9 +169,9 @@ export default function Login() {
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form onSubmit={handleLogin} className="space-y-3">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
+              <label className="block text-sm font-semibold text-slate-700 mb-1">
                 Email
               </label>
               <div className="relative">
@@ -183,14 +183,14 @@ export default function Login() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full pl-11 pr-4 py-3 bg-white/50 border border-white/40 rounded-xl text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all"
+                  className="block w-full pl-11 pr-4 py-2 bg-white/50 border border-white/40 rounded-xl text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all"
                   placeholder="name@company.com"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
+              <label className="block text-sm font-semibold text-slate-700 mb-1">
                 Password
               </label>
               <div className="relative">
@@ -202,14 +202,14 @@ export default function Login() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-11 pr-4 py-3 bg-white/50 border border-white/40 rounded-xl text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all"
+                  className="block w-full pl-11 pr-4 py-2 bg-white/50 border border-white/40 rounded-xl text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all"
                   placeholder="••••••••"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
+              <label className="block text-sm font-semibold text-slate-700 mb-1">
                 Verifikasi Keamanan
               </label>
               <div className="flex gap-3 items-center">
@@ -220,7 +220,7 @@ export default function Login() {
                     maxLength={4}
                     value={captchaInput}
                     onChange={(e) => setCaptchaInput(e.target.value)}
-                    className="block w-full px-4 py-3 bg-white/50 border border-white/40 rounded-xl text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all font-mono tracking-widest"
+                    className="block w-full px-4 py-2 bg-white/50 border border-white/40 rounded-xl text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all font-mono tracking-widest"
                     placeholder="Ketik 4 karakter"
                   />
                 </div>
@@ -246,7 +246,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="w-full flex items-center justify-center py-2.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {loading ? (
                 <Loader2 className="animate-spin h-5 w-5" />
@@ -256,7 +256,7 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="mt-8 text-center text-sm text-slate-500">
+          <div className="mt-3 text-center text-xs text-slate-500">
             <p>© 2026 ATS Waruna Group App.</p>
           </div>
         </div>

@@ -80,11 +80,14 @@ export const printElement = async (element: HTMLElement | null, title: string = 
           }
           /* Hide UI elements not meant for print */
           button, .no-print { display: none !important; }
-          /* Ensure container takes full width */
+          /* Keep the same width the on-screen preview uses (A4 printable width),
+             instead of stretching to the print window's actual (often much wider)
+             viewport — stretching then shrinks back down when paginated to A4,
+             which is what made downloaded PDFs look smaller/different than the preview. */
           #application-form-container, .max-w-4xl {
-            max-width: 100% !important;
+            max-width: 180mm !important;
             width: 100% !important;
-            margin: 0 !important;
+            margin: 0 auto !important;
             padding: 0 !important;
             box-shadow: none !important;
             border: none !important;
@@ -93,6 +96,18 @@ export const printElement = async (element: HTMLElement | null, title: string = 
           body {
             max-width: 100% !important;
             overflow-x: hidden !important;
+          }
+          /* Force the form header title onto a single line at a size guaranteed to
+             fit within the fixed 180mm print width, regardless of which responsive
+             text-size class (sm:/md:/print:) would otherwise win the cascade. */
+          #application-form-title {
+            font-size: 15px !important;
+            letter-spacing: normal !important;
+            white-space: nowrap !important;
+          }
+          #application-form-subtitle {
+            font-size: 11px !important;
+            white-space: nowrap !important;
           }
           img, svg, canvas, video, iframe {
             max-width: 100% !important;

@@ -273,7 +273,7 @@ export default function EvaluationModal({ isOpen, onClose, candidateId, onSucces
                   </div>
 
                   {/* Scoring Categories */}
-                  {selectedTemplate.form_schema.categories?.map((category: any, catIdx: number) => (
+                  {(selectedTemplate.form_schema as any).categories?.map((category: any, catIdx: number) => (
                     <div key={catIdx} className="space-y-4">
                       <h3 className="text-lg font-bold text-slate-800 border-b pb-2">{category.name}</h3>
                       <div className="space-y-6">
@@ -284,7 +284,7 @@ export default function EvaluationModal({ isOpen, onClose, candidateId, onSucces
                               <p className="text-sm text-slate-500 mt-1">{crit.description}</p>
                             </div>
                             <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3">
-                              {selectedTemplate.form_schema.scale.map((s: any) => (
+                              {(selectedTemplate.form_schema as any).scale.map((s: any) => (
                                 <label 
                                   key={s.score} 
                                   className={`w-full sm:flex-1 sm:min-w-[120px] flex flex-col items-center justify-center p-3 rounded-lg border cursor-pointer transition-all text-center ${

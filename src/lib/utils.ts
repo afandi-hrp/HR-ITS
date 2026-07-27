@@ -14,6 +14,19 @@ export function formatDate(date: string | Date) {
   });
 }
 
+export function formatDateDMY(date: string | Date | null | undefined): string {
+  if (!date) return "-";
+  if (typeof date === "string" && /^\d{4}-\d{2}-\d{2}/.test(date)) {
+    const [year, month, day] = date.split("T")[0].split("-");
+    return `${day}-${month}-${year}`;
+  }
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return typeof date === "string" ? date : "-";
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  return `${day}-${month}-${d.getFullYear()}`;
+}
+
 export function normalizePhone(phone: string | null | undefined): string {
   if (!phone) return '';
   let cleaned = phone.replace(/\D/g, '');

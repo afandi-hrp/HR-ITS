@@ -45,8 +45,9 @@ export interface Candidate {
   background_check_result?: string | null;
   confirmation_status: 'unconfirmed' | 'confirmed';
   confirmation_token: string | null;
-  psikotes_schedules?: { id: string, is_confirmed: boolean, schedule_date: string, location_type?: string, location_detail?: string | null }[];
-  interview_schedules?: { id: string, is_confirmed: boolean, schedule_date: string, location_type?: string, location_detail?: string | null }[];
+  psikotes_schedules?: { id: string, is_confirmed: boolean, schedule_date: string, location_type?: string, location_detail?: string | null, additional_notes?: string | null, candidate_id?: string, created_at?: string, updated_at?: string }[];
+  interview_schedules?: { id: string, is_confirmed: boolean, schedule_date: string, location_type?: string, location_detail?: string | null, additional_notes?: string | null, candidate_id?: string, created_at?: string, updated_at?: string }[];
+  candidate_evaluations?: { evaluation_type: 'HR' | 'USER' | 'REFERENCE_CHECK' }[];
   psikotes_status?: string;
   interview_status?: string;
   notes?: string;
@@ -103,19 +104,52 @@ export interface Schedule {
   candidate?: Candidate;
 }
 
+export interface ScoringFormSchema {
+  scale: { score: number; label: string }[];
+  categories: {
+    name: string;
+    criteria: { name: string; description: string }[];
+  }[];
+  summary_fields?: {
+    name: string;
+    type: "textarea" | "radio" | "checkbox_group" | "scoring";
+    placeholder?: string;
+    options?: string[];
+    max_score?: number;
+  }[];
+}
+
+export interface ReferenceCheckFormSchema {
+  title_template: string;
+  intro: string;
+  two_column: {
+    headers: [string, string, string];
+    rows: { key: string; label: string }[];
+  };
+  single_column: {
+    section_title: string;
+    header: string;
+    rows: { key: string; label: string }[];
+  };
+  additional_comments_label: string;
+  footer: { checked_date_label: string };
+}
+
+export interface ReferenceCheckData {
+  applicant: Record<string, string>;
+  reference: Record<string, string>;
+  referee_comments: Record<string, string>;
+  additional_comments: string;
+  checked_date: string;
+}
+
 export interface EvaluationTemplate {
   id: string;
   name: string;
-  type: 'HR' | 'USER';
+  type: 'HR' | 'USER' | 'REFERENCE_CHECK';
   target_role?: 'ALL' | 'HR_ADMIN' | 'USER_MANAGER' | 'DIRECTOR' | 'FINANCE_DIRECTOR' | string;
   target_department?: string;
-  form_schema: {
-    scale: { score: number; label: string }[];
-    categories: {
-      name: string;
-      criteria: { name: string; description: string }[];
-    }[];
-  };
+  form_schema: ScoringFormSchema | ReferenceCheckFormSchema;
   created_at: string;
   updated_at: string;
 }
@@ -133,7 +167,7 @@ export interface CandidateEvaluation {
   id: string;
   candidate_id: string;
   template_id: string | null;
-  evaluation_type: 'HR' | 'USER';
+  evaluation_type: 'HR' | 'USER' | 'REFERENCE_CHECK';
   interviewer_name: string;
   evaluator_id: string | null;
   evaluation_data: Record<string, any>;

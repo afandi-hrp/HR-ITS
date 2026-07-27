@@ -43,6 +43,20 @@ interface SummaryField {
   max_score?: number;
 }
 
+interface RCRow {
+  key: string;
+  label: string;
+}
+
+const slugifyKey = (label: string) => {
+  const slug = label
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return slug || `field_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+};
+
 export default function EvaluationTemplates() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [templates, setTemplates] = useState<EvaluationTemplate[]>([]);
@@ -69,7 +83,7 @@ export default function EvaluationTemplates() {
 
   // Basic Info State
   const [name, setName] = useState("");
-  const [type, setType] = useState<"HR" | "USER">("HR");
+  const [type, setType] = useState<"HR" | "USER" | "REFERENCE_CHECK">("HR");
   const [targetRole, setTargetRole] = useState<
     "ALL" | "HR_ADMIN" | "USER_MANAGER" | string
   >("ALL");
@@ -80,6 +94,21 @@ export default function EvaluationTemplates() {
   const [scales, setScales] = useState<ScaleItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [summaryFields, setSummaryFields] = useState<SummaryField[]>([]);
+
+  // Reference Check Builder State
+  const [rcTitleTemplate, setRcTitleTemplate] = useState("");
+  const [rcIntro, setRcIntro] = useState("");
+  const [rcTwoColumnHeaders, setRcTwoColumnHeaders] = useState<[string, string, string]>([
+    "Item",
+    "Information supplied by applicant",
+    "Information supplied by reference",
+  ]);
+  const [rcTwoColumnRows, setRcTwoColumnRows] = useState<RCRow[]>([]);
+  const [rcSectionTitle, setRcSectionTitle] = useState("");
+  const [rcSingleColumnHeader, setRcSingleColumnHeader] = useState("");
+  const [rcSingleColumnRows, setRcSingleColumnRows] = useState<RCRow[]>([]);
+  const [rcAdditionalCommentsLabel, setRcAdditionalCommentsLabel] = useState("");
+  const [rcCheckedDateLabel, setRcCheckedDateLabel] = useState("");
 
   const [saving, setSaving] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{
@@ -144,10 +173,34 @@ export default function EvaluationTemplates() {
   }, [debouncedSearch]);
 
   const handleOpenModal = (template?: EvaluationTemplate) => {
+    if (template && template.type === "REFERENCE_CHECK") {
+      setEditingTemplate(template);
+      setName(template.name);
+      setType("REFERENCE_CHECK");
+
+      const schema = template.form_schema as any;
+      setRcTitleTemplate(schema.title_template || "");
+      setRcIntro(schema.intro || "");
+      setRcTwoColumnHeaders(
+        schema.two_column?.headers || [
+          "Item",
+          "Information supplied by applicant",
+          "Information supplied by reference",
+        ],
+      );
+      setRcTwoColumnRows(schema.two_column?.rows || []);
+      setRcSectionTitle(schema.single_column?.section_title || "");
+      setRcSingleColumnHeader(schema.single_column?.header || "");
+      setRcSingleColumnRows(schema.single_column?.rows || []);
+      setRcAdditionalCommentsLabel(schema.additional_comments_label || "");
+      setRcCheckedDateLabel(schema.footer?.checked_date_label || "");
+      setIsModalOpen(true);
+      return;
+    }
     if (template) {
       setEditingTemplate(template);
       setName(template.name);
-      setType(template.type);
+      setType(template.type as "HR" | "USER");
       setTargetRole(template.target_role || "ALL");
       setTargetDepartment(template.target_department || "ALL");
 
@@ -190,6 +243,73 @@ export default function EvaluationTemplates() {
         description: "Nama template harus diisi.",
         variant: "destructive",
       });
+      return;
+    }
+
+    if (type === "REFERENCE_CHECK") {
+      if (rcTwoColumnRows.length === 0 && rcSingleColumnRows.length === 0) {
+        toast({
+          title: "Peringatan",
+          description: "Minimal harus ada 1 baris pada salah satu tabel.",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (
+        rcTwoColumnRows.some((r) => !r.label.trim()) ||
+        rcSingleColumnRows.some((r) => !r.label.trim())
+      ) {
+        toast({
+          title: "Peringatan",
+          description: "Label baris tidak boleh kosong.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setSaving(true);
+      const rcPayload = {
+        name,
+        type,
+        form_schema: {
+          title_template: rcTitleTemplate,
+          intro: rcIntro,
+          two_column: {
+            headers: rcTwoColumnHeaders,
+            rows: rcTwoColumnRows,
+          },
+          single_column: {
+            section_title: rcSectionTitle,
+            header: rcSingleColumnHeader,
+            rows: rcSingleColumnRows,
+          },
+          additional_comments_label: rcAdditionalCommentsLabel,
+          footer: { checked_date_label: rcCheckedDateLabel },
+        },
+      };
+
+      const { error: rcError } = editingTemplate
+        ? await supabase
+            .from("evaluation_templates")
+            .update(rcPayload)
+            .eq("id", editingTemplate.id)
+        : await supabase.from("evaluation_templates").insert([rcPayload]);
+
+      if (rcError) {
+        toast({
+          title: "Error",
+          description: rcError.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Berhasil",
+          description: `Template Reference Check berhasil ${editingTemplate ? "diperbarui" : "disimpan"}.`,
+        });
+        setIsModalOpen(false);
+        fetchTemplates();
+      }
+      setSaving(false);
       return;
     }
 
@@ -363,6 +483,28 @@ export default function EvaluationTemplates() {
   const removeSummaryField = (index: number) =>
     setSummaryFields(summaryFields.filter((_, i) => i !== index));
 
+  // Reference Check: Two-column rows
+  const addRcTwoColumnRow = () =>
+    setRcTwoColumnRows([...rcTwoColumnRows, { key: slugifyKey(""), label: "" }]);
+  const updateRcTwoColumnRowLabel = (index: number, label: string) => {
+    const rows = [...rcTwoColumnRows];
+    rows[index] = { ...rows[index], label };
+    setRcTwoColumnRows(rows);
+  };
+  const removeRcTwoColumnRow = (index: number) =>
+    setRcTwoColumnRows(rcTwoColumnRows.filter((_, i) => i !== index));
+
+  // Reference Check: Single-column rows
+  const addRcSingleColumnRow = () =>
+    setRcSingleColumnRows([...rcSingleColumnRows, { key: slugifyKey(""), label: "" }]);
+  const updateRcSingleColumnRowLabel = (index: number, label: string) => {
+    const rows = [...rcSingleColumnRows];
+    rows[index] = { ...rows[index], label };
+    setRcSingleColumnRows(rows);
+  };
+  const removeRcSingleColumnRow = (index: number) =>
+    setRcSingleColumnRows(rcSingleColumnRows.filter((_, i) => i !== index));
+
   return (
     <div className="space-y-8 pb-12">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
@@ -417,7 +559,9 @@ export default function EvaluationTemplates() {
                 "p-3 rounded-lg shrink-0",
                 template.type === "HR"
                   ? "bg-blue-50 text-blue-600"
-                  : "bg-violet-50 text-violet-600",
+                  : template.type === "REFERENCE_CHECK"
+                    ? "bg-amber-50 text-amber-600"
+                    : "bg-violet-50 text-violet-600",
               )}
             >
               <FileText size={24} />
@@ -438,7 +582,9 @@ export default function EvaluationTemplates() {
                   "px-3 py-1 rounded-md text-xs font-bold tracking-wider",
                   template.type === "HR"
                     ? "bg-blue-100 text-blue-700"
-                    : "bg-violet-100 text-violet-700",
+                    : template.type === "REFERENCE_CHECK"
+                      ? "bg-amber-100 text-amber-700"
+                      : "bg-violet-100 text-violet-700",
                 )}
               >
                 {template.type}
@@ -522,55 +668,258 @@ export default function EvaluationTemplates() {
                         className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">
-                        Jenis Template
-                      </label>
-                      <select
-                        value={type}
-                        onChange={(e) =>
-                          setType(e.target.value as "HR" | "USER")
-                        }
-                        className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
-                      >
-                        <option value="HR">HR (Human Resources)</option>
-                        <option value="USER">USER (User / Manager)</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">
-                        Akses Role
-                      </label>
-                      <select
-                        value={targetRole}
-                        onChange={(e) => setTargetRole(e.target.value)}
-                        className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
-                      >
-                        <option value="ALL">Semua Role</option>
-                        <option value="HR_ADMIN">Hanya HR Admin</option>
-                        <option value="USER_MANAGER">Hanya User Manager</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">
-                        Akses Departemen
-                      </label>
-                      <select
-                        value={targetDepartment}
-                        onChange={(e) => setTargetDepartment(e.target.value)}
-                        className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
-                      >
-                        <option value="ALL">Semua Departemen</option>
-                        {departments.map((dept, idx) => (
-                          <option key={idx} value={dept}>
-                            {dept}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                    {type === "REFERENCE_CHECK" ? (
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700">
+                          Jenis Template
+                        </label>
+                        <div className="w-full px-4 py-2.5 bg-amber-50 border border-amber-200 text-amber-700 font-bold rounded-xl text-sm">
+                          Reference Check
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700">
+                            Jenis Template
+                          </label>
+                          <select
+                            value={type}
+                            onChange={(e) =>
+                              setType(e.target.value as "HR" | "USER")
+                            }
+                            className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+                          >
+                            <option value="HR">HR (Human Resources)</option>
+                            <option value="USER">USER (User / Manager)</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700">
+                            Akses Role
+                          </label>
+                          <select
+                            value={targetRole}
+                            onChange={(e) => setTargetRole(e.target.value)}
+                            className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+                          >
+                            <option value="ALL">Semua Role</option>
+                            <option value="HR_ADMIN">Hanya HR Admin</option>
+                            <option value="USER_MANAGER">Hanya User Manager</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700">
+                            Akses Departemen
+                          </label>
+                          <select
+                            value={targetDepartment}
+                            onChange={(e) => setTargetDepartment(e.target.value)}
+                            className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+                          >
+                            <option value="ALL">Semua Departemen</option>
+                            {departments.map((dept, idx) => (
+                              <option key={idx} value={dept}>
+                                {dept}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
+                {type === "REFERENCE_CHECK" ? (
+                <>
+                {/* Reference Check: Text Content */}
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                  <h3 className="text-lg font-bold text-slate-900 border-b border-slate-100 pb-3">
+                    Judul & Teks
+                  </h3>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">
+                      Judul Form (gunakan {"{{full_name}}"} untuk nama kandidat)
+                    </label>
+                    <input
+                      type="text"
+                      value={rcTitleTemplate}
+                      onChange={(e) => setRcTitleTemplate(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">
+                      Teks Pengantar
+                    </label>
+                    <input
+                      type="text"
+                      value={rcIntro}
+                      onChange={(e) => setRcIntro(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Reference Check: Two-column table */}
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">
+                        Tabel 2 Kolom (Info Pelamar vs Referensi)
+                      </h3>
+                      <p className="text-sm text-slate-500">
+                        Baris data yang dibandingkan antara pengakuan pelamar dan info dari referensi.
+                      </p>
+                    </div>
+                    <button
+                      onClick={addRcTwoColumnRow}
+                      className="px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors"
+                    >
+                      <Plus size={16} /> Tambah Baris
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {rcTwoColumnHeaders.map((h, i) => (
+                      <input
+                        key={i}
+                        type="text"
+                        value={h}
+                        onChange={(e) => {
+                          const headers = [...rcTwoColumnHeaders] as [string, string, string];
+                          headers[i] = e.target.value;
+                          setRcTwoColumnHeaders(headers);
+                        }}
+                        placeholder={`Header kolom ${i + 1}`}
+                        className="px-3 py-2 text-xs font-bold bg-slate-100 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    ))}
+                  </div>
+                  <div className="space-y-2">
+                    {rcTwoColumnRows.map((row, idx) => (
+                      <div
+                        key={row.key}
+                        className="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200"
+                      >
+                        <input
+                          type="text"
+                          value={row.label}
+                          onChange={(e) => updateRcTwoColumnRowLabel(idx, e.target.value)}
+                          placeholder="Label baris (Cth: Position Held)"
+                          className="flex-1 px-3 py-1.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <button
+                          onClick={() => removeRcTwoColumnRow(idx)}
+                          className="p-1.5 shrink-0 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                    {rcTwoColumnRows.length === 0 && (
+                      <p className="text-center text-sm text-slate-500 py-4 italic">
+                        Belum ada baris.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Reference Check: Single-column table */}
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">
+                        Tabel Komentar Referee
+                      </h3>
+                      <p className="text-sm text-slate-500">
+                        Baris komentar satu kolom dari pihak referensi.
+                      </p>
+                    </div>
+                    <button
+                      onClick={addRcSingleColumnRow}
+                      className="px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors"
+                    >
+                      <Plus size={16} /> Tambah Baris
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <input
+                      type="text"
+                      value={rcSectionTitle}
+                      onChange={(e) => setRcSectionTitle(e.target.value)}
+                      placeholder="Judul section"
+                      className="px-3 py-2 text-xs font-bold bg-slate-100 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <input
+                      type="text"
+                      value={rcSingleColumnHeader}
+                      onChange={(e) => setRcSingleColumnHeader(e.target.value)}
+                      placeholder="Header kolom (Cth: Comment from referee)"
+                      className="px-3 py-2 text-xs font-bold bg-slate-100 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    {rcSingleColumnRows.map((row, idx) => (
+                      <div
+                        key={row.key}
+                        className="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200"
+                      >
+                        <input
+                          type="text"
+                          value={row.label}
+                          onChange={(e) => updateRcSingleColumnRowLabel(idx, e.target.value)}
+                          placeholder="Label baris (Cth: Attendance & Reliability)"
+                          className="flex-1 px-3 py-1.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <button
+                          onClick={() => removeRcSingleColumnRow(idx)}
+                          className="p-1.5 shrink-0 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                    {rcSingleColumnRows.length === 0 && (
+                      <p className="text-center text-sm text-slate-500 py-4 italic">
+                        Belum ada baris.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Reference Check: Footer labels */}
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                  <h3 className="text-lg font-bold text-slate-900 border-b border-slate-100 pb-3">
+                    Label Tambahan
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700">
+                        Label "Additional Comments"
+                      </label>
+                      <input
+                        type="text"
+                        value={rcAdditionalCommentsLabel}
+                        onChange={(e) => setRcAdditionalCommentsLabel(e.target.value)}
+                        className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700">
+                        Label Tanggal
+                      </label>
+                      <input
+                        type="text"
+                        value={rcCheckedDateLabel}
+                        onChange={(e) => setRcCheckedDateLabel(e.target.value)}
+                        className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+                </>
+                ) : (
+                <>
                 {/* Scale Builder */}
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -840,6 +1189,8 @@ export default function EvaluationTemplates() {
                     )}
                   </div>
                 </div>
+                </>
+                )}
               </div>
             </div>
 

@@ -22,6 +22,7 @@ export default function CandidateTracking() {
 
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState<any[]>([]);
+  const [externalDataMap, setExternalDataMap] = useState<Record<string, any>>({});
 
   // Sync to URL
   useEffect(() => {
@@ -124,7 +125,7 @@ const topScrollRef = useRef<HTMLDivElement>(null);
         .select(`
           *,
           psikotes_schedules (is_confirmed, schedule_date),
-          interview_schedules (is_confirmed, schedule_date),
+          interview_schedules (is_confirmed, schedule_date, additional_notes),
           candidate_evaluations (evaluation_type, interviewer_name, total_score, evaluation_data)
         `)
         .order("created_at", { ascending: false });
@@ -143,6 +144,26 @@ const topScrollRef = useRef<HTMLDivElement>(null);
 
       const combined = [...(activeData || []), ...(loggedData || [])];
       setCandidates(combined);
+
+      // Fetch linked external application-form data, used as a fallback source
+      // for "Sumber CV" when candidates.source_info wasn't set directly.
+      const linkedIds = Array.from(
+        new Set(combined.map((c) => c.linked_external_id).filter(Boolean)),
+      );
+      if (linkedIds.length > 0) {
+        const { data: extData, error: extError } = await supabase
+          .from("external_data")
+          .select("uid_sheet, raw_data")
+          .in("uid_sheet", linkedIds);
+
+        if (!extError && extData) {
+          const map: Record<string, any> = {};
+          extData.forEach((row) => {
+            map[row.uid_sheet] = row.raw_data;
+          });
+          setExternalDataMap(map);
+        }
+      }
     } catch (err) {
       console.error("Error fetching tracking data:", err);
     } finally {
@@ -168,6 +189,36 @@ const filteredCandidates = candidates.filter(
     }
   };
 
+
+  // Sumber CV: prefer the direct column; fall back to the linked application
+  // form's "how did you find this vacancy" answer (external_data.raw_data.job_vacancy_info).
+  const getSourceCv = (c: any) => {
+    if (c.source_info) return c.source_info;
+    const linked = c.linked_external_id ? externalDataMap[c.linked_external_id] : null;
+    return linked?.job_vacancy_info || "";
+  };
+
+  // Hasil Psikotes: derived from the General Learning Ability sub-score inside
+  // ai_psikotes_summary, not from whether a result file was uploaded.
+  const getPsikotesResult = (c: any) => {
+    const skorRaw = c.ai_psikotes_summary?.data_hasil_psikotes?.general_learning_ability?.skor;
+    const skor = parseFloat(skorRaw);
+    if (isNaN(skor)) return "";
+    if (skor < 84) return "NOK";
+    if (skor <= 96) return "To be Considered";
+    return "OK";
+  };
+
+  // Tgl Background Checking: sourced from the Reference Check submission date,
+  // falling back to the manually-entered background_check_date for older records
+  // that predate the Reference Check feature.
+  const getBackgroundCheckDate = (c: any) => {
+    const refCheck = c.candidate_evaluations?.find(
+      (e: any) => e.evaluation_type === "REFERENCE_CHECK",
+    );
+    const checkedDate = refCheck?.evaluation_data?.checked_date;
+    return checkedDate || c.background_check_date || "";
+  };
 
   const getEvalField = (evalObj: any, fieldPart: string) => {
     if (!evalObj || !evalObj.evaluation_data) return "";
@@ -221,13 +272,13 @@ const filteredCandidates = candidates.filter(
         return {
           "No": index + 1,
           "Posisi": c.position || "",
-          "Sumber CV": c.source_info || "",
+          "Sumber CV": getSourceCv(c),
           "Nama Kandidat": c.full_name || "",
           "No Hp": c.phone || "",
           "Email": c.email || "",
           "Tgl Pemanggilan": psikotesDate || tglInterviewHR,
           "Kehadiran": kehadiran,
-          "Hasil Psikotes": c.psikotes_result_url ? "OK" : (c.psikotes_status || ""),
+          "Hasil Psikotes": getPsikotesResult(c),
           "Tgl Interview HR": tglInterviewHR,
           "HR Interviewer": hrEval?.interviewer_name || "",
           "Result": getEvalField(hrEval, "recommendation"),
@@ -238,7 +289,7 @@ const filteredCandidates = candidates.filter(
           "Tgl Trial 2": formatDate(c.trial_2_date),
           "Tgl Trial 3": formatDate(c.trial_3_date),
           "Hasil Trial": c.trial_result || "",
-          "Tgl Background Checking": formatDate(c.background_check_date),
+          "Tgl Background Checking": formatDate(getBackgroundCheckDate(c)),
           "Hasil Background Checking": c.background_check_result || "",
           "Management Approval Date": formatDate(c.director_approval_date),
           "Offering Date": formatDate(c.finance_approval_date),
@@ -468,14 +519,14 @@ const filteredCandidates = candidates.filter(
                         </td>
 
                         <td className="px-4 py-3 border-x border-slate-200 whitespace-nowrap">{c.position}</td>
-                        <td className="px-4 py-3 border-x border-slate-200 whitespace-nowrap">{c.source_info}</td>
+                        <td className="px-4 py-3 border-x border-slate-200 whitespace-nowrap">{getSourceCv(c)}</td>
                         <td className="px-4 py-3 border-x border-slate-200 font-medium text-slate-900 whitespace-nowrap">{c.full_name}</td>
                         <td className="px-4 py-3 border-x border-slate-200 whitespace-nowrap">{c.phone}</td>
                         <td className="px-4 py-3 border-x border-slate-200 whitespace-nowrap">{c.email}</td>
-                        
+
                         <td className="px-4 py-3 border-x border-slate-200 whitespace-nowrap">{psikotesDate || tglInterviewHR}</td>
                         <td className="px-4 py-3 border-x border-slate-200 whitespace-nowrap">{kehadiran}</td>
-                        <td className="px-4 py-3 border-x border-slate-200 whitespace-nowrap">{c.psikotes_result_url ? "OK" : (c.psikotes_status || "")}</td>
+                        <td className="px-4 py-3 border-x border-slate-200 whitespace-nowrap">{getPsikotesResult(c)}</td>
                         <td className="px-4 py-3 border-x border-slate-200 whitespace-nowrap">{tglInterviewHR}</td>
                         <td className="px-4 py-3 border-x border-slate-200 whitespace-nowrap">{hrEval?.interviewer_name || ""}</td>
                         <td className="px-4 py-3 border-x border-slate-200 whitespace-nowrap">{getEvalField(hrEval, "recommendation")}</td>
@@ -508,7 +559,7 @@ const filteredCandidates = candidates.filter(
                         <td className="px-4 py-3 border-x border-slate-200 whitespace-nowrap">
                           {editingId === c.id ? (
                             <input type="date" value={editForm.background_check_date} onChange={e => setEditForm({...editForm, background_check_date: e.target.value})} className="border rounded px-2 py-1 text-sm"/>
-                          ) : formatDate(c.background_check_date)}
+                          ) : formatDate(getBackgroundCheckDate(c))}
                         </td>
                         <td className="px-4 py-3 border-x border-slate-200 whitespace-nowrap">
                           {editingId === c.id ? (

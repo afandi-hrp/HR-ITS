@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import SignatureCanvas from "react-signature-canvas";
-import { cn, getEmbedUrl } from "../lib/utils";
+import { cn, getEmbedUrl, formatDateDMY } from "../lib/utils";
 import { PdfToImages } from "../components/PdfToImages";
 
 interface ApplicationFormProps {
@@ -1383,13 +1383,19 @@ export default function ApplicationForm({
                 {/* Divider */}
                 <div className="w-px h-10 sm:h-14 bg-white/40 shrink-0 z-10 print:h-14"></div>
 
-                <div className="flex-1 flex flex-col justify-center text-left z-10 items-start overflow-hidden">
+                <div className="flex-1 flex flex-col justify-center text-left z-10 items-start overflow-hidden print:overflow-visible">
                   <div className="inline-block w-full">
-                    <h1 className="text-[13px] sm:text-lg md:text-xl font-bold tracking-wide uppercase leading-tight whitespace-nowrap print:text-xl">
+                    <h1
+                      id="application-form-title"
+                      className="text-[13px] sm:text-lg md:text-xl font-bold tracking-wide uppercase leading-tight whitespace-nowrap"
+                    >
                       Formulir Data Pelamar Kerja
                     </h1>
                     <div className="h-px bg-white/60 w-full my-1 sm:my-1.5"></div>
-                    <span className="font-normal italic text-[10px] sm:text-sm opacity-90 leading-tight block whitespace-nowrap print:text-sm">
+                    <span
+                      id="application-form-subtitle"
+                      className="font-normal italic text-[10px] sm:text-sm opacity-90 leading-tight block whitespace-nowrap"
+                    >
                       Job Applicant Information Form
                     </span>
                   </div>
@@ -1627,14 +1633,23 @@ export default function ApplicationForm({
                             </span>{" "}
                             <span className="text-red-500">*</span>
                           </label>
-                          <input
-                            type="date"
-                            name="date_of_birth"
-                            required
-                            value={formData.date_of_birth}
-                            onChange={handleInputChange}
-                            className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          />
+                          {readOnly ? (
+                            <input
+                              type="text"
+                              readOnly
+                              value={formatDateDMY(formData.date_of_birth)}
+                              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none"
+                            />
+                          ) : (
+                            <input
+                              type="date"
+                              name="date_of_birth"
+                              required
+                              value={formData.date_of_birth}
+                              onChange={handleInputChange}
+                              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                          )}
                         </div>
                       </div>
 
@@ -3371,18 +3386,27 @@ export default function ApplicationForm({
                                           <span className="text-slate-500">
                                             Dari:
                                           </span>
-                                          <input
-                                            type="date"
-                                            value={exp.period_start}
-                                            onChange={(e) =>
-                                              handleWorkExperienceChange(
-                                                index,
-                                                "period_start",
-                                                e.target.value,
-                                              )
-                                            }
-                                            className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-                                          />
+                                          {readOnly ? (
+                                            <input
+                                              type="text"
+                                              readOnly
+                                              value={formatDateDMY(exp.period_start)}
+                                              className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none text-sm"
+                                            />
+                                          ) : (
+                                            <input
+                                              type="date"
+                                              value={exp.period_start}
+                                              onChange={(e) =>
+                                                handleWorkExperienceChange(
+                                                  index,
+                                                  "period_start",
+                                                  e.target.value,
+                                                )
+                                              }
+                                              className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                                            />
+                                          )}
                                         </div>
                                         <span className="text-slate-400 hidden sm:inline">
                                           s/d
@@ -3395,6 +3419,13 @@ export default function ApplicationForm({
                                             <span className="px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-sm text-slate-500 font-medium whitespace-nowrap">
                                               Saat Ini
                                             </span>
+                                          ) : readOnly ? (
+                                            <input
+                                              type="text"
+                                              readOnly
+                                              value={formatDateDMY(exp.period_end)}
+                                              className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none text-sm"
+                                            />
                                           ) : (
                                             <input
                                               type="date"
@@ -3534,9 +3565,9 @@ export default function ApplicationForm({
                                   </tr>
                                   <tr>
                                     <td className="px-4 py-3 font-medium text-slate-700 bg-slate-50 border-r border-slate-200">
-                                      Pelaporan Pekerjaan{" "}
+                                      Atasan Langsung{" "}
                                       <span className="text-xs font-normal italic">
-                                        (Report Directly)
+                                        (Direct Superior)
                                       </span>
                                     </td>
                                     <td className="p-0">
@@ -5178,7 +5209,7 @@ export default function ApplicationForm({
                       </span>
                       {readOnly ? (
                         <span className="font-medium text-slate-900 text-center w-full">
-                          {initialData?.remuneration_signature_date || "-"}
+                          {formatDateDMY(initialData?.remuneration_signature_date)}
                         </span>
                       ) : (
                         <input

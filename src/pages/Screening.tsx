@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { Candidate } from "../types";
+import { formatAsNumberedList, formatLevelAndList } from "../lib/cvSummaryFormat";
 import {
   Search,
   Filter,
@@ -30,6 +31,10 @@ import {
   LayoutList,
   LayoutGrid,
   Loader2,
+  MessageCircle,
+  CheckCheck,
+  ClipboardCheck,
+  CalendarClock,
 } from "lucide-react";
 import { cn, formatDate, fetchWithRetry, extractPhotoUrl } from "../lib/utils";
 import { useToast } from "../components/ui/use-toast";
@@ -40,6 +45,24 @@ import {
   PopoverContent,
 } from "../components/ui/popover";
 import SchedulingModal from "../components/SchedulingModal";
+import SendEmailModal from "../components/SendEmailModal";
+import SendWAModal from "../components/SendWAModal";
+import ConfirmModal from "../components/ConfirmModal";
+
+const PIPELINE_STATUS_OPTIONS = [
+  "Inbox",
+  "Belum Diproses",
+  "Lolos",
+  "Jadwal Psikotes",
+  "Psikotes Selesai",
+  "Jadwal Interview HC",
+  "Interview Selesai HC",
+  "Jadwal Interview User",
+  "Interview Selesai User",
+  "Reference Check",
+  "Rejected",
+  "Hired",
+];
 
 export default function Screening() {
   const location = useLocation();
@@ -114,7 +137,7 @@ export default function Screening() {
     
     if (selectedPosition) {
       params.set("selectedPosition", selectedPosition);
-      if (positionStatusFilters[selectedPosition] && positionStatusFilters[selectedPosition] !== "Semua") {
+      if (positionStatusFilters[selectedPosition] && positionStatusFilters[selectedPosition] !== "Inbox") {
         params.set("subStatus", positionStatusFilters[selectedPosition]);
       } else {
         params.delete("subStatus");
@@ -134,6 +157,18 @@ export default function Screening() {
     candidate: Candidate;
     type: "psikotes" | "interview";
   } | null>(null);
+  const [commsModalData, setCommsModalData] = useState<{
+    candidate: Candidate;
+    schedule: any;
+    type: "psikotes" | "interview";
+    channel: "email" | "wa";
+  } | null>(null);
+  const [confirmScheduleData, setConfirmScheduleData] = useState<{
+    table: "psikotes_schedules" | "interview_schedules";
+    scheduleId: string;
+    label: string;
+  } | null>(null);
+  const [confirmingSchedule, setConfirmingSchedule] = useState(false);
   const [logModalData, setLogModalData] = useState<Candidate | null>(null);
   const [logNotes, setLogNotes] = useState("");
   const [movingToLog, setMovingToLog] = useState(false);
@@ -213,12 +248,14 @@ export default function Screening() {
     if (!profile) return; // Wait for profile to load
 
     setLoading(true);
+    const scheduleColumns =
+      "id, is_confirmed, schedule_date, location_type, location_detail, additional_notes, candidate_id, created_at, updated_at";
     let selectQuery =
-      "*, psikotes_schedules(id, is_confirmed, schedule_date), interview_schedules(id, is_confirmed, schedule_date), external_data(raw_data), candidate_assignees(user_id, profiles(full_name))";
+      `*, psikotes_schedules(${scheduleColumns}), interview_schedules(${scheduleColumns}), candidate_evaluations(evaluation_type), external_data(raw_data), candidate_assignees(user_id, profiles(full_name))`;
 
     if (profile.role === "USER_MANAGER" || profile.role === "DIRECTOR" || profile.role === "FINANCE_DIRECTOR") {
       selectQuery =
-        "*, psikotes_schedules(id, is_confirmed, schedule_date), interview_schedules(id, is_confirmed, schedule_date), external_data(raw_data), filter_assignees:candidate_assignees!inner(user_id), candidate_assignees(user_id, profiles(full_name))";
+        `*, psikotes_schedules(${scheduleColumns}), interview_schedules(${scheduleColumns}), candidate_evaluations(evaluation_type), external_data(raw_data), filter_assignees:candidate_assignees!inner(user_id), candidate_assignees(user_id, profiles(full_name))`;
     }
 
     let query = supabase
@@ -343,6 +380,34 @@ export default function Screening() {
     positionFilter,
     profile,
   ]);
+
+  const confirmScheduleDone = async () => {
+    if (!confirmScheduleData) return;
+    setConfirmingSchedule(true);
+    try {
+      const { error } = await supabase
+        .from(confirmScheduleData.table)
+        .update({ is_confirmed: true })
+        .eq("id", confirmScheduleData.scheduleId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Berhasil",
+        description: "Jadwal telah dikonfirmasi selesai.",
+      });
+      setConfirmScheduleData(null);
+      fetchCandidates();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setConfirmingSchedule(false);
+    }
+  };
 
   const confirmReject = async () => {
     if (!rejectModalData) return;
@@ -720,32 +785,44 @@ export default function Screening() {
     }
   };
 
+  const isUserInterview = (s: any) => s.additional_notes?.startsWith("[USER]");
+
   const getCandidateDerivedStatus = (candidate: any) => {
     if (candidate.status_screening === "hired") return "Hired";
     if (candidate.status_screening === "rejected") return "Rejected";
-    
-    // If they already have an interview status/result, it means interview is done
-    if (candidate.interview_status && candidate.interview_status.trim() !== '') return "Interview Selesai";
-    
-    // Schedule checks come first so we see them in the pipeline correctly
-    if (candidate.interview_schedules && candidate.interview_schedules.length > 0) {
-      if (candidate.interview_schedules.some((s: any) => s.is_confirmed)) return "Interview Selesai";
-      return "Jadwal Interview";
+
+    if (candidate.candidate_evaluations?.some((e: any) => e.evaluation_type === "REFERENCE_CHECK")) {
+      return "Reference Check";
     }
-    
+
+    // If they already have an interview status/result (legacy candidates with no schedule rows), interview is done
+    if (candidate.interview_status && candidate.interview_status.trim() !== '') return "Interview Selesai User";
+
+    // Schedule checks come first so we see them in the pipeline correctly
+    const interviewSchedules = candidate.interview_schedules || [];
+    const userSchedules = interviewSchedules.filter(isUserInterview);
+    const hcSchedules = interviewSchedules.filter((s: any) => !isUserInterview(s));
+
+    if (userSchedules.length > 0) {
+      return userSchedules.some((s: any) => s.is_confirmed) ? "Interview Selesai User" : "Jadwal Interview User";
+    }
+    if (hcSchedules.length > 0) {
+      return hcSchedules.some((s: any) => s.is_confirmed) ? "Interview Selesai HC" : "Jadwal Interview HC";
+    }
+
     // If they already have a psikotes status/result, it means psikotes is done
     if (candidate.psikotes_status && candidate.psikotes_status.trim() !== '') return "Psikotes Selesai";
-    
+
     if (candidate.psikotes_schedules && candidate.psikotes_schedules.length > 0) {
       if (candidate.psikotes_schedules.some((s: any) => s.is_confirmed)) return "Psikotes Selesai";
       return "Jadwal Psikotes";
     }
-    
+
     if (candidate.status_screening === "accepted") return "Lolos"; // Lolos screening awal
-    
+
     // We can also assume "invited" might mean they are waiting for schedule?
     // We will just default to Belum Diproses for now if they don't have schedules yet
-    return "Belum Diproses"; 
+    return "Belum Diproses";
   };
 
   const allGroupedCandidates = candidates.reduce(
@@ -760,8 +837,8 @@ export default function Screening() {
   const candidatesForSelectedPosition = selectedPosition ? (allGroupedCandidates[selectedPosition] || []) : [];
   
   const filteredCandidatesForPosition = candidatesForSelectedPosition.filter((c) => {
-    const selectedStatus = positionStatusFilters[selectedPosition!] || "Semua";
-    if (selectedStatus === "Semua") return true;
+    const selectedStatus = positionStatusFilters[selectedPosition!] || "Inbox";
+    if (selectedStatus === "Inbox" || !PIPELINE_STATUS_OPTIONS.includes(selectedStatus)) return true;
     return getCandidateDerivedStatus(c) === selectedStatus;
   });
 
@@ -786,8 +863,9 @@ export default function Screening() {
     } else if (sortOption === "interview") {
       const statusA = getCandidateDerivedStatus(a);
       const statusB = getCandidateDerivedStatus(b);
-      const isInterviewA = statusA === "Interview Selesai" || statusA === "Jadwal Interview" ? 1 : 0;
-      const isInterviewB = statusB === "Interview Selesai" || statusB === "Jadwal Interview" ? 1 : 0;
+      const interviewStatuses = ["Interview Selesai HC", "Interview Selesai User", "Jadwal Interview HC", "Jadwal Interview User"];
+      const isInterviewA = interviewStatuses.includes(statusA) ? 1 : 0;
+      const isInterviewB = interviewStatuses.includes(statusB) ? 1 : 0;
       if (isInterviewA !== isInterviewB) return isInterviewB - isInterviewA;
     } else if (sortOption === "psikotes") {
       const statusA = getCandidateDerivedStatus(a);
@@ -910,9 +988,9 @@ export default function Screening() {
           </div>
 
           {/* Filter Bar */}
-          <div className="bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-sm mb-6">
-            <div className="flex items-center gap-4 overflow-x-auto custom-scrollbar pb-2">
-              <div className="flex-1 min-w-[250px] shrink-0">
+          <div className="bg-white/70 backdrop-blur-md p-3 rounded-2xl border border-slate-200 shadow-sm mb-6">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex-1 min-w-[120px]">
                 <div className="relative w-full">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                   <input
@@ -925,7 +1003,7 @@ export default function Screening() {
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 max-w-[200px]">
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 max-w-[150px]">
                 <Filter size={16} className="text-slate-400 shrink-0" />
                 <select
                   value={positionFilter}
@@ -938,12 +1016,12 @@ export default function Screening() {
                   ))}
                 </select>
               </div>
-              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 max-w-[140px]">
                 <Filter size={16} className="text-slate-400 shrink-0" />
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="bg-transparent text-sm focus:outline-none text-slate-700 w-full"
+                  className="bg-transparent text-sm focus:outline-none text-slate-700 w-full truncate"
                 >
                   <option value="all">Semua Status</option>
                   <option value="pending">Pending</option>
@@ -953,20 +1031,20 @@ export default function Screening() {
                   <option value="hired">Hired</option>
                 </select>
               </div>
-              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
+              <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 shrink-0">
                 <CalendarIcon size={16} className="text-slate-400 shrink-0" />
                 <input
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="bg-transparent text-sm focus:outline-none text-slate-700"
+                  className="bg-transparent text-sm focus:outline-none text-slate-700 w-[104px]"
                 />
                 <span className="text-slate-400">-</span>
                 <input
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="bg-transparent text-sm focus:outline-none text-slate-700"
+                  className="bg-transparent text-sm focus:outline-none text-slate-700 w-[104px]"
                 />
               </div>
               <button
@@ -978,20 +1056,20 @@ export default function Screening() {
                   setEndDate("");
                   setCurrentPage(1);
                 }}
-                className="p-2.5 text-slate-500 hover:text-red-600 bg-white border border-slate-200 hover:bg-red-50 hover:border-red-200 rounded-xl transition-all shadow-sm flex items-center gap-2"
+                className="p-2 text-slate-500 hover:text-red-600 bg-white border border-slate-200 hover:bg-red-50 hover:border-red-200 rounded-xl transition-all shadow-sm flex items-center gap-2 shrink-0"
                 title="Reset Filter"
               >
                 <FilterX size={18} />
-                <span className="font-medium hidden sm:inline">Reset</span>
+                <span className="font-medium hidden 2xl:inline">Reset</span>
               </button>
 
               <button
                 onClick={fetchCandidates}
-                className="p-2.5 text-[#3D2C44] bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 rounded-xl transition-all shadow-sm flex items-center gap-2"
+                className="p-2 text-[#3D2C44] bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 rounded-xl transition-all shadow-sm flex items-center gap-2 shrink-0"
                 title="Refresh Data"
               >
                 <RefreshCcw size={18} className={loading ? "animate-spin" : ""} />
-                <span className="font-medium hidden sm:inline">Refresh</span>
+                <span className="font-medium hidden 2xl:inline">Refresh</span>
               </button>
             </div>
             </div>
@@ -1012,8 +1090,9 @@ export default function Screening() {
                  const jadwalPsikotesCount = allCands.filter((c: any) => getCandidateDerivedStatus(c) === "Jadwal Psikotes").length;
                  const selesaiPsikotesCount = allCands.filter((c: any) => getCandidateDerivedStatus(c) === "Psikotes Selesai").length;
                  
-                 const jadwalInterviewCount = allCands.filter((c: any) => getCandidateDerivedStatus(c) === "Jadwal Interview").length;
-                 const selesaiInterviewCount = allCands.filter((c: any) => getCandidateDerivedStatus(c) === "Interview Selesai").length;
+                 const jadwalInterviewCount = allCands.filter((c: any) => ["Jadwal Interview HC", "Jadwal Interview User"].includes(getCandidateDerivedStatus(c))).length;
+                 const selesaiInterviewCount = allCands.filter((c: any) => ["Interview Selesai HC", "Interview Selesai User"].includes(getCandidateDerivedStatus(c))).length;
+                 const referenceCheckCount = allCands.filter((c: any) => getCandidateDerivedStatus(c) === "Reference Check").length;
                  
                  return (
                    <div 
@@ -1036,10 +1115,16 @@ export default function Screening() {
                          </div>
                          
                          <div className="flex items-center gap-2 bg-amber-50 px-2 py-1 rounded-lg text-amber-700 font-medium">
-                           <Users size={14} /> Interview: 
+                           <Users size={14} /> Interview:
                            <span className="text-xs bg-amber-200 px-1.5 rounded">{jadwalInterviewCount} Jadwal</span>
                            <span className="text-xs bg-amber-200 px-1.5 rounded">{selesaiInterviewCount} Selesai</span>
                          </div>
+
+                         {referenceCheckCount > 0 && (
+                           <span className="flex items-center gap-1.5 bg-fuchsia-50 px-2 py-1 rounded-lg text-fuchsia-700 font-medium">
+                             <FileText size={14} /> {referenceCheckCount} Reference Check
+                           </span>
+                         )}
                        </div>
                      </div>
                      <div className="flex items-center gap-4">
@@ -1050,27 +1135,6 @@ export default function Screening() {
                })
              )}
           </div>
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-8">
-              <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 disabled:opacity-50 hover:bg-slate-50 transition-colors"
-              >
-                <ChevronLeft size={18} />
-              </button>
-              <span className="text-sm font-medium text-slate-600">
-                Halaman {currentPage} dari {totalPages}
-              </span>
-              <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 disabled:opacity-50 hover:bg-slate-50 transition-colors"
-              >
-                <ChevronRight size={18} />
-              </button>
-            </div>
-          )}
         </>
       ) : (
         <>
@@ -1103,9 +1167,9 @@ export default function Screening() {
             </div>
           </div>
 
-          <div className="flex flex-col xl:flex-row gap-6">
-            <div className="w-full xl:w-64 shrink-0 space-y-4">
-              <div className="bg-white/70 backdrop-blur-md border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-4 xl:max-h-[calc(100vh-200px)] overflow-y-auto">
+          <div className="flex flex-col lg:flex-row gap-6">
+            <div className="w-full lg:w-64 shrink-0 space-y-4">
+              <div className="bg-white/70 backdrop-blur-md border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-4">
                 
                 {/* Search */}
                 <div>
@@ -1165,13 +1229,11 @@ export default function Screening() {
                     <div className="space-y-1">
                       {(() => {
                       const allCandidatesInThisPosition = allGroupedCandidates[selectedPosition] || [];
-                      const filterOptions = ["Semua", "Belum Diproses", "Lolos", "Jadwal Psikotes", "Psikotes Selesai", "Jadwal Interview", "Interview Selesai", "Rejected", "Hired"];
-                      return filterOptions.map(opt => {
-                        const count = opt === "Semua" ? allCandidatesInThisPosition.length : allCandidatesInThisPosition.filter((c: any) => getCandidateDerivedStatus(c) === opt).length;
-                        const currentFilter = positionStatusFilters[selectedPosition] || "Semua";
-                        
+                      return PIPELINE_STATUS_OPTIONS.map(opt => {
+                        const count = opt === "Inbox" ? allCandidatesInThisPosition.length : allCandidatesInThisPosition.filter((c: any) => getCandidateDerivedStatus(c) === opt).length;
+                        const currentFilter = positionStatusFilters[selectedPosition] || "Inbox";
+
                         let filterLabel = opt;
-                        if (opt === "Belum Diproses") filterLabel = "Inbox (Baru)";
                         if (opt === "Lolos") filterLabel = "Lolos Awal (Menunggu Jadwal)";
                         
                         return (
@@ -1222,11 +1284,17 @@ export default function Screening() {
 
               </div>
             </div>
-            <div className="flex-1 space-y-6 xl:max-h-[calc(100vh-200px)] overflow-y-auto pr-2 pb-10 custom-scrollbar">
+            <div className="flex-1 min-w-0 space-y-6 pb-10">
               <div className="flex flex-col gap-6">
 {paginatedCandidates.map((candidate: any) => {
                   const isExpanded = expandedCandidates.includes(candidate.id);
-                  
+                  const unconfirmedPsikotes = (candidate.psikotes_schedules || []).filter((s: any) => !s.is_confirmed);
+                  const unconfirmedInterviews = (candidate.interview_schedules || []).filter((s: any) => !s.is_confirmed);
+                  const allSchedulesForComms = [
+                    ...(candidate.psikotes_schedules || []).map((s: any) => ({ schedule: s, type: "psikotes" as const })),
+                    ...(candidate.interview_schedules || []).map((s: any) => ({ schedule: s, type: "interview" as const })),
+                  ];
+
                   return (
                     <div
                       key={candidate.id}
@@ -1370,7 +1438,7 @@ export default function Screening() {
                         </div>
 
                         {/* Right: Scores & Actions */}
-                        <div className="flex flex-col gap-3 justify-between shrink-0 lg:w-48 lg:border-l lg:border-slate-100 lg:pl-6 border-t border-slate-100 pt-4 lg:pt-0 lg:border-t-0">
+                        <div className="flex flex-col gap-3 justify-between shrink-0 lg:w-56 lg:border-l lg:border-slate-100 lg:pl-6 border-t border-slate-100 pt-4 lg:pt-0 lg:border-t-0">
                           {/* CV Score Preview */}
                           <div className="flex items-center justify-between lg:justify-start gap-3">
                              <div className="bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 flex items-center gap-2">
@@ -1389,57 +1457,124 @@ export default function Screening() {
                           </div>
                           
                           {/* Buttons */}
-                          <div className="flex items-center lg:grid lg:grid-cols-2 gap-2 mt-auto">
+                          <div className="flex flex-col gap-2 mt-auto">
                             {profile?.role !== "USER_MANAGER" && (
-                              <>
-                                <button
-                                  onClick={() => handleUpdateStatus(candidate.id, "accepted")}
-                                  title="Terima Kandidat (Lolos Screening)"
-                                  className="flex-1 flex justify-center items-center p-2 border border-[#3D2C44]/20 text-[#3D2C44] bg-white rounded-xl hover:bg-[#3D2C44] hover:text-white transition-all hover:-translate-y-0.5 shadow-sm"
-                                >
-                                  <ThumbsUp size={16} />
-                                </button>
-                                <button
-                                  onClick={() => handleUpdateStatus(candidate.id, "hired")}
-                                  title="Rekrut Kandidat (Hired)"
-                                  className="flex-1 flex justify-center items-center p-2 border border-[#3D2C44]/20 text-[#3D2C44] bg-white rounded-xl hover:bg-[#3D2C44] hover:text-white transition-all hover:-translate-y-0.5 shadow-sm"
-                                >
-                                  <Briefcase size={16} />
-                                </button>
-                                <button
-                                  onClick={() => handleUpdateStatus(candidate.id, "rejected")}
-                                  title="Tolak Kandidat"
-                                  className="flex-1 flex justify-center items-center p-2 border border-red-200 text-red-600 bg-white rounded-xl hover:bg-red-600 hover:text-white transition-all hover:-translate-y-0.5 shadow-sm"
-                                >
-                                  <ThumbsDown size={16} />
-                                </button>
-                              </>
+                              <Popover>
+                                <PopoverTrigger
+                                  render={
+                                    <button className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs sm:text-sm font-bold border border-[#3D2C44]/20 text-[#3D2C44] bg-white rounded-xl hover:bg-[#3D2C44] hover:text-white transition-all hover:-translate-y-0.5 shadow-sm">
+                                      <ClipboardCheck size={16} />
+                                      <span>Status Kandidat</span>
+                                      <ChevronDown size={14} className="opacity-60" />
+                                    </button>
+                                  }
+                                />
+                                <PopoverContent className="w-56 p-1.5">
+                                  <div className="flex flex-col gap-0.5">
+                                    <button
+                                      onClick={() => handleUpdateStatus(candidate.id, "accepted")}
+                                      className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-slate-700 rounded-lg hover:bg-[#3D2C44]/10 hover:text-[#3D2C44] transition-colors text-left"
+                                    >
+                                      <ThumbsUp size={16} /> Terima Kandidat
+                                    </button>
+                                    <button
+                                      onClick={() => handleUpdateStatus(candidate.id, "hired")}
+                                      className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-slate-700 rounded-lg hover:bg-[#3D2C44]/10 hover:text-[#3D2C44] transition-colors text-left"
+                                    >
+                                      <Briefcase size={16} /> Rekrut (Hired)
+                                    </button>
+                                    <button
+                                      onClick={() => handleUpdateStatus(candidate.id, "rejected")}
+                                      className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 transition-colors text-left"
+                                    >
+                                      <ThumbsDown size={16} /> Tolak Kandidat
+                                    </button>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
                             )}
-                            
-                            <button
-                              onClick={() => {
-                                setSchedulingData({
-                                  candidate,
-                                  type: "psikotes",
-                                });
-                              }}
-                              title="Jadwalkan Psikotes"
-                              className="flex-1 flex justify-center items-center p-2 border border-[#3D2C44]/20 text-[#3D2C44] bg-white rounded-xl hover:bg-[#3D2C44] hover:text-white transition-all hover:-translate-y-0.5 shadow-sm"
-                            >
-                              <FileText size={16} />
-                            </button>
-                            <button
-                              onClick={() => {
-                                setSchedulingData({
-                                  candidate,
-                                  type: "interview",
-                                });
-                              }}
-                              title="Jadwalkan Interview"
-                              className="flex-1 flex justify-center items-center p-2 border border-[#3D2C44]/20 text-[#3D2C44] bg-white rounded-xl hover:bg-[#3D2C44] hover:text-white transition-all hover:-translate-y-0.5 shadow-sm"
-                            >
-                              <Users size={16} />
-                            </button>
+
+                            <Popover>
+                              <PopoverTrigger
+                                render={
+                                  <button className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs sm:text-sm font-bold border border-[#3D2C44]/20 text-[#3D2C44] bg-white rounded-xl hover:bg-[#3D2C44] hover:text-white transition-all hover:-translate-y-0.5 shadow-sm">
+                                    <CalendarClock size={16} />
+                                    <span>Jadwal & Komunikasi</span>
+                                    <ChevronDown size={14} className="opacity-60" />
+                                  </button>
+                                }
+                              />
+                              <PopoverContent className="w-72 p-1.5 max-h-96 overflow-y-auto">
+                                <div className="flex flex-col gap-0.5">
+                                  <button
+                                    onClick={() => setSchedulingData({ candidate, type: "psikotes" })}
+                                    className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-slate-700 rounded-lg hover:bg-sky-50 hover:text-sky-700 transition-colors text-left"
+                                  >
+                                    <FileText size={16} /> Jadwalkan Psikotes
+                                  </button>
+                                  <button
+                                    onClick={() => setSchedulingData({ candidate, type: "interview" })}
+                                    className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-slate-700 rounded-lg hover:bg-amber-50 hover:text-amber-700 transition-colors text-left"
+                                  >
+                                    <Users size={16} /> Jadwalkan Interview
+                                  </button>
+
+                                  {(unconfirmedPsikotes.length > 0 || unconfirmedInterviews.length > 0) && (
+                                    <div className="my-1 border-t border-slate-100" />
+                                  )}
+                                  {unconfirmedPsikotes.map((s: any) => (
+                                    <button
+                                      key={s.id}
+                                      onClick={() => setConfirmScheduleData({ table: "psikotes_schedules", scheduleId: s.id, label: "Psikotes" })}
+                                      className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-slate-700 rounded-lg hover:bg-sky-50 hover:text-sky-700 transition-colors text-left"
+                                    >
+                                      <CheckCheck size={16} /> Konfirmasi Psikotes Selesai
+                                    </button>
+                                  ))}
+                                  {unconfirmedInterviews.map((s: any) => (
+                                    <button
+                                      key={s.id}
+                                      onClick={() => setConfirmScheduleData({
+                                        table: "interview_schedules",
+                                        scheduleId: s.id,
+                                        label: `Interview ${isUserInterview(s) ? "User" : "HC"}`,
+                                      })}
+                                      className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-slate-700 rounded-lg hover:bg-amber-50 hover:text-amber-700 transition-colors text-left"
+                                    >
+                                      <CheckCheck size={16} /> Konfirmasi Interview {isUserInterview(s) ? "User" : "HC"} Selesai
+                                    </button>
+                                  ))}
+
+                                  {allSchedulesForComms.length > 0 && (
+                                    <div className="my-1 border-t border-slate-100" />
+                                  )}
+                                  {allSchedulesForComms.map(({ schedule, type }) => (
+                                    <button
+                                      key={`email-${schedule.id}`}
+                                      onClick={() => setCommsModalData({ candidate, schedule, type, channel: "email" })}
+                                      className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-slate-700 rounded-lg hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-left"
+                                    >
+                                      <Mail size={16} className="shrink-0" />
+                                      <span className="truncate">
+                                        Kirim Email — {type === "psikotes" ? "Psikotes" : `Interview ${isUserInterview(schedule) ? "User" : "HC"}`} ({formatDate(schedule.schedule_date)})
+                                      </span>
+                                    </button>
+                                  ))}
+                                  {allSchedulesForComms.map(({ schedule, type }) => (
+                                    <button
+                                      key={`wa-${schedule.id}`}
+                                      onClick={() => setCommsModalData({ candidate, schedule, type, channel: "wa" })}
+                                      className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-slate-700 rounded-lg hover:bg-emerald-50 hover:text-emerald-700 transition-colors text-left"
+                                    >
+                                      <MessageCircle size={16} className="shrink-0" />
+                                      <span className="truncate">
+                                        Kirim WA — {type === "psikotes" ? "Psikotes" : `Interview ${isUserInterview(schedule) ? "User" : "HC"}`} ({formatDate(schedule.schedule_date)})
+                                      </span>
+                                    </button>
+                                  ))}
+                                </div>
+                              </PopoverContent>
+                            </Popover>
                           </div>
                         </div>
                       </div>
@@ -1447,45 +1582,85 @@ export default function Screening() {
                       {/* Expanded Section (Preview) */}
                       {isExpanded && (
                         <div className="px-5 pb-5 pt-4 border-t border-slate-100 bg-slate-50/50 animate-in slide-in-from-top-2 duration-300">
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {/* Left: Experience & Resume */}
-                            <div className="space-y-4">
-                              <div>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Ringkasan Pengalaman</p>
-                                <p className="text-sm text-slate-700 leading-relaxed font-medium">
-                                  {candidate.resume_summary || "Tidak ada ringkasan"}
-                                </p>
-                              </div>
-                              <div className="flex flex-col sm:flex-row gap-4">
-                                <div className="flex-1">
-                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Faktor Risiko</p>
-                                  <p className="text-sm text-slate-700 leading-relaxed font-medium bg-white p-3 rounded-xl border border-slate-200 min-h-[80px]">
-                                    {candidate.risk_factors || "-"}
-                                  </p>
-                                </div>
-                                <div className="flex-1">
-                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Potensi Utama</p>
-                                  <p className="text-sm text-slate-700 leading-relaxed font-medium bg-white p-3 rounded-xl border border-slate-200 min-h-[80px]">
-                                    {candidate.potential_factors || "-"}
-                                  </p>
-                                </div>
+                          <div className="mb-6">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Ringkasan Pengalaman</p>
+                            <p className="text-sm text-slate-700 leading-relaxed font-medium">
+                              {candidate.resume_summary || "Tidak ada ringkasan"}
+                            </p>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4">
+                              <h4 className="font-bold text-emerald-800 flex items-center gap-2 mb-2 text-sm">
+                                <ThumbsUp size={16} />
+                                Kekuatan (Strengths)
+                              </h4>
+                              <div className="text-sm text-emerald-700">
+                                {formatAsNumberedList(
+                                  candidate.strengths,
+                                  <span className="italic opacity-70">Belum dianalisis</span>,
+                                )}
                               </div>
                             </div>
-                            
-                            {/* Right: AI Analysis Details */}
-                            <div>
-                               <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1.5">Alasan Penilaian AI</p>
-                               <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 flex gap-4 h-full">
-                                  <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
-                                    <Lightbulb className="text-indigo-600" size={20} />
-                                  </div>
-                                  <p className="text-sm text-indigo-900 leading-relaxed italic flex-1 mt-1">
-                                    "{candidate.assessment_reason || "-"}"
-                                  </p>
-                               </div>
+
+                            <div className="bg-rose-50/50 border border-rose-100 rounded-xl p-4">
+                              <h4 className="font-bold text-rose-800 flex items-center gap-2 mb-2 text-sm">
+                                <ThumbsDown size={16} />
+                                Kelemahan (Weaknesses)
+                              </h4>
+                              <div className="text-sm text-rose-700">
+                                {formatAsNumberedList(
+                                  candidate.weaknesses,
+                                  <span className="italic opacity-70">Belum dianalisis</span>,
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="bg-[#3D2C44]/5 border border-[#3D2C44]/20 rounded-xl p-4">
+                              <h4 className="font-bold text-[#3D2C44] flex items-center gap-2 mb-2 text-sm">
+                                <Star size={16} />
+                                Potensi
+                              </h4>
+                              <div className="text-sm text-[#3D2C44]/80">
+                                {formatLevelAndList(
+                                  candidate.potential_factors,
+                                  <span className="italic opacity-70">Belum dianalisis</span>,
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-4">
+                              <h4 className="font-bold text-amber-800 flex items-center gap-2 mb-2 text-sm">
+                                <AlertTriangle size={16} />
+                                Faktor Risiko
+                              </h4>
+                              <div className="text-sm text-amber-700">
+                                {formatLevelAndList(
+                                  candidate.risk_factors,
+                                  <span className="italic opacity-70">Belum dianalisis</span>,
+                                )}
+                              </div>
                             </div>
                           </div>
-                          
+
+                          <div className="p-4 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                            <div className="flex items-start gap-4">
+                              <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
+                                <Lightbulb className="text-indigo-600" size={20} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-bold text-indigo-900 mb-2 text-sm">Alasan Penilaian AI</h4>
+                                <div className="text-sm text-indigo-800">
+                                  {formatAsNumberedList(
+                                    candidate.assessment_reason,
+                                    <span className="italic opacity-70">Tidak ada alasan penilaian yang diberikan.</span>,
+                                    true,
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
                           <div className="mt-6 flex justify-end gap-3">
                             <Link
                               to={`/candidates/${candidate.id}`}
@@ -1514,6 +1689,34 @@ export default function Screening() {
           onSuccess={fetchCandidates}
         />
       )}
+
+      {commsModalData && commsModalData.channel === "email" && (
+        <SendEmailModal
+          candidate={commsModalData.candidate}
+          schedule={commsModalData.schedule}
+          type={commsModalData.type}
+          onClose={() => setCommsModalData(null)}
+        />
+      )}
+
+      {commsModalData && commsModalData.channel === "wa" && (
+        <SendWAModal
+          candidate={commsModalData.candidate}
+          schedule={commsModalData.schedule}
+          type={commsModalData.type}
+          onClose={() => setCommsModalData(null)}
+        />
+      )}
+
+      <ConfirmModal
+        isOpen={!!confirmScheduleData}
+        onClose={() => setConfirmScheduleData(null)}
+        onConfirm={confirmScheduleDone}
+        title="Konfirmasi Selesai"
+        message={`Tandai jadwal ${confirmScheduleData?.label || ""} ini sebagai sudah selesai dilaksanakan?`}
+        confirmText="Ya, Sudah Selesai"
+        loading={confirmingSchedule}
+      />
 
       {/* Move to Log Modal */}
       {logModalData && (

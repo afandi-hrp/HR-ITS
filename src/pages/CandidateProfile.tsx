@@ -46,6 +46,7 @@ import {
 import { waitForN8nJob } from "../lib/n8n";
 import { useToast } from "../components/ui/use-toast";
 import EvaluationModal from "../components/EvaluationModal";
+import ReferenceCheckModal from "../components/ReferenceCheckModal";
 import JSONRenderer from "../components/JSONRenderer";
 import {
   ResponsiveContainer,
@@ -58,6 +59,7 @@ import {
 } from "recharts";
 import ApplicationForm from "./ApplicationForm";
 import { printElement } from "../lib/print";
+import { formatAsNumberedList, formatLevelAndList } from "../lib/cvSummaryFormat";
 
 const extractMatchPercentage = (
   summary: any,
@@ -87,241 +89,6 @@ const extractMatchPercentage = (
   };
   search(summary);
   return result;
-};
-
-const formatAsNumberedList = (
-  text?: string | null,
-  emptyFallback?: React.ReactNode,
-  isAssessmentReason: boolean = false,
-) => {
-  if (!text) return emptyFallback;
-
-  let normalizedText = text.replace(/\\n/g, "\n");
-
-  if (isAssessmentReason) {
-    normalizedText = normalizedText
-      .replace(
-        /\s*-\s*(Relevance|Hard Skills|Experience|Business Impact|Education|Soft Skills)/gi,
-        "\n$1",
-      )
-      .replace(
-        /(?:^|\s+)\d+[\.\)]\s*(Relevance|Hard Skills|Experience|Business Impact|Education|Soft Skills)/gi,
-        "\n$1",
-      );
-  }
-
-  const lines = normalizedText
-    .split("\n")
-    .map((t) => t.trim())
-    .filter(Boolean);
-
-  const mainPoints: string[] = [];
-  const conclusionPoints: string[] = [];
-  let passedSoftSkills = false;
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    let isBullet =
-      /^[-•*]\s*/.test(line) || /^\d+[\.\)]\s*/.test(line) || i === 0;
-
-    if (
-      isAssessmentReason &&
-      /^(?:Relevance|Hard Skills|Experience|Business Impact|Education|Soft Skills)/i.test(
-        line,
-      )
-    ) {
-      isBullet = true;
-    }
-
-    if (!isAssessmentReason) {
-      isBullet = true;
-    } else if (passedSoftSkills) {
-      isBullet = true;
-    }
-
-    const cleanLine = line
-      .replace(/^[-•*]\s*/, "")
-      .replace(/^\d+[\.\)]\s*/, "")
-      .trim();
-
-    if (isAssessmentReason) {
-      if (passedSoftSkills) {
-        if (isBullet || conclusionPoints.length === 0) {
-          conclusionPoints.push(cleanLine);
-        } else {
-          conclusionPoints[conclusionPoints.length - 1] += " " + cleanLine;
-        }
-      } else {
-        if (isBullet || mainPoints.length === 0) {
-          mainPoints.push(cleanLine);
-        } else {
-          mainPoints[mainPoints.length - 1] += " " + cleanLine;
-        }
-        if (line.toLowerCase().includes("soft skills")) {
-          passedSoftSkills = true;
-        }
-      }
-    } else {
-      if (isBullet || mainPoints.length === 0) {
-        mainPoints.push(cleanLine);
-      } else {
-        mainPoints[mainPoints.length - 1] += " " + cleanLine;
-      }
-    }
-  }
-
-  if (mainPoints.length === 0 && conclusionPoints.length === 0)
-    return emptyFallback;
-
-  return (
-    <div className="space-y-3">
-      {mainPoints.length > 0 && (
-        <ol className="list-decimal pl-4 space-y-1">
-          {mainPoints.map((point, idx) => {
-            if (isAssessmentReason) {
-              const prefixRegex = /^(Relevance(?: to the Position)?|Hard Skills(?: \/ Core Competencies)?|Experience(?: & Seniority Level)?|Business Impact(?: \/ Performance)?|Education(?:\/Cert\/Legal)?|Soft Skills(?: & Karakter)?)(.*)/i;
-              const match = point.match(prefixRegex);
-              if (match) {
-                const titlePart = match[1];
-                let restOfLine = match[2];
-                let scorePart = "";
-
-                const scoreRegex = /^(\s*:\s*|\s+)?(\(\s*[\d\.\s]+\s*\/\s*[\d\.\s]+\s*\)|\bSkor\s*[\d\.\s]+(?:\s*\/\s*[\d\.\s]+)?\b|\b[\d\.\s]+\s*\/\s*[\d\.\s]+\b)(.*)/i;
-                const scoreMatch = restOfLine.match(scoreRegex);
-                
-                let separator = "";
-                let description = restOfLine;
-
-                if (scoreMatch) {
-                  separator = scoreMatch[1] || "";
-                  scorePart = scoreMatch[2];
-                  description = scoreMatch[3];
-                }
-
-                const hasColon = separator.includes(":") || description.match(/^\s*:/);
-                description = description.replace(/^\s*[:\-]\s*/, "").trim();
-
-                return (
-                  <li key={idx} className="leading-relaxed pl-1 mb-1.5">
-                    <span className="font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded mr-1 inline-block mb-1 sm:mb-0">
-                      {titlePart.trim()}
-                    </span>
-                    {scorePart && (
-                      <span className="font-bold text-yellow-800 bg-yellow-100 px-1.5 py-0.5 rounded mr-1 inline-block mb-1 sm:mb-0">
-                        {scorePart.trim()}
-                      </span>
-                    )}
-                    <span className="text-slate-700">
-                      {hasColon ? ": " : " "}
-                      {description}
-                    </span>
-                  </li>
-                );
-              }
-            }
-            return (
-              <li key={idx} className="leading-relaxed pl-1">
-                {point}
-              </li>
-            );
-          })}
-        </ol>
-      )}
-      {conclusionPoints.length > 0 && (
-        <div className="mt-4 bg-indigo-100/50 border border-indigo-200 rounded-lg p-4 shadow-sm">
-          <h5 className="font-semibold text-indigo-900 mb-2 text-sm flex items-center gap-2">
-            Kesimpulan & Rekomendasi
-          </h5>
-          <ol
-            className="list-decimal pl-4 space-y-1"
-          >
-            {conclusionPoints.map((point, idx) => (
-              <li
-                key={idx}
-                className="leading-relaxed pl-1 text-indigo-950 font-medium"
-              >
-                {point}
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
-    </div>
-  );
-};
-
-const formatLevelAndList = (
-  text?: string | null,
-  emptyFallback?: React.ReactNode,
-) => {
-  if (!text) return emptyFallback;
-
-  const lines = text
-    .replace(/\\n/g, "\n")
-    .split("\n")
-    .map((t) => t.trim())
-    .filter((t) => t.length > 0);
-  if (lines.length === 0) return emptyFallback;
-
-  const headerIndex = lines.findIndex((line) =>
-    /\b(low|medium|high)\b/i.test(line),
-  );
-
-  let preHeaderLines: string[] = [];
-  let headerText = "";
-  let pointLines = lines;
-  let badgeClass =
-    "bg-gray-100 text-gray-800 font-medium px-2 py-1 rounded inline-block mb-2 mt-1";
-
-  if (
-    headerIndex !== -1 &&
-    headerIndex < 3 &&
-    lines[headerIndex].length < 100
-  ) {
-    preHeaderLines = lines.slice(0, headerIndex);
-    headerText = lines[headerIndex];
-    pointLines = lines.slice(headerIndex + 1);
-
-    if (/\blow\b/i.test(headerText)) {
-      badgeClass =
-        "bg-red-100 text-red-800 font-semibold px-2.5 py-1 rounded-md inline-block mb-3 mt-1";
-    } else if (/\bmedium\b/i.test(headerText)) {
-      badgeClass =
-        "bg-yellow-100 text-yellow-800 font-semibold px-2.5 py-1 rounded-md inline-block mb-3 mt-1";
-    } else if (/\bhigh\b/i.test(headerText)) {
-      badgeClass =
-        "bg-green-100 text-green-800 font-semibold px-2.5 py-1 rounded-md inline-block mb-3 mt-1";
-    }
-  }
-
-  const points = pointLines
-    .map((t) =>
-      t
-        .replace(/^[-•*]\s*/, "")
-        .replace(/^\d+[\.\)]\s*/, "")
-        .trim(),
-    )
-    .filter((t) => t.length > 0);
-
-  return (
-    <div className="flex flex-col items-start w-full">
-      {preHeaderLines.map((line, idx) => (
-        <span key={`pre-${idx}`} className="mb-2 block">
-          {line}
-        </span>
-      ))}
-      {headerText ? <div className={badgeClass}>{headerText}</div> : null}
-      {points.length > 0 && (
-        <ol className="list-decimal pl-4 space-y-1 w-full">
-          {points.map((point, idx) => (
-            <li key={idx} className="leading-relaxed pl-1">
-              {point}
-            </li>
-          ))}
-        </ol>
-      )}
-    </div>
-  );
 };
 
 export default function CandidateProfile() {
@@ -362,6 +129,9 @@ export default function CandidateProfile() {
   const [fullScreenPdf, setFullScreenPdf] = useState<string | null>(null);
   const [fullScreenData, setFullScreenData] = useState<any | null>(null);
   const [existingEvaluation, setExistingEvaluation] =
+    useState<CandidateEvaluation | null>(null);
+  const [isReferenceCheckModalOpen, setIsReferenceCheckModalOpen] = useState(false);
+  const [existingReferenceCheck, setExistingReferenceCheck] =
     useState<CandidateEvaluation | null>(null);
   const [isArchived, setIsArchived] = useState(false);
 
@@ -710,7 +480,7 @@ export default function CandidateProfile() {
     const { data, error } = await supabase
       .from("candidates")
       .select(
-        "*, psikotes_schedules(id, is_confirmed, schedule_date), interview_schedules(id, is_confirmed, schedule_date), candidate_assignees(user_id, profiles(id, full_name, role, department))",
+        "*, psikotes_schedules(id, is_confirmed, schedule_date), interview_schedules(id, is_confirmed, schedule_date, additional_notes), candidate_assignees(user_id, profiles(id, full_name, role, department))",
       )
       .eq("id", candidateId)
       .single();
@@ -1521,6 +1291,10 @@ export default function CandidateProfile() {
         return "bg-slate-100 text-slate-700 border-slate-200";
     }
   };
+
+  const interviewEvaluations = evaluations.filter((e) => e.evaluation_type !== "REFERENCE_CHECK");
+  const referenceChecks = evaluations.filter((e) => e.evaluation_type === "REFERENCE_CHECK");
+  const canSeeReferenceCheck = ["HR_ADMIN", "DIRECTOR", "FINANCE_DIRECTOR"].includes(profile?.role);
 
   const getStatusText = (status: string) => {
     switch (status) {
@@ -2699,7 +2473,7 @@ export default function CandidateProfile() {
                 )}
             </div>
 
-            {evaluations.length === 0 ? (
+            {interviewEvaluations.length === 0 ? (
               <div className="text-center py-8 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
                 <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
                 <p className="text-slate-500 font-medium">
@@ -2718,7 +2492,7 @@ export default function CandidateProfile() {
               </div>
             ) : (
               <div className="space-y-4">
-                {evaluations.map((evalItem) => (
+                {interviewEvaluations.map((evalItem) => (
                   <div
                     key={evalItem.id}
                     className="border border-slate-200 rounded-xl overflow-hidden"
@@ -2788,21 +2562,21 @@ export default function CandidateProfile() {
                     </div>
                     {expandedEvaluations.includes(evalItem.id) && (
                       <div className="p-4 bg-white border-b border-slate-100">
-                        {evalItem.template?.form_schema?.categories?.map(
-                          (category, catIdx) => (
+                        {(evalItem.template?.form_schema as any)?.categories?.map(
+                          (category: any, catIdx: number) => (
                             <div key={catIdx} className="mb-6 last:mb-0">
                               <h4 className="font-bold text-slate-800 mb-3 pb-2 border-b border-slate-100">
                                 {category.name}
                               </h4>
                               <div className="space-y-3">
-                                {category.criteria.map((crit, critIdx) => {
+                                {category.criteria.map((crit: any, critIdx: number) => {
                                   const score =
                                     evalItem.evaluation_data[
                                       `cat_${catIdx}_crit_${critIdx}`
                                     ];
                                   const scaleItem =
-                                    evalItem.template?.form_schema?.scale?.find(
-                                      (s) => s.score === score,
+                                    (evalItem.template?.form_schema as any)?.scale?.find(
+                                      (s: any) => s.score === score,
                                     );
                                   return (
                                     <div
@@ -2947,6 +2721,100 @@ export default function CandidateProfile() {
             )}
           </div>
 
+          {/* Reference Check */}
+          {canSeeReferenceCheck && (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <FileText className="text-fuchsia-500" size={20} />
+                  Reference Check
+                </h3>
+                {profile?.role === "HR_ADMIN" && !isArchived && (
+                  <button
+                    onClick={() => {
+                      setExistingReferenceCheck(null);
+                      setIsReferenceCheckModalOpen(true);
+                    }}
+                    className="px-4 py-2 bg-fuchsia-50 text-fuchsia-700 hover:bg-fuchsia-100 rounded-xl transition-colors flex items-center gap-2 text-sm font-medium"
+                  >
+                    <PlusCircle size={16} />
+                    Isi Reference Check
+                  </button>
+                )}
+              </div>
+
+              {referenceChecks.length === 0 ? (
+                <div className="text-center py-8 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
+                  <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                  <p className="text-slate-500 font-medium">
+                    Belum ada reference check.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {referenceChecks.map((evalItem) => {
+                    const rcData = evalItem.evaluation_data as any;
+                    const schema = evalItem.template?.form_schema as any;
+                    return (
+                      <div
+                        key={evalItem.id}
+                        className="border border-slate-200 rounded-xl overflow-hidden"
+                      >
+                        <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-bold text-slate-900">
+                              Checked by: {evalItem.interviewer_name}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              Tanggal: {rcData?.checked_date ? formatDate(rcData.checked_date) : "-"}
+                            </p>
+                          </div>
+                          {profile?.role === "HR_ADMIN" &&
+                            !isArchived &&
+                            evalItem.evaluator_id === profile?.id && (
+                              <button
+                                onClick={() => {
+                                  setExistingReferenceCheck(evalItem);
+                                  setIsReferenceCheckModalOpen(true);
+                                }}
+                                className="p-2 text-slate-400 hover:text-[#3D2C44] hover:bg-[#3D2C44]/10 rounded-lg transition-colors"
+                                title="Edit Reference Check"
+                              >
+                                <Edit2 size={18} />
+                              </button>
+                            )}
+                        </div>
+                        <div className="p-4 bg-white space-y-4 text-sm">
+                          {schema?.two_column?.rows?.map((row: any) => (
+                            <div key={row.key} className="grid grid-cols-1 sm:grid-cols-3 gap-2 border-b border-slate-100 pb-2 last:border-0">
+                              <span className="font-medium text-slate-700">{row.label}</span>
+                              <span className="text-slate-600">{rcData?.applicant?.[row.key] || "-"}</span>
+                              <span className="text-slate-600">{rcData?.reference?.[row.key] || "-"}</span>
+                            </div>
+                          ))}
+                          {schema?.single_column?.rows?.map((row: any) => (
+                            <div key={row.key} className="grid grid-cols-1 sm:grid-cols-2 gap-2 border-b border-slate-100 pb-2 last:border-0">
+                              <span className="font-medium text-slate-700">{row.label}</span>
+                              <span className="text-slate-600">{rcData?.referee_comments?.[row.key] || "-"}</span>
+                            </div>
+                          ))}
+                          {rcData?.additional_comments && (
+                            <div className="pt-2">
+                              <p className="font-medium text-slate-700 mb-1">Additional Comments</p>
+                              <p className="text-slate-600 whitespace-pre-wrap bg-amber-50 p-3 rounded-xl border border-amber-100">
+                                {rcData.additional_comments}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Schedules */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
             <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
@@ -3000,52 +2868,74 @@ export default function CandidateProfile() {
                 </div>
               </div>
 
-              <div className="flex items-start gap-4 p-4 rounded-xl border border-slate-100 bg-slate-50">
-                <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-600 shrink-0">
-                  <Users size={18} />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-bold text-slate-900 text-sm">
-                    Interview
-                  </h4>
-                  {candidate.interview_schedules &&
-                  candidate.interview_schedules.length > 0 ? (
-                    <div className="mt-2 space-y-2">
-                      {candidate.interview_schedules.map((schedule, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center justify-between text-sm"
-                        >
-                          <div className="flex items-center gap-2 text-slate-600">
-                            <Clock size={14} />
-                            <span>{formatDate(schedule.schedule_date)}</span>
-                          </div>
-                          {schedule.is_confirmed ? (
-                            <span className="flex items-center gap-1 text-emerald-600 font-medium text-xs bg-emerald-50 px-2 py-1 rounded-md">
-                              <CheckCircle size={12} /> Selesai
-                            </span>
-                          ) : (
-                            <span className="text-amber-600 font-medium text-xs bg-amber-50 px-2 py-1 rounded-md">
-                              Menunggu
-                            </span>
-                          )}
-                        </div>
-                      ))}
+              {(() => {
+                const isUserInterview = (s: any) => s.additional_notes?.startsWith("[USER]");
+                const hcSchedules = (candidate.interview_schedules || []).filter((s: any) => !isUserInterview(s));
+                const userSchedules = (candidate.interview_schedules || []).filter((s: any) => isUserInterview(s));
+                const hasAnySchedules = (candidate.interview_schedules || []).length > 0;
+
+                const renderInterviewGroup = (label: string, colorClass: string, schedules: any[]) => (
+                  <div className="flex items-start gap-4 p-4 rounded-xl border border-slate-100 bg-slate-50">
+                    <div className={cn("w-10 h-10 rounded-full flex items-center justify-center shrink-0", colorClass)}>
+                      <Users size={18} />
                     </div>
-                  ) : candidate.interview_status ? (
-                    <p className="text-sm text-slate-500 mt-1">
-                      Status:{" "}
-                      <span className="font-medium text-slate-700">
-                        {candidate.interview_status}
-                      </span>
-                    </p>
-                  ) : (
-                    <p className="text-sm text-slate-500 mt-1">
-                      Belum ada jadwal interview.
-                    </p>
-                  )}
-                </div>
-              </div>
+                    <div className="flex-1">
+                      <h4 className="font-bold text-slate-900 text-sm">{label}</h4>
+                      {schedules.length > 0 ? (
+                        <div className="mt-2 space-y-2">
+                          {schedules.map((schedule, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-center justify-between text-sm"
+                            >
+                              <div className="flex items-center gap-2 text-slate-600">
+                                <Clock size={14} />
+                                <span>{formatDate(schedule.schedule_date)}</span>
+                              </div>
+                              {schedule.is_confirmed ? (
+                                <span className="flex items-center gap-1 text-emerald-600 font-medium text-xs bg-emerald-50 px-2 py-1 rounded-md">
+                                  <CheckCircle size={12} /> Selesai
+                                </span>
+                              ) : (
+                                <span className="text-amber-600 font-medium text-xs bg-amber-50 px-2 py-1 rounded-md">
+                                  Menunggu
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-slate-500 mt-1">
+                          Belum ada jadwal {label.toLowerCase()}.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+
+                return (
+                  <>
+                    {!hasAnySchedules && candidate.interview_status && (
+                      <div className="flex items-start gap-4 p-4 rounded-xl border border-slate-100 bg-slate-50">
+                        <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-600 shrink-0">
+                          <Users size={18} />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-bold text-slate-900 text-sm">Interview</h4>
+                          <p className="text-sm text-slate-500 mt-1">
+                            Status:{" "}
+                            <span className="font-medium text-slate-700">
+                              {candidate.interview_status}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    {renderInterviewGroup("Interview HC", "bg-violet-100 text-violet-600", hcSchedules)}
+                    {renderInterviewGroup("Interview User", "bg-sky-100 text-sky-600", userSchedules)}
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -3066,6 +2956,19 @@ export default function CandidateProfile() {
             (a: any) => a.user_id === profile?.id,
           ) || false
         }
+      />
+
+      <ReferenceCheckModal
+        isOpen={isReferenceCheckModalOpen}
+        onClose={() => {
+          setIsReferenceCheckModalOpen(false);
+          setExistingReferenceCheck(null);
+        }}
+        candidateId={id!}
+        candidateFullName={candidate?.full_name || ""}
+        onSuccess={() => fetchEvaluations(id!)}
+        existingEvaluation={existingReferenceCheck}
+        userProfile={profile}
       />
 
       {/* AI Interview Questions Modal */}
