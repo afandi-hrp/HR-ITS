@@ -1217,8 +1217,9 @@ export default function Screening() {
                 </div>
 
                 {/* Status Filter */}
+                {profile?.role !== "USER_MANAGER" && (
                 <div>
-                  <button 
+                  <button
                     onClick={() => setIsStatusExpanded(!isStatusExpanded)}
                     className="w-full flex items-center justify-between text-sm font-bold text-slate-900 mb-2 px-1 hover:text-indigo-600 transition-colors"
                   >
@@ -1260,6 +1261,7 @@ export default function Screening() {
                     </div>
                   )}
                 </div>
+                )}
 
                 {/* Reset Button */}
                 <div className="pt-2">
@@ -1494,12 +1496,13 @@ export default function Screening() {
                               </Popover>
                             )}
 
+                            {profile?.role !== "USER_MANAGER" && (
                             <Popover>
                               <PopoverTrigger
                                 render={
                                   <button className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs sm:text-sm font-bold border border-[#3D2C44]/20 text-[#3D2C44] bg-white rounded-xl hover:bg-[#3D2C44] hover:text-white transition-all hover:-translate-y-0.5 shadow-sm">
                                     <CalendarClock size={16} />
-                                    <span>Jadwal & Komunikasi</span>
+                                    <span>Jadwal dan Konfirmasi</span>
                                     <ChevronDown size={14} className="opacity-60" />
                                   </button>
                                 }
@@ -1575,6 +1578,7 @@ export default function Screening() {
                                 </div>
                               </PopoverContent>
                             </Popover>
+                            )}
                           </div>
                         </div>
                       </div>

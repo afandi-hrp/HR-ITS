@@ -27,6 +27,21 @@ export function formatDateDMY(date: string | Date | null | undefined): string {
   return `${day}-${month}-${d.getFullYear()}`;
 }
 
+export function calculateAge(birthDate: string | Date | null | undefined): number | null {
+  if (!birthDate) return null;
+  const dob = new Date(birthDate);
+  if (isNaN(dob.getTime())) return null;
+
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const hasHadBirthdayThisYear =
+    today.getMonth() > dob.getMonth() ||
+    (today.getMonth() === dob.getMonth() && today.getDate() >= dob.getDate());
+  if (!hasHadBirthdayThisYear) age -= 1;
+
+  return age >= 0 ? age : null;
+}
+
 export function normalizePhone(phone: string | null | undefined): string {
   if (!phone) return '';
   let cleaned = phone.replace(/\D/g, '');

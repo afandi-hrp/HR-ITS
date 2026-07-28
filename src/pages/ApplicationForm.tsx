@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import SignatureCanvas from "react-signature-canvas";
-import { cn, getEmbedUrl, formatDateDMY } from "../lib/utils";
+import { cn, getEmbedUrl, formatDateDMY, calculateAge } from "../lib/utils";
 import { PdfToImages } from "../components/PdfToImages";
 
 interface ApplicationFormProps {
@@ -1634,12 +1634,19 @@ export default function ApplicationForm({
                             <span className="text-red-500">*</span>
                           </label>
                           {readOnly ? (
-                            <input
-                              type="text"
-                              readOnly
-                              value={formatDateDMY(formData.date_of_birth)}
-                              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none"
-                            />
+                            <div>
+                              <input
+                                type="text"
+                                readOnly
+                                value={formatDateDMY(formData.date_of_birth)}
+                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none"
+                              />
+                              {calculateAge(formData.date_of_birth) !== null && (
+                                <p className="mt-1 text-xs font-medium text-slate-500">
+                                  {calculateAge(formData.date_of_birth)} tahun
+                                </p>
+                              )}
+                            </div>
                           ) : (
                             <input
                               type="date"

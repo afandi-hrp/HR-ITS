@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabase";
-import { Mail, Lock, Loader2, RefreshCw } from "lucide-react";
+import { Mail, Lock, Loader2, RefreshCw, ArrowRight } from "lucide-react";
 import { SiteSettings } from "../types";
 import { cn } from "../lib/utils";
 
@@ -65,10 +65,11 @@ export default function Login() {
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
-        // Draw characters with slight rotation
+        // Draw characters with slight rotation, spaced to always fit the canvas width
+        const spacing = canvas.width / (captchaText.length + 1);
         for (let i = 0; i < captchaText.length; i++) {
           ctx.save();
-          ctx.translate(30 + i * 30, canvas.height / 2);
+          ctx.translate(spacing * (i + 1), canvas.height / 2);
           ctx.rotate((Math.random() - 0.5) * 0.4);
           ctx.fillText(captchaText[i], 0, 0);
           ctx.restore();
@@ -105,7 +106,7 @@ export default function Login() {
     e.preventDefault();
 
     if (captchaInput !== captchaText) {
-      setError("CAPTCHA tidak valid. Silakan coba lagi.");
+      setError("Invalid CAPTCHA. Please try again.");
       generateCaptcha();
       setCaptchaInput("");
       return;
@@ -126,138 +127,164 @@ export default function Login() {
     }
   };
 
+  const sidebarText = settings?.sidebar_text || "Waruna";
+
   return (
-    <div className="h-screen flex items-center justify-center bg-transparent p-3 relative overflow-y-auto">
-      {/* Login Form Layer */}
+    <div className="h-screen w-full flex items-center justify-center p-0 sm:p-6 overflow-hidden bg-transparent">
       <div
         className={cn(
-          "w-full max-w-md relative z-10 transition-all duration-700 ease-out my-auto",
-          !isLoaded ? "opacity-0 scale-90" : "opacity-100 scale-100",
+          "w-full h-full sm:h-auto sm:max-h-[94vh] max-w-5xl backdrop-blur-2xl bg-white/25 border border-white/50 sm:rounded-3xl shadow-2xl overflow-hidden flex transition-all duration-700 ease-out",
+          !isLoaded ? "opacity-0 scale-95" : "opacity-100 scale-100",
         )}
       >
-        <div className="bg-white/40 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/60 p-4 sm:p-6">
-          <div className="text-center mb-3">
-            {settings?.login_logo_url && (
-              <img
-                src={settings.login_logo_url}
-                alt="Logo"
-                className="h-10 sm:h-12 mx-auto mb-2 object-contain drop-shadow-sm"
-                referrerPolicy="no-referrer"
-              />
-            )}
-            <h1 className="text-xl font-bold text-[#3D2C44]">Welcome</h1>
-            <p className="text-[#3D2C44]/70 mt-1 text-sm">
-              Login to ATS Waruna Group Dashboard
+        {/* Left: Login Panel */}
+        <div className="w-full lg:w-[420px] xl:w-[460px] shrink-0 flex flex-col justify-center overflow-y-auto px-6 sm:px-10 py-8 bg-white/40 backdrop-blur-md">
+          <div className="w-full max-w-sm mx-auto">
+            <h1 className="text-2xl font-bold text-[#3D2C44] mb-1">Log In</h1>
+            <p className="text-sm text-[#3D2C44]/60 mb-6">
+              Log in to the {sidebarText} ATS Dashboard
             </p>
-          </div>
 
-          {error && (
-            <div className="mb-4 p-3 bg-red-50/80 backdrop-blur-sm border border-red-200 text-red-600 text-sm rounded-xl flex items-center gap-3 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
-              <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center shrink-0">
-                <span className="text-red-600 font-bold">!</span>
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-2xl flex items-center gap-3 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center shrink-0">
+                  <span className="text-red-600 font-bold">!</span>
+                </div>
+                <p className="font-medium">{error}</p>
               </div>
-              <p className="font-medium">{error}</p>
-            </div>
-          )}
+            )}
 
-          {message && !error && (
-            <div className="mb-4 p-3 bg-indigo-50/80 backdrop-blur-sm border border-indigo-200 text-indigo-700 text-sm rounded-xl flex items-center gap-3 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
-              <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center shrink-0">
-                <span className="text-indigo-600 font-bold">i</span>
+            {message && !error && (
+              <div className="mb-4 p-3 bg-indigo-50 border border-indigo-200 text-indigo-700 text-sm rounded-2xl flex items-center gap-3 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center shrink-0">
+                  <span className="text-indigo-600 font-bold">i</span>
+                </div>
+                <p className="font-medium">{message}</p>
               </div>
-              <p className="font-medium">{message}</p>
-            </div>
-          )}
+            )}
 
-          <form onSubmit={handleLogin} className="space-y-3">
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">
-                Email
-              </label>
+            <form onSubmit={handleLogin} className="space-y-3">
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-slate-400" />
+                <div className="absolute z-10 left-1.5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white ring-1 ring-black/5 shadow-[0_4px_14px_rgba(255,157,107,0.45)] flex items-center justify-center shrink-0">
+                  <Mail size={16} className="text-[#3D2C44]" />
                 </div>
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full pl-11 pr-4 py-2 bg-white/50 border border-white/40 rounded-xl text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all"
-                  placeholder="name@company.com"
+                  className="block w-full pl-14 pr-4 py-3.5 bg-white/80 backdrop-blur-sm border border-white shadow-[0_4px_20px_rgba(255,157,107,0.2)] rounded-full text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#3D2C44]/30 transition-all"
+                  placeholder="Email"
                 />
               </div>
-            </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">
-                Password
-              </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-slate-400" />
+                <div className="absolute z-10 left-1.5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white ring-1 ring-black/5 shadow-[0_4px_14px_rgba(255,157,107,0.45)] flex items-center justify-center shrink-0">
+                  <Lock size={16} className="text-[#3D2C44]" />
                 </div>
                 <input
                   type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-11 pr-4 py-2 bg-white/50 border border-white/40 rounded-xl text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all"
-                  placeholder="••••••••"
+                  className="block w-full pl-14 pr-4 py-3.5 bg-white/80 backdrop-blur-sm border border-white shadow-[0_4px_20px_rgba(255,157,107,0.2)] rounded-full text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#3D2C44]/30 transition-all"
+                  placeholder="Password"
                 />
               </div>
-            </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">
-                Verifikasi Keamanan
-              </label>
-              <div className="flex gap-3 items-center">
-                <div className="relative flex-1">
+              <div className="pt-1">
+                <label className="block text-xs font-bold text-[#3D2C44]/70 mb-1.5 px-1 uppercase tracking-wide">
+                  Security Verification
+                </label>
+                <div className="flex gap-2 items-center">
                   <input
                     type="text"
                     required
                     maxLength={4}
                     value={captchaInput}
                     onChange={(e) => setCaptchaInput(e.target.value)}
-                    className="block w-full px-4 py-2 bg-white/50 border border-white/40 rounded-xl text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all font-mono tracking-widest"
-                    placeholder="Ketik 4 karakter"
+                    className="flex-1 min-w-0 px-4 py-3 bg-white/80 backdrop-blur-sm border border-white shadow-[0_4px_20px_rgba(255,157,107,0.2)] rounded-full text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#3D2C44]/30 transition-all font-mono tracking-widest"
+                    placeholder="4 characters"
                   />
-                </div>
-                <div className="flex items-center gap-2 bg-white/60 p-1.5 rounded-xl border border-white/40 shadow-sm">
-                  <canvas
-                    ref={canvasRef}
-                    width="140"
-                    height="40"
-                    className="rounded-lg bg-slate-50 border border-slate-200"
-                  />
-                  <button
-                    type="button"
-                    onClick={generateCaptcha}
-                    className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-white/80 rounded-lg transition-colors"
-                    title="Muat ulang CAPTCHA"
-                  >
-                    <RefreshCw size={18} />
-                  </button>
+                  <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur-sm border border-white shadow-[0_4px_20px_rgba(255,157,107,0.2)] p-1.5 rounded-full shrink-0">
+                    <canvas
+                      ref={canvasRef}
+                      width="130"
+                      height="36"
+                      className="rounded-full bg-slate-50 border border-slate-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={generateCaptcha}
+                      className="p-2 text-[#3D2C44]/60 hover:text-[#3D2C44] hover:bg-white rounded-full transition-colors shrink-0"
+                      title="Refresh CAPTCHA"
+                    >
+                      <RefreshCw size={16} />
+                    </button>
+                  </div>
                 </div>
               </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <p className="text-xs text-[#3D2C44]/50 font-semibold">
+                  Powered by {sidebarText} Group
+                </p>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  aria-label="Log In"
+                  title="Log In"
+                  className="w-12 h-12 shrink-0 rounded-full bg-[#3D2C44] text-white flex items-center justify-center shadow-lg hover:bg-[#2C1F32] hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100"
+                >
+                  {loading ? (
+                    <Loader2 className="animate-spin" size={20} />
+                  ) : (
+                    <ArrowRight size={20} />
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        {/* Right: Brand Panel (desktop only) */}
+        <div className="hidden lg:flex flex-1 relative bg-gradient-to-br from-[#FFF9E3]/80 via-[#FFDAB9]/80 to-[#FFB08E]/80 backdrop-blur-md items-center justify-center px-10 overflow-hidden">
+          <div
+            className="absolute right-0 top-0 bottom-0 w-2/3 opacity-30 pointer-events-none"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle, rgba(61,44,68,0.25) 1.5px, transparent 1.5px)",
+              backgroundSize: "22px 22px",
+              maskImage: "linear-gradient(to left, black, transparent)",
+              WebkitMaskImage: "linear-gradient(to left, black, transparent)",
+            }}
+          />
+          <div className="relative z-10 flex items-center gap-5 max-w-full">
+            {settings?.login_logo_url ? (
+              <img
+                src={settings.login_logo_url}
+                alt="Logo"
+                className="h-16 w-auto object-contain drop-shadow-sm shrink-0"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="h-16 w-16 rounded-3xl bg-[#3D2C44] flex items-center justify-center shadow-xl shrink-0">
+                <span className="text-3xl font-black text-white">
+                  {sidebarText[0]?.toUpperCase()}
+                </span>
+              </div>
+            )}
+            <div className="min-w-0">
+              <h1 className="text-4xl font-black text-[#3D2C44] leading-tight whitespace-nowrap">
+                {sidebarText} <span className="font-light text-[#3D2C44]/60">ATS</span>
+              </h1>
+              <p className="text-base text-[#3D2C44]/70 mt-3 font-medium">
+                Applicant Tracking System
+              </p>
+              <p className="text-sm text-[#3D2C44]/50 mt-1">
+                Powered by {sidebarText.toUpperCase()}
+              </p>
             </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center py-2.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            >
-              {loading ? (
-                <Loader2 className="animate-spin h-5 w-5" />
-              ) : (
-                "Masuk Sekarang"
-              )}
-            </button>
-          </form>
-
-          <div className="mt-3 text-center text-xs text-slate-500">
-            <p>© 2026 ATS Waruna Group App.</p>
           </div>
         </div>
       </div>
