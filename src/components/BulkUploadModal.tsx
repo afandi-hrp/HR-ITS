@@ -14,7 +14,9 @@ interface CandidateRow {
   id: string;
   name: string;
   email: string;
+  phone: string;
   position: string;
+  source: string;
   file: File | null;
 }
 
@@ -24,7 +26,13 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
   const [availablePositions, setAvailablePositions] = useState<string[]>([]);
   const [loadingPositions, setLoadingPositions] = useState(true);
+  const [availableJobSources, setAvailableJobSources] = useState<string[]>([]);
   const { toast } = useToast();
+
+  const defaultJobSources = [
+    'Campus Hiring', 'Email', 'Instagram', 'Jobstreet', 'LinkedIn',
+    'Referensi', 'Walk In', 'TGT Program', 'Head Hunter', 'Others',
+  ];
 
   React.useEffect(() => {
     const fetchPositions = async () => {
@@ -48,19 +56,52 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
       }
     };
 
+    const fetchJobSources = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('site_settings')
+          .select('job_sources')
+          .eq('id', 1)
+          .single();
+
+        if (!error && data?.job_sources?.length > 0) {
+          setAvailableJobSources(data.job_sources);
+        } else {
+          setAvailableJobSources(defaultJobSources);
+        }
+      } catch (err) {
+        console.error(err);
+        setAvailableJobSources(defaultJobSources);
+      }
+    };
+
     if (isOpen) {
       fetchPositions();
+      fetchJobSources();
       setRows(
         Array.from({ length: 5 }).map(() => ({
           id: Math.random().toString(36).substring(7),
           name: '',
           email: '',
+          phone: '',
           position: '',
+          source: '',
           file: null,
         }))
       );
     }
   }, [isOpen]);
+
+  // Default every row's source to the first available option once loaded,
+  // the same way `position` is handled in the single-upload page — otherwise
+  // rows silently submit with an empty sourceInfo.
+  React.useEffect(() => {
+    if (availableJobSources.length > 0) {
+      setRows(prev =>
+        prev.map(row => row.source ? row : { ...row, source: availableJobSources[0] }),
+      );
+    }
+  }, [availableJobSources]);
 
   if (!isOpen) return null;
 
@@ -91,7 +132,9 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
       id: Math.random().toString(36).substring(7),
       name: '',
       email: '',
+      phone: '',
       position: '',
+      source: availableJobSources[0] || '',
       file: null,
     }]);
   };
@@ -103,7 +146,7 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
 
   const handleUpload = async () => {
     // Filter out completely empty rows
-    const validRows = rows.filter(row => row.name || row.email || row.position || row.file);
+    const validRows = rows.filter(row => row.name || row.email || row.position || row.source || row.file);
 
     if (validRows.length === 0) {
       toast({ title: 'Peringatan', description: 'Silakan isi setidaknya satu data kandidat.', variant: 'destructive' });
@@ -111,9 +154,9 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
     }
 
     // Validate valid rows
-    const incompleteRows = validRows.filter(row => !row.name || !row.email || !row.position || !row.file);
+    const incompleteRows = validRows.filter(row => !row.name || !row.email || !row.position || !row.source || !row.file);
     if (incompleteRows.length > 0) {
-      toast({ title: 'Peringatan', description: 'Pastikan semua kolom (Nama, Email, Posisi, File) terisi untuk baris yang Anda isi.', variant: 'destructive' });
+      toast({ title: 'Peringatan', description: 'Pastikan semua kolom (Nama, Email, Posisi, Sumber, File) terisi untuk baris yang Anda isi.', variant: 'destructive' });
       return;
     }
 
@@ -144,7 +187,9 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
         formData.append('webhookUrl', webhookUrl);
         formData.append('candidateName', row.name);
         formData.append('candidateEmail', row.email);
+        formData.append('candidatePhone', row.phone);
         formData.append('candidatePosition', row.position);
+        formData.append('sourceInfo', row.source);
         formData.append('fileName', row.file.name);
         formData.append('mimeType', row.file.type);
         formData.append('uploadedAt', new Date().toISOString());
@@ -226,7 +271,7 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
                   {index + 1}
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1 w-full">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 flex-1 w-full">
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nama</label>
                     <input
@@ -244,6 +289,16 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
                       value={row.email}
                       onChange={(e) => handleRowChange(row.id, 'email', e.target.value)}
                       placeholder="email@example.com"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No. HP</label>
+                    <input
+                      type="tel"
+                      value={row.phone}
+                      onChange={(e) => handleRowChange(row.id, 'phone', e.target.value)}
+                      placeholder="08123456789"
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
                     />
                   </div>
@@ -273,6 +328,19 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
                       />
                     )}
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sumber</label>
+                    <select
+                      value={row.source}
+                      onChange={(e) => handleRowChange(row.id, 'source', e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm appearance-none"
+                    >
+                      <option value="" disabled>Pilih Sumber</option>
+                      {availableJobSources.map((source, idx) => (
+                        <option key={idx} value={source}>{source}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 

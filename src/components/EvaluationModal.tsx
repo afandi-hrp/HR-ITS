@@ -44,10 +44,11 @@ export default function EvaluationModal({ isOpen, onClose, candidateId, onSucces
       let query = supabase
         .from('evaluation_templates')
         .select('*')
+        .neq('type', 'REFERENCE_CHECK')
         .order('name');
-      
+
       const { data, error } = await query;
-      
+
       if (error) throw error;
 
       let filteredTemplates = data || [];

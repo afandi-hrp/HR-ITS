@@ -35,6 +35,10 @@ import {
   CheckCheck,
   ClipboardCheck,
   CalendarClock,
+  Sunrise,
+  Sun,
+  Sunset,
+  Moon,
 } from "lucide-react";
 import { cn, formatDate, fetchWithRetry, extractPhotoUrl } from "../lib/utils";
 import { useToast } from "../components/ui/use-toast";
@@ -978,11 +982,38 @@ export default function Screening() {
         <>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
             <div className="space-y-1">
+              {profile?.role === "USER_MANAGER" && profile?.full_name && (
+                <div className="text-xl font-semibold text-[#3D2C44]/80 mb-1 flex items-center flex-wrap gap-2">
+                  <span className="tracking-tight">
+                    {(() => {
+                      const hour = new Date().getHours();
+                      if (hour >= 5 && hour < 11) return 'Selamat pagi,';
+                      if (hour >= 11 && hour < 15) return 'Selamat siang,';
+                      if (hour >= 15 && hour < 18) return 'Selamat sore,';
+                      return 'Selamat malam,';
+                    })()}
+                  </span>
+                  <span className="text-[#3D2C44] font-bold">
+                    {profile.full_name.split(' ')[0]}
+                  </span>
+                  <span className="ml-1 inline-flex items-center">
+                    {(() => {
+                      const hour = new Date().getHours();
+                      if (hour >= 5 && hour < 11) return <Sunrise className="text-amber-500 drop-shadow-sm" size={22} />;
+                      if (hour >= 11 && hour < 15) return <Sun className="text-amber-500 drop-shadow-sm" size={22} />;
+                      if (hour >= 15 && hour < 18) return <Sunset className="text-amber-500 drop-shadow-sm" size={22} />;
+                      return <Moon className="text-indigo-500 drop-shadow-sm" size={22} />;
+                    })()}
+                  </span>
+                </div>
+              )}
               <h1 className="text-4xl font-extrabold tracking-tight text-[#3D2C44]">
-                Screening Awal
+                {profile?.role === "USER_MANAGER" ? "Kandidat Saya" : "Screening Awal"}
               </h1>
               <p className="text-sm font-medium text-[#3D2C44]/70 max-w-xl">
-                Kelola dan tinjau kandidat berdasarkan lowongan.
+                {profile?.role === "USER_MANAGER"
+                  ? "Tinjau dan kelola kandidat yang ditugaskan kepada Anda."
+                  : "Kelola dan tinjau kandidat berdasarkan lowongan."}
               </p>
             </div>
           </div>

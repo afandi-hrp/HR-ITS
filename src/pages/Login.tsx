@@ -142,7 +142,7 @@ export default function Login() {
           <div className="w-full max-w-sm mx-auto">
             <h1 className="text-2xl font-bold text-[#3D2C44] mb-1">Log In</h1>
             <p className="text-sm text-[#3D2C44]/60 mb-6">
-              Log in to the {sidebarText} ATS Dashboard
+              Log in to the WARUNA ATS Dashboard
             </p>
 
             {error && (
@@ -227,7 +227,7 @@ export default function Login() {
 
               <div className="flex items-center justify-between pt-2">
                 <p className="text-xs text-[#3D2C44]/50 font-semibold">
-                  Powered by {sidebarText} Group
+                  Powered by WARUNA Group
                 </p>
                 <button
                   type="submit"
@@ -276,13 +276,10 @@ export default function Login() {
             )}
             <div className="min-w-0">
               <h1 className="text-4xl font-black text-[#3D2C44] leading-tight whitespace-nowrap">
-                {sidebarText} <span className="font-light text-[#3D2C44]/60">ATS</span>
+                WARUNA GROUP <span className="font-light text-[#3D2C44]/60">ATS</span>
               </h1>
               <p className="text-base text-[#3D2C44]/70 mt-3 font-medium">
                 Applicant Tracking System
-              </p>
-              <p className="text-sm text-[#3D2C44]/50 mt-1">
-                Powered by {sidebarText.toUpperCase()}
               </p>
             </div>
           </div>

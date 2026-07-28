@@ -58,6 +58,14 @@ export default function UploadCV() {
   const [totalItems, setTotalItems] = useState(0);
   const { toast } = useToast();
 
+  // Default to the first available job source, mirroring how `position` is
+  // defaulted, so the field is never silently submitted empty.
+  useEffect(() => {
+    if (availableJobSources.length > 0 && !sourceInfo) {
+      setSourceInfo(availableJobSources[0]);
+    }
+  }, [availableJobSources]);
+
   const isFirstRender = React.useRef(true);
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -284,7 +292,7 @@ export default function UploadCV() {
       });
       return;
     }
-    if (!candidateName || !candidateEmail || !position) {
+    if (!candidateName || !candidateEmail || !position || !sourceInfo) {
       toast({
         title: "Peringatan",
         description: "Silakan isi semua data kandidat.",
@@ -485,6 +493,7 @@ export default function UploadCV() {
                     Info Sumber Lowongan
                   </label>
                   <select
+                    required
                     value={sourceInfo}
                     onChange={(e) => setSourceInfo(e.target.value)}
                     className="block w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium appearance-none"

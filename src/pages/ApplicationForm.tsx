@@ -93,6 +93,47 @@ export default function ApplicationForm({
 
   const sigCanvas = useRef<SignatureCanvas>(null);
   const remunerationSigCanvas = useRef<SignatureCanvas>(null);
+  // Last-known-good vector data for each signature pad. A browser resize
+  // (e.g. mobile keyboard opening/closing) always wipes the underlying
+  // <canvas> pixels, but with clearOnResize={false} the library doesn't
+  // reset its own isEmpty()/data tracking to match — so without this,
+  // isEmpty() can keep reporting "signed" even though the canvas is now
+  // visually blank, letting a blank signature slip through validation.
+  // We capture the drawn strokes on every stroke-end, and after a resize
+  // redraw them back in so the visible canvas and isEmpty() stay in sync.
+  const lastSignatureData = useRef<ReturnType<
+    NonNullable<InstanceType<typeof SignatureCanvas>["toData"]>
+  > | null>(null);
+  const lastRemunerationSignatureData = useRef<ReturnType<
+    NonNullable<InstanceType<typeof SignatureCanvas>["toData"]>
+  > | null>(null);
+
+  useEffect(() => {
+    const restoreIfCleared = (
+      canvasRef: React.RefObject<SignatureCanvas>,
+      dataRef: React.MutableRefObject<any>,
+    ) => {
+      if (
+        canvasRef.current &&
+        canvasRef.current.isEmpty() &&
+        dataRef.current &&
+        dataRef.current.length > 0
+      ) {
+        canvasRef.current.fromData(dataRef.current);
+      }
+    };
+
+    const handleResize = () => {
+      // Let the signature pad's own resize handling run first, then restore.
+      requestAnimationFrame(() => {
+        restoreIfCleared(sigCanvas, lastSignatureData);
+        restoreIfCleared(remunerationSigCanvas, lastRemunerationSignatureData);
+      });
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
@@ -4841,6 +4882,10 @@ export default function ApplicationForm({
                                 ref={sigCanvas}
                                 penColor="black"
                                 clearOnResize={false}
+                                onEnd={() => {
+                                  lastSignatureData.current =
+                                    sigCanvas.current?.toData() || null;
+                                }}
                                 canvasProps={{
                                   className:
                                     "w-full h-32 sm:w-64 cursor-crosshair",
@@ -4848,7 +4893,10 @@ export default function ApplicationForm({
                               />
                               <button
                                 type="button"
-                                onClick={() => sigCanvas.current?.clear()}
+                                onClick={() => {
+                                  sigCanvas.current?.clear();
+                                  lastSignatureData.current = null;
+                                }}
                                 className="absolute top-2 right-2 p-1.5 bg-slate-100 text-slate-500 rounded-lg transition-colors hover:bg-red-50 hover:text-red-600 shadow-sm"
                                 title="Hapus Tanda Tangan"
                               >
@@ -5155,15 +5203,21 @@ export default function ApplicationForm({
                             ref={remunerationSigCanvas}
                             penColor="black"
                             clearOnResize={false}
+                            onEnd={() => {
+                              lastRemunerationSignatureData.current =
+                                remunerationSigCanvas.current?.toData() ||
+                                null;
+                            }}
                             canvasProps={{
                               className: "w-full h-40 cursor-crosshair",
                             }}
                           />
                           <button
                             type="button"
-                            onClick={() =>
-                              remunerationSigCanvas.current?.clear()
-                            }
+                            onClick={() => {
+                              remunerationSigCanvas.current?.clear();
+                              lastRemunerationSignatureData.current = null;
+                            }}
                             className="absolute top-2 right-2 p-1.5 bg-slate-100 text-slate-500 rounded-lg transition-colors hover:bg-red-50 hover:text-red-600 shadow-sm"
                             title="Hapus Tanda Tangan"
                           >

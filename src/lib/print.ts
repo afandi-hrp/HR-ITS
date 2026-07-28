@@ -23,7 +23,7 @@ export const printElement = async (element: HTMLElement | null, title: string = 
       // We want to keep the background and border so it looks like a form field
       // but we need to ensure it displays the text correctly
       textNode.style.color = '#0f172a'; // slate-900
-      textNode.style.fontWeight = '600';
+      textNode.style.fontWeight = '400';
       textNode.style.whiteSpace = 'pre-wrap'; // for textareas
       textNode.style.minHeight = input.tagName === 'TEXTAREA' ? '80px' : '42px';
       textNode.style.display = 'flex';
@@ -173,7 +173,7 @@ export const generatePdfBlob = async (element: HTMLElement | null, title: string
       const textNode = document.createElement('div');
       textNode.className = input.className;
       textNode.style.color = '#0f172a';
-      textNode.style.fontWeight = '600';
+      textNode.style.fontWeight = '400';
       textNode.style.whiteSpace = 'pre-wrap';
       textNode.style.minHeight = input.tagName === 'TEXTAREA' ? '80px' : '42px';
       textNode.style.display = 'flex';
