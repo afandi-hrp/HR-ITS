@@ -4,6 +4,7 @@ export interface Profile {
   avatar_url: string | null;
   role?: 'HR_ADMIN' | 'USER_MANAGER' | 'DIRECTOR' | 'FINANCE_DIRECTOR' | string;
   department?: string | null;
+  job_title?: string | null;
   phone?: string | null;
 }
 

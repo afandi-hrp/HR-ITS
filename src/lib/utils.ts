@@ -208,3 +208,41 @@ export function getEmbedUrl(url: string | null | undefined): string {
   // Otherwise, use Google Docs Viewer for standard files (PDF, Word, etc.)
   return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
 }
+
+const SOCIAL_MEDIA_DOMAINS: Record<string, string> = {
+  LinkedIn: 'https://www.linkedin.com/in/',
+  Instagram: 'https://www.instagram.com/',
+  Facebook: 'https://www.facebook.com/',
+  Twitter: 'https://twitter.com/',
+  YouTube: 'https://www.youtube.com/@',
+};
+
+// Candidates on the application form often type just their handle (e.g.
+// "ndah_sibarani28") instead of a full profile URL. Build a clickable link
+// to the actual platform profile instead of naively prefixing "https://" —
+// that would produce an invalid link like "https://ndah_sibarani28".
+export function getSocialMediaUrl(platform: string | null | undefined, account: string | null | undefined): string {
+  if (!account) return '#';
+  const trimmed = account.trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+
+  const handle = trimmed.replace(/^@/, '');
+  // Only treat it as an already-complete domain+path (e.g. "instagram.com/xyz")
+  // when there's a path segment after the domain — otherwise a dotted
+  // username like "ratna.sibarani" would be misread as a bare domain.
+  if (/^([a-z0-9-]+\.)+[a-z]{2,}\//i.test(handle)) {
+    return `https://${handle}`;
+  }
+
+  const domain = platform ? SOCIAL_MEDIA_DOMAINS[platform] : undefined;
+  return domain ? `${domain}${handle}` : `https://${handle}`;
+}
+
+// Adds Indonesian-style thousand separators (dots) to a raw number/digit
+// string, e.g. "8100000" -> "8.100.000".
+export function formatCurrencyId(value: string | number | null | undefined): string {
+  if (value === null || value === undefined || value === '') return '';
+  const num = typeof value === 'number' ? value : Number(String(value).replace(/[^\d]/g, ''));
+  if (isNaN(num)) return String(value);
+  return num.toLocaleString('id-ID');
+}

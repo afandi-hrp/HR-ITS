@@ -6,32 +6,65 @@ import {
   Users,
   Shield,
   Building2,
+  Briefcase,
+  Mail,
   Search,
+  Filter,
   Loader2,
   Save,
   X,
 } from "lucide-react";
 import { useToast } from "../components/ui/use-toast";
 
+const ROLE_META: Record<
+  string,
+  { label: string; badgeClass: string }
+> = {
+  HR_ADMIN: { label: "HR Admin", badgeClass: "bg-purple-100 text-purple-700" },
+  USER_MANAGER: { label: "User Manager", badgeClass: "bg-blue-100 text-blue-700" },
+  DIRECTOR: { label: "Direktur", badgeClass: "bg-amber-100 text-amber-700" },
+  FINANCE_DIRECTOR: { label: "Direktur Finance", badgeClass: "bg-emerald-100 text-emerald-700" },
+};
+
+function getRoleLabel(role?: string | null) {
+  if (!role) return "User";
+  return ROLE_META[role]?.label || role;
+}
+
+function getRoleBadgeClass(role?: string | null) {
+  return (role && ROLE_META[role]?.badgeClass) || "bg-slate-100 text-slate-700";
+}
+
 export default function UserManagement() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [users, setUsers] = useState<Profile[]>([]);
+  const [emailById, setEmailById] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
+  const [roleFilter, setRoleFilter] = useState(searchParams.get("role") || "all");
+  const [departmentFilter, setDepartmentFilter] = useState(
+    searchParams.get("department") || "all",
+  );
 
   // Sync to URL
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
-    
+
     if (searchQuery) params.set("q", searchQuery);
     else params.delete("q");
+
+    if (roleFilter !== "all") params.set("role", roleFilter);
+    else params.delete("role");
+
+    if (departmentFilter !== "all") params.set("department", departmentFilter);
+    else params.delete("department");
 
     const currentParams = searchParams.toString();
     const newParams = params.toString();
     if (currentParams !== newParams) {
       setSearchParams(params, { replace: true });
     }
-  }, [searchQuery, setSearchParams, searchParams]);
+  }, [searchQuery, roleFilter, departmentFilter, setSearchParams, searchParams]);
   const [editingUser, setEditingUser] = useState<Profile | null>(null);
   const [editRole, setEditRole] = useState("");
   const [editDepartment, setEditDepartment] = useState("");
@@ -48,6 +81,27 @@ export default function UserManagement() {
 
       if (error) throw error;
       setUsers(data || []);
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session) {
+        try {
+          const response = await fetch("/api/users/list", {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
+          if (response.ok) {
+            const result = await response.json();
+            const map: Record<string, string> = {};
+            (result.users || []).forEach((u: { id: string; email?: string }) => {
+              if (u.email) map[u.id] = u.email;
+            });
+            setEmailById(map);
+          }
+        } catch (emailErr) {
+          console.warn("Failed to load user emails:", emailErr);
+        }
+      }
     } catch (error: any) {
       console.error("Error fetching users:", error);
       toast({
@@ -121,18 +175,38 @@ export default function UserManagement() {
 
   const uniqueDepartments = Array.from(
     new Set(users.map((u) => u.department).filter(Boolean)),
-  );
+  ) as string[];
 
-  const filteredUsers = users.filter(
-    (user) =>
-      user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.department?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.role?.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  const uniqueRoles = Array.from(
+    new Set(users.map((u) => u.role).filter(Boolean)),
+  ) as string[];
+
+  const roleCounts = users.reduce<Record<string, number>>((acc, u) => {
+    const key = u.role || "Lainnya";
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+
+  const filteredUsers = users.filter((user) => {
+    const q = searchQuery.toLowerCase();
+    const matchesSearch =
+      !q ||
+      user.full_name?.toLowerCase().includes(q) ||
+      user.department?.toLowerCase().includes(q) ||
+      user.job_title?.toLowerCase().includes(q) ||
+      user.role?.toLowerCase().includes(q) ||
+      emailById[user.id]?.toLowerCase().includes(q);
+
+    const matchesRole = roleFilter === "all" || user.role === roleFilter;
+    const matchesDepartment =
+      departmentFilter === "all" || user.department === departmentFilter;
+
+    return matchesSearch && matchesRole && matchesDepartment;
+  });
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-[#3D2C44] flex items-center gap-3">
             <Users className="w-8 h-8 text-indigo-600" />
@@ -144,17 +218,62 @@ export default function UserManagement() {
         </div>
       </div>
 
+      {/* Role summary */}
+      <div className="flex flex-wrap items-center gap-2 mb-6">
+        <span className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-[#3D2C44]/5 text-[#3D2C44]">
+          {users.length} Total Pengguna
+        </span>
+        {Object.entries(roleCounts).map(([role, count]) => (
+          <span
+            key={role}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium ${getRoleBadgeClass(role)}`}
+          >
+            {count} {getRoleLabel(role)}
+          </span>
+        ))}
+      </div>
+
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center gap-4">
-          <div className="relative flex-1 max-w-md">
+        <div className="p-4 border-b border-slate-200 bg-slate-50 flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[220px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input
               type="text"
-              placeholder="Cari nama, divisi, atau peran..."
+              placeholder="Cari nama, email, divisi, jabatan, atau peran..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
+          </div>
+          <div className="flex items-center gap-1.5 bg-white border border-slate-300 rounded-xl px-3 py-2">
+            <Filter size={16} className="text-slate-400 shrink-0" />
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="bg-transparent text-sm focus:outline-none text-slate-700"
+            >
+              <option value="all">Semua Peran</option>
+              {uniqueRoles.map((role) => (
+                <option key={role} value={role}>
+                  {getRoleLabel(role)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-1.5 bg-white border border-slate-300 rounded-xl px-3 py-2">
+            <Building2 size={16} className="text-slate-400 shrink-0" />
+            <select
+              value={departmentFilter}
+              onChange={(e) => setDepartmentFilter(e.target.value)}
+              className="bg-transparent text-sm focus:outline-none text-slate-700"
+            >
+              <option value="all">Semua Divisi</option>
+              {uniqueDepartments.map((dept) => (
+                <option key={dept} value={dept}>
+                  {dept}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -171,6 +290,9 @@ export default function UserManagement() {
                 <th className="px-6 py-4 text-sm font-semibold text-slate-600">
                   Divisi
                 </th>
+                <th className="px-6 py-4 text-sm font-semibold text-slate-600">
+                  Jabatan
+                </th>
                 <th className="px-6 py-4 text-sm font-semibold text-slate-600 text-right">
                   Aksi
                 </th>
@@ -179,7 +301,7 @@ export default function UserManagement() {
             <tbody className="divide-y divide-slate-200">
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center">
+                  <td colSpan={5} className="px-6 py-12 text-center">
                     <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mx-auto" />
                     <p className="text-slate-500 mt-2">
                       Memuat data pengguna...
@@ -189,7 +311,7 @@ export default function UserManagement() {
               ) : filteredUsers.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={4}
+                    colSpan={5}
                     className="px-6 py-12 text-center text-slate-500"
                   >
                     Tidak ada pengguna yang ditemukan.
@@ -207,50 +329,46 @@ export default function UserManagement() {
                           <img
                             src={user.avatar_url}
                             alt={user.full_name || ""}
-                            className="w-10 h-10 rounded-full object-cover"
+                            className="w-10 h-10 rounded-full object-cover shrink-0"
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
+                          <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold shrink-0">
                             {user.full_name?.charAt(0) || "U"}
                           </div>
                         )}
-                        <div>
-                          <p className="font-medium text-slate-900">
+                        <div className="min-w-0">
+                          <p className="font-medium text-slate-900 truncate">
                             {user.full_name || "Tanpa Nama"}
                           </p>
+                          {emailById[user.id] && (
+                            <p className="flex items-center gap-1 text-xs text-slate-500 truncate">
+                              <Mail size={12} className="shrink-0" />
+                              {emailById[user.id]}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                          user.role === "HR_ADMIN"
-                            ? "bg-purple-100 text-purple-700"
-                            : user.role === "USER_MANAGER"
-                              ? "bg-blue-100 text-blue-700"
-                              : user.role === "DIRECTOR"
-                                ? "bg-amber-100 text-amber-700"
-                                : user.role === "FINANCE_DIRECTOR"
-                                  ? "bg-emerald-100 text-emerald-700"
-                                  : "bg-slate-100 text-slate-700"
-                        }`}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${getRoleBadgeClass(user.role)}`}
                       >
                         <Shield className="w-3.5 h-3.5" />
-                        {user.role === "HR_ADMIN"
-                          ? "HR Admin"
-                          : user.role === "USER_MANAGER"
-                            ? "User Manager"
-                            : user.role === "DIRECTOR"
-                              ? "Direktur"
-                              : user.role === "FINANCE_DIRECTOR"
-                                ? "Direktur Finance"
-                                : user.role || "User"}
+                        {getRoleLabel(user.role)}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2 text-slate-600">
-                        <Building2 className="w-4 h-4" />
+                        <Building2 className="w-4 h-4 shrink-0" />
                         {user.department || "-"}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2 text-slate-600">
+                        <Briefcase className="w-4 h-4 shrink-0 text-slate-400" />
+                        <span className="truncate max-w-[220px]">
+                          {user.job_title || "-"}
+                        </span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -293,6 +411,11 @@ export default function UserManagement() {
                 <p className="font-medium text-slate-900">
                   {editingUser.full_name}
                 </p>
+                {emailById[editingUser.id] && (
+                  <p className="text-sm text-slate-500">
+                    {emailById[editingUser.id]}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -328,7 +451,7 @@ export default function UserManagement() {
                 />
                 <datalist id="departments-list">
                   {uniqueDepartments.map((dept, idx) => (
-                    <option key={idx} value={dept as string} />
+                    <option key={idx} value={dept} />
                   ))}
                 </datalist>
                 <p className="text-xs text-slate-500 mt-1">

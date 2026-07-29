@@ -177,6 +177,53 @@ app.use((req: any, res, next) => {
     }
   });
 
+  // Feature: List Users with Email (Admin Only)
+  // profiles has no email column (it lives on auth.users, which the client
+  // SDK can't query directly), so Manajemen Pengguna needs this endpoint to
+  // show email alongside role/department/job_title.
+  app.get("/api/users/list", async (req, res) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    try {
+      const supabaseAdmin = getSupabaseAdmin();
+      const token = authHeader.replace('Bearer ', '');
+
+      const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+      if (authError || !user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      if (profile?.role !== 'HR_ADMIN') {
+        return res.status(403).json({ error: "Forbidden: Only HR Admin can list users" });
+      }
+
+      let allUsers: { id: string; email?: string }[] = [];
+      let page = 1;
+      while (true) {
+        const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 200 });
+        if (error) throw error;
+        allUsers = allUsers.concat(data.users.map(u => ({ id: u.id, email: u.email })));
+        if (data.users.length < 200) break;
+        page++;
+      }
+
+      res.json({ users: allUsers });
+    } catch (error: any) {
+      console.error("Error listing users:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Feature: Move Candidate to Log
   app.post("/api/candidates/move-to-log", requireAuth, async (req, res) => {
     const { candidateId, notes } = req.body;

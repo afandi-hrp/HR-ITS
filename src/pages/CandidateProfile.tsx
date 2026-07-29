@@ -1341,13 +1341,15 @@ export default function CandidateProfile() {
                       Assign User
                     </button>
                   )}
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="px-4 py-2 bg-[#3D2C44] text-white rounded-xl hover:bg-[#3D2C44]/90 transition-colors flex items-center gap-2 text-sm font-medium"
-                  >
-                    <Edit2 size={16} />
-                    Edit Profil
-                  </button>
+                  {!isApprovalRole && (
+                    <button
+                      onClick={() => setIsEditing(true)}
+                      className="px-4 py-2 bg-[#3D2C44] text-white rounded-xl hover:bg-[#3D2C44]/90 transition-colors flex items-center gap-2 text-sm font-medium"
+                    >
+                      <Edit2 size={16} />
+                      Edit Profil
+                    </button>
+                  )}
                 </>
               )}
             </>
@@ -1602,15 +1604,14 @@ export default function CandidateProfile() {
                   <Briefcase className="text-indigo-500" size={20} />
                   Pengalaman Kerja
                 </h3>
-                {candidate.work_experience ? (
-                  <div className="prose prose-sm text-slate-600 whitespace-pre-wrap">
-                    {candidate.work_experience}
-                  </div>
-                ) : (
-                  <p className="text-slate-400 italic text-sm">
-                    Tidak ada data pengalaman kerja.
-                  </p>
-                )}
+                <div className="text-sm text-slate-600">
+                  {formatAsNumberedList(
+                    candidate.work_experience,
+                    <p className="text-slate-400 italic text-sm">
+                      Tidak ada data pengalaman kerja.
+                    </p>,
+                  )}
+                </div>
               </div>
 
               <div>
@@ -1914,30 +1915,53 @@ export default function CandidateProfile() {
                   }
 
                   if (questions.length > 0) {
+                    const grouped: Record<string, any[]> = {};
+                    questions.forEach((q: any) => {
+                      const cat = q.category || "General";
+                      if (!grouped[cat]) grouped[cat] = [];
+                      grouped[cat].push(q);
+                    });
+
+                    let runningIndex = 0;
+
                     return (
-                      <div className="space-y-4">
-                        {questions.map((q: any, index: number) => (
-                          <div
-                            key={index}
-                            className="p-4 bg-slate-50 border border-slate-100 rounded-xl"
-                          >
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="px-2.5 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-md">
-                                {q.category || "General"}
-                              </span>
+                      <div className="space-y-5">
+                        {Object.entries(grouped).map(([category, catQuestions]) => (
+                          <div key={category}>
+                            <h4 className="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                              {category}
+                            </h4>
+                            <div className="space-y-3">
+                              {catQuestions.map((q: any) => {
+                                runningIndex += 1;
+                                const num = runningIndex;
+                                return (
+                                  <div
+                                    key={num}
+                                    className="p-4 bg-slate-50 border border-slate-100 rounded-xl flex items-start gap-3"
+                                  >
+                                    <span className="shrink-0 w-6 h-6 rounded-full bg-[#3D2C44] text-white text-xs font-bold flex items-center justify-center mt-0.5">
+                                      {num}
+                                    </span>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-slate-800 font-medium mb-2">
+                                        {q.question}
+                                      </p>
+                                      {q.reasoning && (
+                                        <div className="flex gap-2 text-sm text-slate-500 bg-white p-3 rounded-lg border border-slate-100">
+                                          <Sparkles
+                                            size={16}
+                                            className="text-indigo-400 shrink-0 mt-0.5"
+                                          />
+                                          <p className="italic">{q.reasoning}</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
-                            <p className="text-slate-800 font-medium mb-2">
-                              {q.question}
-                            </p>
-                            {q.reasoning && (
-                              <div className="flex gap-2 text-sm text-slate-500 bg-white p-3 rounded-lg border border-slate-100">
-                                <Sparkles
-                                  size={16}
-                                  className="text-indigo-400 shrink-0 mt-0.5"
-                                />
-                                <p className="italic">{q.reasoning}</p>
-                              </div>
-                            )}
                           </div>
                         ))}
                         {!isUserManager && !isArchived && (

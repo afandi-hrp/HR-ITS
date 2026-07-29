@@ -9,13 +9,17 @@ import {
   Save,
   Loader2,
   Settings as SettingsIcon,
+  Webhook,
+  Palette,
   X,
 } from "lucide-react";
 import { useToast } from "../components/ui/use-toast";
 import { usePermissions } from "../hooks/usePermissions";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function Settings() {
   const { isUserManager } = usePermissions();
+  const { profile } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -563,6 +567,7 @@ export default function Settings() {
 
         {/* Right: Forms */}
         <div className="md:col-span-2 space-y-8">
+          <form onSubmit={handleUpdateProfile} className="space-y-8">
           {/* Profile Form */}
           <div className="bg-white/70 backdrop-blur-md p-8 rounded-2xl border border-slate-200 shadow-sm">
             <div className="flex items-center gap-3 mb-6">
@@ -573,7 +578,7 @@ export default function Settings() {
                 Informasi Profil
               </h2>
             </div>
-            <form onSubmit={handleUpdateProfile} className="space-y-6">
+            <div className="space-y-6">
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
                   Nama Lengkap
@@ -586,7 +591,7 @@ export default function Settings() {
                   placeholder="Masukkan nama lengkap"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
                   Nomor WhatsApp
@@ -600,14 +605,42 @@ export default function Settings() {
                 />
               </div>
 
-              {!isUserManager && (
-                <>
-                  {/* Webhook Settings Block */}
-                  {!showWebhookSettings ? (
+              {profile?.job_title && (
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Jabatan
+                  </label>
+                  <input
+                    type="text"
+                    value={profile.job_title}
+                    disabled
+                    className="block w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 cursor-not-allowed"
+                  />
+                  <p className="text-xs text-slate-400 mt-1.5">
+                    Dikelola oleh HR Admin, tidak bisa diubah sendiri.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {!isUserManager && (
+            <>
+              {/* Webhook Settings Card */}
+              <div className="bg-white/70 backdrop-blur-md p-8 rounded-2xl border border-slate-200 shadow-sm">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="p-2 bg-sky-50 text-sky-600 rounded-lg">
+                    <Webhook size={20} />
+                  </div>
+                  <h2 className="text-xl font-bold text-slate-900">
+                    Pengaturan Webhook
+                  </h2>
+                </div>
+                {!showWebhookSettings ? (
                 <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl">
                   <div>
                     <h3 className="text-sm font-semibold text-slate-700">
-                      Pengaturan Webhook
+                      Terkunci dengan PIN
                     </h3>
                     <p className="text-xs text-slate-500">
                       Tersembunyi untuk keamanan
@@ -632,9 +665,6 @@ export default function Settings() {
                   >
                     <X size={16} />
                   </button>
-                  <h4 className="font-bold text-slate-800 mb-4">
-                    Pengaturan Webhook
-                  </h4>
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-2">
                       n8n Webhook URL (Email)
@@ -928,13 +958,23 @@ export default function Settings() {
                   </div>
                 </div>
               )}
+              </div>
 
-              {/* Display Settings Block */}
-              {!showDisplaySettings ? (
+              {/* Display Settings Card */}
+              <div className="bg-white/70 backdrop-blur-md p-8 rounded-2xl border border-slate-200 shadow-sm">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="p-2 bg-fuchsia-50 text-fuchsia-600 rounded-lg">
+                    <Palette size={20} />
+                  </div>
+                  <h2 className="text-xl font-bold text-slate-900">
+                    Pengaturan Tampilan
+                  </h2>
+                </div>
+                {!showDisplaySettings ? (
                 <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl">
                   <div>
                     <h3 className="text-sm font-semibold text-slate-700">
-                      Pengaturan Tampilan
+                      Terkunci dengan PIN
                     </h3>
                     <p className="text-xs text-slate-500">
                       Tersembunyi untuk keamanan
@@ -959,9 +999,6 @@ export default function Settings() {
                   >
                     <X size={16} />
                   </button>
-                  <h4 className="font-bold text-slate-800 mb-4">
-                    Pengaturan Tampilan
-                  </h4>
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-2">
@@ -1291,6 +1328,7 @@ export default function Settings() {
                   </div>
                 </div>
               )}
+              </div>
                 </>
               )}
 
@@ -1306,8 +1344,7 @@ export default function Settings() {
                 )}
                 Simpan Perubahan
               </button>
-            </form>
-          </div>
+          </form>
 
           {/* Password Form */}
           <div className="bg-white/70 backdrop-blur-md p-8 rounded-2xl border border-slate-200 shadow-sm">

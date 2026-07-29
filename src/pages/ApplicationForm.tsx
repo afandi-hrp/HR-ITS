@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import SignatureCanvas from "react-signature-canvas";
-import { cn, getEmbedUrl, formatDateDMY, calculateAge } from "../lib/utils";
+import { cn, getEmbedUrl, getSocialMediaUrl, formatCurrencyId, formatDateDMY, calculateAge } from "../lib/utils";
 import { PdfToImages } from "../components/PdfToImages";
 
 interface ApplicationFormProps {
@@ -2173,13 +2173,7 @@ export default function ApplicationForm({
                                   ) : null}
                                   <div className="flex-1 overflow-hidden">
                                     <a
-                                      href={
-                                        sm.account
-                                          ? sm.account.startsWith("http")
-                                            ? sm.account
-                                            : `https://${sm.account}`
-                                          : "#"
-                                      }
+                                      href={getSocialMediaUrl(sm.platform, sm.account)}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className={cn(
@@ -5105,7 +5099,11 @@ export default function ApplicationForm({
                       <input
                         type="text"
                         name="current_salary"
-                        value={formData.current_salary}
+                        value={
+                          readOnly
+                            ? formatCurrencyId(formData.current_salary)
+                            : formData.current_salary
+                        }
                         onChange={handleInputChange}
                         className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       />
@@ -5124,7 +5122,11 @@ export default function ApplicationForm({
                         type="text"
                         name="expected_salary"
                         required
-                        value={formData.expected_salary}
+                        value={
+                          readOnly
+                            ? formatCurrencyId(formData.expected_salary)
+                            : formData.expected_salary
+                        }
                         onChange={handleInputChange}
                         className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       />
