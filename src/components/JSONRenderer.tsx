@@ -239,20 +239,22 @@ type VerdictTone = {
   Icon: typeof CheckCircle2;
 };
 
-// Reads the free-text verdict (e.g. "Tidak Disarankan", "Dipertimbangkan
-// dengan Catatan", "DIREKOMENDASIKAN UNTUK INTERVIEW...") and maps it to a
-// traffic-light tone. Order matters: rejection and conditional phrasing are
-// checked before the plain "disarankan/direkomendasikan" match, since both
-// contain that substring too.
+// Reads the free-text verdict and maps it to a traffic-light tone. The n8n
+// workflow has used a few different sets of wording over time — the current
+// one is the short "Tolak" / "Pertimbangkan" / "Rekomendasi Lanjut" (biodata)
+// and "Disarankan" / "Disarankan dengan Catatan" / "Tidak Disarankan"
+// (psikotes) — so both are matched. Order matters: rejection and conditional
+// phrasing are checked before the plain "disarankan/lanjut" match, since
+// "tidak disarankan" also contains "disarankan".
 function getVerdictTone(text: string): VerdictTone {
   const t = text.toLowerCase();
-  if (/tidak disarankan|tidak direkomendasikan|not recommended/.test(t)) {
+  if (/tidak disarankan|tidak direkomendasikan|not recommended|\btolak\b/.test(t)) {
     return { label: 'Tidak Disarankan', bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700', badge: 'bg-rose-600', Icon: XCircle };
   }
   if (/catatan|reservation|pertimbang/.test(t)) {
     return { label: 'Dengan Catatan', bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', badge: 'bg-amber-500', Icon: AlertTriangle };
   }
-  if (/disarankan|direkomendasikan|recommended/.test(t)) {
+  if (/disarankan|direkomendasikan|recommended|rekomendasi lanjut|\blanjut\b/.test(t)) {
     return { label: 'Disarankan', bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', badge: 'bg-emerald-600', Icon: CheckCircle2 };
   }
   return { label: 'Rekomendasi', bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-700', badge: 'bg-slate-500', Icon: Sparkles };
@@ -318,31 +320,38 @@ export default function JSONRenderer({ data }: JSONRendererProps) {
 
   // Surface the final verdict first, as a prominent colored banner, instead
   // of leaving it buried among the other fields in whatever order the AI
-  // returned them. Two known shapes: ai_psikotes_summary.rekomendasi_final
-  // (an object with a short `status`) and ai_biodata_summary.kesimpulan_rekomendasi
-  // (a single free-text paragraph).
+  // returned them. Known verdict keys: ai_psikotes_summary.rekomendasi_final
+  // and ai_biodata_summary.kesimpulan_rekomendasi — the n8n workflow has
+  // changed the shape of these over time (plain free-text paragraph vs an
+  // object with a short `status` + `alasan`/`alasan_utama`), so both are
+  // handled here regardless of which key name carries which shape.
+  const scoreField = (parsedData as Record<string, any>).total_skor ?? (parsedData as Record<string, any>).penilaian_keseluruhan;
+  const scoreFieldKey = 'total_skor' in (parsedData as object) ? 'total_skor' : 'penilaian_keseluruhan';
+
   let verdictKey: string | null = null;
   let verdictNode: React.ReactNode = null;
   for (const [key, value] of entries) {
     const normalizedKey = key.toLowerCase();
-    if (normalizedKey === 'rekomendasi_final' && value && typeof value === 'object' && 'status' in (value as any)) {
+    if (normalizedKey !== 'rekomendasi_final' && normalizedKey !== 'kesimpulan_rekomendasi') continue;
+
+    if (value && typeof value === 'object' && 'status' in (value as any)) {
       const data = value as Record<string, any>;
       verdictKey = key;
       verdictNode = (
         <VerdictBanner
           statusLabel={String(data.status)}
+          scoreLabel={scoreField !== undefined ? `Skor: ${scoreField}/10` : undefined}
           bodyEntries={Object.entries(data).filter(([k]) => k !== 'status')}
           toneSourceText={String(data.status)}
         />
       );
       break;
     }
-    if (normalizedKey === 'kesimpulan_rekomendasi' && typeof value === 'string') {
+    if (typeof value === 'string') {
       verdictKey = key;
-      const score = (parsedData as Record<string, any>).penilaian_keseluruhan;
       verdictNode = (
         <VerdictBanner
-          scoreLabel={score !== undefined ? `Skor: ${score}/10` : undefined}
+          scoreLabel={scoreField !== undefined ? `Skor: ${scoreField}/10` : undefined}
           bodyText={value}
           toneSourceText={value}
         />
@@ -358,7 +367,7 @@ export default function JSONRenderer({ data }: JSONRendererProps) {
         if (key === verdictKey) return null;
         // The score used inside the verdict banner above is already shown
         // there, so skip rendering it again as its own generic box.
-        if (verdictKey && key.toLowerCase() === 'penilaian_keseluruhan') return null;
+        if (verdictKey && key === scoreFieldKey) return null;
         return (
           <div key={key} className="bg-white/50 rounded-lg p-3 border border-indigo-50">
             <h5 className="font-bold text-indigo-900 mb-1">{getLabel(key)}</h5>
