@@ -54,7 +54,11 @@ export default function EvaluationModal({ isOpen, onClose, candidateId, onSucces
       let filteredTemplates = data || [];
 
       // Filter based on role and department
-      if (userProfile?.role === 'USER_MANAGER') {
+      // Director / Finance Director can also act as the "User" interviewer
+      // (not just approval), so they share the exact same template access as
+      // USER_MANAGER — which, via target_role, naturally excludes HC/HR
+      // templates (those are tagged target_role: 'HR_ADMIN').
+      if (['USER_MANAGER', 'DIRECTOR', 'FINANCE_DIRECTOR'].includes(userProfile?.role || '')) {
         filteredTemplates = filteredTemplates.filter(t => {
           // If target_role is specified and not ALL, it must match USER_MANAGER
           if (t.target_role && t.target_role !== 'ALL' && t.target_role !== 'USER_MANAGER') {

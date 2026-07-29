@@ -14,7 +14,6 @@ interface CandidateRow {
   id: string;
   name: string;
   email: string;
-  phone: string;
   position: string;
   source: string;
   file: File | null;
@@ -83,7 +82,6 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
           id: Math.random().toString(36).substring(7),
           name: '',
           email: '',
-          phone: '',
           position: '',
           source: '',
           file: null,
@@ -132,7 +130,6 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
       id: Math.random().toString(36).substring(7),
       name: '',
       email: '',
-      phone: '',
       position: '',
       source: availableJobSources[0] || '',
       file: null,
@@ -187,7 +184,6 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
         formData.append('webhookUrl', webhookUrl);
         formData.append('candidateName', row.name);
         formData.append('candidateEmail', row.email);
-        formData.append('candidatePhone', row.phone);
         formData.append('candidatePosition', row.position);
         formData.append('sourceInfo', row.source);
         formData.append('fileName', row.file.name);
@@ -271,7 +267,7 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
                   {index + 1}
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 flex-1 w-full">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 flex-1 w-full">
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nama</label>
                     <input
@@ -289,16 +285,6 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
                       value={row.email}
                       onChange={(e) => handleRowChange(row.id, 'email', e.target.value)}
                       placeholder="email@example.com"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No. HP</label>
-                    <input
-                      type="tel"
-                      value={row.phone}
-                      onChange={(e) => handleRowChange(row.id, 'phone', e.target.value)}
-                      placeholder="08123456789"
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
                     />
                   </div>

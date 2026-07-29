@@ -176,7 +176,18 @@ export function extractPhotoUrl(sourceInfo: any): string | null {
 
 export function getEmbedUrl(url: string | null | undefined): string {
   if (!url) return '';
-  
+
+  // PDFs render natively in an iframe in every modern browser — route them
+  // directly instead of through Google Docs Viewer (docs.google.com/gview).
+  // gview frequently fails to fetch storage URLs it can't access/render and
+  // falls back to trying to download its own (empty) response, which shows
+  // up in the browser's Downloads tray as a stray "gview" file every time
+  // the candidate profile page loads a resume/psikotes result.
+  const pathWithoutQuery = url.split('?')[0].split('#')[0];
+  if (pathWithoutQuery.toLowerCase().endsWith('.pdf')) {
+    return url;
+  }
+
   // Check if it's a Google Docs link
   const docsMatch = url.match(/docs\.google\.com\/document\/d\/([^/]+)/);
   if (docsMatch) {

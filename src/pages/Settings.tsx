@@ -12,8 +12,10 @@ import {
   X,
 } from "lucide-react";
 import { useToast } from "../components/ui/use-toast";
+import { usePermissions } from "../hooks/usePermissions";
 
 export default function Settings() {
+  const { isUserManager } = usePermissions();
   const [user, setUser] = useState<User | null>(null);
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -67,7 +69,6 @@ export default function Settings() {
   const [displayPin, setDisplayPin] = useState("Waruna#10"); // Default PIN
   const [newWebhookPin, setNewWebhookPin] = useState("");
   const [newDisplayPin, setNewDisplayPin] = useState("");
-  const [profile, setProfile] = useState<any>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -78,15 +79,6 @@ export default function Settings() {
           console.warn("Settings getUser error:", error.message);
         }
         setUser(user);
-        
-        if (user) {
-          try {
-            const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-            setProfile(data);
-          } catch (err) {
-            console.warn("Settings getProfile error:", err);
-          }
-        }
 
         setFullName(user?.user_metadata.full_name || "");
         setPhone(user?.user_metadata.phone || "");
@@ -608,7 +600,7 @@ export default function Settings() {
                 />
               </div>
 
-              {profile?.role !== "USER_MANAGER" && (
+              {!isUserManager && (
                 <>
                   {/* Webhook Settings Block */}
                   {!showWebhookSettings ? (

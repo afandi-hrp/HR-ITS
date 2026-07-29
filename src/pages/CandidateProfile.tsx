@@ -60,6 +60,8 @@ import {
 import ApplicationForm from "./ApplicationForm";
 import { printElement } from "../lib/print";
 import { formatAsNumberedList, formatLevelAndList } from "../lib/cvSummaryFormat";
+import { useAuth } from "../contexts/AuthContext";
+import { usePermissions } from "../hooks/usePermissions";
 
 const extractMatchPercentage = (
   summary: any,
@@ -125,7 +127,17 @@ export default function CandidateProfile() {
   const [managers, setManagers] = useState<any[]>([]);
   const [selectedManagers, setSelectedManagers] = useState<string[]>([]);
   const [assigning, setAssigning] = useState(false);
-  const [profile, setProfile] = useState<any>(null);
+  const { profile } = useAuth();
+  const {
+    isHrAdmin,
+    isUserManager,
+    isDirector,
+    isFinanceDirector,
+    isApprovalRole,
+    canSeeReferenceCheck,
+    canRunAiAnalysis,
+    hideSalary,
+  } = usePermissions();
   const [fullScreenPdf, setFullScreenPdf] = useState<string | null>(null);
   const [fullScreenData, setFullScreenData] = useState<any | null>(null);
   const [existingEvaluation, setExistingEvaluation] =
@@ -150,8 +162,8 @@ export default function CandidateProfile() {
     if (!candidate || !profile) return;
     setIsUpdatingApproval(true);
     try {
-      const column = profile.role === 'DIRECTOR' ? 'director_status' : 'finance_status';
-      const dateColumn = profile.role === 'DIRECTOR' ? 'director_approval_date' : 'finance_approval_date';
+      const column = isDirector ? 'director_status' : 'finance_status';
+      const dateColumn = isDirector ? 'director_approval_date' : 'finance_approval_date';
       const now = new Date().toISOString();
       
       const { data: activeData } = await supabase
@@ -345,28 +357,6 @@ export default function CandidateProfile() {
     }
   };
 
-  useEffect(() => {
-    const fetchUserAndProfile = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          try {
-            const { data } = await supabase
-              .from("profiles")
-              .select("*")
-              .eq("id", user.id)
-              .single();
-            if (data) setProfile(data);
-          } catch (err) {
-            console.warn("Failed to get profile:", err);
-          }
-        }
-      } catch (err) {
-        console.warn("Failed to get user:", err);
-      }
-    };
-    fetchUserAndProfile();
-  }, []);
 
   const formatValue = (val: any): string => {
     if (val === null || val === undefined || val === "") return "-";
@@ -513,9 +503,9 @@ export default function CandidateProfile() {
 
     // Access Control Check
     if (
-      profile?.role === "USER_MANAGER" &&
+      isUserManager &&
       !candidateData.candidate_assignees?.some(
-        (a: any) => a.user_id === profile.id,
+        (a: any) => a.user_id === profile?.id,
       )
     ) {
       toast({
@@ -543,34 +533,6 @@ export default function CandidateProfile() {
 
     if (data) {
       setManagers(data);
-    }
-  };
-
-  const handleUnassign = async (userId: string) => {
-    if (!id) return;
-    
-    try {
-      const { error } = await supabase
-        .from("candidate_assignees")
-        .delete()
-        .eq("candidate_id", id)
-        .eq("user_id", userId);
-
-      if (error) throw error;
-      
-      toast({
-        title: "Berhasil",
-        description: "Reviewer berhasil dihapus.",
-      });
-      
-      fetchCandidate(id);
-    } catch (error: any) {
-      console.error("Error unassigning:", error);
-      toast({
-        title: "Gagal",
-        description: "Gagal menghapus reviewer.",
-        variant: "destructive",
-      });
     }
   };
 
@@ -1294,7 +1256,6 @@ export default function CandidateProfile() {
 
   const interviewEvaluations = evaluations.filter((e) => e.evaluation_type !== "REFERENCE_CHECK");
   const referenceChecks = evaluations.filter((e) => e.evaluation_type === "REFERENCE_CHECK");
-  const canSeeReferenceCheck = ["HR_ADMIN", "DIRECTOR", "FINANCE_DIRECTOR"].includes(profile?.role);
 
   const getStatusText = (status: string) => {
     switch (status) {
@@ -1356,7 +1317,7 @@ export default function CandidateProfile() {
             </>
           ) : (
             <>
-              {profile?.role !== "USER_MANAGER" && !isArchived && (
+              {!isUserManager && !isArchived && (
                 <>
                   <button
                     onClick={() => setIsApprovalModalOpen(true)}
@@ -1365,16 +1326,21 @@ export default function CandidateProfile() {
                     <UserCheck size={16} />
                     Approval & Review
                   </button>
-                  <button
-                    onClick={() => {
-                      fetchManagers();
-                      setIsAssignModalOpen(true);
-                    }}
-                    className="px-4 py-2 bg-[#3D2C44] text-white rounded-xl hover:bg-[#3D2C44]/90 transition-colors flex items-center gap-2 text-sm font-medium"
-                  >
-                    <Users size={16} />
-                    Assign User
-                  </button>
+                  {!isApprovalRole && (
+                    <button
+                      onClick={() => {
+                        fetchManagers();
+                        setSelectedManagers(
+                          candidate.candidate_assignees?.map((a: any) => a.user_id) || [],
+                        );
+                        setIsAssignModalOpen(true);
+                      }}
+                      className="px-4 py-2 bg-[#3D2C44] text-white rounded-xl hover:bg-[#3D2C44]/90 transition-colors flex items-center gap-2 text-sm font-medium"
+                    >
+                      <Users size={16} />
+                      Assign User
+                    </button>
+                  )}
                   <button
                     onClick={() => setIsEditing(true)}
                     className="px-4 py-2 bg-[#3D2C44] text-white rounded-xl hover:bg-[#3D2C44]/90 transition-colors flex items-center gap-2 text-sm font-medium"
@@ -1386,6 +1352,13 @@ export default function CandidateProfile() {
               )}
             </>
           )}
+          {candidate.director_status === "accepted" &&
+            candidate.finance_status === "accepted" && (
+              <div className="px-4 py-1.5 rounded-full border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <CheckCircle size={16} />
+                Disetujui Direktur &amp; Finance
+              </div>
+            )}
           <div
             className={cn(
               "px-4 py-1.5 rounded-full border text-sm font-bold uppercase tracking-wider",
@@ -1894,7 +1867,7 @@ export default function CandidateProfile() {
                 className="flex items-center gap-4"
                 onClick={(e) => e.stopPropagation()}
               >
-                {profile?.role !== "USER_MANAGER" && !isArchived && (
+                {canRunAiAnalysis && !isArchived && (
                   <button
                     onClick={handleGenerateInterviewQuestions}
                     disabled={isGeneratingInterview}
@@ -1967,7 +1940,7 @@ export default function CandidateProfile() {
                             )}
                           </div>
                         ))}
-                        {profile?.role !== "USER_MANAGER" && !isArchived && (
+                        {!isUserManager && !isArchived && (
                           <div className="flex justify-end mt-4">
                             <button
                               onClick={(e) => {
@@ -2009,7 +1982,7 @@ export default function CandidateProfile() {
                 <FileText className="text-indigo-500" size={20} />
                 Hasil Psikotes Eksternal
               </h3>
-              {profile?.role !== "USER_MANAGER" && !isArchived && (
+              {!isUserManager && !isArchived && (
                 <div>
                   <label className="cursor-pointer px-4 py-2 bg-[#3D2C44]/10 text-[#3D2C44] hover:bg-[#3D2C44]/20 rounded-xl transition-colors flex items-center gap-2 text-sm font-medium">
                     {isUploadingPsikotes ? (
@@ -2033,7 +2006,7 @@ export default function CandidateProfile() {
             {candidate.psikotes_result_url ? (
               <div className="space-y-4">
                 <div className="flex justify-end gap-2">
-                  {profile?.role !== "USER_MANAGER" && !isArchived && (
+                  {canRunAiAnalysis && !isArchived && (
                     <button
                       onClick={handleAnalyzePsikotes}
                       disabled={isAnalyzingPsikotes}
@@ -2109,7 +2082,7 @@ export default function CandidateProfile() {
             ) : linkedData ? (
               <div className="space-y-4">
                 <div className="flex justify-end gap-2">
-                  {profile?.role !== "USER_MANAGER" && !isArchived && (
+                  {canRunAiAnalysis && !isArchived && (
                     <button
                       onClick={handleAnalyzeBiodata}
                       disabled={isAnalyzing}
@@ -2136,7 +2109,7 @@ export default function CandidateProfile() {
                   <div className="relative download-menu-container">
                     <button
                       onClick={() =>
-                        profile?.role !== "USER_MANAGER"
+                        !isUserManager
                           ? setShowDownloadMenu(!showDownloadMenu)
                           : handlePrint("form-only")
                       }
@@ -2152,7 +2125,7 @@ export default function CandidateProfile() {
                         <>
                           <Download size={16} />
                           Unduh PDF
-                          {profile?.role !== "USER_MANAGER" && (
+                          {!isUserManager && (
                             <svg
                               className={`w-4 h-4 ml-1 transition-transform ${showDownloadMenu ? "rotate-180" : ""}`}
                               fill="none"
@@ -2171,7 +2144,7 @@ export default function CandidateProfile() {
                       )}
                     </button>
                     {showDownloadMenu &&
-                      profile?.role !== "USER_MANAGER" &&
+                      !isUserManager &&
                       !isPrinting && (
                         <div className="absolute top-full right-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden z-50">
                           <button
@@ -2190,7 +2163,7 @@ export default function CandidateProfile() {
                       )}
                   </div>
 
-                  {profile?.role !== "USER_MANAGER" && !isArchived && (
+                  {!isUserManager && !isArchived && (
                     <button
                       onClick={handleUnlinkExternalData}
                       disabled={isLinking}
@@ -2219,9 +2192,7 @@ export default function CandidateProfile() {
                     <ApplicationForm
                       readOnly
                       initialData={linkedData}
-                      hideSalary={
-                        forceHideSalary || profile?.role === "USER_MANAGER"
-                      }
+                      hideSalary={forceHideSalary || hideSalary}
                       onlyRemuneration={onlyRemun}
                     />
                   </div>
@@ -2254,7 +2225,7 @@ export default function CandidateProfile() {
                         <span className="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-md">
                           Opsi {idx + 1}
                         </span>
-                        {profile?.role !== "USER_MANAGER" && !isArchived && (
+                        {!isUserManager && !isArchived && (
                           <button
                             onClick={() =>
                               handleLinkExternalData(data.uid_sheet)
@@ -2729,7 +2700,7 @@ export default function CandidateProfile() {
                   <FileText className="text-fuchsia-500" size={20} />
                   Reference Check
                 </h3>
-                {profile?.role === "HR_ADMIN" && !isArchived && (
+                {isHrAdmin && !isArchived && (
                   <button
                     onClick={() => {
                       setExistingReferenceCheck(null);
@@ -2769,7 +2740,7 @@ export default function CandidateProfile() {
                               Tanggal: {rcData?.checked_date ? formatDate(rcData.checked_date) : "-"}
                             </p>
                           </div>
-                          {profile?.role === "HR_ADMIN" &&
+                          {isHrAdmin &&
                             !isArchived &&
                             evalItem.evaluator_id === profile?.id && (
                               <button
@@ -3138,7 +3109,7 @@ export default function CandidateProfile() {
               <ApplicationForm
                 readOnly
                 initialData={fullScreenData}
-                hideSalary={profile?.role === "USER_MANAGER"}
+                hideSalary={hideSalary}
               />
             </div>
           </div>
@@ -3167,125 +3138,67 @@ export default function CandidateProfile() {
                 <h3 className="text-sm font-semibold text-slate-800 mb-3">Status Approval Manajemen</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Director Approval */}
-                  <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-lg">
-                    <div>
-                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Direktur</p>
-                      <div className="flex items-center gap-2">
-                        <span className={cn(
-                          "px-2.5 py-1 text-xs font-bold rounded-md",
-                          candidate.director_status === 'accepted' ? 'bg-emerald-100 text-emerald-700' :
-                          candidate.director_status === 'rejected' ? 'bg-rose-100 text-rose-700' :
-                          candidate.director_status === 'hold' ? 'bg-amber-100 text-amber-700' :
-                          'bg-slate-200 text-slate-700'
-                        )}>
-                          {(candidate.director_status || 'pending').toUpperCase()}
-                        </span>
-                      </div>
+                  <div className="p-4 bg-slate-50 border border-slate-100 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Direktur</p>
+                      <span className={cn(
+                        "px-2.5 py-1 text-xs font-bold rounded-md",
+                        candidate.director_status === 'accepted' ? 'bg-emerald-100 text-emerald-700' :
+                        candidate.director_status === 'rejected' ? 'bg-rose-100 text-rose-700' :
+                        candidate.director_status === 'hold' ? 'bg-amber-100 text-amber-700' :
+                        'bg-slate-200 text-slate-700'
+                      )}>
+                        {(candidate.director_status || 'pending').toUpperCase()}
+                      </span>
                     </div>
-                    {profile?.role === "DIRECTOR" && (
-                      <div className="flex gap-1.5">
-                        <button onClick={() => handleUpdateApproval('accepted')} disabled={isUpdatingApproval} title="Terima" className="p-2 bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors shadow-sm"><ThumbsUp size={16} /></button>
-                        <button onClick={() => handleUpdateApproval('hold')} disabled={isUpdatingApproval} title="Hold" className="p-2 bg-white border border-amber-200 text-amber-600 hover:bg-amber-50 rounded-md transition-colors shadow-sm"><Clock size={16} /></button>
-                        <button onClick={() => handleUpdateApproval('rejected')} disabled={isUpdatingApproval} title="Tolak" className="p-2 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-md transition-colors shadow-sm"><ThumbsDown size={16} /></button>
+                    {isDirector && (
+                      <div className="flex gap-1.5 mt-3 pt-3 border-t border-slate-200">
+                        <button onClick={() => handleUpdateApproval('accepted')} disabled={isUpdatingApproval} className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors shadow-sm text-xs font-semibold disabled:opacity-50"><ThumbsUp size={14} /> Terima</button>
+                        <button onClick={() => handleUpdateApproval('hold')} disabled={isUpdatingApproval} className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-white border border-amber-200 text-amber-600 hover:bg-amber-50 rounded-md transition-colors shadow-sm text-xs font-semibold disabled:opacity-50"><Clock size={14} /> Hold</button>
+                        <button onClick={() => handleUpdateApproval('rejected')} disabled={isUpdatingApproval} className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-md transition-colors shadow-sm text-xs font-semibold disabled:opacity-50"><ThumbsDown size={14} /> Tolak</button>
                       </div>
                     )}
                   </div>
 
                   {/* Finance Director Approval */}
-                  <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-lg">
-                    <div>
-                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Finance Director</p>
-                      <div className="flex items-center gap-2">
-                        <span className={cn(
-                          "px-2.5 py-1 text-xs font-bold rounded-md",
-                          candidate.finance_status === 'accepted' ? 'bg-emerald-100 text-emerald-700' :
-                          candidate.finance_status === 'rejected' ? 'bg-rose-100 text-rose-700' :
-                          'bg-slate-200 text-slate-700'
-                        )}>
-                          {(candidate.finance_status || 'pending').toUpperCase()}
-                        </span>
-                      </div>
+                  <div className="p-4 bg-slate-50 border border-slate-100 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Finance Director</p>
+                      <span className={cn(
+                        "px-2.5 py-1 text-xs font-bold rounded-md",
+                        candidate.finance_status === 'accepted' ? 'bg-emerald-100 text-emerald-700' :
+                        candidate.finance_status === 'rejected' ? 'bg-rose-100 text-rose-700' :
+                        'bg-slate-200 text-slate-700'
+                      )}>
+                        {(candidate.finance_status || 'pending').toUpperCase()}
+                      </span>
                     </div>
-                    {profile?.role === "FINANCE_DIRECTOR" && (
-                      <div className="flex gap-1.5">
-                        <button 
-                          onClick={() => handleUpdateApproval('accepted')} 
-                          disabled={isUpdatingApproval || candidate.director_status !== 'accepted'} 
-                          title={candidate.director_status !== 'accepted' ? "Menunggu Approval Direktur" : "Terima"} 
-                          className="p-2 bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <ThumbsUp size={16} />
-                        </button>
-                        <button 
-                          onClick={() => handleUpdateApproval('rejected')} 
-                          disabled={isUpdatingApproval || candidate.director_status !== 'accepted'} 
-                          title={candidate.director_status !== 'accepted' ? "Menunggu Approval Direktur" : "Tolak"} 
-                          className="p-2 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-md transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <ThumbsDown size={16} />
-                        </button>
+                    {isFinanceDirector && (
+                      <div className="mt-3 pt-3 border-t border-slate-200 space-y-2">
+                        {candidate.director_status !== 'accepted' && (
+                          <p className="text-[11px] text-amber-600 font-medium">Menunggu approval Direktur terlebih dahulu.</p>
+                        )}
+                        <div className="flex gap-1.5">
+                          <button
+                            onClick={() => handleUpdateApproval('accepted')}
+                            disabled={isUpdatingApproval || candidate.director_status !== 'accepted'}
+                            className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors shadow-sm text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <ThumbsUp size={14} /> Terima
+                          </button>
+                          <button
+                            onClick={() => handleUpdateApproval('rejected')}
+                            disabled={isUpdatingApproval || candidate.director_status !== 'accepted'}
+                            className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-md transition-colors shadow-sm text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <ThumbsDown size={14} /> Tolak
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
                 </div>
               </div>
-
-              {candidate.candidate_assignees &&
-              candidate.candidate_assignees.length > 0 ? (
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex flex-col sm:flex-row sm:items-start gap-4 shadow-sm">
-                  <div className="flex items-center gap-2 text-slate-700 shrink-0 mt-1">
-                    <Users size={18} className="text-slate-400" />
-                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">
-                      Di-review oleh:
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {candidate.candidate_assignees.map((a: any) => {
-                      let roleDisplay = "User Manager";
-                      if (a.profiles?.role === "DIRECTOR") roleDisplay = "Director";
-                      if (a.profiles?.role === "FINANCE_DIRECTOR") roleDisplay = "Finance Director";
-                      if (a.profiles?.department) roleDisplay = a.profiles.department;
-                      return (
-                        <div key={a.user_id} className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 shadow-sm">
-                          {a.profiles?.full_name} <span className="text-slate-400 font-normal text-xs ml-0.5">({roleDisplay})</span>
-                          {profile?.role !== "USER_MANAGER" && !isArchived && (
-                            <button 
-                              onClick={() => handleUnassign(a.user_id)}
-                              className="ml-1.5 p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-500 rounded-md transition-colors"
-                              title="Hapus dari review"
-                            >
-                              <X size={14} />
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : candidate.assigned_history &&
-                candidate.assigned_history.length > 0 ? (
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex flex-col sm:flex-row sm:items-start gap-4 shadow-sm opacity-80">
-                  <div className="flex items-center gap-2 text-slate-500 shrink-0 mt-1">
-                    <Users size={18} className="text-slate-400" />
-                    <span className="text-xs font-semibold uppercase tracking-wider">
-                      Pernah di-review oleh:
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {candidate.assigned_history.map((h: any, idx: number) => (
-                      <div key={idx} className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-500 shadow-sm">
-                        {h.name}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-slate-50 border border-slate-200 border-dashed rounded-lg p-8 flex flex-col items-center justify-center text-center shadow-sm">
-                  <Users size={32} className="text-slate-300 mb-3" />
-                  <p className="text-sm font-medium text-slate-600">Belum ada reviewer</p>
-                  <p className="text-xs text-slate-400 mt-1">Kandidat ini belum di-assign ke user manapun.</p>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -3306,69 +3219,156 @@ export default function CandidateProfile() {
               </button>
             </div>
 
-            <div className="p-6 space-y-4 overflow-y-auto">
+            <div className="p-6 space-y-6 overflow-y-auto">
               <p className="text-sm text-slate-600">
-                Pilih User Manager untuk me-review kandidat ini. User yang
+                Pilih siapa saja yang akan me-review kandidat ini. User yang
                 dipilih akan dapat melihat profil kandidat ini di halaman
                 mereka.
               </p>
 
-              <div className="space-y-3">
-                <label className="block text-sm font-bold text-slate-700">
-                  Assign To (PIC)
-                </label>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {selectedManagers.map((userId) => {
-                    const user = managers.find((u) => u.id === userId);
-                    return (
-                      <div
-                        key={userId}
-                        className="flex items-center gap-1 bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg text-sm font-medium border border-indigo-100"
-                      >
-                        <span>{user?.full_name || "Unknown User"}</span>
-                        <button
-                          onClick={() =>
-                            setSelectedManagers((prev) =>
-                              prev.filter((id) => id !== userId),
-                            )
-                          }
-                          className="p-0.5 hover:bg-indigo-200 rounded-md transition-colors ml-1"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
+              {(() => {
+                const picOptions = managers.filter(
+                  (m) => m.role !== "DIRECTOR" && m.role !== "FINANCE_DIRECTOR",
+                );
+                const directorOptions = managers.filter(
+                  (m) => m.role === "DIRECTOR",
+                );
+                const financeOptions = managers.filter(
+                  (m) => m.role === "FINANCE_DIRECTOR",
+                );
+                const selectedPicIds = selectedManagers.filter((mid) =>
+                  picOptions.some((m) => m.id === mid),
+                );
+                const selectedDirectorId =
+                  selectedManagers.find((mid) =>
+                    directorOptions.some((m) => m.id === mid),
+                  ) || "";
+                const selectedFinanceId =
+                  selectedManagers.find((mid) =>
+                    financeOptions.some((m) => m.id === mid),
+                  ) || "";
+
+                const replaceSingleSelection = (
+                  options: any[],
+                  newId: string,
+                ) => {
+                  setSelectedManagers((prev) => {
+                    const withoutRole = prev.filter(
+                      (mid) => !options.some((m) => m.id === mid),
                     );
-                  })}
-                </div>
-                <select
-                  value=""
-                  onChange={(e) => {
-                    if (
-                      e.target.value &&
-                      !selectedManagers.includes(e.target.value)
-                    ) {
-                      setSelectedManagers((prev) => [...prev, e.target.value]);
-                    }
-                  }}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                >
-                  <option value="">-- Tambah PIC --</option>
-                  {managers
-                    .filter((m) => !selectedManagers.includes(m.id))
-                    .map((manager) => {
-                      let roleDisplay = "User Manager";
-                      if (manager.role === "DIRECTOR") roleDisplay = "Director";
-                      if (manager.role === "FINANCE_DIRECTOR") roleDisplay = "Finance Director";
-                      if (manager.department) roleDisplay = manager.department;
-                      
-                      return (
-                        <option key={manager.id} value={manager.id}>
-                          {manager.full_name} ({roleDisplay})
-                        </option>
-                      );
-                    })}
-                </select>
-              </div>
+                    return newId ? [...withoutRole, newId] : withoutRole;
+                  });
+                };
+
+                return (
+                  <>
+                    {/* PIC User Manager */}
+                    <div className="space-y-3">
+                      <label className="block text-sm font-bold text-slate-700">
+                        PIC User Manager
+                      </label>
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {selectedPicIds.map((userId) => {
+                          const user = managers.find((u) => u.id === userId);
+                          return (
+                            <div
+                              key={userId}
+                              className="flex items-center gap-1 bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg text-sm font-medium border border-indigo-100"
+                            >
+                              <span>{user?.full_name || "Unknown User"}</span>
+                              <button
+                                onClick={() =>
+                                  setSelectedManagers((prev) =>
+                                    prev.filter((id) => id !== userId),
+                                  )
+                                }
+                                className="p-0.5 hover:bg-indigo-200 rounded-md transition-colors ml-1"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <select
+                        value=""
+                        onChange={(e) => {
+                          if (
+                            e.target.value &&
+                            !selectedManagers.includes(e.target.value)
+                          ) {
+                            setSelectedManagers((prev) => [
+                              ...prev,
+                              e.target.value,
+                            ]);
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      >
+                        <option value="">-- Tambah PIC --</option>
+                        {picOptions
+                          .filter((m) => !selectedManagers.includes(m.id))
+                          .map((manager) => (
+                            <option key={manager.id} value={manager.id}>
+                              {manager.full_name}{" "}
+                              {manager.department
+                                ? `(${manager.department})`
+                                : ""}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+
+                    {/* Direktur */}
+                    <div className="space-y-3">
+                      <label className="block text-sm font-bold text-slate-700">
+                        Direktur
+                      </label>
+                      <select
+                        value={selectedDirectorId}
+                        onChange={(e) =>
+                          replaceSingleSelection(
+                            directorOptions,
+                            e.target.value,
+                          )
+                        }
+                        className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      >
+                        <option value="">-- Belum ditentukan --</option>
+                        {directorOptions.map((manager) => (
+                          <option key={manager.id} value={manager.id}>
+                            {manager.full_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Direktur Finance */}
+                    <div className="space-y-3">
+                      <label className="block text-sm font-bold text-slate-700">
+                        Direktur Finance
+                      </label>
+                      <select
+                        value={selectedFinanceId}
+                        onChange={(e) =>
+                          replaceSingleSelection(
+                            financeOptions,
+                            e.target.value,
+                          )
+                        }
+                        className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      >
+                        <option value="">-- Belum ditentukan --</option>
+                        {financeOptions.map((manager) => (
+                          <option key={manager.id} value={manager.id}>
+                            {manager.full_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
             <div className="p-6 border-t border-slate-200 bg-slate-50 flex justify-end gap-3 shrink-0">

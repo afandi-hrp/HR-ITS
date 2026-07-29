@@ -19,8 +19,10 @@ import {
 import { useToast } from "../components/ui/use-toast";
 import { printElement } from "../lib/print";
 import ApplicationForm from "./ApplicationForm";
+import { usePermissions } from "../hooks/usePermissions";
 
 export default function ExternalData() {
+  const { hideSalary } = usePermissions();
   const [data, setData] = useState<any[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -29,7 +31,6 @@ export default function ExternalData() {
   const [webhookDeleteUrl, setWebhookDeleteUrl] = useState("");
   const [showConfirmDelete, setShowConfirmDelete] = useState<any | null>(null);
   const [siteSettings, setSiteSettings] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
   const componentRef = useRef<HTMLDivElement>(null);
 
   // Pagination & Search States
@@ -58,26 +59,7 @@ export default function ExternalData() {
   useEffect(() => {
     loadWebhooks();
     loadSiteSettings();
-    loadProfile();
   }, []);
-
-  const loadProfile = async () => {
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        const { data } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", user.id)
-          .single();
-        if (data) setProfile(data);
-      }
-    } catch (err) {
-      console.error("Error loading profile:", err);
-    }
-  };
 
   useEffect(() => {
     fetchData();
@@ -841,7 +823,7 @@ export default function ExternalData() {
                 <ApplicationForm
                   readOnly
                   initialData={previewData}
-                  hideSalary={profile?.role === "USER_MANAGER"}
+                  hideSalary={hideSalary}
                 />
               </div>
             </div>

@@ -26,6 +26,7 @@ import { User } from '@supabase/supabase-js';
 import { SiteSettings } from '../types';
 import { motion } from 'motion/react';
 import NotificationPanel from './NotificationPanel';
+import { usePermissions } from '../hooks/usePermissions';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -34,16 +35,15 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children, user }: DashboardLayoutProps) {
 
-
+  const { isUserManager, isApprovalRole } = usePermissions();
   const [isHovered, setIsHovered] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const showFullSidebar = isMobileMenuOpen || isHovered;
   const [settings, setSettings] = useState<SiteSettings | null>(null);
-  const [profile, setProfile] = useState<any>(null);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const location = useLocation();
   const navigate = useNavigate();
-  
+
   // Extract current path from location (e.g., "/dashboard" -> "dashboard")
   const currentPath = location.pathname.substring(1) || 'dashboard';
 
@@ -57,19 +57,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
       }
     };
     fetchData();
-    
-    if (user) {
-      const fetchProfile = async () => {
-        try {
-          const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-          if (data) setProfile(data);
-        } catch (err) {
-          console.warn('Failed to get profile:', err);
-        }
-      };
-      fetchProfile();
-    }
-  }, [user]);
+  }, []);
 
   // Auto-logout after 30 minutes of inactivity
   useEffect(() => {
@@ -147,7 +135,16 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
     { id: 'settings', label: 'Pengaturan', icon: Settings }
   ];
 
-  const navItems = profile?.role === 'USER_MANAGER' ? userManagerNavItems : allNavItems;
+  const approvalRoleNavItems = [
+    { id: 'screening', label: 'Approval Kandidat', icon: Users },
+    { id: 'settings', label: 'Pengaturan', icon: Settings }
+  ];
+
+  const navItems = isUserManager
+    ? userManagerNavItems
+    : isApprovalRole
+      ? approvalRoleNavItems
+      : allNavItems;
 
   // Initialize expanded groups based on current path
   useEffect(() => {

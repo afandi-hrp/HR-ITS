@@ -228,7 +228,11 @@ export default function UserManagement() {
                             ? "bg-purple-100 text-purple-700"
                             : user.role === "USER_MANAGER"
                               ? "bg-blue-100 text-blue-700"
-                              : "bg-slate-100 text-slate-700"
+                              : user.role === "DIRECTOR"
+                                ? "bg-amber-100 text-amber-700"
+                                : user.role === "FINANCE_DIRECTOR"
+                                  ? "bg-emerald-100 text-emerald-700"
+                                  : "bg-slate-100 text-slate-700"
                         }`}
                       >
                         <Shield className="w-3.5 h-3.5" />
@@ -236,7 +240,11 @@ export default function UserManagement() {
                           ? "HR Admin"
                           : user.role === "USER_MANAGER"
                             ? "User Manager"
-                            : user.role || "User"}
+                            : user.role === "DIRECTOR"
+                              ? "Direktur"
+                              : user.role === "FINANCE_DIRECTOR"
+                                ? "Direktur Finance"
+                                : user.role || "User"}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -301,6 +309,8 @@ export default function UserManagement() {
                     User Manager (Lintas Divisi)
                   </option>
                   <option value="HR_ADMIN">HR Admin</option>
+                  <option value="DIRECTOR">Direktur</option>
+                  <option value="FINANCE_DIRECTOR">Direktur Finance</option>
                 </select>
               </div>
 

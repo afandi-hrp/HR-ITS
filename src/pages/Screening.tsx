@@ -42,6 +42,8 @@ import {
 } from "lucide-react";
 import { cn, formatDate, fetchWithRetry, extractPhotoUrl } from "../lib/utils";
 import { useToast } from "../components/ui/use-toast";
+import { useAuth } from "../contexts/AuthContext";
+import { usePermissions } from "../hooks/usePermissions";
 
 import {
   Popover,
@@ -67,6 +69,11 @@ const PIPELINE_STATUS_OPTIONS = [
   "Rejected",
   "Hired",
 ];
+
+// Grouping/filtering happens client-side across the whole filtered result set
+// (see fetchCandidates), so this is a hard cap rather than a paged .range().
+// SCREENING_TRUNCATION_WARNING below fires when this cap is actually hit.
+const SCREENING_FETCH_LIMIT = 2000;
 
 export default function Screening() {
   const location = useLocation();
@@ -210,30 +217,9 @@ export default function Screening() {
   const [sortOption, setSortOption] = useState<"skor" | "interview" | "psikotes" | "terbaru">("terbaru");
 
   const [totalItems, setTotalItems] = useState(0);
-  const [profile, setProfile] = useState<any>(null);
-
-  useEffect(() => {
-    const fetchUserAndProfile = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          try {
-            const { data } = await supabase
-              .from("profiles")
-              .select("*")
-              .eq("id", user.id)
-              .single();
-            if (data) setProfile(data);
-          } catch (err) {
-            console.warn("Failed to get profile:", err);
-          }
-        }
-      } catch (err) {
-        console.warn("Failed to get user:", err);
-      }
-    };
-    fetchUserAndProfile();
-  }, []);
+  const [isDataTruncated, setIsDataTruncated] = useState(false);
+  const { profile } = useAuth();
+  const { isUserManager, isApprovalRole, isRestrictedScreeningRole } = usePermissions();
 
   const isFirstRender = React.useRef(true);
   useEffect(() => {
@@ -257,7 +243,7 @@ export default function Screening() {
     let selectQuery =
       `*, psikotes_schedules(${scheduleColumns}), interview_schedules(${scheduleColumns}), candidate_evaluations(evaluation_type), external_data(raw_data), candidate_assignees(user_id, profiles(full_name))`;
 
-    if (profile.role === "USER_MANAGER" || profile.role === "DIRECTOR" || profile.role === "FINANCE_DIRECTOR") {
+    if (isRestrictedScreeningRole) {
       selectQuery =
         `*, psikotes_schedules(${scheduleColumns}), interview_schedules(${scheduleColumns}), candidate_evaluations(evaluation_type), external_data(raw_data), filter_assignees:candidate_assignees!inner(user_id), candidate_assignees(user_id, profiles(full_name))`;
     }
@@ -267,7 +253,7 @@ export default function Screening() {
       .select(selectQuery, { count: "exact" })
       .order("updated_at", { ascending: false });
 
-    if (profile.role === "USER_MANAGER" || profile.role === "DIRECTOR" || profile.role === "FINANCE_DIRECTOR") {
+    if (isRestrictedScreeningRole) {
       query = query.eq("filter_assignees.user_id", profile.id);
     }
 
@@ -294,7 +280,7 @@ export default function Screening() {
     // const to = from + itemsPerPage - 1;
     // query = query.range(from, to);
 
-    let { data, count, error } = await query.limit(2000);
+    let { data, count, error } = await query.limit(SCREENING_FETCH_LIMIT);
     let typedData = data as any[] | null;
 
     // Handle array case if relationship returns an array
@@ -341,6 +327,7 @@ export default function Screening() {
     } else {
       setCandidates(typedData || []);
       setTotalItems(count || 0);
+      setIsDataTruncated((typedData?.length || 0) >= SCREENING_FETCH_LIMIT);
       // Expand all groups by default
       const positions = Array.from(
         new Set((typedData || []).map((c) => c.position)),
@@ -982,7 +969,7 @@ export default function Screening() {
         <>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
             <div className="space-y-1">
-              {profile?.role === "USER_MANAGER" && profile?.full_name && (
+              {isRestrictedScreeningRole && profile?.full_name && (
                 <div className="text-xl font-semibold text-[#3D2C44]/80 mb-1 flex items-center flex-wrap gap-2">
                   <span className="tracking-tight">
                     {(() => {
@@ -1008,12 +995,18 @@ export default function Screening() {
                 </div>
               )}
               <h1 className="text-4xl font-extrabold tracking-tight text-[#3D2C44]">
-                {profile?.role === "USER_MANAGER" ? "Kandidat Saya" : "Screening Awal"}
+                {isUserManager
+                  ? "Kandidat Saya"
+                  : isApprovalRole
+                    ? "Approval Kandidat"
+                    : "Screening Awal"}
               </h1>
               <p className="text-sm font-medium text-[#3D2C44]/70 max-w-xl">
-                {profile?.role === "USER_MANAGER"
+                {isUserManager
                   ? "Tinjau dan kelola kandidat yang ditugaskan kepada Anda."
-                  : "Kelola dan tinjau kandidat berdasarkan lowongan."}
+                  : isApprovalRole
+                    ? "Tinjau dan setujui kandidat yang membutuhkan approval Anda."
+                    : "Kelola dan tinjau kandidat berdasarkan lowongan."}
               </p>
             </div>
           </div>
@@ -1105,6 +1098,15 @@ export default function Screening() {
             </div>
             </div>
           </div>
+
+          {isDataTruncated && (
+            <div className="flex items-center gap-2.5 bg-amber-50 border border-amber-200 text-amber-800 text-sm font-medium rounded-xl px-4 py-3 mb-6">
+              <AlertTriangle size={18} className="shrink-0" />
+              <span>
+                Menampilkan {SCREENING_FETCH_LIMIT.toLocaleString("id-ID")} kandidat pertama dari hasil filter saat ini — mungkin ada data yang belum ditampilkan. Persempit rentang tanggal atau posisi untuk melihat semuanya.
+              </span>
+            </div>
+          )}
 
           <div className="flex flex-col gap-4">
              {paginatedPositions.length === 0 && !loading ? (
@@ -1248,7 +1250,7 @@ export default function Screening() {
                 </div>
 
                 {/* Status Filter */}
-                {profile?.role !== "USER_MANAGER" && (
+                {!isRestrictedScreeningRole && (
                 <div>
                   <button
                     onClick={() => setIsStatusExpanded(!isStatusExpanded)}
@@ -1491,7 +1493,7 @@ export default function Screening() {
                           
                           {/* Buttons */}
                           <div className="flex flex-col gap-2 mt-auto">
-                            {profile?.role !== "USER_MANAGER" && (
+                            {!isRestrictedScreeningRole && (
                               <Popover>
                                 <PopoverTrigger
                                   render={
@@ -1527,7 +1529,7 @@ export default function Screening() {
                               </Popover>
                             )}
 
-                            {profile?.role !== "USER_MANAGER" && (
+                            {!isRestrictedScreeningRole && (
                             <Popover>
                               <PopoverTrigger
                                 render={

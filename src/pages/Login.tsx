@@ -130,10 +130,10 @@ export default function Login() {
   const sidebarText = settings?.sidebar_text || "Waruna";
 
   return (
-    <div className="h-screen w-full flex items-center justify-center p-0 sm:p-6 overflow-hidden bg-transparent">
+    <div className="h-screen w-full flex items-center justify-center p-4 sm:p-6 overflow-hidden bg-transparent">
       <div
         className={cn(
-          "w-full h-full sm:h-auto sm:max-h-[94vh] max-w-5xl backdrop-blur-2xl bg-white/25 border border-white/50 sm:rounded-3xl shadow-2xl overflow-hidden flex transition-all duration-700 ease-out",
+          "w-full h-full sm:h-auto sm:max-h-[94vh] max-w-5xl backdrop-blur-2xl bg-white/25 border border-white/70 rounded-3xl shadow-2xl overflow-hidden flex transition-all duration-700 ease-out",
           !isLoaded ? "opacity-0 scale-95" : "opacity-100 scale-100",
         )}
       >
