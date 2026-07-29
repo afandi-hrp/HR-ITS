@@ -18,7 +18,7 @@ import { usePermissions } from "../hooks/usePermissions";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function Settings() {
-  const { isUserManager } = usePermissions();
+  const { isUserManager, isApprovalRole } = usePermissions();
   const { profile } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [fullName, setFullName] = useState("");
@@ -616,15 +616,12 @@ export default function Settings() {
                     disabled
                     className="block w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 cursor-not-allowed"
                   />
-                  <p className="text-xs text-slate-400 mt-1.5">
-                    Dikelola oleh HR Admin, tidak bisa diubah sendiri.
-                  </p>
                 </div>
               )}
             </div>
           </div>
 
-          {!isUserManager && (
+          {!isUserManager && !isApprovalRole && (
             <>
               {/* Webhook Settings Card */}
               <div className="bg-white/70 backdrop-blur-md p-8 rounded-2xl border border-slate-200 shadow-sm">
