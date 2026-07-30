@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Lightbulb, TrendingUp, Sparkles, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
+import { BookOpen, Lightbulb, TrendingUp, Sparkles, CheckCircle2, XCircle, AlertTriangle, Compass } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { findCategoryDefinition } from '../lib/psikotesCategoryReference';
 import { cn } from '../lib/utils';
@@ -299,6 +299,63 @@ function VerdictBanner({
   );
 }
 
+function CrossPositionRecommendationCard({ data }: { data: Record<string, any> }) {
+  const posisiPalingCocok = data.posisi_paling_cocok;
+  const isCurrentPositionBest = data.apakah_posisi_dilamar_adalah_yang_paling_cocok;
+  const alasan = data.alasan_posisi_paling_cocok;
+  const alternatifLain = Array.isArray(data.alternatif_lain) ? data.alternatif_lain : [];
+
+  return (
+    <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <Compass size={18} className="text-violet-600" />
+        <h5 className="font-bold text-violet-900">Rekomendasi Lintas Lowongan</h5>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {posisiPalingCocok && (
+          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-violet-600 text-white">
+            Posisi Paling Cocok: {String(posisiPalingCocok)}
+          </span>
+        )}
+        {typeof isCurrentPositionBest === 'boolean' && (
+          <span
+            className={cn(
+              'text-xs font-bold px-2.5 py-1 rounded-full border',
+              isCurrentPositionBest
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : 'bg-amber-50 text-amber-700 border-amber-200',
+            )}
+          >
+            {isCurrentPositionBest
+              ? 'Posisi dilamar sudah paling cocok'
+              : 'Posisi dilamar bukan yang paling cocok'}
+          </span>
+        )}
+      </div>
+      {alasan && <p className="text-sm text-violet-900/80 leading-snug">{String(alasan)}</p>}
+      <div>
+        <p className="text-xs font-bold text-violet-700 uppercase tracking-wide mb-1">
+          Alternatif Lain
+        </p>
+        {alternatifLain.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {alternatifLain.map((alt, i) => (
+              <span
+                key={i}
+                className="text-xs font-medium px-2.5 py-1 rounded-full bg-white text-violet-700 border border-violet-200"
+              >
+                {String(alt)}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <span className="text-sm text-violet-400 italic">Tidak ada alternatif lain</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function JSONRenderer({ data }: JSONRendererProps) {
   if (!data) return null;
 
@@ -330,41 +387,53 @@ export default function JSONRenderer({ data }: JSONRendererProps) {
 
   let verdictKey: string | null = null;
   let verdictNode: React.ReactNode = null;
+  // ai_biodata_summary.rekomendasi_lintas_lowongan — shown directly under the
+  // verdict banner since it's a follow-up to the same hiring decision.
+  let crossPositionKey: string | null = null;
+  let crossPositionNode: React.ReactNode = null;
+
   for (const [key, value] of entries) {
     const normalizedKey = key.toLowerCase();
-    if (normalizedKey !== 'rekomendasi_final' && normalizedKey !== 'kesimpulan_rekomendasi') continue;
 
-    if (value && typeof value === 'object' && 'status' in (value as any)) {
-      const data = value as Record<string, any>;
-      verdictKey = key;
-      verdictNode = (
-        <VerdictBanner
-          statusLabel={String(data.status)}
-          scoreLabel={scoreField !== undefined ? `Skor: ${scoreField}/10` : undefined}
-          bodyEntries={Object.entries(data).filter(([k]) => k !== 'status')}
-          toneSourceText={String(data.status)}
-        />
-      );
-      break;
+    if (
+      !verdictNode &&
+      (normalizedKey === 'rekomendasi_final' || normalizedKey === 'kesimpulan_rekomendasi')
+    ) {
+      if (value && typeof value === 'object' && 'status' in (value as any)) {
+        const data = value as Record<string, any>;
+        verdictKey = key;
+        verdictNode = (
+          <VerdictBanner
+            statusLabel={String(data.status)}
+            scoreLabel={scoreField !== undefined ? `Skor: ${scoreField}/10` : undefined}
+            bodyEntries={Object.entries(data).filter(([k]) => k !== 'status')}
+            toneSourceText={String(data.status)}
+          />
+        );
+      } else if (typeof value === 'string') {
+        verdictKey = key;
+        verdictNode = (
+          <VerdictBanner
+            scoreLabel={scoreField !== undefined ? `Skor: ${scoreField}/10` : undefined}
+            bodyText={value}
+            toneSourceText={value}
+          />
+        );
+      }
     }
-    if (typeof value === 'string') {
-      verdictKey = key;
-      verdictNode = (
-        <VerdictBanner
-          scoreLabel={scoreField !== undefined ? `Skor: ${scoreField}/10` : undefined}
-          bodyText={value}
-          toneSourceText={value}
-        />
-      );
-      break;
+
+    if (!crossPositionNode && normalizedKey === 'rekomendasi_lintas_lowongan' && value && typeof value === 'object') {
+      crossPositionKey = key;
+      crossPositionNode = <CrossPositionRecommendationCard data={value as Record<string, any>} />;
     }
   }
 
   return (
     <div className="space-y-3">
       {verdictNode}
+      {crossPositionNode}
       {entries.map(([key, value]) => {
-        if (key === verdictKey) return null;
+        if (key === verdictKey || key === crossPositionKey) return null;
         // The score used inside the verdict banner above is already shown
         // there, so skip rendering it again as its own generic box.
         if (verdictKey && key === scoreFieldKey) return null;

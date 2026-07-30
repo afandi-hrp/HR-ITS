@@ -1026,7 +1026,7 @@ export default function Screening() {
                   />
                 </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex flex-wrap items-center gap-2">
               <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 max-w-[150px]">
                 <Filter size={16} className="text-slate-400 shrink-0" />
                 <select
@@ -1131,7 +1131,7 @@ export default function Screening() {
                    <div 
                      key={position}
                      onClick={() => { setSelectedPosition(position); setCurrentPage(1); setSearch(""); }}
-                     className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4 group"
+                     className="bg-white border border-amber-300 rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-amber-400 transition-all cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4 group"
                    >
                      <div className="space-y-2">
                        <h3 className="text-xl font-bold text-slate-900 underline decoration-slate-300 decoration-2 underline-offset-4 group-hover:text-[#3D2C44] transition-colors">{position}</h3>
@@ -1335,7 +1335,7 @@ export default function Screening() {
                       key={candidate.id}
                       id={`candidate-${candidate.id}`}
                       className={cn(
-                        "group bg-white/70 backdrop-blur-md border border-[#3D2C44]/20 rounded-2xl overflow-hidden hover:border-[#3D2C44]/50 hover:shadow-xl transition-all duration-300 flex flex-col",
+                        "group bg-white/70 backdrop-blur-md border border-amber-300 rounded-2xl overflow-hidden hover:border-amber-400 hover:shadow-xl transition-all duration-300 flex flex-col",
                         blinkingId === candidate.id
                           ? "animate-pulse ring-2 ring-indigo-500 ring-inset"
                           : ""

@@ -1275,7 +1275,7 @@ export default function CandidateProfile() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate(-1)}
@@ -1292,7 +1292,7 @@ export default function CandidateProfile() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {isEditing ? (
             <>
               <button
@@ -1539,7 +1539,7 @@ export default function CandidateProfile() {
           </div>
 
           {candidate.ai_cv_analysis && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 overflow-hidden">
+            <div className="bg-white rounded-2xl border border-slate-200 border-l-4 border-l-indigo-300 shadow-sm p-6 overflow-hidden">
               <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2 mb-4">
                 <UserCheck className="text-indigo-500" size={20} />
                 Analisis CV (AI / Manusia)
@@ -1582,7 +1582,7 @@ export default function CandidateProfile() {
           )}
 
           {candidate.career_fit_recommendation && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 overflow-hidden">
+            <div className="bg-white rounded-2xl border border-slate-200 border-l-4 border-l-sky-300 shadow-sm p-6 overflow-hidden">
               <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2 mb-4">
                 <Briefcase className="text-sky-500" size={20} />
                 Rekomendasi Kecocokan Karier (Career Fit)
@@ -1597,7 +1597,7 @@ export default function CandidateProfile() {
         {/* Right Column - Details */}
         <div className="lg:col-span-2 space-y-6">
           {/* Experience & Education */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <div className="bg-white rounded-2xl border border-slate-200 border-l-4 border-l-sky-300 shadow-sm p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
                 <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
@@ -1675,7 +1675,7 @@ export default function CandidateProfile() {
           </div>
 
           {/* Assessment Details */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <div className="bg-white rounded-2xl border border-slate-200 border-l-4 border-l-sky-300 shadow-sm p-6">
             <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
               <FileText className="text-indigo-500" size={20} />
               CV Summary
@@ -1769,7 +1769,7 @@ export default function CandidateProfile() {
 
           {/* AI Biodata Summary Section */}
           {candidate.ai_biodata_summary && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6">
+            <div className="bg-white rounded-2xl border border-slate-200 border-l-4 border-l-indigo-300 shadow-sm overflow-hidden mb-6">
               <div
                 className="flex items-center justify-between p-6 cursor-pointer hover:bg-slate-50 transition-colors"
                 onClick={() =>
@@ -1796,7 +1796,7 @@ export default function CandidateProfile() {
 
           {/* AI Psikotes Summary Section */}
           {candidate.ai_psikotes_summary && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6">
+            <div className="bg-white rounded-2xl border border-slate-200 border-l-4 border-l-indigo-300 shadow-sm overflow-hidden mb-6">
               <div
                 className="flex items-center justify-between p-6 cursor-pointer hover:bg-slate-50 transition-colors flex-wrap gap-2"
                 onClick={() =>
@@ -1848,7 +1848,7 @@ export default function CandidateProfile() {
           )}
 
           {/* AI Interview Questions Section */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6">
+          <div className="bg-white rounded-2xl border border-slate-200 border-l-4 border-l-indigo-300 shadow-sm overflow-hidden mb-6">
             <div
               className="flex items-center justify-between p-6 cursor-pointer hover:bg-slate-50 transition-colors"
               onClick={() =>
@@ -2000,7 +2000,7 @@ export default function CandidateProfile() {
           </div>
 
           {/* Psikotes Eksternal */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <div className="bg-white rounded-2xl border border-slate-200 border-l-4 border-l-sky-300 shadow-sm p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                 <FileText className="text-indigo-500" size={20} />
@@ -2093,7 +2093,7 @@ export default function CandidateProfile() {
           </div>
 
           {/* External Data Integration */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <div className="bg-white rounded-2xl border border-slate-200 border-l-4 border-l-sky-300 shadow-sm p-6">
             <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
               <Database className="text-indigo-500" size={20} />
               Data Eksternal
@@ -2354,7 +2354,7 @@ export default function CandidateProfile() {
           </div>
 
           {/* Internal Notes */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <div className="bg-white rounded-2xl border border-slate-200 border-l-4 border-l-slate-300 shadow-sm p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                 <FileText className="text-indigo-500" size={20} />
@@ -2447,7 +2447,7 @@ export default function CandidateProfile() {
           </div>
 
           {/* Interview Evaluations */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <div className="bg-white rounded-2xl border border-slate-200 border-l-4 border-l-fuchsia-300 shadow-sm p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                 <FileText className="text-indigo-500" size={20} />
@@ -2718,7 +2718,7 @@ export default function CandidateProfile() {
 
           {/* Reference Check */}
           {canSeeReferenceCheck && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+            <div className="bg-white rounded-2xl border border-slate-200 border-l-4 border-l-fuchsia-300 shadow-sm p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                   <FileText className="text-fuchsia-500" size={20} />
@@ -2811,7 +2811,7 @@ export default function CandidateProfile() {
           )}
 
           {/* Schedules */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <div className="bg-white rounded-2xl border border-slate-200 border-l-4 border-l-amber-300 shadow-sm p-6">
             <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
               <CalendarIcon className="text-indigo-500" size={20} />
               Jadwal & Status

@@ -1428,14 +1428,14 @@ export default function ApplicationForm({
                   <div className="inline-block w-full">
                     <h1
                       id="application-form-title"
-                      className="text-[13px] sm:text-lg md:text-xl font-bold tracking-wide uppercase leading-tight whitespace-nowrap"
+                      className="text-[13px] sm:text-lg md:text-xl font-bold tracking-wide uppercase leading-tight"
                     >
                       Formulir Data Pelamar Kerja
                     </h1>
                     <div className="h-px bg-white/60 w-full my-1 sm:my-1.5"></div>
                     <span
                       id="application-form-subtitle"
-                      className="font-normal italic text-[10px] sm:text-sm opacity-90 leading-tight block whitespace-nowrap"
+                      className="font-normal italic text-[10px] sm:text-sm opacity-90 leading-tight block"
                     >
                       Job Applicant Information Form
                     </span>
@@ -3400,19 +3400,25 @@ export default function ApplicationForm({
                           {formData.work_experience.map((exp, index) => (
                             <div
                               key={index}
-                              className="border border-slate-200 rounded-xl overflow-x-auto print:overflow-visible relative"
+                              className="border border-slate-200 rounded-xl overflow-hidden print:overflow-visible"
                             >
                               {formData.work_experience.length > 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => removeWorkExperience(index)}
-                                  className="absolute top-2 right-2 p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors z-10"
-                                  title="Hapus riwayat pekerjaan ini"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
+                                <div className="flex items-center justify-between px-4 py-2 bg-slate-50 border-b border-slate-200 print:hidden">
+                                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                                    Riwayat Pekerjaan #{index + 1}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeWorkExperience(index)}
+                                    className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shrink-0"
+                                    title="Hapus riwayat pekerjaan ini"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
                               )}
 
+                              <div className="overflow-x-auto print:overflow-visible">
                               <table className="w-full min-w-[800px] print:min-w-0 print:min-w-0 text-sm text-left">
                                 <tbody className="divide-y divide-slate-200">
                                   <tr className="bg-purple-50">
@@ -3717,6 +3723,7 @@ export default function ApplicationForm({
                                   </tr>
                                 </tbody>
                               </table>
+                              </div>
                             </div>
                           ))}
                         </div>

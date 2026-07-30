@@ -206,7 +206,7 @@ export default function UserManagement() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-bold text-[#3D2C44] flex items-center gap-3">
             <Users className="w-8 h-8 text-indigo-600" />
