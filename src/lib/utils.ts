@@ -217,6 +217,7 @@ const SOCIAL_MEDIA_DOMAINS: Record<string, string> = {
   YouTube: 'https://www.youtube.com/@',
 };
 
+<<<<<<< HEAD
 // Real LinkedIn vanity slugs are hyphenated and never contain spaces (e.g.
 // "julian-eric-faustin-1a2b3c4"). Candidates often type their plain full
 // name instead ("Julian Eric Faustin"), which is guaranteed to 404 as a
@@ -225,6 +226,8 @@ function looksLikePlainName(handle: string): boolean {
   return /\s/.test(handle) && !/[./]/.test(handle);
 }
 
+=======
+>>>>>>> a233318b6129393b3cfc816167aa3a6dd6737f00
 // Candidates on the application form often type just their handle (e.g.
 // "ndah_sibarani28") instead of a full profile URL. Build a clickable link
 // to the actual platform profile instead of naively prefixing "https://" —
@@ -235,11 +238,18 @@ export function getSocialMediaUrl(platform: string | null | undefined, account: 
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
 
   const handle = trimmed.replace(/^@/, '');
+<<<<<<< HEAD
   // Already looks like a bare domain+path (e.g. "instagram.com/xyz") — just add the protocol.
+=======
+  // Only treat it as an already-complete domain+path (e.g. "instagram.com/xyz")
+  // when there's a path segment after the domain — otherwise a dotted
+  // username like "ratna.sibarani" would be misread as a bare domain.
+>>>>>>> a233318b6129393b3cfc816167aa3a6dd6737f00
   if (/^([a-z0-9-]+\.)+[a-z]{2,}\//i.test(handle)) {
     return `https://${handle}`;
   }
 
+<<<<<<< HEAD
   // A plain full name can't resolve to a real LinkedIn profile URL — send
   // to LinkedIn's people search instead of a link that's guaranteed to 404.
   if (platform === 'LinkedIn' && looksLikePlainName(handle)) {
@@ -248,4 +258,17 @@ export function getSocialMediaUrl(platform: string | null | undefined, account: 
 
   const domain = platform ? SOCIAL_MEDIA_DOMAINS[platform] : undefined;
   return domain ? `${domain}${encodeURIComponent(handle)}` : `https://${handle}`;
+=======
+  const domain = platform ? SOCIAL_MEDIA_DOMAINS[platform] : undefined;
+  return domain ? `${domain}${handle}` : `https://${handle}`;
+}
+
+// Adds Indonesian-style thousand separators (dots) to a raw number/digit
+// string, e.g. "8100000" -> "8.100.000".
+export function formatCurrencyId(value: string | number | null | undefined): string {
+  if (value === null || value === undefined || value === '') return '';
+  const num = typeof value === 'number' ? value : Number(String(value).replace(/[^\d]/g, ''));
+  if (isNaN(num)) return String(value);
+  return num.toLocaleString('id-ID');
+>>>>>>> a233318b6129393b3cfc816167aa3a6dd6737f00
 }

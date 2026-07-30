@@ -1198,7 +1198,7 @@ export default function RecruitmentFunnel() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Monthly Metrics */}
         <div className="bg-white/40 backdrop-blur-xl p-6 sm:p-8 rounded-3xl border border-white/60 shadow-2xl overflow-hidden flex flex-col">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
             <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
               <Calendar className="text-indigo-600" />
               Monthly Metrics (Past 12 MTHS)
@@ -1360,7 +1360,7 @@ export default function RecruitmentFunnel() {
 
         {/* Source Distribution */}
         <div className="bg-white/40 backdrop-blur-xl p-6 sm:p-8 rounded-3xl border border-white/60 shadow-2xl overflow-hidden flex flex-col">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
             <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
               <svg
                 xmlns="http://www.w3.org/2000/svg"

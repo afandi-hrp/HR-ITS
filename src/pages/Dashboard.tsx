@@ -894,7 +894,7 @@ useEffect(() => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white/70 backdrop-blur-md p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[400px]">
-            <div className="flex items-center justify-between mb-4 shrink-0">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4 shrink-0">
               <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                 <Clock className="text-indigo-500" size={20} />
                 Pengingat Jadwal (24 Jam Kedepan)
@@ -965,7 +965,7 @@ useEffect(() => {
         </div>
 
         <div className="bg-white/70 backdrop-blur-md p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[400px]">
-          <div className="flex items-center justify-between mb-4 shrink-0">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4 shrink-0">
             <h3 className="text-lg font-bold text-slate-900">
               10 Aktivitas Terbaru
             </h3>
@@ -1030,7 +1030,7 @@ useEffect(() => {
       </div>
 
       <div className="bg-white/70 backdrop-blur-md p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[400px]">
-        <div className="flex items-center justify-between mb-4 shrink-0">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4 shrink-0">
           <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
             <Users className="text-blue-500" size={20} />
             Kandidat Baru
