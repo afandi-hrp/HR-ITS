@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import SignatureCanvas from "react-signature-canvas";
-import { cn, getEmbedUrl, formatDateDMY, calculateAge } from "../lib/utils";
+import { cn, getEmbedUrl, getSocialMediaUrl, formatDateDMY, calculateAge } from "../lib/utils";
 import { PdfToImages } from "../components/PdfToImages";
 
 interface ApplicationFormProps {
@@ -2173,15 +2173,21 @@ export default function ApplicationForm({
                                   ) : null}
                                   <div className="flex-1 overflow-hidden">
                                     <a
-                                      href={
-                                        sm.account
-                                          ? sm.account.startsWith("http")
-                                            ? sm.account
-                                            : `https://${sm.account}`
-                                          : "#"
-                                      }
+                                      href={getSocialMediaUrl(sm.platform, sm.account)}
                                       target="_blank"
                                       rel="noopener noreferrer"
+                                      onClick={(e) => {
+                                        const url = getSocialMediaUrl(sm.platform, sm.account);
+                                        if (url === "#") return;
+                                        // Some mobile browsers/WebViews don't reliably honor
+                                        // target="_blank" on anchors and navigate the current
+                                        // tab instead — losing all client-side state (expanded
+                                        // panels, scroll position) once the user taps "back".
+                                        // Explicitly requesting a new browsing context via
+                                        // window.open is respected more consistently.
+                                        e.preventDefault();
+                                        window.open(url, "_blank", "noopener,noreferrer");
+                                      }}
                                       className={cn(
                                         "font-medium break-all",
                                         sm.platform === "LinkedIn" ||

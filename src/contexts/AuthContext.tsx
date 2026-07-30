@@ -67,23 +67,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if ((event as string) === 'SIGNED_OUT' || (event as string) === 'TOKEN_REFRESH_FAILED') {
-        let cleared = false;
-        const keysToRemove: string[] = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && key.startsWith('sb-') && key.includes('auth-token')) {
-            keysToRemove.push(key);
+        // TOKEN_REFRESH_FAILED can be a false alarm — e.g. another tab of
+        // this same app already rotated the refresh token first — rather
+        // than a genuinely dead session. Re-check before nuking anything;
+        // otherwise simply switching back to this tab after opening an
+        // external link (LinkedIn, Instagram, etc.) triggers a jarring full
+        // page reload even though the session is still perfectly valid.
+        supabase.auth.getSession().then(({ data: { session: recheckedSession } }) => {
+          if (recheckedSession) {
+            setSession(recheckedSession);
+            return;
           }
-        }
-        keysToRemove.forEach(key => {
-          localStorage.removeItem(key);
-          cleared = true;
+
+          let cleared = false;
+          const keysToRemove: string[] = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('sb-') && key.includes('auth-token')) {
+              keysToRemove.push(key);
+            }
+          }
+          keysToRemove.forEach(key => {
+            localStorage.removeItem(key);
+            cleared = true;
+          });
+          setSession(null);
+          setProfile(null);
+          if (cleared) {
+            window.location.reload();
+          } else if ((event as string) === 'TOKEN_REFRESH_FAILED') {
+            window.location.href = '/';
+          }
         });
-        if (cleared) {
-          window.location.reload();
-        } else if ((event as string) === 'TOKEN_REFRESH_FAILED') {
-          window.location.href = '/';
-        }
+        return;
       }
       setSession(session);
       if (session?.user) {

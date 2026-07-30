@@ -208,3 +208,44 @@ export function getEmbedUrl(url: string | null | undefined): string {
   // Otherwise, use Google Docs Viewer for standard files (PDF, Word, etc.)
   return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
 }
+
+const SOCIAL_MEDIA_DOMAINS: Record<string, string> = {
+  LinkedIn: 'https://www.linkedin.com/in/',
+  Instagram: 'https://www.instagram.com/',
+  Facebook: 'https://www.facebook.com/',
+  Twitter: 'https://twitter.com/',
+  YouTube: 'https://www.youtube.com/@',
+};
+
+// Real LinkedIn vanity slugs are hyphenated and never contain spaces (e.g.
+// "julian-eric-faustin-1a2b3c4"). Candidates often type their plain full
+// name instead ("Julian Eric Faustin"), which is guaranteed to 404 as a
+// profile URL — LinkedIn redirects any unrecognized /in/ slug to /404/.
+function looksLikePlainName(handle: string): boolean {
+  return /\s/.test(handle) && !/[./]/.test(handle);
+}
+
+// Candidates on the application form often type just their handle (e.g.
+// "ndah_sibarani28") instead of a full profile URL. Build a clickable link
+// to the actual platform profile instead of naively prefixing "https://" —
+// that would produce an invalid link like "https://ndah_sibarani28".
+export function getSocialMediaUrl(platform: string | null | undefined, account: string | null | undefined): string {
+  if (!account) return '#';
+  const trimmed = account.trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+
+  const handle = trimmed.replace(/^@/, '');
+  // Already looks like a bare domain+path (e.g. "instagram.com/xyz") — just add the protocol.
+  if (/^([a-z0-9-]+\.)+[a-z]{2,}\//i.test(handle)) {
+    return `https://${handle}`;
+  }
+
+  // A plain full name can't resolve to a real LinkedIn profile URL — send
+  // to LinkedIn's people search instead of a link that's guaranteed to 404.
+  if (platform === 'LinkedIn' && looksLikePlainName(handle)) {
+    return `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(handle)}`;
+  }
+
+  const domain = platform ? SOCIAL_MEDIA_DOMAINS[platform] : undefined;
+  return domain ? `${domain}${encodeURIComponent(handle)}` : `https://${handle}`;
+}
