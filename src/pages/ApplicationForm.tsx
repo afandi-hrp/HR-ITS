@@ -18,11 +18,7 @@ import {
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import SignatureCanvas from "react-signature-canvas";
-<<<<<<< HEAD
-import { cn, getEmbedUrl, getSocialMediaUrl, formatDateDMY, calculateAge } from "../lib/utils";
-=======
 import { cn, getEmbedUrl, getSocialMediaUrl, formatCurrencyId, formatDateDMY, calculateAge } from "../lib/utils";
->>>>>>> a233318b6129393b3cfc816167aa3a6dd6737f00
 import { PdfToImages } from "../components/PdfToImages";
 
 interface ApplicationFormProps {

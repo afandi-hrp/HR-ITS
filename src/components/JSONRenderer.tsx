@@ -299,6 +299,48 @@ function VerdictBanner({
   );
 }
 
+function matchLevelBadgeClass(level: string): string {
+  const t = level.toLowerCase();
+  if (t.includes('tinggi') || t.includes('high')) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  if (t.includes('rendah') || t.includes('low')) return 'bg-rose-50 text-rose-700 border-rose-200';
+  return 'bg-amber-50 text-amber-700 border-amber-200';
+}
+
+function AlternativePositionItem({ alt }: { alt: any }) {
+  // Older ai_biodata_summary versions stored alternatif_lain as plain
+  // strings; newer ones send { posisi, tingkat_kecocokan, alasan }.
+  if (typeof alt !== 'object' || alt === null) {
+    return (
+      <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-white text-violet-700 border border-violet-200">
+        {String(alt)}
+      </span>
+    );
+  }
+
+  const posisi = alt.posisi;
+  const tingkatKecocokan = alt.tingkat_kecocokan;
+  const alasan = alt.alasan;
+
+  return (
+    <div className="bg-white border border-violet-200 rounded-lg px-3 py-2 space-y-1">
+      <div className="flex items-center flex-wrap gap-1.5">
+        {posisi && <span className="text-sm font-bold text-violet-900">{String(posisi)}</span>}
+        {tingkatKecocokan && (
+          <span
+            className={cn(
+              'text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border',
+              matchLevelBadgeClass(String(tingkatKecocokan)),
+            )}
+          >
+            {String(tingkatKecocokan)}
+          </span>
+        )}
+      </div>
+      {alasan && <p className="text-sm text-slate-600 leading-snug">{String(alasan)}</p>}
+    </div>
+  );
+}
+
 function CrossPositionRecommendationCard({ data }: { data: Record<string, any> }) {
   const posisiPalingCocok = data.posisi_paling_cocok;
   const isCurrentPositionBest = data.apakah_posisi_dilamar_adalah_yang_paling_cocok;
@@ -338,14 +380,9 @@ function CrossPositionRecommendationCard({ data }: { data: Record<string, any> }
           Alternatif Lain
         </p>
         {alternatifLain.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="space-y-1.5">
             {alternatifLain.map((alt, i) => (
-              <span
-                key={i}
-                className="text-xs font-medium px-2.5 py-1 rounded-full bg-white text-violet-700 border border-violet-200"
-              >
-                {String(alt)}
-              </span>
+              <AlternativePositionItem key={i} alt={alt} />
             ))}
           </div>
         ) : (
