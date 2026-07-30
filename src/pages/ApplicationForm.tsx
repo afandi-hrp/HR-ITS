@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import SignatureCanvas from "react-signature-canvas";
-import { cn, getEmbedUrl, getSocialMediaUrl, formatCurrencyId, formatDateDMY, calculateAge } from "../lib/utils";
+import { cn, getEmbedUrl, getSocialMediaUrl, formatCurrencyId, formatDateDMY, calculateAge, fetchWithRetry } from "../lib/utils";
 import { PdfToImages } from "../components/PdfToImages";
 
 interface ApplicationFormProps {
@@ -757,6 +757,8 @@ export default function ApplicationForm({
     // VALIDATIONS
     const errors: string[] = [];
 
+    if (!token.trim()) errors.push("Token pendaftaran wajib diisi.");
+
     // 1. Upload Dokumen
     if (!photoFile) errors.push("Pas foto wajib diunggah.");
     if (!ktpFile) errors.push("Dokumen KTP wajib diunggah.");
@@ -1173,23 +1175,28 @@ export default function ApplicationForm({
       let otherDocUrl = "";
 
       const uploadFile = async (file: File, prefix: string) => {
-        const fileExt = file.name.split(".").pop();
-        const fileName = `${prefix}-${Date.now()}-${uuidv4()}.${fileExt}`;
-        const filePath = `candidates/${fileName}`;
+        // Uploads go through our own backend instead of straight to Supabase
+        // Storage — the server validates the registration token before the
+        // file is allowed onto the bucket at all (see /api/n8n/upload-document).
+        const uploadFormData = new FormData();
+        uploadFormData.append("token", token);
+        uploadFormData.append("docType", prefix);
+        uploadFormData.append("file", file);
 
-        const { error: uploadError } = await supabase.storage
-          .from("candidate-documents")
-          .upload(filePath, file);
+        const response = await fetchWithRetry("/api/n8n/upload-document", {
+          method: "POST",
+          body: uploadFormData,
+        });
 
-        if (uploadError) {
-          throw new Error(`Gagal mengunggah ${prefix}: ${uploadError.message}`);
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(
+            errData.error || `Gagal mengunggah ${prefix}: ${response.statusText}`,
+          );
         }
 
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("candidate-documents").getPublicUrl(filePath);
-
-        return publicUrl;
+        const data = await response.json();
+        return data.url as string;
       };
 
       if (photoFile) photoUrl = await uploadFile(photoFile, "photo");

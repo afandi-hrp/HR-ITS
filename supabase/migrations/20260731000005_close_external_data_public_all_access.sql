@@ -1,0 +1,13 @@
+-- Fifth-round hardening (2026-07-31). Live pg_policies audit revealed a
+-- policy on external_data named "Allow service role full access" that was
+-- actually granted TO public (not TO service_role) with using(true) and
+-- with_check(true) for ALL commands — i.e. unrestricted SELECT/INSERT/
+-- UPDATE/DELETE for literally anyone, authenticated or not. Because RLS
+-- policies are permissive (OR'd together), this single mis-scoped policy
+-- silently undid the SELECT and INSERT restrictions added in
+-- 20260731000000 and 20260731000002.
+--
+-- service_role bypasses RLS entirely and never needs an explicit policy,
+-- so this can be dropped outright with no impact on n8n (confirmed earlier
+-- that n8n writes to external_data using the service_role key).
+DROP POLICY IF EXISTS "Allow service role full access" ON public.external_data;

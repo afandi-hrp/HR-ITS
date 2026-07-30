@@ -1,0 +1,13 @@
+-- Fourth-round hardening (2026-07-31). Live pg_policies audit confirmed
+-- `candidates` has a fully open INSERT policy for `public` (unauthenticated)
+-- with `with_check: true` — anyone could insert an arbitrary candidate row,
+-- including setting status_screening/director_status/finance_status
+-- directly to an approved/hired state, with zero validation.
+--
+-- Confirmed with the user that n8n's writes to `candidates` use the
+-- service_role key (same as external_data), which bypasses RLS entirely —
+-- this public policy was never actually needed for n8n to function.
+-- Confirmed via grep that no client-side code inserts into `candidates`
+-- directly either (candidate creation only ever happens server-side via
+-- n8n). Safe to remove with no impact on any legitimate flow.
+DROP POLICY IF EXISTS "n8n Insert table" ON public.candidates;

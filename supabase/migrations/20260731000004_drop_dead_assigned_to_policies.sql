@@ -1,0 +1,22 @@
+-- Housekeeping (2026-07-31). Live pg_policies audit on `candidates` showed
+-- two leftover policies still referencing the retired `assigned_to` column:
+--
+--   "User Manager Select Assigned" (SELECT, role public, using assigned_to = uid())
+--   "User Manager Update Assigned" (UPDATE, role public, using assigned_to = uid())
+--
+-- The 20260729000000 migration already confirmed `assigned_to` is stale
+-- (only 1/133 candidates had it set, vs 8 real rows in candidate_assignees)
+-- and added proper replacements scoped to `authenticated`, driven by
+-- candidate_assignees:
+--
+--   "User Manager Select Assigned Via Candidate Assignees"
+--   "User Manager Update Assigned Via Candidate Assignees"
+--
+-- The two old policies are dead weight now, not an active exploit (uid()
+-- is NULL for anonymous requests, so `assigned_to = uid()` never matches
+-- an anon caller), but having a `public`-role policy sitting on a sensitive
+-- table referencing an abandoned column is confusing and easy to
+-- misinterpret in a future audit. Dropped for clarity; the *_Via_Candidate_
+-- Assignees policies already provide equivalent, correctly-scoped access.
+DROP POLICY IF EXISTS "User Manager Select Assigned" ON public.candidates;
+DROP POLICY IF EXISTS "User Manager Update Assigned" ON public.candidates;

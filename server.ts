@@ -43,7 +43,7 @@ const otpVerifyRateLimiter = rateLimit({
   validate: { trustProxy: false, xForwardedForHeader: false }
 });
 
-const upload = multer({ 
+const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 15 * 1024 * 1024 }, // 15MB limit
   fileFilter: (req, file, cb) => {
@@ -57,6 +57,30 @@ const upload = multer({
       cb(null, true);
     } else {
       cb(new Error("Invalid file type. Only PDF and Word documents are allowed."));
+    }
+  }
+});
+
+// Separate multer config for application-form document uploads (photo/KTP/
+// ijazah/transcript/payslip/other) — these can be images as well as PDFs,
+// and are capped at 3MB to match the storage.objects RLS policy so a
+// too-large file is rejected here with a clear message instead of a vague
+// Storage-layer error.
+const uploadDocument = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 3 * 1024 * 1024 }, // 3MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedMimeTypes = [
+      'image/jpeg',
+      'image/png',
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Invalid file type. Only images, PDF, and Word documents are allowed."));
     }
   }
 });
@@ -872,6 +896,98 @@ app.use((req: any, res, next) => {
       const errorMessage = "Gagal mengirim lamaran. Sistem sedang sibuk atau ada gangguan pada layanan pengiriman. Silakan coba beberapa saat lagi.";
       
       res.status(status).json({ error: errorMessage });
+    }
+  });
+
+  // Feature: Upload Application-Form Document (Public, token-gated)
+  // Candidates filling /form-pelamar upload photo/KTP/ijazah/transcript/
+  // payslip/other documents here instead of writing to Supabase Storage
+  // directly from the browser. A valid, not-yet-used registration token is
+  // required — the same token the candidate must enter to eventually submit
+  // via the submit_application_with_token RPC. The token is NOT marked used
+  // here (only at final submission), so one token can gate multiple document
+  // uploads during a single form-filling session.
+  app.post("/api/n8n/upload-document", uploadRateLimiter, (req: any, res, next) => {
+    if (req.body && Buffer.isBuffer(req.body)) {
+      const stream = new PassThrough();
+      stream.end(req.body);
+      (stream as any).headers = req.headers;
+      (stream as any).method = req.method;
+      (stream as any).url = req.url;
+
+      uploadDocument.single('file')(stream as any, res, (err) => {
+        if (err) return next(err);
+        req.file = (stream as any).file;
+        req.body = (stream as any).body;
+        next();
+      });
+    } else if (req.body && typeof req.body === 'string') {
+      const stream = new PassThrough();
+      stream.end(Buffer.from(req.body));
+      (stream as any).headers = req.headers;
+      (stream as any).method = req.method;
+      (stream as any).url = req.url;
+
+      uploadDocument.single('file')(stream as any, res, (err) => {
+        if (err) return next(err);
+        req.file = (stream as any).file;
+        req.body = (stream as any).body;
+        next();
+      });
+    } else {
+      uploadDocument.single('file')(req, res, next);
+    }
+  }, async (req: any, res: any) => {
+    const { token, docType } = req.body || {};
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ error: "File is required" });
+    }
+
+    const allowedDocTypes = ['photo', 'ktp', 'ijazah', 'transcript', 'payslip', 'other'];
+    if (!docType || !allowedDocTypes.includes(docType)) {
+      return res.status(400).json({ error: "Invalid document type" });
+    }
+
+    if (!token) {
+      return res.status(401).json({ error: "Token pendaftaran wajib diisi sebelum mengunggah dokumen." });
+    }
+
+    try {
+      const supabaseAdmin = getSupabaseAdmin();
+
+      const { data: tokenData, error: tokenError } = await supabaseAdmin
+        .from('registration_tokens')
+        .select('id')
+        .eq('token', token)
+        .eq('is_used', false)
+        .maybeSingle();
+
+      if (tokenError || !tokenData) {
+        return res.status(401).json({ error: "Token pendaftaran tidak valid atau sudah digunakan." });
+      }
+
+      const fileExt = (file.originalname.split('.').pop() || 'bin').toLowerCase();
+      const filePath = `candidates/${docType}-${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
+
+      const { error: uploadError } = await supabaseAdmin.storage
+        .from('candidate-documents')
+        .upload(filePath, file.buffer, { contentType: file.mimetype });
+
+      if (uploadError) {
+        console.error("Error uploading document to storage:", uploadError);
+        return res.status(500).json({ error: `Gagal mengunggah ${docType}: ${uploadError.message}` });
+      }
+
+      const { data: { publicUrl } } = supabaseAdmin.storage
+        .from('candidate-documents')
+        .getPublicUrl(filePath);
+
+      res.json({ url: publicUrl });
+    } catch (error: any) {
+      console.error("Error in /api/n8n/upload-document:", error);
+      res.status(500).json({ error: "Gagal mengunggah dokumen. Silakan coba lagi." });
     }
   });
 
