@@ -1078,23 +1078,31 @@ app.use((req: any, res, next) => {
     }
   });
 
-  // Delete an object from candidate-documents-private using service_role
-  // (bypasses RLS entirely). The client-side DELETE RLS policy on this
-  // bucket was observed to silently match zero rows on this self-hosted
-  // storage-api instance (200 OK with an empty result, file left in
-  // place) despite matching the documented policy conditions — routing
-  // deletes through the server sidesteps that instability rather than
-  // depending on it.
+  // Delete an object from candidate-documents-private (or, legacy, the old
+  // public candidate-documents bucket — e.g. CVs still under cv-candidates/
+  // uploaded before that bucket was superseded) using service_role
+  // (bypasses RLS entirely). The client-side DELETE RLS policy was observed
+  // to silently match zero rows on this self-hosted storage-api instance
+  // (200 OK with an empty result, file left in place) despite matching the
+  // documented policy conditions, for BOTH buckets — routing deletes
+  // through the server sidesteps that instability rather than depending on
+  // it. `bucket` is restricted to this allowlist so the endpoint can't be
+  // used to delete from an arbitrary bucket.
+  const DELETABLE_BUCKETS = ['candidate-documents-private', 'candidate-documents'];
   app.delete("/api/documents/remove", requireAuth, async (req: any, res) => {
     const path = req.body?.path;
+    const bucket = req.body?.bucket || 'candidate-documents-private';
     if (!path || typeof path !== "string") {
       return res.status(400).json({ error: "Parameter path wajib diisi." });
+    }
+    if (!DELETABLE_BUCKETS.includes(bucket)) {
+      return res.status(400).json({ error: "Bucket tidak valid." });
     }
 
     try {
       const supabaseAdmin = getSupabaseAdmin();
       const { data, error } = await supabaseAdmin.storage
-        .from('candidate-documents-private')
+        .from(bucket)
         .remove([path]);
 
       if (error) {

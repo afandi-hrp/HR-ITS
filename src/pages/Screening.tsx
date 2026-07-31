@@ -865,8 +865,14 @@ export default function Screening() {
       const isPsikotesB = statusB === "Psikotes Selesai" || statusB === "Jadwal Psikotes" ? 1 : 0;
       if (isPsikotesA !== isPsikotesB) return isPsikotesB - isPsikotesA;
     }
-    // Default to "terbaru"
-    return new Date(b.created_at || b.date).getTime() - new Date(a.created_at || a.date).getTime();
+    // Default to "terbaru" — reflects the last profile update, not just
+    // when the candidate was originally created, so editing a candidate
+    // bubbles them back to the top (also used as the tie-breaker for the
+    // other sort modes above).
+    return (
+      new Date(b.updated_at || b.created_at || b.date).getTime() -
+      new Date(a.updated_at || a.created_at || a.date).getTime()
+    );
   });
 
   const totalFilteredItems = selectedPosition ? sortedCandidatesForPosition.length : Object.keys(allGroupedCandidates).length;

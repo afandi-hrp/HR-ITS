@@ -142,6 +142,7 @@ export default function CandidateProfile() {
   const [fullScreenPdf, setFullScreenPdf] = useState<string | null>(null);
   const [fullScreenData, setFullScreenData] = useState<any | null>(null);
   const [resolvedPsikotesUrl, setResolvedPsikotesUrl] = useState<string | null>(null);
+  const [resolvedResumeUrl, setResolvedResumeUrl] = useState<string | null>(null);
   const [existingEvaluation, setExistingEvaluation] =
     useState<CandidateEvaluation | null>(null);
   const [isReferenceCheckModalOpen, setIsReferenceCheckModalOpen] = useState(false);
@@ -239,6 +240,16 @@ export default function CandidateProfile() {
       cancelled = true;
     };
   }, [candidate?.psikotes_result_url]);
+
+  useEffect(() => {
+    let cancelled = false;
+    resolveDocumentUrl(candidate?.resume_url).then((url) => {
+      if (!cancelled) setResolvedResumeUrl(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [candidate?.resume_url]);
 
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -447,6 +458,15 @@ export default function CandidateProfile() {
       });
 
       if (error) throw error;
+
+      // Bump the candidate's own updated_at too — notes live in a separate
+      // table, but adding one is still a "touch" on this candidate from
+      // HR's perspective (e.g. surfaces them at the top of Screening's
+      // "Terbaru" sort).
+      await supabase
+        .from("candidates")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", id);
 
       toast({
         title: "Berhasil",
@@ -1156,6 +1176,7 @@ export default function CandidateProfile() {
         full_name: editedCandidate.full_name,
         email: editedCandidate.email,
         phone: editedCandidate.phone,
+        updated_at: new Date().toISOString(),
       };
 
       // Check if candidate is in active candidates or logs
@@ -1520,22 +1541,22 @@ export default function CandidateProfile() {
                       </h4>
                       <div className="flex gap-2">
                         <button
-                          onClick={() =>
-                            setFullScreenPdf(candidate.resume_url!)
-                          }
+                          onClick={async () => {
+                            const url = await resolveDocumentUrl(candidate.resume_url);
+                            if (url) setFullScreenPdf(url);
+                          }}
                           className="flex items-center gap-1.5 px-3 py-1.5 bg-[#3D2C44]/5 hover:bg-[#3D2C44]/10 text-[#3D2C44] rounded-lg transition-colors text-xs font-medium"
                         >
                           <ExternalLink size={14} />
                           Full Screen
                         </button>
                         <button
-                          onClick={() =>
-                            handleSecureDownload(
-                              candidate.resume_url!,
-                              "CV",
-                              candidate.full_name,
-                            )
-                          }
+                          onClick={async () => {
+                            const url = await resolveDocumentUrl(candidate.resume_url);
+                            if (url) {
+                              handleSecureDownload(url, "CV", candidate.full_name);
+                            }
+                          }}
                           className="flex items-center gap-1.5 px-3 py-1.5 bg-[#3D2C44]/10 hover:bg-[#3D2C44]/20 text-[#3D2C44] rounded-lg transition-colors text-xs font-medium"
                         >
                           <Download size={14} />
@@ -1545,7 +1566,7 @@ export default function CandidateProfile() {
                     </div>
                     <div className="w-full h-[400px] border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
                       <iframe
-                        src={getEmbedUrl(candidate.resume_url)}
+                        src={getEmbedUrl(resolvedResumeUrl)}
                         className="w-full h-full"
                         title="Preview CV"
                       />
