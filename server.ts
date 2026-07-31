@@ -111,9 +111,22 @@ app.use(
             defaultSrc: ["'self'"],
             scriptSrc: ["'self'"],
             styleSrc: ["'self'", "'unsafe-inline'"],
-            imgSrc: ["'self'", "data:", "blob:", SUPABASE_HTTP_ORIGIN].filter(Boolean),
+            // Candidate CVs/photos can be hosted on arbitrary external
+            // sources (Google Drive, job boards like Jobstreet, etc.), not
+            // just our own Supabase Storage — these need to be embeddable
+            // (preview) and fetchable (secure download) from any HTTPS
+            // origin. script-src stays locked to 'self' regardless, which
+            // is what actually prevents injected-script XSS.
+            imgSrc: ["'self'", "data:", "blob:", "https:"],
             fontSrc: ["'self'", "data:"],
-            connectSrc: ["'self'", SUPABASE_HTTP_ORIGIN, SUPABASE_WS_ORIGIN].filter(Boolean),
+            connectSrc: ["'self'", "https:", SUPABASE_WS_ORIGIN].filter(Boolean),
+            frameSrc: ["'self'", "https:"],
+            // PdfToImages.tsx (KTP/ijazah/transkrip/slip gaji "Lampiran
+            // Dokumen" print view) loads its PDF.js worker from the unpkg
+            // CDN — worker-src falls back to script-src when unset, and
+            // script-src is locked to 'self', so without this the worker
+            // fails to load and PDF pages never render.
+            workerSrc: ["'self'", "blob:", "https://unpkg.com"],
             objectSrc: ["'none'"],
             baseUri: ["'self'"],
             formAction: ["'self'"],
