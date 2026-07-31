@@ -255,6 +255,9 @@ export default function ApplicationForm({
         docFields.map(async (field) => {
           const raw = initialData[field];
           if (typeof raw !== "string" || !raw) return [field, ""] as const;
+          // Signatures are inline base64 data: URLs, which always contain a
+          // comma themselves (the "base64," marker) — must not be split.
+          if (raw.startsWith("data:")) return [field, raw] as const;
           // other_doc_url / payslip_url can hold multiple comma-separated files
           if (raw.includes(",")) {
             const parts = raw

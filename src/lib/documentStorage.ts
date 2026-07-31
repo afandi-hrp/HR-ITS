@@ -38,9 +38,13 @@ export async function removeDocumentFile(
 ): Promise<void> {
   if (!pathOrUrl) return;
 
-  const parts = pathOrUrl.includes(",")
-    ? pathOrUrl.split(",").map((s) => s.trim()).filter(Boolean)
-    : [pathOrUrl];
+  // data: URLs (signatures) always contain a comma themselves (the
+  // "base64," marker) and must never be split like a multi-file list.
+  const parts = pathOrUrl.startsWith("data:")
+    ? [pathOrUrl]
+    : pathOrUrl.includes(",")
+      ? pathOrUrl.split(",").map((s) => s.trim()).filter(Boolean)
+      : [pathOrUrl];
 
   await Promise.all(parts.map((part) => removeSingleDocumentFile(part)));
 }
