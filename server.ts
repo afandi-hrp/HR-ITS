@@ -109,7 +109,12 @@ app.use(
       ? {
           directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'"],
+            // https://unpkg.com is needed for PDF.js's worker: when a real
+            // Worker can't be set up it falls back to a "fake worker" that
+            // dynamically import()s the module instead, which is governed
+            // by script-src, not worker-src (kept below for the real-worker
+            // path too).
+            scriptSrc: ["'self'", "https://unpkg.com"],
             styleSrc: ["'self'", "'unsafe-inline'"],
             // Candidate CVs/photos can be hosted on arbitrary external
             // sources (Google Drive, job boards like Jobstreet, etc.), not

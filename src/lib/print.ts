@@ -132,29 +132,32 @@ export const printElement = async (element: HTMLElement | null, title: string = 
         </head>
         <body class="bg-white">
           ${clone.outerHTML}
-          <script>
-            window.onload = () => {
-              // Wait for all images to load before printing
-              const images = Array.from(document.images);
-              const imagePromises = images.map(img => {
-                if (img.complete) return Promise.resolve();
-                return new Promise(resolve => {
-                  img.onload = resolve;
-                  img.onerror = resolve;
-                });
-              });
-
-              Promise.all(imagePromises).then(() => {
-                setTimeout(() => {
-                  window.print();
-                }, 500); // Small buffer for rendering
-              });
-            };
-          </script>
         </body>
       </html>
     `);
     printWindow.document.close();
+
+    // Trigger printing from the parent window's own script context instead
+    // of an inline <script> written into the popup — an about:blank popup
+    // inherits its opener's CSP, and script-src 'self' (no unsafe-inline)
+    // silently drops inline <script> tags, which meant window.print() was
+    // never called automatically.
+    printWindow.onload = () => {
+      const images = Array.from(printWindow.document.images);
+      const imagePromises = images.map((img) => {
+        if (img.complete) return Promise.resolve();
+        return new Promise<void>((resolve) => {
+          img.onload = () => resolve();
+          img.onerror = () => resolve();
+        });
+      });
+
+      Promise.all(imagePromises).then(() => {
+        setTimeout(() => {
+          printWindow.print();
+        }, 500); // Small buffer for rendering
+      });
+    };
   } catch (error) {
     console.error('Error generating PDF:', error);
     throw error;
