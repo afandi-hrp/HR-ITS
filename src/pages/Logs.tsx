@@ -24,6 +24,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { formatDate, cn, extractPhotoUrl } from "../lib/utils";
+import { removeDocumentFile } from "../lib/documentStorage";
 import { useToast } from "../components/ui/use-toast";
 import JSONRenderer from "../components/JSONRenderer";
 import * as XLSX from "xlsx";
@@ -305,12 +306,6 @@ export default function Logs() {
     statusFilter,
   ]);
 
-  const extractStoragePath = (url: string | null) => {
-    if (!url) return null;
-    const parts = url.split("/candidate-documents/");
-    return parts.length > 1 ? parts[1] : null;
-  };
-
   const handleDelete = async () => {
     if (!deleteModalData) return;
     setIsDeleting(true);
@@ -325,12 +320,11 @@ export default function Logs() {
       if (fetchError) throw fetchError;
 
       if (candidate) {
-        let filesToDelete = [
-          extractStoragePath(candidate.resume_url),
-          extractStoragePath(candidate.psikotes_result_url),
-        ].filter(Boolean) as string[];
+        // 2. Hapus file fisik dari storage (menangani bucket lama & baru)
+        await removeDocumentFile(candidate.resume_url);
+        await removeDocumentFile(candidate.psikotes_result_url);
 
-        // 2. Ambil data eksternal jika ada untuk mendapatkan URL file tambahan
+        // 3. Ambil data eksternal jika ada untuk mendapatkan URL file tambahan
         if (candidate.linked_external_id) {
           const { data: externalData } = await supabase
             .from("external_data")
@@ -340,26 +334,17 @@ export default function Logs() {
 
           if (externalData?.raw_data) {
             const raw = externalData.raw_data;
-            const externalFiles = [
-              extractStoragePath(raw.photo_url),
-              extractStoragePath(raw.ktp_url),
-              extractStoragePath(raw.ijazah_url),
-              extractStoragePath(raw.transcript_url),
-              extractStoragePath(raw.other_doc_url),
-              extractStoragePath(raw.payslip_url),
-              extractStoragePath(raw.signature_url),
-              extractStoragePath(raw.remuneration_signature_url),
-            ].filter(Boolean) as string[];
-
-            filesToDelete = [...filesToDelete, ...externalFiles];
+            await Promise.all([
+              removeDocumentFile(raw.photo_url),
+              removeDocumentFile(raw.ktp_url),
+              removeDocumentFile(raw.ijazah_url),
+              removeDocumentFile(raw.transcript_url),
+              removeDocumentFile(raw.other_doc_url),
+              removeDocumentFile(raw.payslip_url),
+              removeDocumentFile(raw.signature_url),
+              removeDocumentFile(raw.remuneration_signature_url),
+            ]);
           }
-        }
-
-        // 3. Hapus file fisik dari storage
-        if (filesToDelete.length > 0) {
-          await supabase.storage
-            .from("candidate-documents")
-            .remove(filesToDelete);
         }
 
         // 4. Hapus data eksternal yang tertaut
@@ -410,16 +395,14 @@ export default function Logs() {
       if (fetchError) throw fetchError;
 
       if (candidates && candidates.length > 0) {
-        // 2. Kumpulkan semua file dan ID eksternal yang akan dihapus
-        let filesToDelete: string[] = [];
+        // 2. Hapus file fisik dari storage (menangani bucket lama & baru), dan
+        // kumpulkan ID eksternal yang perlu dihapus
         const externalIdsToDelete: string[] = [];
+        const removalPromises: Promise<void>[] = [];
 
         candidates.forEach((candidate) => {
-          const cv = extractStoragePath(candidate.resume_url);
-          const psikotes = extractStoragePath(candidate.psikotes_result_url);
-
-          if (cv) filesToDelete.push(cv);
-          if (psikotes) filesToDelete.push(psikotes);
+          removalPromises.push(removeDocumentFile(candidate.resume_url));
+          removalPromises.push(removeDocumentFile(candidate.psikotes_result_url));
 
           if (candidate.linked_external_id) {
             externalIdsToDelete.push(candidate.linked_external_id);
@@ -437,36 +420,22 @@ export default function Logs() {
             externalDataList.forEach((ext) => {
               if (ext.raw_data) {
                 const raw = ext.raw_data;
-                const photo = extractStoragePath(raw.photo_url);
-                const ktp = extractStoragePath(raw.ktp_url);
-                const ijazah = extractStoragePath(raw.ijazah_url);
-                const transcript = extractStoragePath(raw.transcript_url);
-                const otherDoc = extractStoragePath(raw.other_doc_url);
-                const payslip = extractStoragePath(raw.payslip_url);
-                const signature = extractStoragePath(raw.signature_url);
-                const remunSignature = extractStoragePath(
-                  raw.remuneration_signature_url,
+                removalPromises.push(
+                  removeDocumentFile(raw.photo_url),
+                  removeDocumentFile(raw.ktp_url),
+                  removeDocumentFile(raw.ijazah_url),
+                  removeDocumentFile(raw.transcript_url),
+                  removeDocumentFile(raw.other_doc_url),
+                  removeDocumentFile(raw.payslip_url),
+                  removeDocumentFile(raw.signature_url),
+                  removeDocumentFile(raw.remuneration_signature_url),
                 );
-
-                if (photo) filesToDelete.push(photo);
-                if (ktp) filesToDelete.push(ktp);
-                if (ijazah) filesToDelete.push(ijazah);
-                if (transcript) filesToDelete.push(transcript);
-                if (otherDoc) filesToDelete.push(otherDoc);
-                if (payslip) filesToDelete.push(payslip);
-                if (signature) filesToDelete.push(signature);
-                if (remunSignature) filesToDelete.push(remunSignature);
               }
             });
           }
         }
 
-        // 3. Hapus file fisik dari storage
-        if (filesToDelete.length > 0) {
-          await supabase.storage
-            .from("candidate-documents")
-            .remove(filesToDelete);
-        }
+        await Promise.all(removalPromises);
 
         // 4. Hapus data eksternal yang tertaut
         if (externalIdsToDelete.length > 0) {

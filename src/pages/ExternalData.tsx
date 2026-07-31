@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { fetchWithRetry, cn } from "../lib/utils";
+import { removeDocumentFile } from "../lib/documentStorage";
 import {
   Database,
   CloudDownload,
@@ -305,23 +306,20 @@ export default function ExternalData() {
       clearTimeout(timeoutId);
 
       if (response.ok) {
-        // Hapus file fisik dari storage
-        const filesToDelete = Object.values(row)
-          .filter(
-            (val): val is string =>
-              typeof val === "string" && val.includes("/candidate-documents/"),
-          )
-          .map((url) => {
-            const parts = url.split("/candidate-documents/");
-            return parts.length > 1 ? parts[1] : null;
-          })
-          .filter(Boolean) as string[];
-
-        if (filesToDelete.length > 0) {
-          await supabase.storage
-            .from("candidate-documents")
-            .remove(filesToDelete);
-        }
+        // Hapus file fisik dari storage (menangani bucket lama & baru)
+        const documentFields = [
+          "photo_url",
+          "ktp_url",
+          "ijazah_url",
+          "transcript_url",
+          "other_doc_url",
+          "payslip_url",
+          "signature_url",
+          "remuneration_signature_url",
+        ];
+        await Promise.all(
+          documentFields.map((field) => removeDocumentFile((row as any)[field])),
+        );
 
         toast({
           title: "Berhasil",

@@ -44,6 +44,7 @@ import {
   getEmbedUrl,
 } from "../lib/utils";
 import { waitForN8nJob } from "../lib/n8n";
+import { resolveDocumentUrl, removeDocumentFile } from "../lib/documentStorage";
 import { useToast } from "../components/ui/use-toast";
 import EvaluationModal from "../components/EvaluationModal";
 import ReferenceCheckModal from "../components/ReferenceCheckModal";
@@ -140,6 +141,7 @@ export default function CandidateProfile() {
   } = usePermissions();
   const [fullScreenPdf, setFullScreenPdf] = useState<string | null>(null);
   const [fullScreenData, setFullScreenData] = useState<any | null>(null);
+  const [resolvedPsikotesUrl, setResolvedPsikotesUrl] = useState<string | null>(null);
   const [existingEvaluation, setExistingEvaluation] =
     useState<CandidateEvaluation | null>(null);
   const [isReferenceCheckModalOpen, setIsReferenceCheckModalOpen] = useState(false);
@@ -227,6 +229,17 @@ export default function CandidateProfile() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showDownloadMenu]);
+
+  useEffect(() => {
+    let cancelled = false;
+    resolveDocumentUrl(candidate?.psikotes_result_url).then((url) => {
+      if (!cancelled) setResolvedPsikotesUrl(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [candidate?.psikotes_result_url]);
+
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = async (
@@ -884,6 +897,17 @@ export default function CandidateProfile() {
         return;
       }
 
+      const psikotesUrlForN8n = await resolveDocumentUrl(candidate.psikotes_result_url);
+      if (!psikotesUrlForN8n) {
+        toast({
+          title: "Error",
+          description: "Gagal menyiapkan URL hasil psikotes untuk dianalisa.",
+          variant: "destructive",
+        });
+        setIsAnalyzingPsikotes(false);
+        return;
+      }
+
       const response = await fetchWithRetry("/api/n8n/trigger", {
         method: "POST",
         headers: {
@@ -897,7 +921,7 @@ export default function CandidateProfile() {
             candidate_id: candidate.id,
             full_name: candidate.full_name,
             position: candidate.position,
-            psikotes_url: candidate.psikotes_result_url,
+            psikotes_url: psikotesUrlForN8n,
             timestamp: new Date().toISOString(),
           },
         }),
@@ -1062,18 +1086,11 @@ export default function CandidateProfile() {
 
     setIsUploadingPsikotes(true);
     try {
-      // Delete old file if exists to prevent accumulation
+      // Delete old file if exists to prevent accumulation (handles both the
+      // legacy public bucket and the new private bucket).
       if (candidate.psikotes_result_url) {
         try {
-          const urlParts = candidate.psikotes_result_url.split(
-            "/candidate-documents/",
-          );
-          if (urlParts.length > 1) {
-            const oldFilePath = urlParts[1];
-            await supabase.storage
-              .from("candidate-documents")
-              .remove([oldFilePath]);
-          }
+          await removeDocumentFile(candidate.psikotes_result_url);
         } catch (delErr) {
           console.error("Failed to delete old file:", delErr);
         }
@@ -1082,19 +1099,20 @@ export default function CandidateProfile() {
       const fileExt = file.name.split(".").pop();
       const fileName = `psikotes/${id}_${Date.now()}.${fileExt}`;
 
+      // fileName always includes a fresh timestamp and the previous file is
+      // already deleted above, so this never actually collides — upsert
+      // would force Postgres into an INSERT ... ON CONFLICT DO UPDATE path
+      // that requires satisfying both INSERT and UPDATE RLS policies.
       const { error: uploadError } = await supabase.storage
-        .from("candidate-documents")
+        .from("candidate-documents-private")
         .upload(fileName, file, {
-          upsert: true,
           contentType: "application/pdf",
         });
 
       if (uploadError) throw uploadError;
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("candidate-documents").getPublicUrl(fileName);
-
+      // Stored as a bare storage path (not a public URL) — resolved into a
+      // short-lived signed URL on demand whenever it's actually displayed.
       const { data: activeData } = await supabase
         .from("candidates")
         .select("id")
@@ -1105,7 +1123,7 @@ export default function CandidateProfile() {
 
       const { error: updateError } = await supabase
         .from(table)
-        .update({ psikotes_result_url: publicUrl, updated_at: new Date().toISOString() })
+        .update({ psikotes_result_url: fileName, updated_at: new Date().toISOString() })
         .eq("id", id);
 
       if (updateError) throw updateError;
@@ -2047,22 +2065,22 @@ export default function CandidateProfile() {
                     </button>
                   )}
                   <button
-                    onClick={() =>
-                      setFullScreenPdf(candidate.psikotes_result_url!)
-                    }
+                    onClick={async () => {
+                      const url = await resolveDocumentUrl(candidate.psikotes_result_url);
+                      if (url) setFullScreenPdf(url);
+                    }}
                     className="flex items-center gap-2 px-4 py-2 bg-[#3D2C44]/5 hover:bg-[#3D2C44]/10 text-[#3D2C44] rounded-xl transition-colors text-sm font-medium shadow-sm"
                   >
                     <ExternalLink size={16} />
                     Full Screen
                   </button>
                   <button
-                    onClick={() =>
-                      handleSecureDownload(
-                        candidate.psikotes_result_url!,
-                        "Psikotes",
-                        candidate.full_name,
-                      )
-                    }
+                    onClick={async () => {
+                      const url = await resolveDocumentUrl(candidate.psikotes_result_url);
+                      if (url) {
+                        handleSecureDownload(url, "Psikotes", candidate.full_name);
+                      }
+                    }}
                     className="flex items-center gap-2 px-4 py-2 bg-white border border-[#3D2C44]/20 text-[#3D2C44] hover:bg-[#3D2C44]/5 rounded-xl transition-colors text-sm font-medium shadow-sm"
                   >
                     <Download size={16} />
@@ -2072,7 +2090,7 @@ export default function CandidateProfile() {
 
                 <div className="w-full h-[600px] border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
                   <iframe
-                    src={getEmbedUrl(candidate.psikotes_result_url)}
+                    src={getEmbedUrl(resolvedPsikotesUrl)}
                     className="w-full h-full"
                     title="Hasil Psikotes"
                   />

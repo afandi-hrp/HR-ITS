@@ -19,6 +19,7 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import SignatureCanvas from "react-signature-canvas";
 import { cn, getEmbedUrl, getSocialMediaUrl, formatCurrencyId, formatDateDMY, calculateAge, fetchWithRetry } from "../lib/utils";
+import { resolveDocumentUrl } from "../lib/documentStorage";
 import { PdfToImages } from "../components/PdfToImages";
 
 interface ApplicationFormProps {
@@ -80,6 +81,13 @@ export default function ApplicationForm({
   const [siteSettings, setSiteSettings] = useState<any>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  // Document URL fields in `initialData` may be either a legacy full public
+  // URL (used as-is) or a bare storage path into the private bucket (needs
+  // resolving into a short-lived signed URL before use). See
+  // src/lib/documentStorage.ts.
+  const [resolvedDocs, setResolvedDocs] = useState<Record<string, string>>(
+    {},
+  );
 
   const [ktpFile, setKtpFile] = useState<File | null>(null);
   const [ijazahFile, setIjazahFile] = useState<File | null>(null);
@@ -181,7 +189,6 @@ export default function ApplicationForm({
         }
         return merged;
       });
-      if (initialData.photo_url) setPhotoPreview(initialData.photo_url);
     } else {
       const draft = localStorage.getItem("application_draft");
       if (draft) {
@@ -227,6 +234,53 @@ export default function ApplicationForm({
       }
     }
   }, [initialData]);
+
+  useEffect(() => {
+    if (!readOnly || !initialData) return;
+    let cancelled = false;
+
+    const docFields = [
+      "photo_url",
+      "ktp_url",
+      "ijazah_url",
+      "transcript_url",
+      "other_doc_url",
+      "signature_url",
+      "payslip_url",
+      "remuneration_signature_url",
+    ];
+
+    (async () => {
+      const entries = await Promise.all(
+        docFields.map(async (field) => {
+          const raw = initialData[field];
+          if (typeof raw !== "string" || !raw) return [field, ""] as const;
+          // other_doc_url / payslip_url can hold multiple comma-separated files
+          if (raw.includes(",")) {
+            const parts = raw
+              .split(",")
+              .map((s: string) => s.trim())
+              .filter(Boolean);
+            const resolvedParts = await Promise.all(
+              parts.map((p) => resolveDocumentUrl(p)),
+            );
+            return [field, resolvedParts.filter(Boolean).join(",")] as const;
+          }
+          const resolved = await resolveDocumentUrl(raw);
+          return [field, resolved || ""] as const;
+        }),
+      );
+
+      if (cancelled) return;
+      const resolved = Object.fromEntries(entries);
+      setResolvedDocs(resolved);
+      if (resolved.photo_url) setPhotoPreview(resolved.photo_url);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [readOnly, initialData]);
 
   const loadSiteSettings = async () => {
     try {
@@ -384,12 +438,7 @@ export default function ApplicationForm({
     languages: [
       { language: "English", writing: "", reading: "", speaking: "" },
       { language: "Hokkien", writing: "", reading: "", speaking: "" },
-      {
-        language: "Lainnya (Jika ada)",
-        writing: "",
-        reading: "",
-        speaking: "",
-      },
+      { language: "", writing: "", reading: "", speaking: "" },
     ],
     skills: [
       { ability: "", level: "", certificate: "" },
@@ -472,6 +521,26 @@ export default function ApplicationForm({
       return () => clearTimeout(timeout);
     }
   }, [formData, initialData]);
+
+  // Phone numbers: digits plus "+" (country code, e.g. +62) and "-"
+  // (common local formatting, e.g. 0822-7688) — anything else stripped as
+  // the user types instead of validating after the fact.
+  const handlePhoneInputChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const { name, value } = e.target;
+    const filtered = value.replace(/[^\d+-]/g, "");
+    setFormData((prev) => ({ ...prev, [name]: filtered }));
+  };
+
+  // Salary fields: digits plus "." and "," (manual thousand separators).
+  const handleSalaryInputChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const { name, value } = e.target;
+    const filtered = value.replace(/[^\d.,]/g, "");
+    setFormData((prev) => ({ ...prev, [name]: filtered }));
+  };
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -949,10 +1018,13 @@ export default function ApplicationForm({
       }
     });
 
-    // Bahasa Asing / Daerah
+    // Bahasa Asing / Daerah. Baris English/Hokkien punya nama bahasa yang
+    // selalu terisi (bukan input bebas), jadi "baris ini sedang diisi"
+    // hanya ditentukan dari level kemampuan — supaya baris itu tetap bisa
+    // dikosongkan sepenuhnya kalau kandidat tidak ingin melaporkannya.
     formData.languages.forEach((lang, index) => {
       const hasAnyValue =
-        lang.language?.trim() || lang.speaking?.trim() || lang.writing?.trim() || lang.reading?.trim();
+        lang.speaking?.trim() || lang.writing?.trim() || lang.reading?.trim();
       if (hasAnyValue) {
         if (
           !lang.language?.trim() ||
@@ -979,20 +1051,12 @@ export default function ApplicationForm({
       }
     });
 
-    // 7. Riwayat Pekerjaan point 1
+    // 7. Riwayat Pekerjaan point 1. Masa Kerja adalah field pemicu: kalau
+    // diisi, seluruh kolom lain di baris itu wajib diisi. Kalau Masa Kerja
+    // tidak diisi, baris ini dianggap belum mulai diisi dan boleh
+    // dikosongkan seluruhnya walau ada field lain yang sempat terisi.
     formData.work_experience?.forEach((work, index) => {
-      const hasAnyValue =
-        work.company_name?.trim() ||
-        work.period_start ||
-        work.period_end ||
-        work.company_address?.trim() ||
-        work.business_line?.trim() ||
-        work.current_position?.trim() ||
-        work.report_directly?.trim() ||
-        work.total_employees?.trim() ||
-        work.number_of_subordinates?.trim() ||
-        work.job_description?.trim() ||
-        work.reason_for_leaving?.trim();
+      const hasAnyValue = work.period_start || work.period_end;
 
       if (hasAnyValue) {
         if (
@@ -1331,7 +1395,7 @@ export default function ApplicationForm({
 
   if (success) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center p-4">
         <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center space-y-4">
           <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle2 size={40} />
@@ -1355,7 +1419,6 @@ export default function ApplicationForm({
   return (
     <div
       className={cn(
-        "bg-slate-50",
         readOnly
           ? "py-0 bg-transparent flex flex-col gap-6"
           : "min-h-screen py-12 px-4 sm:px-6 lg:px-8",
@@ -2038,20 +2101,22 @@ export default function ApplicationForm({
                         <div className="flex gap-2 items-center">
                           <input
                             type="text"
+                            inputMode="tel"
                             name="mobile_phone"
                             required
                             placeholder="Mobile"
                             value={formData.mobile_phone}
-                            onChange={handleInputChange}
+                            onChange={handlePhoneInputChange}
                             className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
                           <span className="text-slate-400">/</span>
                           <input
                             type="text"
+                            inputMode="tel"
                             name="home_phone"
                             placeholder="Home"
                             value={formData.home_phone}
-                            onChange={handleInputChange}
+                            onChange={handlePhoneInputChange}
                             className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
                         </div>
@@ -2376,6 +2441,7 @@ export default function ApplicationForm({
                                 ) : (
                                   <input
                                     type="text"
+                                    inputMode="numeric"
                                     required
                                     placeholder={`Nomor ${sim}`}
                                     value={
@@ -2383,11 +2449,12 @@ export default function ApplicationForm({
                                       ""
                                     }
                                     onChange={(e) => {
+                                      const digitsOnly = e.target.value.replace(/\D/g, "");
                                       setFormData((prev) => ({
                                         ...prev,
                                         driver_license_numbers: {
                                           ...prev.driver_license_numbers,
-                                          [sim]: e.target.value,
+                                          [sim]: digitsOnly,
                                         },
                                       }));
                                     }}
@@ -4305,13 +4372,14 @@ export default function ApplicationForm({
                                   <td className="p-0 border-r border-slate-200">
                                     <input
                                       type="text"
+                                      inputMode="tel"
                                       value={ref.phone}
                                       onChange={(e) =>
                                         handleTableChange(
                                           "references",
                                           index,
                                           "phone",
-                                          e.target.value,
+                                          e.target.value.replace(/[^\d+-]/g, ""),
                                         )
                                       }
                                       className="w-full h-full px-4 py-2 bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500"
@@ -4425,11 +4493,12 @@ export default function ApplicationForm({
                                 <td className="p-0 border-r border-slate-200">
                                   <input
                                     type="text"
+                                    inputMode="tel"
                                     value={formData.emergency_contact.phone}
                                     onChange={(e) =>
                                       handleEmergencyContactChange(
                                         "phone",
-                                        e.target.value,
+                                        e.target.value.replace(/[^\d+-]/g, ""),
                                       )
                                     }
                                     className="w-full h-full px-4 py-2 bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500"
@@ -4707,7 +4776,7 @@ export default function ApplicationForm({
                           )}
                         </label>
                         {readOnly ? (
-                          renderAttachment(initialData?.ktp_url, "KTP")
+                          renderAttachment(resolvedDocs.ktp_url, "KTP")
                         ) : (
                           <input
                             type="file"
@@ -4733,7 +4802,7 @@ export default function ApplicationForm({
                           )}
                         </label>
                         {readOnly ? (
-                          renderAttachment(initialData?.ijazah_url, "Ijazah")
+                          renderAttachment(resolvedDocs.ijazah_url, "Ijazah")
                         ) : (
                           <input
                             type="file"
@@ -4760,7 +4829,7 @@ export default function ApplicationForm({
                         </label>
                         {readOnly ? (
                           renderAttachment(
-                            initialData?.transcript_url,
+                            resolvedDocs.transcript_url,
                             "Transkrip Nilai",
                           )
                         ) : (
@@ -4792,8 +4861,8 @@ export default function ApplicationForm({
                         </label>
                         {readOnly ? (
                           <div className="flex flex-col gap-2">
-                            {initialData?.other_doc_url ? (
-                              initialData.other_doc_url
+                            {resolvedDocs.other_doc_url ? (
+                              resolvedDocs.other_doc_url
                                 .split(",")
                                 .map((url: string, index: number) => (
                                   <div key={index}>
@@ -4885,9 +4954,9 @@ export default function ApplicationForm({
                         </p>
                         <div className="mb-2 border-2 border-dashed border-slate-300 rounded-xl bg-white overflow-hidden relative group">
                           {readOnly ? (
-                            initialData?.signature_url ? (
+                            resolvedDocs.signature_url ? (
                               <img
-                                src={initialData.signature_url}
+                                src={resolvedDocs.signature_url}
                                 alt="Signature"
                                 className="w-full h-32 sm:w-64 object-contain"
                               />
@@ -4954,21 +5023,6 @@ export default function ApplicationForm({
               </div>
             </div>
 
-            {!readOnly && (
-              <div className="w-full max-w-4xl mx-auto flex justify-end no-print">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg"
-                >
-                  {loading ? (
-                    <Loader2 className="animate-spin" size={20} />
-                  ) : null}
-                  {loading ? "Menyimpan..." : "Kirim Formulir"}
-                </button>
-              </div>
-            )}
-
             {readOnly && (
               <div
                 className="w-full block max-w-4xl mx-auto bg-white p-4 sm:p-8 mt-8 border-t-4 border-slate-100 print:border-none print:break-before-page"
@@ -4977,76 +5031,76 @@ export default function ApplicationForm({
                   LAMPIRAN DOKUMEN
                 </h2>
                 <div className="space-y-12">
-                  {initialData?.ktp_url && (
+                  {resolvedDocs.ktp_url && (
                     <div className="pdf-avoid-break">
                       <h3 className="font-bold text-slate-700 mb-4">
                         Scan KTP
                       </h3>
-                      {initialData.ktp_url
+                      {resolvedDocs.ktp_url
                         .split("?")[0]
                         .toLowerCase()
                         .endsWith(".pdf") ? (
-                        <PdfToImages url={initialData.ktp_url} title="KTP" />
+                        <PdfToImages url={resolvedDocs.ktp_url} title="KTP" />
                       ) : (
                         <img
-                          src={initialData.ktp_url}
+                          src={resolvedDocs.ktp_url}
                           alt="KTP"
                           className="max-w-full h-auto max-h-[800px] object-contain border border-slate-200 p-2 rounded-lg"
                         />
                       )}
                     </div>
                   )}
-                  {initialData?.ijazah_url && (
+                  {resolvedDocs.ijazah_url && (
                     <div className="pdf-avoid-break">
                       <h3 className="font-bold text-slate-700 mb-4">
                         Scan Ijazah
                       </h3>
-                      {initialData.ijazah_url
+                      {resolvedDocs.ijazah_url
                         .split("?")[0]
                         .toLowerCase()
                         .endsWith(".pdf") ? (
                         <PdfToImages
-                          url={initialData.ijazah_url}
+                          url={resolvedDocs.ijazah_url}
                           title="Ijazah"
                         />
                       ) : (
                         <img
-                          src={initialData.ijazah_url}
+                          src={resolvedDocs.ijazah_url}
                           alt="Ijazah"
                           className="max-w-full h-auto max-h-[800px] object-contain border border-slate-200 p-2 rounded-lg"
                         />
                       )}
                     </div>
                   )}
-                  {initialData?.transcript_url && (
+                  {resolvedDocs.transcript_url && (
                     <div className="pdf-avoid-break">
                       <h3 className="font-bold text-slate-700 mb-4">
                         Scan Transkrip Nilai
                       </h3>
-                      {initialData.transcript_url
+                      {resolvedDocs.transcript_url
                         .split("?")[0]
                         .toLowerCase()
                         .endsWith(".pdf") ? (
                         <PdfToImages
-                          url={initialData.transcript_url}
+                          url={resolvedDocs.transcript_url}
                           title="Transkrip Nilai"
                         />
                       ) : (
                         <img
-                          src={initialData.transcript_url}
+                          src={resolvedDocs.transcript_url}
                           alt="Transkrip"
                           className="max-w-full h-auto max-h-[800px] object-contain border border-slate-200 p-2 rounded-lg"
                         />
                       )}
                     </div>
                   )}
-                  {initialData?.other_doc_url && (
+                  {resolvedDocs.other_doc_url && (
                     <div className="pdf-avoid-break">
                       <h3 className="font-bold text-slate-700 mb-4">
                         Dokumen Lainnya
                       </h3>
                       <div className="space-y-8">
-                        {initialData.other_doc_url
+                        {resolvedDocs.other_doc_url
                           .split(",")
                           .map((url: string, index: number) => {
                             const trimmedUrl = url.trim();
@@ -5124,13 +5178,14 @@ export default function ApplicationForm({
                       </span>
                       <input
                         type="text"
+                        inputMode="decimal"
                         name="current_salary"
                         value={
                           readOnly
                             ? formatCurrencyId(formData.current_salary)
                             : formData.current_salary
                         }
-                        onChange={handleInputChange}
+                        onChange={handleSalaryInputChange}
                         className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       />
                     </div>
@@ -5146,6 +5201,7 @@ export default function ApplicationForm({
                       </span>
                       <input
                         type="text"
+                        inputMode="decimal"
                         name="expected_salary"
                         required
                         value={
@@ -5153,7 +5209,7 @@ export default function ApplicationForm({
                             ? formatCurrencyId(formData.expected_salary)
                             : formData.expected_salary
                         }
-                        onChange={handleInputChange}
+                        onChange={handleSalaryInputChange}
                         className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       />
                     </div>
@@ -5172,8 +5228,8 @@ export default function ApplicationForm({
                   </label>
                   {readOnly ? (
                     <div className="flex flex-col gap-2">
-                      {initialData?.payslip_url ? (
-                        initialData.payslip_url
+                      {resolvedDocs.payslip_url ? (
+                        resolvedDocs.payslip_url
                           .split(",")
                           .map((url: string, index: number) => (
                             <div key={index}>
@@ -5214,9 +5270,9 @@ export default function ApplicationForm({
                   <div className="p-6 flex flex-col items-center justify-center border-b border-slate-200">
                     <div className="w-full max-w-sm mb-2 border-2 border-dashed border-slate-300 rounded-xl bg-white overflow-hidden relative group">
                       {readOnly ? (
-                        initialData?.remuneration_signature_url ? (
+                        resolvedDocs.remuneration_signature_url ? (
                           <img
-                            src={initialData.remuneration_signature_url}
+                            src={resolvedDocs.remuneration_signature_url}
                             alt="Signature"
                             className="w-full h-40 object-contain"
                           />
@@ -5317,7 +5373,22 @@ export default function ApplicationForm({
           </div>
         )}
 
-        {readOnly && !hideSalary && initialData?.payslip_url && (
+        {!readOnly && (
+          <div className="w-full max-w-4xl mx-auto flex justify-end no-print">
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg"
+            >
+              {loading ? (
+                <Loader2 className="animate-spin" size={20} />
+              ) : null}
+              {loading ? "Menyimpan..." : "Kirim Formulir"}
+            </button>
+          </div>
+        )}
+
+        {readOnly && !hideSalary && resolvedDocs.payslip_url && (
           <div
             className="w-full block max-w-4xl mx-auto bg-white p-4 sm:p-8 mt-8 border-t-4 border-slate-100 print:border-none print:break-before-page"
           >
@@ -5326,7 +5397,7 @@ export default function ApplicationForm({
             </h2>
             <div className="pdf-avoid-break">
               <div className="space-y-8">
-                {initialData.payslip_url
+                {resolvedDocs.payslip_url
                   .split(",")
                   .map((url: string, index: number) => {
                     const trimmedUrl = url.trim();

@@ -9,6 +9,7 @@ import FormData from "form-data";
 import { PassThrough } from "stream";
 import crypto from "crypto";
 import rateLimit from "express-rate-limit";
+import helmet from "helmet";
 
 dotenv.config();
 
@@ -86,6 +87,46 @@ const uploadDocument = multer({
 });
 const app = express();
 app.set('trust proxy', 1);
+
+// Security headers (defense in depth against XSS/clickjacking, not a
+// substitute for fixing an actual injection bug if one is ever found).
+// The self-hosted Supabase origin needs to be explicitly whitelisted since
+// the browser talks to it directly (Auth/Storage/PostgREST/Realtime) using
+// the public anon key, per this app's two-key architecture.
+const SUPABASE_HTTP_ORIGIN = (process.env.VITE_SUPABASE_URL || "").replace(/^http:\/\//, "https://");
+const SUPABASE_WS_ORIGIN = SUPABASE_HTTP_ORIGIN.replace(/^https:\/\//, "wss://");
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+
+app.use(
+  helmet({
+    // Vite's dev middleware (used below when NODE_ENV !== "production")
+    // injects inline bootstrap <script> tags for React Refresh/HMR directly
+    // into the HTML — a strict script-src with no 'unsafe-inline' blocks
+    // those and the app never mounts (blank page). The production build
+    // never has inline scripts, so the strict policy only needs to apply
+    // there.
+    contentSecurityPolicy: IS_PRODUCTION
+      ? {
+          directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", "data:", "blob:", SUPABASE_HTTP_ORIGIN].filter(Boolean),
+            fontSrc: ["'self'", "data:"],
+            connectSrc: ["'self'", SUPABASE_HTTP_ORIGIN, SUPABASE_WS_ORIGIN].filter(Boolean),
+            objectSrc: ["'none'"],
+            baseUri: ["'self'"],
+            formAction: ["'self'"],
+            frameAncestors: ["'none'"],
+          },
+        }
+      : false,
+    // Disabled: our own domain and the Supabase origin don't set
+    // Cross-Origin-Resource-Policy headers, so COEP would silently break
+    // loading candidate photos/documents/avatars from Supabase Storage.
+    crossOriginEmbedderPolicy: false,
+  })
+);
 
 // Supabase Admin Client (Lazy initialization to prevent crash if env vars are missing)
 const getSupabaseAdmin = () => {
@@ -971,8 +1012,12 @@ app.use((req: any, res, next) => {
       const fileExt = (file.originalname.split('.').pop() || 'bin').toLowerCase();
       const filePath = `candidates/${docType}-${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
 
+      // Private bucket: no public URL is generated here. The frontend gets
+      // back a bare storage path and must resolve it into a short-lived
+      // signed URL via GET /api/documents/signed-url whenever it needs to
+      // actually display/download the file.
       const { error: uploadError } = await supabaseAdmin.storage
-        .from('candidate-documents')
+        .from('candidate-documents-private')
         .upload(filePath, file.buffer, { contentType: file.mimetype });
 
       if (uploadError) {
@@ -980,14 +1025,69 @@ app.use((req: any, res, next) => {
         return res.status(500).json({ error: `Gagal mengunggah ${docType}: ${uploadError.message}` });
       }
 
-      const { data: { publicUrl } } = supabaseAdmin.storage
-        .from('candidate-documents')
-        .getPublicUrl(filePath);
-
-      res.json({ url: publicUrl });
+      res.json({ url: filePath });
     } catch (error: any) {
       console.error("Error in /api/n8n/upload-document:", error);
       res.status(500).json({ error: "Gagal mengunggah dokumen. Silakan coba lagi." });
+    }
+  });
+
+  // Resolve a candidate-documents-private storage path into a short-lived
+  // signed URL. Authenticated-only: every readOnly render path that needs
+  // this (CandidateProfile.tsx, ExternalData.tsx via ApplicationForm.tsx)
+  // is only ever reached from logged-in HR/Director/Finance pages, never
+  // from the public /form-pelamar route.
+  app.get("/api/documents/signed-url", requireAuth, async (req: any, res) => {
+    const path = req.query?.path;
+    if (!path || typeof path !== "string") {
+      return res.status(400).json({ error: "Parameter path wajib diisi." });
+    }
+
+    try {
+      const supabaseAdmin = getSupabaseAdmin();
+      const { data, error } = await supabaseAdmin.storage
+        .from('candidate-documents-private')
+        .createSignedUrl(path, 600);
+
+      if (error || !data) {
+        return res.status(404).json({ error: "Dokumen tidak ditemukan." });
+      }
+
+      res.json({ url: data.signedUrl });
+    } catch (error: any) {
+      console.error("Error in /api/documents/signed-url:", error);
+      res.status(500).json({ error: "Gagal membuat URL dokumen." });
+    }
+  });
+
+  // Delete an object from candidate-documents-private using service_role
+  // (bypasses RLS entirely). The client-side DELETE RLS policy on this
+  // bucket was observed to silently match zero rows on this self-hosted
+  // storage-api instance (200 OK with an empty result, file left in
+  // place) despite matching the documented policy conditions — routing
+  // deletes through the server sidesteps that instability rather than
+  // depending on it.
+  app.delete("/api/documents/remove", requireAuth, async (req: any, res) => {
+    const path = req.body?.path;
+    if (!path || typeof path !== "string") {
+      return res.status(400).json({ error: "Parameter path wajib diisi." });
+    }
+
+    try {
+      const supabaseAdmin = getSupabaseAdmin();
+      const { data, error } = await supabaseAdmin.storage
+        .from('candidate-documents-private')
+        .remove([path]);
+
+      if (error) {
+        console.error("Error removing document:", error);
+        return res.status(500).json({ error: "Gagal menghapus dokumen." });
+      }
+
+      res.json({ removed: data?.length || 0 });
+    } catch (error: any) {
+      console.error("Error in /api/documents/remove:", error);
+      res.status(500).json({ error: "Gagal menghapus dokumen." });
     }
   });
 
