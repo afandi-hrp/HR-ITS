@@ -22,7 +22,8 @@ import {
   LayoutList,
   LayoutGrid,
 } from "lucide-react";
-import { cn, formatDate, extractPhotoUrl } from "../lib/utils";
+import { cn, formatDate } from "../lib/utils";
+import { CandidateAvatar } from "../components/CandidateAvatar";
 import { useToast } from "../components/ui/use-toast";
 import JSONRenderer from "../components/JSONRenderer";
 
@@ -271,20 +272,12 @@ export default function CandidateArchive() {
                       to={`/candidates/${log.id}`}
                       className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0 text-indigo-700 font-bold hover:bg-indigo-200 transition-colors overflow-hidden"
                     >
-                      {extractPhotoUrl(
-                        log.external_data?.raw_data || log.source_info,
-                      ) ? (
-                        <img
-                          src={extractPhotoUrl(
-                            log.external_data?.raw_data || log.source_info,
-                          )!}
-                          alt={log.full_name}
-                          className="w-full h-full object-cover"
-                          referrerPolicy="no-referrer"
-                        />
-                      ) : (
-                        log.full_name?.[0] || "?"
-                      )}
+                      <CandidateAvatar
+                        source={log.external_data?.raw_data || log.source_info}
+                        alt={log.full_name}
+                        className="w-full h-full object-cover"
+                        fallback={log.full_name?.[0] || "?"}
+                      />
                     </Link>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
@@ -409,20 +402,12 @@ export default function CandidateArchive() {
                         to={`/candidates/${log.id}`}
                         className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0 text-indigo-700 font-bold text-xl hover:bg-indigo-200 transition-colors overflow-hidden"
                       >
-                        {extractPhotoUrl(
-                          log.external_data?.raw_data || log.source_info,
-                        ) ? (
-                          <img
-                            src={extractPhotoUrl(
-                              log.external_data?.raw_data || log.source_info,
-                            )!}
-                            alt={log.full_name}
-                            className="w-full h-full object-cover"
-                            referrerPolicy="no-referrer"
-                          />
-                        ) : (
-                          log.full_name?.[0] || "?"
-                        )}
+                        <CandidateAvatar
+                          source={log.external_data?.raw_data || log.source_info}
+                          alt={log.full_name}
+                          className="w-full h-full object-cover"
+                          fallback={log.full_name?.[0] || "?"}
+                        />
                       </Link>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">

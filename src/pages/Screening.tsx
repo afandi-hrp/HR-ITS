@@ -40,7 +40,8 @@ import {
   Sunset,
   Moon,
 } from "lucide-react";
-import { cn, formatDate, fetchWithRetry, extractPhotoUrl } from "../lib/utils";
+import { cn, formatDate, fetchWithRetry } from "../lib/utils";
+import { CandidateAvatar } from "../components/CandidateAvatar";
 import { useToast } from "../components/ui/use-toast";
 import { useAuth } from "../contexts/AuthContext";
 import { usePermissions } from "../hooks/usePermissions";
@@ -1355,20 +1356,12 @@ export default function Screening() {
                             to={`/candidates/${candidate.id}`}
                             className="w-14 h-14 rounded-2xl bg-indigo-100 flex items-center justify-center shrink-0 text-indigo-700 font-bold hover:bg-indigo-200 transition-colors overflow-hidden border border-indigo-200 shadow-sm"
                           >
-                            {extractPhotoUrl(
-                              candidate.external_data?.raw_data || candidate.source_info
-                            ) ? (
-                              <img
-                                src={extractPhotoUrl(
-                                  candidate.external_data?.raw_data || candidate.source_info
-                                )!}
-                                alt={candidate.full_name}
-                                className="w-full h-full object-cover"
-                                referrerPolicy="no-referrer"
-                              />
-                            ) : (
-                              <span className="text-xl">{candidate.full_name?.[0] || "?"}</span>
-                            )}
+                            <CandidateAvatar
+                              source={candidate.external_data?.raw_data || candidate.source_info}
+                              alt={candidate.full_name}
+                              className="w-full h-full object-cover"
+                              fallback={<span className="text-xl">{candidate.full_name?.[0] || "?"}</span>}
+                            />
                           </Link>
                           
                           <div className="space-y-2 flex-1 min-w-0">

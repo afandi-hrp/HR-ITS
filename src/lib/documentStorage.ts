@@ -19,6 +19,7 @@ export async function resolveDocumentUrl(
   if (pathOrUrl.startsWith("data:")) return pathOrUrl;
 
   let path: string;
+  let bucket = PRIVATE_BUCKET;
   if (pathOrUrl.includes(PRIVATE_BUCKET_MARKER)) {
     // Some sources (e.g. n8n's own CV upload, using its own service_role
     // credentials) store a full URL into our private bucket instead of a
@@ -30,15 +31,21 @@ export async function resolveDocumentUrl(
     const extracted = pathOrUrl.split(PRIVATE_BUCKET_MARKER)[1]?.split("?")[0];
     if (!extracted) return null;
     path = extracted;
+  } else if (pathOrUrl.includes(LEGACY_BUCKET_MARKER)) {
+    // Legacy bucket, now also private — same treatment.
+    const extracted = pathOrUrl.split(LEGACY_BUCKET_MARKER)[1]?.split("?")[0];
+    if (!extracted) return null;
+    path = extracted;
+    bucket = "candidate-documents";
   } else if (pathOrUrl.startsWith("http")) {
-    return pathOrUrl; // legacy bucket / external source (Drive, job boards, etc.) — use as-is
+    return pathOrUrl; // external source (Drive, job boards, etc.) — use as-is
   } else {
     path = pathOrUrl; // bare path, already private-bucket-relative
   }
 
   try {
     const response = await fetchWithRetry(
-      `/api/documents/signed-url?path=${encodeURIComponent(path)}`,
+      `/api/documents/signed-url?path=${encodeURIComponent(path)}&bucket=${encodeURIComponent(bucket)}`,
       { method: "GET" },
       1,
     );

@@ -159,7 +159,15 @@ export function extractPhotoUrl(sourceInfo: any): string | null {
     
     for (const key of Object.keys(obj)) {
       const lowerKey = key.toLowerCase();
-      if (photoKeys.some(pk => lowerKey.includes(pk)) && typeof obj[key] === 'string' && obj[key].startsWith('http')) {
+      if (
+        photoKeys.some(pk => lowerKey.includes(pk)) &&
+        typeof obj[key] === 'string' &&
+        // Full URL (legacy public bucket, Google Drive, job boards) or a
+        // bare storage path into candidate-documents-private (our own
+        // upload endpoint always prefixes paths with "candidates/") —
+        // resolveDocumentUrl() turns the latter into a signed URL later.
+        (obj[key].startsWith('http') || obj[key].startsWith('candidates/'))
+      ) {
         return obj[key];
       }
       

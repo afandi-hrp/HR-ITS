@@ -23,7 +23,8 @@ import {
   Download,
   Loader2,
 } from "lucide-react";
-import { formatDate, cn, extractPhotoUrl } from "../lib/utils";
+import { formatDate, cn } from "../lib/utils";
+import { CandidateAvatar } from "../components/CandidateAvatar";
 import { removeDocumentFile } from "../lib/documentStorage";
 import { useToast } from "../components/ui/use-toast";
 import JSONRenderer from "../components/JSONRenderer";
@@ -661,20 +662,12 @@ export default function Logs() {
               )}
 
               <div className="w-20 h-20 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-3xl font-bold mb-4 shadow-inner overflow-hidden">
-                {extractPhotoUrl(
-                  log.external_data?.raw_data || log.source_info,
-                ) ? (
-                  <img
-                    src={extractPhotoUrl(
-                      log.external_data?.raw_data || log.source_info,
-                    )!}
-                    alt={log.full_name}
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  log.full_name?.[0] || "?"
-                )}
+                <CandidateAvatar
+                  source={log.external_data?.raw_data || log.source_info}
+                  alt={log.full_name}
+                  className="w-full h-full object-cover"
+                  fallback={log.full_name?.[0] || "?"}
+                />
               </div>
               <div className="flex flex-col items-center gap-1 mt-1">
                 <h3 className="text-lg font-bold text-slate-900 line-clamp-1">
@@ -938,22 +931,12 @@ export default function Logs() {
               {/* Header Info */}
               <div className="flex items-start gap-6">
                 <div className="w-20 h-20 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-700 text-3xl font-bold overflow-hidden shrink-0">
-                  {extractPhotoUrl(
-                    selectedLog.external_data?.raw_data ||
-                      selectedLog.source_info,
-                  ) ? (
-                    <img
-                      src={extractPhotoUrl(
-                        selectedLog.external_data?.raw_data ||
-                          selectedLog.source_info,
-                      )!}
-                      alt={selectedLog.full_name}
-                      className="w-full h-full object-cover"
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    selectedLog.full_name?.[0] || "?"
-                  )}
+                  <CandidateAvatar
+                    source={selectedLog.external_data?.raw_data || selectedLog.source_info}
+                    alt={selectedLog.full_name}
+                    className="w-full h-full object-cover"
+                    fallback={selectedLog.full_name?.[0] || "?"}
+                  />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-3">

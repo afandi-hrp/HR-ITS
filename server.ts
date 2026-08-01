@@ -202,6 +202,29 @@ app.use((req: any, res, next) => {
     }
   };
 
+  // Chain after requireAuth (needs req.user). Frontend routing already
+  // hides these pages from non-HR_ADMIN roles, but that's a UI-only
+  // restriction — anyone with a valid session can call the API directly,
+  // so destructive/admin-only operations need this enforced server-side
+  // too, not just hidden from the menu.
+  const requireHrAdmin = async (req: any, res: any, next: any) => {
+    try {
+      const supabaseAdmin = getSupabaseAdmin();
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('role')
+        .eq('id', req.user.id)
+        .single();
+
+      if (profile?.role !== 'HR_ADMIN') {
+        return res.status(403).json({ error: "Forbidden: HR Admin only." });
+      }
+      next();
+    } catch (error) {
+      return res.status(403).json({ error: "Forbidden." });
+    }
+  };
+
   // API Routes
   app.get("/api/health", (req, res) => {
     res.json({ 
@@ -441,6 +464,22 @@ app.use((req: any, res, next) => {
       
       if (authError || !user) {
         return res.status(401).json({ error: "Unauthorized. Invalid token." });
+      }
+
+      // type "test" accepts an arbitrary caller-supplied payload.url (used
+      // by the Settings page to test a webhook before saving it) — that's
+      // an SSRF-adjacent capability (our server will make a request to
+      // whatever URL is given), so restrict it to HR_ADMIN, the only role
+      // with access to the webhook settings UI that uses it.
+      if (type === 'test') {
+        const { data: profile } = await supabaseAdmin
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+        if (profile?.role !== 'HR_ADMIN') {
+          return res.status(403).json({ error: "Forbidden: HR Admin only." });
+        }
       }
 
       // Fetch webhook URL based on type from user metadata
@@ -1050,21 +1089,28 @@ app.use((req: any, res, next) => {
     }
   });
 
-  // Resolve a candidate-documents-private storage path into a short-lived
-  // signed URL. Authenticated-only: every readOnly render path that needs
-  // this (CandidateProfile.tsx, ExternalData.tsx via ApplicationForm.tsx)
-  // is only ever reached from logged-in HR/Director/Finance pages, never
-  // from the public /form-pelamar route.
+  // Resolve a storage path into a short-lived signed URL, for either the
+  // private bucket or the legacy public one (once that's also flipped to
+  // private, its documents still need to be viewable through here).
+  // Authenticated-only: every readOnly render path that needs this
+  // (CandidateProfile.tsx, ExternalData.tsx via ApplicationForm.tsx) is
+  // only ever reached from logged-in HR/Director/Finance pages, never from
+  // the public /form-pelamar route.
+  const SIGNABLE_BUCKETS = ['candidate-documents-private', 'candidate-documents'];
   app.get("/api/documents/signed-url", requireAuth, async (req: any, res) => {
     const path = req.query?.path;
+    const bucket = req.query?.bucket || 'candidate-documents-private';
     if (!path || typeof path !== "string") {
       return res.status(400).json({ error: "Parameter path wajib diisi." });
+    }
+    if (!SIGNABLE_BUCKETS.includes(bucket)) {
+      return res.status(400).json({ error: "Bucket tidak valid." });
     }
 
     try {
       const supabaseAdmin = getSupabaseAdmin();
       const { data, error } = await supabaseAdmin.storage
-        .from('candidate-documents-private')
+        .from(bucket)
         .createSignedUrl(path, 600);
 
       if (error || !data) {
@@ -1089,7 +1135,7 @@ app.use((req: any, res, next) => {
   // it. `bucket` is restricted to this allowlist so the endpoint can't be
   // used to delete from an arbitrary bucket.
   const DELETABLE_BUCKETS = ['candidate-documents-private', 'candidate-documents'];
-  app.delete("/api/documents/remove", requireAuth, async (req: any, res) => {
+  app.delete("/api/documents/remove", requireAuth, requireHrAdmin, async (req: any, res) => {
     const path = req.body?.path;
     const bucket = req.body?.bucket || 'candidate-documents-private';
     if (!path || typeof path !== "string") {
@@ -1118,7 +1164,7 @@ app.use((req: any, res, next) => {
   });
 
   // Feature: Fetch CV Uploads
-  app.get("/api/cv-uploads", requireAuth, async (req, res) => {
+  app.get("/api/cv-uploads", requireAuth, requireHrAdmin, async (req, res) => {
     const { search, page = '1', limit = '10' } = req.query;
     try {
       const supabaseAdmin = getSupabaseAdmin();
@@ -1150,7 +1196,7 @@ app.use((req: any, res, next) => {
   });
 
   // Feature: Delete CV Uploads
-  app.delete("/api/cv-uploads", requireAuth, async (req, res) => {
+  app.delete("/api/cv-uploads", requireAuth, requireHrAdmin, async (req, res) => {
     const { ids } = req.body;
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({ error: "No IDs provided" });

@@ -40,11 +40,11 @@ import {
   normalizeName,
   normalizePhone,
   fetchWithRetry,
-  extractPhotoUrl,
   getEmbedUrl,
 } from "../lib/utils";
 import { waitForN8nJob } from "../lib/n8n";
 import { resolveDocumentUrl, removeDocumentFile } from "../lib/documentStorage";
+import { CandidateAvatar } from "../components/CandidateAvatar";
 import { useToast } from "../components/ui/use-toast";
 import EvaluationModal from "../components/EvaluationModal";
 import ReferenceCheckModal from "../components/ReferenceCheckModal";
@@ -1419,16 +1419,12 @@ export default function CandidateProfile() {
             <div className="h-24 bg-[#3D2C44]"></div>
             <div className="px-6 pb-6 relative">
               <div className="w-20 h-20 bg-white rounded-2xl border-4 border-white shadow-md flex items-center justify-center text-3xl font-bold text-[#3D2C44] absolute -top-10 overflow-hidden">
-                {extractPhotoUrl(linkedData || candidate.source_info) ? (
-                  <img
-                    src={extractPhotoUrl(linkedData || candidate.source_info)!}
-                    alt={candidate.full_name}
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  candidate.full_name.charAt(0)
-                )}
+                <CandidateAvatar
+                  source={linkedData || candidate.source_info}
+                  alt={candidate.full_name}
+                  className="w-full h-full object-cover"
+                  fallback={candidate.full_name.charAt(0)}
+                />
               </div>
               <div className="pt-14">
                 {isEditing ? (
