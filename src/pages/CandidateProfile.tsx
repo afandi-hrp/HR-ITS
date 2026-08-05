@@ -422,7 +422,15 @@ export default function CandidateProfile() {
       fetchEvaluations(id);
       fetchNotes(id);
     }
-  }, [id, profile]);
+    // profile.id (not the whole `profile` object) on purpose: AuthContext
+    // re-fetches and replaces `profile` with a brand-new object on every
+    // auth event, including an ordinary background token refresh that
+    // succeeds — which fires on essentially every browser tab/app switch.
+    // Depending on the whole object re-triggered this full refetch (visible
+    // as the page appearing to "reset") on every such switch, even when
+    // nothing about the candidate or the logged-in user actually changed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, profile?.id]);
 
   const fetchNotes = async (candidateId: string) => {
     setLoadingNotes(true);

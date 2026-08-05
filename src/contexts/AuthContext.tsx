@@ -1,12 +1,17 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { AuthSession } from '@supabase/supabase-js';
 import { Profile } from '../types';
+import { useToast } from '../components/ui/Toaster';
 
 interface AuthContextValue {
   session: AuthSession | null;
   profile: Profile | null;
   loading: boolean;
+  // Lets an open form/modal with unsaved input (e.g. the candidate
+  // evaluation form) tell AuthProvider to hold off on reacting to a
+  // session hiccup until the form is closed/saved — see usage below.
+  setSessionProtected: (active: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -15,6 +20,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+  // A ref (not state) so the onAuthStateChange closure registered below
+  // (inside a [] effect) always reads the latest value without needing to
+  // re-subscribe.
+  const sessionProtectedRef = useRef(false);
+  const setSessionProtected = useCallback((active: boolean) => {
+    sessionProtectedRef.current = active;
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session }, error }) => {
@@ -79,6 +92,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return;
           }
 
+          // Unsaved work is open (e.g. mid-fill on the evaluation form) —
+          // don't touch anything: no clearing, no toast, no redirect to
+          // Login. This event is very often just a false alarm from
+          // Supabase's visibility-triggered refresh check (switching
+          // tabs/apps is exactly when it re-checks the session), and
+          // interrupting the user mid-entry was the problem being fixed
+          // here. If the session really is dead, that surfaces later and
+          // less disruptively — e.g. as a "failed to save" error — once
+          // they finish and the protection is lifted.
+          if (sessionProtectedRef.current) {
+            return;
+          }
+
           let cleared = false;
           const keysToRemove: string[] = [];
           for (let i = 0; i < localStorage.length; i++) {
@@ -93,10 +119,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
           setSession(null);
           setProfile(null);
-          if (cleared) {
-            window.location.reload();
-          } else if ((event as string) === 'TOKEN_REFRESH_FAILED') {
-            window.location.href = '/';
+
+          // Previously this called window.location.reload() / redirected
+          // via window.location.href here, which wipes any unsaved work in
+          // an open form/modal (e.g. an in-progress candidate evaluation)
+          // the instant the session dies mid-use — and this branch is
+          // commonly reached just from switching browser tabs, since
+          // tab-visibility changes are exactly when Supabase re-checks/
+          // refreshes the session. setSession(null) above already makes
+          // App.tsx render the Login screen via a normal React re-render —
+          // no hard navigation needed, so state elsewhere on the page that
+          // the user hasn't explicitly saved yet is no longer discarded.
+          if (cleared || (event as string) === 'TOKEN_REFRESH_FAILED') {
+            toast({
+              title: 'Sesi Login Berakhir',
+              description: 'Sesi Anda telah berakhir dan perlu login kembali. Jika ada isian yang belum disimpan, mungkin perlu diisi ulang.',
+              variant: 'destructive',
+            });
           }
         });
         return;
@@ -121,7 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ session, profile, loading }}>
+    <AuthContext.Provider value={{ session, profile, loading, setSessionProtected }}>
       {children}
     </AuthContext.Provider>
   );

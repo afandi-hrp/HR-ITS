@@ -125,6 +125,40 @@ export default function Screening() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const [selectedPosition, setSelectedPosition] = useState<string | null>(searchParams.get("selectedPosition") || null);
+
+  // Rejected/hired candidates for the selected position: these have already
+  // been moved out of `candidates` into `candidate_logs` (see handleReject/
+  // handleHire below, which call /api/candidates/move-to-log), so the main
+  // fetchCandidates() query never sees them. Fetched separately here so the
+  // "Rejected"/"Hired" counts and lists in the Status sidebar reflect the
+  // position's real history instead of always showing 0.
+  const [archivedForPosition, setArchivedForPosition] = useState<any[]>([]);
+  useEffect(() => {
+    if (!selectedPosition) {
+      setArchivedForPosition([]);
+      return;
+    }
+    let cancelled = false;
+    supabase
+      .from("candidate_logs")
+      .select("*")
+      .eq("position", selectedPosition)
+      .in("status_screening", ["rejected", "hired"])
+      .order("archived_at", { ascending: false })
+      .limit(500)
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          console.warn("Failed to fetch archived candidates for position:", error);
+          return;
+        }
+        setArchivedForPosition((data || []).map((c: any) => ({ ...c, _isArchived: true })));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedPosition]);
+
   // Sync to URL
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
@@ -826,8 +860,10 @@ export default function Screening() {
     {} as Record<string, Candidate[]>,
   );
 
-  const candidatesForSelectedPosition = selectedPosition ? (allGroupedCandidates[selectedPosition] || []) : [];
-  
+  const candidatesForSelectedPosition = selectedPosition
+    ? [...(allGroupedCandidates[selectedPosition] || []), ...archivedForPosition]
+    : [];
+
   const filteredCandidatesForPosition = candidatesForSelectedPosition.filter((c) => {
     const selectedStatus = positionStatusFilters[selectedPosition!] || "Inbox";
     if (selectedStatus === "Inbox" || !PIPELINE_STATUS_OPTIONS.includes(selectedStatus)) return true;
@@ -1269,7 +1305,11 @@ export default function Screening() {
                   {isStatusExpanded && (
                     <div className="space-y-1">
                       {(() => {
-                      const allCandidatesInThisPosition = allGroupedCandidates[selectedPosition] || [];
+                      // Includes archived (rejected/hired) candidates for this
+                      // position — see candidatesForSelectedPosition above —
+                      // so the Rejected/Hired counts reflect real history
+                      // instead of always reading 0.
+                      const allCandidatesInThisPosition = candidatesForSelectedPosition;
                       return PIPELINE_STATUS_OPTIONS.map(opt => {
                         const count = opt === "Inbox" ? allCandidatesInThisPosition.length : allCandidatesInThisPosition.filter((c: any) => getCandidateDerivedStatus(c) === opt).length;
                         const currentFilter = positionStatusFilters[selectedPosition] || "Inbox";
@@ -1492,7 +1532,12 @@ export default function Screening() {
                           
                           {/* Buttons */}
                           <div className="flex flex-col gap-2 mt-auto">
-                            {!isRestrictedScreeningRole && (
+                            {candidate._isArchived && (
+                              <div className="px-3 py-2.5 text-xs font-bold text-slate-500 bg-slate-100 rounded-xl text-center" title="Kandidat ini sudah diarsipkan (dipindahkan ke Log Kandidat) — buka profilnya untuk detail lengkap.">
+                                Diarsipkan
+                              </div>
+                            )}
+                            {!isRestrictedScreeningRole && !candidate._isArchived && (
                               <Popover>
                                 <PopoverTrigger
                                   render={
@@ -1528,7 +1573,7 @@ export default function Screening() {
                               </Popover>
                             )}
 
-                            {!isRestrictedScreeningRole && (
+                            {!isRestrictedScreeningRole && !candidate._isArchived && (
                             <Popover>
                               <PopoverTrigger
                                 render={

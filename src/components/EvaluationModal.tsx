@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Loader2, Save } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useToast } from './ui/use-toast';
+import { useAuth } from '../contexts/AuthContext';
 import { EvaluationTemplate, CandidateEvaluation, Profile } from '../types';
 
 interface EvaluationModalProps {
@@ -14,29 +15,88 @@ interface EvaluationModalProps {
   isAssignedToMe?: boolean;
 }
 
+// Scoped per candidate + the evaluation being edited (or "new" for a fresh
+// one), so a draft never leaks across different candidates/evaluations.
+const getDraftKey = (candidateId: string, evaluationId?: string) =>
+  `evaluation_draft_${candidateId}_${evaluationId || 'new'}`;
+
 export default function EvaluationModal({ isOpen, onClose, candidateId, onSuccess, existingEvaluation, userProfile, isAssignedToMe }: EvaluationModalProps) {
   const { toast } = useToast();
+  const { setSessionProtected } = useAuth();
   const [templates, setTemplates] = useState<EvaluationTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [interviewerName, setInterviewerName] = useState('');
   const [evaluationData, setEvaluationData] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Tracks which draft key has already been reset/restored, so re-renders
+  // that pass a new-but-equivalent `existingEvaluation`/`userProfile`
+  // object (e.g. from a parent state refresh) don't re-run the reset or
+  // re-show the "Draft Ditemukan" toast while the modal stays open.
+  const initializedDraftKeyRef = useRef<string | null>(null);
+
+  const evaluationId = existingEvaluation?.id;
 
   useEffect(() => {
-    if (isOpen) {
-      fetchTemplates();
-      if (existingEvaluation) {
-        setSelectedTemplateId(existingEvaluation.template_id);
-        setInterviewerName(existingEvaluation.interviewer_name || '');
-        setEvaluationData(existingEvaluation.evaluation_data || {});
-      } else {
-        setEvaluationData({});
-        setInterviewerName(userProfile?.full_name || '');
-        setSelectedTemplateId('');
-      }
+    if (!isOpen) {
+      initializedDraftKeyRef.current = null;
+      return;
     }
-  }, [isOpen, existingEvaluation, userProfile]);
+    fetchTemplates();
+
+    const draftKey = getDraftKey(candidateId, evaluationId);
+    if (initializedDraftKeyRef.current === draftKey) return;
+    initializedDraftKeyRef.current = draftKey;
+
+    if (existingEvaluation) {
+      setSelectedTemplateId(existingEvaluation.template_id);
+      setInterviewerName(existingEvaluation.interviewer_name || '');
+      setEvaluationData(existingEvaluation.evaluation_data || {});
+    } else {
+      setEvaluationData({});
+      setInterviewerName(userProfile?.full_name || '');
+      setSelectedTemplateId('');
+    }
+
+    // Restore any unsaved in-progress input for this exact evaluation, in
+    // case entry was interrupted (e.g. a session hiccup mid-fill — see
+    // AuthContext.tsx) before "Simpan Hasil" was clicked.
+    const draft = localStorage.getItem(draftKey);
+    if (draft) {
+      try {
+        const parsed = JSON.parse(draft);
+        if (parsed.selectedTemplateId) setSelectedTemplateId(parsed.selectedTemplateId);
+        if (parsed.interviewerName) setInterviewerName(parsed.interviewerName);
+        if (parsed.evaluationData) setEvaluationData(parsed.evaluationData);
+        toast({
+          title: 'Draft Ditemukan',
+          description: 'Input evaluasi yang belum tersimpan berhasil dipulihkan.',
+        });
+      } catch (e) {}
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, candidateId, evaluationId]);
+
+  // Debounced autosave of in-progress input, so it survives an interrupted
+  // session/reload before the user clicks "Simpan Hasil".
+  useEffect(() => {
+    if (!isOpen || !selectedTemplateId) return;
+    const timeout = setTimeout(() => {
+      localStorage.setItem(
+        getDraftKey(candidateId, evaluationId),
+        JSON.stringify({ selectedTemplateId, interviewerName, evaluationData })
+      );
+    }, 1000);
+    return () => clearTimeout(timeout);
+  }, [isOpen, candidateId, evaluationId, selectedTemplateId, interviewerName, evaluationData]);
+
+  // While this modal is open, tell AuthProvider to hold off on reacting to
+  // a session hiccup (e.g. from switching tabs/apps) instead of yanking
+  // the user out mid-entry — see setSessionProtected in AuthContext.tsx.
+  useEffect(() => {
+    setSessionProtected(isOpen);
+    return () => setSessionProtected(false);
+  }, [isOpen, setSessionProtected]);
 
   const fetchTemplates = async () => {
     setLoading(true);
@@ -187,6 +247,7 @@ export default function EvaluationModal({ isOpen, onClose, candidateId, onSucces
           .eq('id', existingEvaluation.id);
 
         if (error) throw error;
+        localStorage.removeItem(getDraftKey(candidateId, existingEvaluation?.id));
         toast({ title: 'Berhasil', description: 'Hasil evaluasi berhasil diperbarui' });
       } else {
         const { error } = await supabase
@@ -202,6 +263,7 @@ export default function EvaluationModal({ isOpen, onClose, candidateId, onSucces
           });
 
         if (error) throw error;
+        localStorage.removeItem(getDraftKey(candidateId, existingEvaluation?.id));
         toast({ title: 'Berhasil', description: 'Hasil evaluasi berhasil disimpan' });
       }
 

@@ -162,7 +162,8 @@ const getSupabaseAdmin = () => {
   return createClient(url, key);
 };
 
-const PORT = 3000;
+const DEFAULT_PORT = process.env.NODE_ENV === "production" ? 3000 : 3001;
+const PORT = process.env.PORT ? Number(process.env.PORT) : DEFAULT_PORT;
 
 // Increase limit for large payloads (e.g., CV uploads)
 // In Vercel, req.body might already be parsed. If so, don't run express.json()
