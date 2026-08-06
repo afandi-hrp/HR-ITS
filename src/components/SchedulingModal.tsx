@@ -31,6 +31,8 @@ export default function SchedulingModal({ candidate, type, initialData, onClose,
 
   const [date, setDate] = useState(initialData ? new Date(initialData.schedule_date).toISOString().split('T')[0] : '');
   const [time, setTime] = useState(initialData ? new Date(initialData.schedule_date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '');
+  const [hasEndTime, setHasEndTime] = useState(!!initialData?.end_time);
+  const [endTime, setEndTime] = useState(initialData?.end_time ? new Date(initialData.end_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '');
   const [interviewType, setInterviewType] = useState<'HR' | 'USER'>(initialInterviewType);
   const [locationType, setLocationType] = useState<'online' | 'offline'>(initialData?.location_type || 'online');
   const [locationDetail, setLocationDetail] = useState(initialData?.location_detail || '');
@@ -80,8 +82,19 @@ export default function SchedulingModal({ candidate, type, initialData, onClose,
       toast({ title: 'Error', description: `${type === 'psikotes' ? 'Batas Akhir (Deadline)' : 'Tanggal'} dan waktu wajib diisi.`, variant: 'destructive' });
       return;
     }
+    if (type === 'interview' && hasEndTime) {
+      if (!endTime) {
+        toast({ title: 'Error', description: 'Isi jam selesainya, atau matikan centang "Tentukan Waktu Selesai".', variant: 'destructive' });
+        return;
+      }
+      if (endTime <= time) {
+        toast({ title: 'Error', description: 'Waktu selesai harus setelah waktu mulai.', variant: 'destructive' });
+        return;
+      }
+    }
 
     const scheduleDateObj = new Date(`${date}T${time}`);
+    const endTimeObj = type === 'interview' && hasEndTime && endTime ? new Date(`${date}T${endTime}`) : null;
     const now = new Date();
 
     // Only validate if it's a new schedule or if the date/time was changed
@@ -96,8 +109,9 @@ export default function SchedulingModal({ candidate, type, initialData, onClose,
 
     setLoading(true);
     const scheduleDate = scheduleDateObj.toISOString();
+    const endTimeIso = endTimeObj ? endTimeObj.toISOString() : null;
     const tableName = type === 'psikotes' ? 'psikotes_schedules' : 'interview_schedules';
-    
+
     const finalNotes = type === 'interview' ? `[${interviewType}] ${notes}` : notes;
 
     let result;
@@ -106,6 +120,7 @@ export default function SchedulingModal({ candidate, type, initialData, onClose,
         .from(tableName)
         .update({
           schedule_date: scheduleDate,
+          ...(type === 'interview' ? { end_time: endTimeIso } : {}),
           location_type: locationType,
           location_detail: locationDetail,
           additional_notes: finalNotes
@@ -117,6 +132,7 @@ export default function SchedulingModal({ candidate, type, initialData, onClose,
         .insert([{
           candidate_id: selectedCandidateId,
           schedule_date: scheduleDate,
+          ...(type === 'interview' ? { end_time: endTimeIso } : {}),
           location_type: locationType,
           location_detail: locationDetail,
           additional_notes: finalNotes
@@ -214,6 +230,37 @@ export default function SchedulingModal({ candidate, type, initialData, onClose,
               />
             </div>
           </div>
+
+          {type === 'interview' && (
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={hasEndTime}
+                  onChange={(e) => {
+                    setHasEndTime(e.target.checked);
+                    if (!e.target.checked) setEndTime('');
+                  }}
+                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                  <Clock size={14} className="text-indigo-500" />
+                  Tentukan Waktu Selesai
+                </span>
+              </label>
+
+              {hasEndTime ? (
+                <input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                />
+              ) : (
+                <p className="text-xs text-slate-400">Tanpa jam pasti — akan tampil sebagai "Selesai" (mis. "08:00 - Selesai").</p>
+              )}
+            </div>
+          )}
 
           {type === 'interview' && (
             <div className="space-y-2">

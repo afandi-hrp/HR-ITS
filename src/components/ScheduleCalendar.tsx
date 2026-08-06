@@ -15,20 +15,22 @@ import {
 import { id } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { Schedule } from '../types';
-import { cn } from '../lib/utils';
+import { cn, formatInterviewTimeRange } from '../lib/utils';
 
 interface ScheduleCalendarProps {
   schedules: Schedule[];
   onScheduleClick: (schedule: Schedule) => void;
   currentDate: Date;
   onDateChange: (date: Date) => void;
+  showEndTimeLabel?: boolean;
 }
 
-export default function ScheduleCalendar({ 
-  schedules, 
-  onScheduleClick, 
-  currentDate, 
-  onDateChange 
+export default function ScheduleCalendar({
+  schedules,
+  onScheduleClick,
+  currentDate,
+  onDateChange,
+  showEndTimeLabel = false,
 }: ScheduleCalendarProps) {
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
@@ -128,7 +130,7 @@ export default function ScheduleCalendar({
                     <div className="font-semibold truncate">{schedule.candidate?.full_name}</div>
                     <div className="flex items-center gap-1 opacity-80 mt-0.5">
                       <Clock size={10} />
-                      <span>{format(new Date(schedule.schedule_date), 'HH:mm')}</span>
+                      <span>{showEndTimeLabel ? formatInterviewTimeRange(schedule) : format(new Date(schedule.schedule_date), 'HH:mm')}</span>
                     </div>
                   </div>
                 ))}

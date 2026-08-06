@@ -1,0 +1,24 @@
+-- Ninth-round hardening (2026-08-06). Found via a controlled pentest-style
+-- audit: a brand-new auth.users row (created via the service_role-backed
+-- admin API — the same path this app's own user-provisioning uses) gets a
+-- `profiles` row with role = 'HR_ADMIN' with zero configuration, because
+-- that is the column's DEFAULT value. handle_new_user() never sets `role`
+-- explicitly, so every new profile silently inherits this default.
+--
+-- trg_prevent_privileged_self_signup (20260731000002) only blocks this for
+-- requests NOT made with the service_role key — i.e. it defends against
+-- public self-signup, but does nothing here, since account creation
+-- legitimately happens via service_role and the trigger explicitly trusts
+-- that context. The actual bug is the column default itself: any new
+-- account is fully privileged until someone remembers to set its role via
+-- Manajemen Pengguna afterward — a real window (or, if forgotten,
+-- permanent excess privilege) with zero attacker effort required beyond
+-- getting any account created at all.
+ALTER TABLE public.profiles ALTER COLUMN role DROP DEFAULT;
+
+-- Existing rows are untouched by this migration on purpose — changing
+-- someone's live role is a people/access decision, not a schema fix.
+-- Audit for accounts that may have ended up as HR_ADMIN only because of
+-- this bug (rather than a deliberate decision) with:
+--   SELECT id, full_name, role, department, updated_at FROM public.profiles
+--   WHERE role = 'HR_ADMIN' ORDER BY updated_at;

@@ -308,14 +308,14 @@ useEffect(() => {
           supabase
             .from("psikotes_schedules")
             .select(
-              "id, schedule_date, status, candidates!inner(id, full_name, position)",
+              "id, schedule_date, is_confirmed, candidates!inner(id, full_name, position)",
             )
             .gte("schedule_date", nowForQuery.toISOString())
             .lte("schedule_date", next24Hours.toISOString()),
           supabase
             .from("interview_schedules")
             .select(
-              "id, schedule_date, status, candidates!inner(id, full_name, position)",
+              "id, schedule_date, is_confirmed, candidates!inner(id, full_name, position)",
             )
             .gte("schedule_date", nowForQuery.toISOString())
             .lte("schedule_date", next24Hours.toISOString()),
@@ -462,7 +462,7 @@ useEffect(() => {
               bgColor: "bg-amber-50",
               path: "psikotes",
               recordId: p.id,
-              status: p.status,
+              status: p.is_confirmed ? "confirmed" : "pending",
             });
           }
         });
@@ -481,7 +481,7 @@ useEffect(() => {
               bgColor: "bg-purple-50",
               path: "interview",
               recordId: i.id,
-              status: i.status,
+              status: i.is_confirmed ? "confirmed" : "pending",
             });
           }
         });

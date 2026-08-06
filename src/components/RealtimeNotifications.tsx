@@ -85,7 +85,7 @@ export default function RealtimeNotifications() {
         .select('id')
         .gte('schedule_date', now.toISOString())
         .lte('schedule_date', next24Hours.toISOString())
-        .eq('status', 'menunggu');
+        .eq('is_confirmed', false);
 
       if (!error && data && data.length > 0) {
         toast({

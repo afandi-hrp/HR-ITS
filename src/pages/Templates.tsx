@@ -594,9 +594,21 @@ export default function Templates() {
                     </code>{" "}
                     - Waktu & Lokasi (Umum) <br />
                     <code className="bg-white px-1 rounded">
+                      {"{{hari}}"}
+                    </code>{" "}
+                    - Nama Hari (Contoh: Kamis) <br />
+                    <code className="bg-white px-1 rounded">
                       {"{{jadwal_interview}}"}
                     </code>{" "}
-                    - Detail Waktu Interview <br />
+                    - Detail Waktu Interview (Tanggal + Jam) <br />
+                    <code className="bg-white px-1 rounded">
+                      {"{{tanggal_interview}}"}
+                    </code>{" "}
+                    - Tanggal Interview Saja <br />
+                    <code className="bg-white px-1 rounded">
+                      {"{{waktu_interview}}"}
+                    </code>{" "}
+                    - Jam Interview Saja <br />
                     <code className="bg-white px-1 rounded">
                       {"{{jadwal_psikotes}}"}
                     </code>{" "}

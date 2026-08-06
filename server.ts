@@ -1244,16 +1244,24 @@ app.use((req: any, res, next) => {
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     (async () => {
+      // Start listening first so we have a concrete http.Server to hand to
+      // Vite's HMR websocket — without server.hmr.server, Vite instead
+      // spins up its own standalone HMR server on a separate auto-picked
+      // port, which the browser's HMR client (still pointed at this app's
+      // own host/port) can never actually reach, causing a WebSocket
+      // handshake 400 in the console (visible, but otherwise harmless:
+      // code edits just require a manual browser refresh instead of
+      // hot-reloading — doesn't affect the production build at all).
+      const server = app.listen(PORT, "0.0.0.0", () => {
+        console.log(`Server running on http://0.0.0.0:${PORT}`);
+      });
+
       const viteModule = await import("vite");
       const vite = await viteModule.createServer({
-        server: { middlewareMode: true },
+        server: { middlewareMode: true, hmr: { server } },
         appType: "spa",
       });
       app.use(vite.middlewares);
-      
-      app.listen(PORT, "0.0.0.0", () => {
-        console.log(`Server running on http://0.0.0.0:${PORT}`);
-      });
     })();
   } else {
     // Serve static files in production (Local or non-Vercel)

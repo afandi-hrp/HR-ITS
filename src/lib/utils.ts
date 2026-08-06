@@ -6,6 +6,17 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// Interview-only (see end_time on interview_schedules): "08:00 - 10:00" when
+// an end time was set, otherwise "08:00 - Selesai".
+export function formatInterviewTimeRange(schedule: { schedule_date: string; end_time?: string | null }): string {
+  const start = new Date(schedule.schedule_date).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+  if (schedule.end_time) {
+    const end = new Date(schedule.end_time).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+    return `${start} - ${end}`;
+  }
+  return `${start} - Selesai`;
+}
+
 export function formatDate(date: string | Date) {
   return new Date(date).toLocaleDateString("id-ID", {
     day: "numeric",

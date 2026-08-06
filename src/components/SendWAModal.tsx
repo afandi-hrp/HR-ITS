@@ -3,7 +3,7 @@ import { X, Send, MessageCircle, ChevronDown, Loader2, KeyRound } from 'lucide-r
 import { supabase } from '../lib/supabase';
 import { Candidate, EmailTemplate, Schedule } from '../types';
 import { useToast } from './ui/use-toast';
-import { cn, formatDate, fetchWithRetry } from '../lib/utils';
+import { cn, formatDate, fetchWithRetry, formatInterviewTimeRange } from '../lib/utils';
 
 interface SendWAModalProps {
   candidate: Candidate;
@@ -101,14 +101,18 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
     const template = templates.find(t => t.id === templateId);
     if (template) {
       const scheduleStr = `${formatDate(schedule.schedule_date)}, ${new Date(schedule.schedule_date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} (${schedule.location_type}: ${schedule.location_detail || '-'})`;
-      
+      const hariStr = new Date(schedule.schedule_date).toLocaleDateString('id-ID', { weekday: 'long' });
+
       const interviewSchedule = type === 'interview' ? schedule : fullCandidate.interview_schedules?.[0];
       const psikotesSchedule = type === 'psikotes' ? schedule : fullCandidate.psikotes_schedules?.[0];
 
-      const interviewStr = interviewSchedule 
-        ? `${formatDate(interviewSchedule.schedule_date)}, ${new Date(interviewSchedule.schedule_date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`
+      const interviewStr = interviewSchedule
+        ? `${formatDate(interviewSchedule.schedule_date)}, ${formatInterviewTimeRange(interviewSchedule)}`
         : 'Belum dijadwalkan';
-      
+
+      const tanggalInterviewStr = interviewSchedule ? formatDate(interviewSchedule.schedule_date) : 'Belum dijadwalkan';
+      const waktuInterviewStr = interviewSchedule ? formatInterviewTimeRange(interviewSchedule) : 'Belum dijadwalkan';
+
       const psikotesStr = psikotesSchedule
         ? `${formatDate(psikotesSchedule.schedule_date)}, ${new Date(psikotesSchedule.schedule_date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`
         : 'Belum dijadwalkan';
@@ -129,7 +133,10 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
           .replace(/{{pendidikan_terakhir}}/g, fullCandidate.education || '-')
           .replace(/{{pengalaman_kerja}}/g, fullCandidate.work_experience || '-')
           .replace(/{{jadwal}}/g, scheduleStr)
+          .replace(/{{hari}}/g, hariStr)
           .replace(/{{jadwal_interview}}/g, interviewStr)
+          .replace(/{{tanggal_interview}}/g, tanggalInterviewStr)
+          .replace(/{{waktu_interview}}/g, waktuInterviewStr)
           .replace(/{{jadwal_psikotes}}/g, psikotesStr)
           .replace(/{{lokasi_interview}}/g, lokasiInterviewStr)
           .replace(/{{lokasi_psikotes}}/g, lokasiPsikotesStr);
@@ -322,7 +329,7 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Jadwal {type === 'psikotes' ? 'Psikotes' : 'Interview'}</label>
               <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 truncate">
-                {formatDate(schedule.schedule_date)}, {new Date(schedule.schedule_date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                {formatDate(schedule.schedule_date)}, {type === 'interview' ? formatInterviewTimeRange(schedule) : new Date(schedule.schedule_date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
               </div>
             </div>
             <div className="space-y-2">
@@ -378,7 +385,7 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
             />
             <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
               <p className="text-[10px] text-slate-400 italic">
-                Variabel: {"{{nama}}"}, {"{{email_kandidat}}"}, {"{{posisi}}"}, {"{{pendidikan_terakhir}}"}, {"{{pengalaman_kerja}}"}, {"{{jadwal}}"}, {"{{jadwal_interview}}"}, {"{{jadwal_psikotes}}"}, {"{{lokasi_interview}}"}, {"{{lokasi_psikotes}}"}
+                Variabel: {"{{nama}}"}, {"{{email_kandidat}}"}, {"{{posisi}}"}, {"{{pendidikan_terakhir}}"}, {"{{pengalaman_kerja}}"}, {"{{jadwal}}"}, {"{{hari}}"}, {"{{jadwal_interview}}"}, {"{{tanggal_interview}}"}, {"{{waktu_interview}}"}, {"{{jadwal_psikotes}}"}, {"{{lokasi_interview}}"}, {"{{lokasi_psikotes}}"}
               </p>
               <p className="text-[10px] text-amber-600 italic sm:max-w-[200px] sm:text-right">
                 Jika notifikasi "Berhasil" tapi WA tidak masuk, pastikan workflow n8n Anda sudah Active.

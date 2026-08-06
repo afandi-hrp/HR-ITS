@@ -21,7 +21,7 @@ import {
   List,
   MessageCircle,
 } from "lucide-react";
-import { cn, formatDate } from "../lib/utils";
+import { cn, formatDate, formatInterviewTimeRange } from "../lib/utils";
 import { useToast } from "../components/ui/use-toast";
 import SchedulingModal from "../components/SchedulingModal";
 import SendEmailModal from "../components/SendEmailModal";
@@ -423,6 +423,7 @@ export default function InterviewSchedules() {
           currentDate={calendarDate}
           onDateChange={setCalendarDate}
           onScheduleClick={setPreviewSchedule}
+          showEndTimeLabel
         />
       ) : (
         <>
@@ -591,10 +592,7 @@ export default function InterviewSchedules() {
                         </div>
                         <div className="flex items-center gap-2 text-sm text-white/80">
                           <Clock size={14} className="text-white/40" />
-                          {new Date(schedule.schedule_date).toLocaleTimeString(
-                            "id-ID",
-                            { hour: "2-digit", minute: "2-digit" },
-                          )}
+                          {formatInterviewTimeRange(schedule)}
                         </div>
                         <div className="flex items-center gap-2 text-sm text-white/80">
                           {schedule.location_type === "online" ? (
@@ -721,12 +719,7 @@ export default function InterviewSchedules() {
                                 })}
                               </p>
                               <p className="text-xs text-slate-500">
-                                {new Date(
-                                  schedule.schedule_date,
-                                ).toLocaleTimeString("id-ID", {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
+                                {formatInterviewTimeRange(schedule)}
                               </p>
                             </div>
                           </td>
@@ -993,12 +986,7 @@ export default function InterviewSchedules() {
                         </p>
                         <p className="text-sm font-bold text-slate-900">
                           {formatDate(previewSchedule.schedule_date)},{" "}
-                          {new Date(
-                            previewSchedule.schedule_date,
-                          ).toLocaleTimeString("id-ID", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
+                          {formatInterviewTimeRange(previewSchedule)}
                         </p>
                       </div>
                     </div>
