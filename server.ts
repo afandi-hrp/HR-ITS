@@ -424,6 +424,116 @@ app.use((req: any, res, next) => {
     }
   });
 
+  // Feature: Restore an archived candidate (candidate_logs) back to the
+  // active pipeline (candidates). Reverse of move-to-log above.
+  //
+  // candidate_logs and candidates aren't identical schemas (confirmed via
+  // a live information_schema query, 2026-08-06 — don't trust the two
+  // tables' column lists to match just because they look similar in the
+  // migration files):
+  //   - candidate_logs-only columns (dropped on restore, no home on
+  //     candidates): archived_at, assigned_history, psikotes_status,
+  //     interview_status, notes.
+  //   - ai_biodata_summary / ai_interview_questions are `json`/`jsonb` on
+  //     candidates but `text` on candidate_logs — parsed back into real
+  //     JSON values here rather than relying on an implicit text->json
+  //     cast on insert, which is fragile if the stored text ever isn't
+  //     valid JSON.
+  // Approval/trial-stage fields (director_status, finance_status, trial
+  // dates, background check, join_date, finance_reject_reason) are reset
+  // to a clean slate — a prior rejection's approval history shouldn't
+  // silently carry over into a fresh run through the pipeline.
+  const safeParseJson = (value: any) => {
+    if (typeof value !== "string") return value;
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+  };
+
+  app.post("/api/candidates/restore-from-log", requireAuth, requireHrAdmin, async (req, res) => {
+    const { logId, newStatus } = req.body;
+
+    if (!logId) {
+      return res.status(400).json({ error: "Log ID is required" });
+    }
+    const validStatuses = ["pending", "accepted"];
+    if (!newStatus || !validStatuses.includes(newStatus)) {
+      return res.status(400).json({ error: "Valid newStatus (pending, accepted) is required" });
+    }
+
+    try {
+      const supabaseAdmin = getSupabaseAdmin();
+
+      const { data: logRow, error: fetchError } = await supabaseAdmin
+        .from("candidate_logs")
+        .select("*")
+        .eq("id", logId)
+        .single();
+
+      if (fetchError || !logRow) {
+        return res.status(404).json({ error: "Arsip kandidat tidak ditemukan" });
+      }
+
+      const {
+        archived_at,
+        assigned_history,
+        psikotes_status,
+        interview_status,
+        notes,
+        ai_biodata_summary,
+        ai_interview_questions,
+        ...baseData
+      } = logRow;
+
+      const candidateData = {
+        ...baseData,
+        ai_biodata_summary: safeParseJson(ai_biodata_summary),
+        ai_interview_questions: safeParseJson(ai_interview_questions),
+        status_screening: newStatus,
+        director_status: "pending",
+        finance_status: "pending",
+        director_approval_date: null,
+        finance_approval_date: null,
+        join_date: null,
+        finance_reject_reason: null,
+        trial_1_date: null,
+        trial_2_date: null,
+        trial_3_date: null,
+        trial_result: null,
+        background_check_date: null,
+        background_check_result: null,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error: insertError } = await supabaseAdmin
+        .from("candidates")
+        .insert([candidateData]);
+
+      if (insertError) {
+        throw insertError;
+      }
+
+      const { error: deleteError } = await supabaseAdmin
+        .from("candidate_logs")
+        .delete()
+        .eq("id", logId);
+
+      if (deleteError) {
+        // Roll back the insert so the candidate doesn't end up duplicated
+        // in both tables (which would show them twice in Live Tracking).
+        await supabaseAdmin.from("candidates").delete().eq("id", logId);
+        throw deleteError;
+      }
+
+      res.json({ success: true, message: "Kandidat berhasil diaktifkan kembali" });
+    } catch (error: any) {
+      console.error("Error restoring candidate from log:", error);
+      res.status(500).json({ error: error.message || "Gagal mengaktifkan kembali kandidat" });
+    }
+  });
+
   // Helper to check if URL is local
   const isLocalUrl = (url: string) => {
     try {

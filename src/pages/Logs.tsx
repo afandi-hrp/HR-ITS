@@ -22,8 +22,9 @@ import {
   Database,
   Download,
   Loader2,
+  RotateCcw,
 } from "lucide-react";
-import { formatDate, cn } from "../lib/utils";
+import { formatDate, cn, fetchWithRetry } from "../lib/utils";
 import { CandidateAvatar } from "../components/CandidateAvatar";
 import { removeDocumentFile } from "../lib/documentStorage";
 import { useToast } from "../components/ui/use-toast";
@@ -97,6 +98,10 @@ export default function Logs() {
   );
   const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const [restoreModalData, setRestoreModalData] = useState<Candidate | null>(null);
+  const [restoreStatus, setRestoreStatus] = useState<"pending" | "accepted">("pending");
+  const [isRestoring, setIsRestoring] = useState(false);
 
   const [exportPreviewOpen, setExportPreviewOpen] = useState(false);
   const [exportData, setExportData] = useState<any[]>([]);
@@ -380,6 +385,37 @@ export default function Logs() {
       });
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    if (!restoreModalData) return;
+    setIsRestoring(true);
+    try {
+      const response = await fetchWithRetry("/api/candidates/restore-from-log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ logId: restoreModalData.id, newStatus: restoreStatus }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Gagal mengaktifkan kembali kandidat.");
+
+      toast({
+        title: "Berhasil",
+        description: `${restoreModalData.full_name} telah diaktifkan kembali ke pipeline aktif.`,
+      });
+      setRestoreModalData(null);
+      setSelectedLog(null);
+      setRestoreStatus("pending");
+      fetchLogs();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsRestoring(false);
     }
   };
 
@@ -862,6 +898,82 @@ export default function Logs() {
         </div>
       )}
 
+      {/* Restore Confirmation Modal */}
+      {restoreModalData && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 text-center space-y-4">
+              <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <RotateCcw size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900">
+                Aktifkan Kembali Kandidat
+              </h3>
+              <p className="text-slate-500">
+                <span className="font-bold text-slate-800">
+                  {restoreModalData.full_name}
+                </span>{" "}
+                akan dipindahkan kembali ke pipeline aktif (Screening).
+                Riwayat jadwal & evaluasi sebelumnya (kalau ada) tidak ikut
+                kembali — cuma biodata, CV, dan skor asesmen.
+              </p>
+              <div className="text-left space-y-2 pt-2">
+                <label className="text-sm font-bold text-slate-700">
+                  Kandidat masuk ke status:
+                </label>
+                <div className="flex gap-2 p-1 bg-slate-100 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setRestoreStatus("pending")}
+                    className={cn(
+                      "flex-1 py-2 rounded-lg text-sm font-bold transition-all",
+                      restoreStatus === "pending"
+                        ? "bg-white text-emerald-700 shadow-sm"
+                        : "text-slate-500 hover:text-slate-700",
+                    )}
+                  >
+                    Belum Diproses
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRestoreStatus("accepted")}
+                    className={cn(
+                      "flex-1 py-2 rounded-lg text-sm font-bold transition-all",
+                      restoreStatus === "accepted"
+                        ? "bg-white text-emerald-700 shadow-sm"
+                        : "text-slate-500 hover:text-slate-700",
+                    )}
+                  >
+                    Lolos Screening
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-3">
+              <button
+                onClick={() => setRestoreModalData(null)}
+                disabled={isRestoring}
+                className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-all disabled:opacity-50"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleRestore}
+                disabled={isRestoring}
+                className="flex-1 py-2.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-200 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isRestoring ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <RotateCcw size={18} />
+                )}
+                Aktifkan Kembali
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Confirmation Modal */}
       {deleteModalData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
@@ -1105,7 +1217,17 @@ export default function Logs() {
               )}
             </div>
 
-            <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end">
+            <div className="p-6 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row justify-end gap-3">
+              <button
+                onClick={() => {
+                  setRestoreStatus("pending");
+                  setRestoreModalData(selectedLog);
+                }}
+                className="px-6 py-2.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold rounded-xl hover:bg-emerald-100 transition-all flex items-center justify-center gap-2"
+              >
+                <RotateCcw size={16} />
+                Aktifkan Kembali
+              </button>
               <button
                 onClick={() => setSelectedLog(null)}
                 className="px-8 py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all"
