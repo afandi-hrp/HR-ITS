@@ -1357,7 +1357,19 @@ export default function ApplicationForm({
         error.message || "Terjadi kesalahan saat mengirim formulir.";
       let title = "Error";
 
-      // Sanitasi pesan error teknis
+      // Only messages we deliberately wrote ourselves (RAISE EXCEPTION in
+      // submit_application_with_token) are safe to show verbatim — every
+      // other case falls through to a generic message below. Previously
+      // this worked the other way around (show raw unless it "looks"
+      // technical via a keyword denylist), which let an unrecognized raw
+      // Postgres error ("operator does not exist: json ? unknown") reach
+      // candidates directly since it didn't happen to contain any of the
+      // checked keywords. A denylist can never cover every possible
+      // technical error message; an allowlist of known-safe messages can.
+      const isKnownFriendlyMessage =
+        errorMessage.includes("Token tidak valid") ||
+        errorMessage.includes("Token sudah digunakan");
+
       if (
         errorMessage.includes("Failed to fetch") ||
         errorMessage.includes("ECONNREFUSED") ||
@@ -1371,19 +1383,11 @@ export default function ApplicationForm({
       } else if (errorMessage.includes("Gagal mengunggah")) {
         errorMessage =
           "Gagal mengunggah dokumen. Data teks Anda saat ini aman disimpan dalam draft. Silakan periksa koneksi Anda dan coba unggah ulang.";
-      } else if (errorMessage.includes("Token")) {
-        // Biarkan pesan terkait token (misal: "Token tidak valid atau sudah digunakan")
+      } else if (isKnownFriendlyMessage) {
+        // Leave as-is — already a specific, human-readable message.
       } else {
-        // Jika error tidak dikenali dan berpotensi teknis (mengandung bahasa Inggris atau kode), samarkan
-        if (
-          /^[a-zA-Z0-9_]+$/.test(errorMessage) ||
-          errorMessage.includes("relation") ||
-          errorMessage.includes("syntax") ||
-          errorMessage.includes("database")
-        ) {
-          errorMessage =
-            "Terjadi kesalahan sistem saat memproses formulir Anda. Silakan coba beberapa saat lagi. Kami telah menyimpan isian Anda ke penyimpanan lokal perangkat.";
-        }
+        errorMessage =
+          "Terjadi kesalahan sistem saat memproses formulir Anda. Silakan coba beberapa saat lagi. Kami telah menyimpan isian Anda ke penyimpanan lokal perangkat.";
       }
 
       toast({
@@ -1621,7 +1625,7 @@ export default function ApplicationForm({
                           (Maks. 3MB)
                         </span>
                       </label>
-                      <div className="relative w-full aspect-[3/4] print:aspect-auto border-2 border-dashed border-slate-300 rounded-xl overflow-hidden hover:border-indigo-500 transition-colors group cursor-pointer bg-slate-50">
+                      <div className="relative w-full aspect-[3/4] border-2 border-dashed border-slate-300 rounded-xl overflow-hidden hover:border-indigo-500 transition-colors group cursor-pointer bg-slate-50">
                         {!readOnly && (
                           <input
                             type="file"
@@ -1634,7 +1638,7 @@ export default function ApplicationForm({
                           <img
                             src={photoPreview}
                             alt="Preview"
-                            className="w-full h-full object-cover print:h-auto print:w-full print:object-contain print:bg-transparent"
+                            className="w-full h-full object-cover"
                           />
                         ) : (
                           <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 group-hover:text-indigo-500">
