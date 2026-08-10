@@ -3706,7 +3706,7 @@ export default function ApplicationForm({
                                   </tr>
                                   <tr>
                                     <td className="px-4 py-3 font-medium text-slate-700 bg-slate-50 border-r border-slate-200">
-                                      2. Jabatan Atasan Langsung{" "}
+                                      Jabatan Atasan Langsung{" "}
                                       <span className="text-xs font-normal italic">
                                         (Direct Superior Title)
                                       </span>
