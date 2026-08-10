@@ -1620,7 +1620,7 @@ export default function ApplicationForm({
 
                     <div className="w-full md:w-48 shrink-0">
                       <label className="block text-sm font-semibold text-slate-700 mb-1 text-center">
-                        Photo <span className="text-red-500">*</span>{" "}
+                        Foto Terbaru <span className="text-xs font-normal italic">(Recent Photo)</span> <span className="text-red-500">*</span>{" "}
                         <span className="text-xs font-normal text-slate-500">
                           (Maks. 3MB)
                         </span>
@@ -1641,10 +1641,10 @@ export default function ApplicationForm({
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 group-hover:text-indigo-500">
+                          <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-3 text-slate-400 group-hover:text-indigo-500">
                             <Upload size={24} className="mb-2" />
                             <span className="text-xs font-medium">
-                              Upload Photo
+                              Unggah Foto Terbaru <span className="italic font-normal">(Upload Recent Photo)</span>
                             </span>
                             <span className="text-[10px] mt-1">3x4 / 4x6</span>
                           </div>
@@ -3706,9 +3706,9 @@ export default function ApplicationForm({
                                   </tr>
                                   <tr>
                                     <td className="px-4 py-3 font-medium text-slate-700 bg-slate-50 border-r border-slate-200">
-                                      Atasan Langsung{" "}
+                                      2. Jabatan Atasan Langsung{" "}
                                       <span className="text-xs font-normal italic">
-                                        (Direct Superior)
+                                        (Direct Superior Title)
                                       </span>
                                     </td>
                                     <td className="p-0">
@@ -4610,7 +4610,7 @@ export default function ApplicationForm({
                                     e.target.value,
                                   )
                                 }
-                                className="w-12 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                                className="w-12 shrink-0 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                               />
                               <span className="text-sm text-slate-700">
                                 Lokasi Kerja{" "}
@@ -4631,7 +4631,7 @@ export default function ApplicationForm({
                                     e.target.value,
                                   )
                                 }
-                                className="w-12 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                                className="w-12 shrink-0 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                               />
                               <span className="text-sm text-slate-700">
                                 Jenjang Karir/Status Karyawan{" "}
@@ -4655,7 +4655,7 @@ export default function ApplicationForm({
                                     e.target.value,
                                   )
                                 }
-                                className="w-12 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                                className="w-12 shrink-0 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                               />
                               <span className="text-sm text-slate-700">
                                 Pengembangan Diri{" "}
@@ -4678,7 +4678,7 @@ export default function ApplicationForm({
                                     e.target.value,
                                   )
                                 }
-                                className="w-12 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                                className="w-12 shrink-0 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                               />
                               <span className="text-sm text-slate-700">
                                 Tantangan/variasi pekerjaan{" "}
@@ -4702,7 +4702,7 @@ export default function ApplicationForm({
                                     e.target.value,
                                   )
                                 }
-                                className="w-12 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                                className="w-12 shrink-0 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                               />
                               <span className="text-sm text-slate-700">
                                 Lingkungan Kerja{" "}
@@ -4725,7 +4725,7 @@ export default function ApplicationForm({
                                     e.target.value,
                                   )
                                 }
-                                className="w-12 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                                className="w-12 shrink-0 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                               />
                               <span className="text-sm text-slate-700">
                                 Salary & Benefit{" "}
