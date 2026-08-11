@@ -876,10 +876,13 @@ export default function ApplicationForm({
     if (!formData.marital_status?.trim())
       errors.push("Status Perkawinan wajib diisi.");
     if (
-      formData.marital_status === "Menikah" &&
+      (formData.marital_status === "Menikah" ||
+        formData.marital_status === "Janda/Duda") &&
       !formData.marital_since_year?.trim()
     )
-      errors.push("Tahun pernikahan wajib diisi jika status Menikah.");
+      errors.push(
+        "Tahun pernikahan wajib diisi jika status Menikah atau Janda/Duda.",
+      );
     if (!formData.identity_number?.trim())
       errors.push("No. KTP/Passport wajib diisi.");
     if (!formData.address_ktp?.trim())
@@ -1962,14 +1965,17 @@ export default function ApplicationForm({
                               </span>
                             </label>
                             {formData.marital_status === "Janda/Duda" && (
-                              <input
-                                type="text"
-                                name="marital_since_year"
-                                placeholder="Tahun"
-                                value={formData.marital_since_year}
-                                onChange={handleInputChange}
-                                className="w-20 px-2 py-1 bg-slate-50 border border-slate-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                              />
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="text"
+                                  name="marital_since_year"
+                                  placeholder="Tahun"
+                                  value={formData.marital_since_year}
+                                  onChange={handleInputChange}
+                                  className="w-20 px-2 py-1 bg-slate-50 border border-slate-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                />
+                                <span className="text-red-500">*</span>
+                              </div>
                             )}
                           </div>
                         </div>
