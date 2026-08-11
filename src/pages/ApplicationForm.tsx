@@ -875,6 +875,11 @@ export default function ApplicationForm({
     if (!formData.hobby?.trim()) errors.push("Hobby wajib diisi.");
     if (!formData.marital_status?.trim())
       errors.push("Status Perkawinan wajib diisi.");
+    if (
+      formData.marital_status === "Menikah" &&
+      !formData.marital_since_year?.trim()
+    )
+      errors.push("Tahun pernikahan wajib diisi jika status Menikah.");
     if (!formData.identity_number?.trim())
       errors.push("No. KTP/Passport wajib diisi.");
     if (!formData.address_ktp?.trim())
@@ -1054,12 +1059,26 @@ export default function ApplicationForm({
       }
     });
 
-    // 7. Riwayat Pekerjaan point 1. Masa Kerja adalah field pemicu: kalau
-    // diisi, seluruh kolom lain di baris itu wajib diisi. Kalau Masa Kerja
-    // tidak diisi, baris ini dianggap belum mulai diisi dan boleh
-    // dikosongkan seluruhnya walau ada field lain yang sempat terisi.
+    // 7. Riwayat Pekerjaan: kalau salah satu kolom di baris ini diisi
+    // (termasuk Masa Kerja), seluruh kolom lain di baris itu wajib diisi.
+    // Baris ini boleh dikosongkan seluruhnya kalau memang belum ada satu
+    // pun kolom yang diisi. Sebelumnya cuma Masa Kerja yang jadi pemicu —
+    // itu bug: kandidat yang mengisi nama perusahaan/jobdesc dkk tapi
+    // melewatkan Masa Kerja lolos validasi sama sekali (lihat kasus
+    // Sumardai Saputra, 2026-08-08).
     formData.work_experience?.forEach((work, index) => {
-      const hasAnyValue = work.period_start || work.period_end;
+      const hasAnyValue =
+        work.company_name?.trim() ||
+        work.period_start ||
+        work.period_end ||
+        work.company_address?.trim() ||
+        work.business_line?.trim() ||
+        work.current_position?.trim() ||
+        work.report_directly?.trim() ||
+        work.total_employees?.trim() ||
+        work.number_of_subordinates?.trim() ||
+        work.job_description?.trim() ||
+        work.reason_for_leaving?.trim();
 
       if (hasAnyValue) {
         if (
@@ -1489,11 +1508,11 @@ export default function ApplicationForm({
                 ></div>
 
                 {siteSettings?.career_logo_url && (
-                  <div className="shrink-0 flex items-center z-10 h-10 sm:h-14 print:h-14">
+                  <div className="shrink-0 flex items-center z-10 h-10 sm:h-14 print:h-12">
                     <img
                       src={siteSettings.career_logo_url}
                       alt="Logo"
-                      className="h-full w-auto max-w-[120px] sm:max-w-[180px] object-contain print:max-w-[180px]"
+                      className="h-full w-auto max-w-[120px] sm:max-w-[180px] object-contain print:max-w-[140px]"
                     />
                   </div>
                 )}
@@ -1752,19 +1771,16 @@ export default function ApplicationForm({
                             <span className="text-red-500">*</span>
                           </label>
                           {readOnly ? (
-                            <div>
-                              <input
-                                type="text"
-                                readOnly
-                                value={formatDateDMY(formData.date_of_birth)}
-                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none"
-                              />
-                              {calculateAge(formData.date_of_birth) !== null && (
-                                <p className="mt-1 text-xs font-medium text-slate-500">
-                                  {calculateAge(formData.date_of_birth)} tahun
-                                </p>
-                              )}
-                            </div>
+                            <input
+                              type="text"
+                              readOnly
+                              value={
+                                calculateAge(formData.date_of_birth) !== null
+                                  ? `${formatDateDMY(formData.date_of_birth)} (${calculateAge(formData.date_of_birth)} tahun)`
+                                  : formatDateDMY(formData.date_of_birth)
+                              }
+                              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none text-sm sm:text-base"
+                            />
                           ) : (
                             <input
                               type="date"
@@ -1913,14 +1929,17 @@ export default function ApplicationForm({
                               </span>
                             </label>
                             {formData.marital_status === "Menikah" && (
-                              <input
-                                type="text"
-                                name="marital_since_year"
-                                placeholder="Tahun"
-                                value={formData.marital_since_year}
-                                onChange={handleInputChange}
-                                className="w-20 px-2 py-1 bg-slate-50 border border-slate-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                              />
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="text"
+                                  name="marital_since_year"
+                                  placeholder="Tahun"
+                                  value={formData.marital_since_year}
+                                  onChange={handleInputChange}
+                                  className="w-20 px-2 py-1 bg-slate-50 border border-slate-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                />
+                                <span className="text-red-500">*</span>
+                              </div>
                             )}
                           </div>
                           <div className="flex items-center gap-2">
