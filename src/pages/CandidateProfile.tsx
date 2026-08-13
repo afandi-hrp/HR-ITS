@@ -3159,9 +3159,9 @@ export default function CandidateProfile() {
       {/* Full Screen Data Modal */}
       {fullScreenData && (
         <div className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-sm flex flex-col">
-          <div className="flex items-center justify-between p-4 bg-slate-900 border-b border-white/10">
+          <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 bg-[#3D2C44]/80 backdrop-blur-xl border-b border-white/10 shadow-lg shrink-0">
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <Database className="text-indigo-400" size={20} />
+              <Database className="text-indigo-300" size={20} />
               Preview Data Eksternal
             </h3>
             <button
@@ -3171,10 +3171,11 @@ export default function CandidateProfile() {
               <X size={24} />
             </button>
           </div>
-          <div className="flex-1 w-full h-full p-4 md:p-8 overflow-hidden">
-            <div className="w-full h-full bg-slate-50 rounded-xl overflow-y-auto shadow-2xl p-6 custom-scrollbar">
+          <div className="flex-1 w-full h-full p-3 md:p-5 overflow-hidden">
+            <div className="w-full h-full bg-slate-50 rounded-xl overflow-y-auto shadow-2xl p-3 sm:p-4 custom-scrollbar">
               <ApplicationForm
                 readOnly
+                compact
                 initialData={fullScreenData}
                 hideSalary={hideSalary}
               />

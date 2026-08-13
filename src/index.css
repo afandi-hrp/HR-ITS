@@ -131,6 +131,14 @@
   }
 }
 
+/* Read-only textareas (candidate detail preview) should grow to fit their
+   full content instead of scrolling internally — the fixed `rows` count is
+   only meant to bound the editable form's height while a candidate types. */
+fieldset:disabled textarea {
+  field-sizing: content;
+  overflow: hidden;
+}
+
 @media print {
   @page {
     size: A4;

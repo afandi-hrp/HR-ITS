@@ -26,8 +26,20 @@ export const printElement = async (element: HTMLElement | null, title: string = 
       textNode.style.fontWeight = '400';
       textNode.style.whiteSpace = 'pre-wrap'; // for textareas
       textNode.style.minHeight = input.tagName === 'TEXTAREA' ? '80px' : '42px';
-      textNode.style.display = 'flex';
-      textNode.style.alignItems = input.tagName === 'TEXTAREA' ? 'flex-start' : 'center';
+      if (input.tagName === 'TEXTAREA') {
+        // A flex container (even with align-items: flex-start) can't be
+        // fragmented across print pages in most browser print engines —
+        // it's treated as one atomic block that either fits on the current
+        // page or jumps whole to the next, leaving a large blank gap when
+        // it doesn't fit (independent of any break-inside setting, which
+        // only ever governed the <tr>/<td>, not this div's own layout
+        // mode). Plain block layout paginates normally, so long text
+        // fields (job description, etc.) can flow across pages instead.
+        textNode.style.display = 'block';
+      } else {
+        textNode.style.display = 'flex';
+        textNode.style.alignItems = 'center';
+      }
       textNode.style.overflow = 'hidden';
       
       if (input.tagName === 'SELECT') {
@@ -179,8 +191,20 @@ export const generatePdfBlob = async (element: HTMLElement | null, title: string
       textNode.style.fontWeight = '400';
       textNode.style.whiteSpace = 'pre-wrap';
       textNode.style.minHeight = input.tagName === 'TEXTAREA' ? '80px' : '42px';
-      textNode.style.display = 'flex';
-      textNode.style.alignItems = input.tagName === 'TEXTAREA' ? 'flex-start' : 'center';
+      if (input.tagName === 'TEXTAREA') {
+        // A flex container (even with align-items: flex-start) can't be
+        // fragmented across print pages in most browser print engines —
+        // it's treated as one atomic block that either fits on the current
+        // page or jumps whole to the next, leaving a large blank gap when
+        // it doesn't fit (independent of any break-inside setting, which
+        // only ever governed the <tr>/<td>, not this div's own layout
+        // mode). Plain block layout paginates normally, so long text
+        // fields (job description, etc.) can flow across pages instead.
+        textNode.style.display = 'block';
+      } else {
+        textNode.style.display = 'flex';
+        textNode.style.alignItems = 'center';
+      }
       textNode.style.overflow = 'hidden';
       
       if (input.tagName === 'SELECT') {

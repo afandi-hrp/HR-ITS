@@ -27,6 +27,7 @@ interface ApplicationFormProps {
   initialData?: any;
   hideSalary?: boolean;
   onlyRemuneration?: boolean;
+  compact?: boolean;
 }
 
 const renderAttachment = (url: string | undefined | null, label: string) => {
@@ -74,6 +75,7 @@ export default function ApplicationForm({
   initialData = null,
   hideSalary = false,
   onlyRemuneration = false,
+  compact = false,
 }: ApplicationFormProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -893,6 +895,16 @@ export default function ApplicationForm({
       errors.push("Status Tempat Tinggal wajib diisi.");
     if (!formData.height?.trim() || !formData.weight?.trim())
       errors.push("Tinggi dan Berat Badan wajib diisi.");
+    if (
+      formData.postal_code_ktp?.trim() &&
+      /^0+$/.test(formData.postal_code_ktp.trim())
+    )
+      errors.push("Kode Pos Alamat KTP tidak valid.");
+    if (
+      formData.postal_code_current?.trim() &&
+      /^0+$/.test(formData.postal_code_current.trim())
+    )
+      errors.push("Kode Pos Alamat Saat Ini tidak valid.");
 
     let hasValidSocialMedia = false;
     formData.social_media.forEach((sm, index) => {
@@ -915,8 +927,11 @@ export default function ApplicationForm({
 
     if (formData.driver_license.length > 0) {
       for (const sim of formData.driver_license) {
-        if (!formData.driver_license_numbers?.[sim]?.trim()) {
+        const simNumber = formData.driver_license_numbers?.[sim]?.trim();
+        if (!simNumber) {
           errors.push(`Nomor SIM untuk ${sim} wajib diisi.`);
+        } else if (/^0+$/.test(simNumber)) {
+          errors.push(`Nomor SIM untuk ${sim} tidak valid.`);
         }
       }
     }
@@ -1498,51 +1513,53 @@ export default function ApplicationForm({
                   : "w-full max-w-4xl rounded-2xl shadow-xl",
               )}
             >
-              <div className="bg-[#5D1F57] relative overflow-hidden px-5 sm:px-8 py-5 sm:py-7 text-white flex flex-row items-center gap-4 sm:gap-6 rounded-t-2xl print:rounded-none print:px-8 print:py-7">
-                {/* Dotted pattern decoration */}
-                <div 
-                  className="absolute right-0 top-0 bottom-0 w-64 opacity-20 pointer-events-none block" 
-                  style={{ 
-                    backgroundImage: 'radial-gradient(circle, white 1.5px, transparent 1.5px)', 
-                    backgroundSize: '12px 12px', 
-                    maskImage: 'linear-gradient(to left, black, transparent)',
-                    WebkitMaskImage: 'linear-gradient(to left, black, transparent)'
-                  }}
-                ></div>
+              {!compact && (
+                <div className="bg-[#5D1F57] relative overflow-hidden px-5 sm:px-8 py-5 sm:py-7 text-white flex flex-row items-center gap-4 sm:gap-6 rounded-t-2xl print:rounded-none print:px-8 print:py-7">
+                  {/* Dotted pattern decoration */}
+                  <div
+                    className="absolute right-0 top-0 bottom-0 w-64 opacity-20 pointer-events-none block"
+                    style={{
+                      backgroundImage: 'radial-gradient(circle, white 1.5px, transparent 1.5px)',
+                      backgroundSize: '12px 12px',
+                      maskImage: 'linear-gradient(to left, black, transparent)',
+                      WebkitMaskImage: 'linear-gradient(to left, black, transparent)'
+                    }}
+                  ></div>
 
-                {siteSettings?.career_logo_url && (
-                  <div className="shrink-0 flex items-center z-10 h-10 sm:h-14 print:h-12">
-                    <img
-                      src={siteSettings.career_logo_url}
-                      alt="Logo"
-                      className="h-full w-auto max-w-[120px] sm:max-w-[180px] object-contain print:max-w-[140px]"
-                    />
-                  </div>
-                )}
-                
-                {/* Divider */}
-                <div className="w-px h-10 sm:h-14 bg-white/40 shrink-0 z-10 print:h-14"></div>
+                  {siteSettings?.career_logo_url && (
+                    <div className="shrink-0 flex items-center z-10 h-10 sm:h-14 print:h-12">
+                      <img
+                        src={siteSettings.career_logo_url}
+                        alt="Logo"
+                        className="h-full w-auto max-w-[120px] sm:max-w-[180px] object-contain print:max-w-[140px]"
+                      />
+                    </div>
+                  )}
 
-                <div className="flex-1 flex flex-col justify-center text-left z-10 items-start overflow-hidden print:overflow-visible">
-                  <div className="inline-block w-full">
-                    <h1
-                      id="application-form-title"
-                      className="text-[13px] sm:text-lg md:text-xl font-bold tracking-wide uppercase leading-tight"
-                    >
-                      Formulir Data Pelamar Kerja
-                    </h1>
-                    <div className="h-px bg-white/60 w-full my-1 sm:my-1.5"></div>
-                    <span
-                      id="application-form-subtitle"
-                      className="font-normal italic text-[10px] sm:text-sm opacity-90 leading-tight block"
-                    >
-                      Job Applicant Information Form
-                    </span>
+                  {/* Divider */}
+                  <div className="w-px h-10 sm:h-14 bg-white/40 shrink-0 z-10 print:h-14"></div>
+
+                  <div className="flex-1 flex flex-col justify-center text-left z-10 items-start overflow-hidden print:overflow-visible">
+                    <div className="inline-block w-full">
+                      <h1
+                        id="application-form-title"
+                        className="text-[13px] sm:text-lg md:text-xl font-bold tracking-wide uppercase leading-tight"
+                      >
+                        Formulir Data Pelamar Kerja
+                      </h1>
+                      <div className="h-px bg-white/60 w-full my-1 sm:my-1.5"></div>
+                      <span
+                        id="application-form-subtitle"
+                        className="font-normal italic text-[10px] sm:text-sm opacity-90 leading-tight block"
+                      >
+                        Job Applicant Information Form
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
-              <div className="p-4 sm:p-8">
+              <div className={compact ? "p-4 sm:p-6" : "p-4 sm:p-8"}>
                 <fieldset disabled={readOnly} className="space-y-8 min-w-0">
                   {/* Token Section */}
                   {!readOnly && (
@@ -2079,7 +2096,6 @@ export default function ApplicationForm({
                           <input
                             type="text"
                             name="postal_code_current"
-                            required
                             value={formData.postal_code_current}
                             onChange={handleInputChange}
                             className="w-32 px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
@@ -3537,7 +3553,7 @@ export default function ApplicationForm({
                               )}
 
                               <div className="overflow-x-auto print:overflow-visible">
-                              <table className="w-full min-w-[800px] print:min-w-0 print:min-w-0 text-sm text-left">
+                              <table className="w-full min-w-[800px] print:min-w-0 text-sm text-left">
                                 <tbody className="divide-y divide-slate-200">
                                   <tr className="bg-purple-50">
                                     <td className="px-4 py-3 font-semibold text-slate-800 w-1/3 border-r border-slate-200">
@@ -3795,52 +3811,61 @@ export default function ApplicationForm({
                                       />
                                     </td>
                                   </tr>
-                                  <tr>
-                                    <td className="px-4 py-3 font-medium text-slate-700 bg-slate-50 border-r border-slate-200 align-top">
-                                      Deskripsi Pekerjaan{" "}
-                                      <span className="text-xs font-normal italic">
-                                        (Job Description)
-                                      </span>
-                                    </td>
-                                    <td className="p-0">
-                                      <textarea
-                                        value={exp.job_description}
-                                        onChange={(e) =>
-                                          handleWorkExperienceChange(
-                                            index,
-                                            "job_description",
-                                            e.target.value,
-                                          )
-                                        }
-                                        rows={3}
-                                        className="w-full h-full px-4 py-3 bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 resize-none"
-                                      ></textarea>
-                                    </td>
-                                  </tr>
-                                  <tr>
-                                    <td className="px-4 py-3 font-medium text-slate-700 bg-slate-50 border-r border-slate-200 align-top">
-                                      Alasan Keluar{" "}
-                                      <span className="text-xs font-normal italic">
-                                        (Reason for leaving)
-                                      </span>
-                                    </td>
-                                    <td className="p-0">
-                                      <textarea
-                                        value={exp.reason_for_leaving}
-                                        onChange={(e) =>
-                                          handleWorkExperienceChange(
-                                            index,
-                                            "reason_for_leaving",
-                                            e.target.value,
-                                          )
-                                        }
-                                        rows={2}
-                                        className="w-full h-full px-4 py-3 bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 resize-none"
-                                      ></textarea>
-                                    </td>
-                                  </tr>
                                 </tbody>
                               </table>
+                              </div>
+                              {/* Deskripsi Pekerjaan & Alasan Keluar are rendered
+                                  as plain stacked blocks instead of table rows.
+                                  HTML table rows can never fragment their cell
+                                  content across a print page in Chromium's print
+                                  engine — the whole row either fits on the
+                                  current page or jumps entirely to the next,
+                                  leaving a large blank gap, regardless of
+                                  break-inside or the cell's own display mode.
+                                  Plain block layout (no table, no flex/grid)
+                                  paginates normally, so long text here can flow
+                                  across pages instead. */}
+                              <div className="divide-y divide-slate-200 border-t border-slate-200 text-sm text-left">
+                                <div>
+                                  <div className="px-4 py-3 font-medium text-slate-700 bg-slate-50 border-b border-slate-200">
+                                    Deskripsi Pekerjaan{" "}
+                                    <span className="text-xs font-normal italic">
+                                      (Job Description)
+                                    </span>
+                                  </div>
+                                  <textarea
+                                    value={exp.job_description}
+                                    onChange={(e) =>
+                                      handleWorkExperienceChange(
+                                        index,
+                                        "job_description",
+                                        e.target.value,
+                                      )
+                                    }
+                                    rows={3}
+                                    className="w-full px-4 py-3 bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 resize-none"
+                                  ></textarea>
+                                </div>
+                                <div>
+                                  <div className="px-4 py-3 font-medium text-slate-700 bg-slate-50 border-b border-slate-200">
+                                    Alasan Keluar{" "}
+                                    <span className="text-xs font-normal italic">
+                                      (Reason for leaving)
+                                    </span>
+                                  </div>
+                                  <textarea
+                                    value={exp.reason_for_leaving}
+                                    onChange={(e) =>
+                                      handleWorkExperienceChange(
+                                        index,
+                                        "reason_for_leaving",
+                                        e.target.value,
+                                      )
+                                    }
+                                    rows={2}
+                                    className="w-full px-4 py-3 bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 resize-none"
+                                  ></textarea>
+                                </div>
                               </div>
                             </div>
                           ))}
