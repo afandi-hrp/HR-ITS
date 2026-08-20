@@ -1336,7 +1336,12 @@ app.use((req: any, res, next) => {
       return res.status(400).json({ error: "Invalid JSON payload" });
     }
     
-    if (err.type === 'entity.too.large' || err.code === 'LIMIT_FILE_SIZE') {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      const limitLabel = req.path === '/api/n8n/upload-document' ? '3MB' : '15MB';
+      return res.status(413).json({ error: `Ukuran file terlalu besar. Maksimal ${limitLabel} per dokumen.` });
+    }
+
+    if (err.type === 'entity.too.large') {
       return res.status(413).json({ error: "Payload atau file terlalu besar. Maksimal 20MB." });
     }
 
