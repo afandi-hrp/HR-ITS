@@ -285,7 +285,7 @@ export default function EvaluationModal({ isOpen, onClose, candidateId, onSucces
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col my-8">
         <div className="flex items-center justify-between p-6 border-b border-slate-100 shrink-0">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">Input Hasil Evaluasi</h2>
+            <h2 className="text-xl font-bold text-[#5A305A]">Input Hasil Evaluasi</h2>
             <p className="text-sm text-slate-500">Pilih template dan masukkan nilai kandidat</p>
           </div>
           <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">
@@ -318,7 +318,7 @@ export default function EvaluationModal({ isOpen, onClose, candidateId, onSucces
               ) : (
                 <div className="space-y-1">
                   <label className="block text-sm font-medium text-slate-500">Template Penilaian</label>
-                  <p className="font-semibold text-slate-900">{selectedTemplate.name} ({selectedTemplate.type})</p>
+                  <p className="font-semibold text-[#5A305A]">{selectedTemplate.name} ({selectedTemplate.type})</p>
                 </div>
               )}
 
@@ -347,7 +347,7 @@ export default function EvaluationModal({ isOpen, onClose, candidateId, onSucces
                         {category.criteria.map((crit: any, critIdx: number) => (
                           <div key={critIdx} className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                             <div className="mb-3">
-                              <h4 className="font-bold text-slate-900">{crit.name}</h4>
+                              <h4 className="font-bold text-[#5A305A]">{crit.name}</h4>
                               <p className="text-sm text-slate-500 mt-1">{crit.description}</p>
                             </div>
                             <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3">
@@ -369,7 +369,7 @@ export default function EvaluationModal({ isOpen, onClose, candidateId, onSucces
                                     className="absolute opacity-0 -z-10 w-0 h-0"
                                     required
                                   />
-                                  <span className="text-lg font-bold text-slate-900">{s.score}</span>
+                                  <span className="text-lg font-bold text-[#5A305A]">{s.score}</span>
                                   <span className="text-xs text-slate-500 mt-1 break-words w-full line-clamp-2" title={s.label}>{s.label}</span>
                                 </label>
                               ))}
@@ -486,7 +486,7 @@ export default function EvaluationModal({ isOpen, onClose, candidateId, onSucces
             type="submit"
             form="evaluation-form"
             disabled={saving || !selectedTemplateId}
-            className="px-6 py-2.5 bg-[#3D2C44] text-white font-medium rounded-xl hover:bg-[#3D2C44]/90 transition-colors flex items-center gap-2 disabled:opacity-50"
+            className="px-6 py-2.5 bg-[#5A305A] text-white font-medium rounded-xl hover:bg-[#5A305A]/90 transition-colors flex items-center gap-2 disabled:opacity-50"
           >
             {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
             Simpan Hasil

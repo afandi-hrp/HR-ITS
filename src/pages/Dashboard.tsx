@@ -580,7 +580,7 @@ useEffect(() => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
         <div className="space-y-1">
           {userName && (
-            <div className="text-xl font-semibold text-[#3D2C44]/80 mb-1 flex items-center flex-wrap gap-2">
+            <div className="text-xl font-semibold text-[#5A305A]/80 mb-1 flex items-center flex-wrap gap-2">
               <span className="tracking-tight">
                 {(() => {
                   const hour = new Date().getHours();
@@ -590,7 +590,7 @@ useEffect(() => {
                   return 'Selamat malam,';
                 })()}
               </span>
-              <span className="text-[#3D2C44] font-bold">
+              <span className="text-[#5A305A] font-bold">
                 {userName.split(' ')[0]}
               </span>
               <span className="ml-1 inline-flex items-center">
@@ -604,7 +604,7 @@ useEffect(() => {
               </span>
             </div>
           )}
-          <h1 className="text-4xl font-extrabold tracking-tight text-[#3D2C44]">
+          <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
             Dashboard
           </h1>
           <p className="text-sm font-medium text-slate-500 max-w-xl">
@@ -613,7 +613,7 @@ useEffect(() => {
         </div>
         <button
           onClick={() => navigate("/funnel")}
-          className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:shadow-xl hover:shadow-indigo-300 hover:-translate-y-1 transition-all flex items-center gap-2 group"
+          className="px-6 py-3 bg-[#5A305A] text-white font-bold rounded-xl shadow-lg shadow-[#5A305A]/20 hover:bg-[#3F223F] hover:shadow-xl hover:shadow-[#5A305A]/30 hover:-translate-y-1 transition-all flex items-center gap-2 group"
         >
           <BarChart3
             size={20}
@@ -695,7 +695,7 @@ useEffect(() => {
               <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">
                 {stat.title}
               </p>
-              <h3 className="text-3xl font-black text-slate-900 mt-1">
+              <h3 className="text-3xl font-black text-[#5A305A] mt-1">
                 {stat.value}
               </h3>
             </div>
@@ -756,7 +756,7 @@ useEffect(() => {
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <p className="font-bold text-sm text-slate-900 whitespace-nowrap group-hover:text-indigo-600 transition-colors">
+                              <p className="font-bold text-sm text-[#5A305A] whitespace-nowrap group-hover:text-indigo-600 transition-colors">
                                 {c.full_name}
                               </p>
                               {idx < 3 && (
@@ -850,7 +850,7 @@ useEffect(() => {
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <p className="font-bold text-sm text-slate-900 whitespace-nowrap group-hover:text-indigo-600 transition-colors">
+                              <p className="font-bold text-sm text-[#5A305A] whitespace-nowrap group-hover:text-indigo-600 transition-colors">
                                 {c.full_name}
                               </p>
                               {idx < 3 && (
@@ -895,7 +895,7 @@ useEffect(() => {
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white/70 backdrop-blur-md p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[400px]">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-4 shrink-0">
-              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <h3 className="text-lg font-bold text-[#5A305A] flex items-center gap-2">
                 <Clock className="text-indigo-500" size={20} />
                 Pengingat Jadwal (24 Jam Kedepan)
               </h3>
@@ -925,7 +925,7 @@ useEffect(() => {
                         <notif.icon size={24} className={notif.color} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-slate-900 truncate">
+                        <p className="text-sm font-bold text-[#5A305A] truncate">
                           {notif.title}
                         </p>
                         <p className="text-sm text-slate-600 truncate mt-0.5">
@@ -966,7 +966,7 @@ useEffect(() => {
 
         <div className="bg-white/70 backdrop-blur-md p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[400px]">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4 shrink-0">
-            <h3 className="text-lg font-bold text-slate-900">
+            <h3 className="text-lg font-bold text-[#5A305A]">
               10 Aktivitas Terbaru
             </h3>
           </div>
@@ -1001,7 +1001,7 @@ useEffect(() => {
                       <p
                         className={cn(
                           "text-sm font-bold truncate",
-                          isHighlight ? "text-slate-900" : "text-slate-700",
+                          isHighlight ? "text-[#5A305A]" : "text-slate-700",
                         )}
                       >
                         {activity.title}
@@ -1031,7 +1031,7 @@ useEffect(() => {
 
       <div className="bg-white/70 backdrop-blur-md p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[400px]">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-4 shrink-0">
-          <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+          <h3 className="text-lg font-bold text-[#5A305A] flex items-center gap-2">
             <Users className="text-blue-500" size={20} />
             Kandidat Baru
           </h3>
@@ -1057,7 +1057,7 @@ useEffect(() => {
                   <cand.icon size={24} className={cand.color} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-slate-900 truncate">
+                  <p className="text-sm font-bold text-[#5A305A] truncate">
                     {cand.title}
                   </p>
                   <p className="text-sm text-slate-600 truncate mt-0.5">

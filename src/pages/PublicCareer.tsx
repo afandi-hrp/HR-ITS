@@ -723,7 +723,7 @@ export default function PublicCareer() {
                     <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                       <Briefcase size={24} />
                     </div>
-                    <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-indigo-600 transition-colors">
+                    <h3 className="text-xl font-bold text-[#5A305A] mb-2 group-hover:text-indigo-600 transition-colors">
                       {job.position}
                     </h3>
                     <p className="text-sm text-slate-500 line-clamp-3 mb-6 flex-1">
@@ -776,7 +776,7 @@ export default function PublicCareer() {
               <div
                 className={cn(
                   "h-1 flex-1 mx-4 rounded-full",
-                  step >= 2 ? "bg-indigo-600" : "bg-white/50",
+                  step >= 2 ? "bg-[#5A305A]" : "bg-white/50",
                 )}
               />
               <div
@@ -798,7 +798,7 @@ export default function PublicCareer() {
               <div
                 className={cn(
                   "h-1 flex-1 mx-4 rounded-full",
-                  step >= 3 ? "bg-indigo-600" : "bg-white/50",
+                  step >= 3 ? "bg-[#5A305A]" : "bg-white/50",
                 )}
               />
               <div
@@ -973,7 +973,7 @@ export default function PublicCareer() {
                   <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
                     <KeyRound size={32} />
                   </div>
-                  <h2 className="text-xl font-bold text-slate-900">
+                  <h2 className="text-xl font-bold text-[#5A305A]">
                     Verifikasi WhatsApp
                   </h2>
                   <p className="text-sm text-slate-500">
@@ -1010,7 +1010,7 @@ export default function PublicCareer() {
                           maxLength={5}
                           value={captchaInput}
                           onChange={(e) => setCaptchaInput(e.target.value)}
-                          className="block w-full px-4 py-3 bg-white/50 border border-white/40 rounded-xl text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all font-mono tracking-widest"
+                          className="block w-full px-4 py-3 bg-white/50 border border-white/40 rounded-xl text-[#5A305A] placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all font-mono tracking-widest"
                           placeholder="Ketik 5 karakter"
                         />
                       </div>
@@ -1038,7 +1038,7 @@ export default function PublicCareer() {
                   <button
                     type="submit"
                     disabled={loading || otpInput.length !== 6}
-                    className="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full py-4 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {loading ? (
                       <Loader2 size={20} className="animate-spin" />
@@ -1090,7 +1090,7 @@ export default function PublicCareer() {
                   className="space-y-6"
                 >
                   <div className="text-center mb-6">
-                    <h2 className="text-xl font-bold text-slate-900">
+                    <h2 className="text-xl font-bold text-[#5A305A]">
                       Upload CV Anda
                     </h2>
                     <p className="text-sm text-slate-500">
@@ -1136,7 +1136,7 @@ export default function PublicCareer() {
                                 )}
                               </div>
                               <div>
-                                <p className="font-bold text-slate-900 text-sm truncate max-w-[200px]">
+                                <p className="font-bold text-[#5A305A] text-sm truncate max-w-[200px]">
                                   {file.name}
                                 </p>
                                 <p className="text-xs text-slate-500">
@@ -1158,7 +1158,7 @@ export default function PublicCareer() {
                           <Upload size={32} />
                         </div>
                         <div className="text-center">
-                          <p className="font-bold text-slate-900">
+                          <p className="font-bold text-[#5A305A]">
                             Klik atau seret file ke sini
                           </p>
                         </div>
@@ -1201,7 +1201,7 @@ export default function PublicCareer() {
                   <Briefcase size={24} />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900">
+                  <h2 className="text-2xl font-bold text-[#5A305A]">
                     {selectedJob.position}
                   </h2>
                   <p className="text-sm text-slate-600">Waruna Group</p>
@@ -1271,7 +1271,7 @@ export default function PublicCareer() {
                   setFiles([]);
                   setView("form");
                 }}
-                className="px-8 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
+                className="px-8 py-2.5 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] transition-colors shadow-lg shadow-indigo-200"
               >
                 Lamar Sekarang
               </button>
@@ -1284,7 +1284,7 @@ export default function PublicCareer() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="p-6 border-b border-slate-100 shrink-0">
-              <h2 className="text-xl font-bold text-slate-900">
+              <h2 className="text-xl font-bold text-[#5A305A]">
                 Konfirmasi Data
               </h2>
               <p className="text-sm text-slate-500 mt-1">
@@ -1296,25 +1296,25 @@ export default function PublicCareer() {
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                   Nama Lengkap
                 </p>
-                <p className="text-slate-900 font-medium">{candidateName}</p>
+                <p className="text-[#5A305A] font-medium">{candidateName}</p>
               </div>
               <div>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                   Email
                 </p>
-                <p className="text-slate-900 font-medium">{candidateEmail}</p>
+                <p className="text-[#5A305A] font-medium">{candidateEmail}</p>
               </div>
               <div>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                   Nomor WhatsApp
                 </p>
-                <p className="text-slate-900 font-medium">{phoneNumber}</p>
+                <p className="text-[#5A305A] font-medium">{phoneNumber}</p>
               </div>
               <div>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                   Posisi Dilamar
                 </p>
-                <p className="text-slate-900 font-medium">{position}</p>
+                <p className="text-[#5A305A] font-medium">{position}</p>
               </div>
             </div>
             <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
@@ -1340,7 +1340,7 @@ export default function PublicCareer() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="p-6 border-b border-slate-100">
-              <h2 className="text-xl font-bold text-slate-900">
+              <h2 className="text-xl font-bold text-[#5A305A]">
                 Konfirmasi Upload CV
               </h2>
             </div>
@@ -1350,7 +1350,7 @@ export default function PublicCareer() {
                 lamaran Anda?
               </p>
               <div className="mt-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <p className="text-sm font-medium text-slate-900 truncate">
+                <p className="text-sm font-medium text-[#5A305A] truncate">
                   {files[0]?.name}
                 </p>
                 <p className="text-xs text-slate-500">
@@ -1367,7 +1367,7 @@ export default function PublicCareer() {
               </button>
               <button
                 onClick={handleUpload}
-                className="px-6 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
+                className="px-6 py-2.5 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] transition-colors shadow-lg shadow-indigo-200"
               >
                 Ya, Kirim Lamaran
               </button>
@@ -1384,7 +1384,7 @@ export default function PublicCareer() {
               <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-6">
                 <CheckCircle2 size={40} />
               </div>
-              <h2 className="text-2xl font-bold text-slate-900 mb-2">
+              <h2 className="text-2xl font-bold text-[#5A305A] mb-2">
                 Berhasil Terkirim!
               </h2>
               <p className="text-slate-600 mb-8 leading-relaxed">
@@ -1403,7 +1403,7 @@ export default function PublicCareer() {
                   setOtpInput("");
                   setView("listing");
                 }}
-                className="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all flex items-center justify-center"
+                className="w-full py-4 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-200 transition-all flex items-center justify-center"
               >
                 Kembali ke Halaman Awal
               </button>

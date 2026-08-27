@@ -177,7 +177,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex flex-col bg-[#3D2C44] transition-all duration-300 overflow-hidden",
+          "fixed inset-y-0 left-0 z-50 flex flex-col bg-[#5A305A] transition-all duration-300 overflow-hidden",
           "lg:m-4 lg:rounded-3xl lg:h-[calc(100vh-2rem)]",
           showFullSidebar ? "w-64 lg:shadow-2xl" : "w-64 lg:w-20 lg:shadow-lg",
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
@@ -250,7 +250,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
                           className={cn(
                             "flex items-center w-full px-3 py-2.5 rounded-xl transition-all duration-300 group relative",
                             currentPath === subItem.id 
-                              ? "text-slate-900 shadow-lg shadow-black/10 translate-x-1" 
+                              ? "text-[#5A305A] shadow-lg shadow-black/10 translate-x-1" 
                               : "text-white/60 hover:bg-white/5 hover:text-white hover:translate-x-1"
                           )}
                         >
@@ -284,7 +284,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
                 className={cn(
                   "flex items-center w-full px-3 py-3 rounded-2xl transition-all duration-300 group relative",
                   currentPath === item.id 
-                    ? "text-slate-900 shadow-lg shadow-black/10 translate-x-1" 
+                    ? "text-[#5A305A] shadow-lg shadow-black/10 translate-x-1" 
                     : "text-white/60 hover:bg-white/5 hover:text-white hover:translate-x-1"
                 )}
               >
@@ -298,7 +298,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
                 <div className="relative z-10 flex items-center w-full">
                   <item.icon className={cn(
                     "w-5 h-5 shrink-0 transition-transform duration-300",
-                    currentPath === item.id ? "text-slate-900 scale-110" : "text-white/40 group-hover:text-white/60 group-hover:scale-110"
+                    currentPath === item.id ? "text-[#5A305A] scale-110" : "text-white/40 group-hover:text-white/60 group-hover:scale-110"
                   )} />
                   <div className={cn(
                     "overflow-hidden transition-all duration-300 whitespace-nowrap",
@@ -352,7 +352,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-transparent">
         {/* Header */}
-        <header className="h-16 bg-[#3D2C44] border-b border-white/10 flex items-center justify-between px-6 shrink-0 lg:hidden">
+        <header className="h-16 bg-[#5A305A] border-b border-white/10 flex items-center justify-between px-6 shrink-0 lg:hidden">
           <div className="flex items-center gap-3">
             {settings?.sidebar_logo_url && (
               <img src={settings.sidebar_logo_url} alt="Logo" className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />

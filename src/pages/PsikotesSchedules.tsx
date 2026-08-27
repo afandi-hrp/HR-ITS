@@ -320,16 +320,16 @@ export default function PsikotesSchedules() {
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
         <div className="space-y-1">
-          <h1 className="text-4xl font-extrabold tracking-tight text-[#3D2C44]">
+          <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
             Jadwal Psikotes
           </h1>
-          <p className="text-sm font-medium text-[#3D2C44]/70 max-w-xl">
+          <p className="text-sm font-medium text-[#5A305A]/70 max-w-xl">
             Pantau dan kelola agenda psikotes kandidat.
           </p>
         </div>
         <button
           onClick={() => setIsScheduling(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all"
+          className="flex items-center gap-2 px-4 py-2 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-100 transition-all"
         >
           <CalendarIcon size={18} />
           Jadwalkan Psikotes Baru
@@ -443,7 +443,7 @@ export default function PsikotesSchedules() {
             >
               Menunggu
               {activeTab === "pending" && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t-full" />
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#5A305A] rounded-t-full" />
               )}
             </button>
             <button
@@ -460,7 +460,7 @@ export default function PsikotesSchedules() {
             >
               Selesai
               {activeTab === "confirmed" && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t-full" />
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#5A305A] rounded-t-full" />
               )}
             </button>
           </div>
@@ -506,7 +506,7 @@ export default function PsikotesSchedules() {
                                 });
                               }
                             }}
-                            className="p-1.5 rounded-lg transition-colors text-white bg-indigo-600 hover:bg-indigo-700"
+                            className="p-1.5 rounded-lg transition-colors text-white bg-[#5A305A] hover:bg-[#3F223F]"
                             title="Kirim Undangan Email"
                           >
                             <Send size={14} />
@@ -617,7 +617,7 @@ export default function PsikotesSchedules() {
                     <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
                       <CalendarIcon className="text-slate-400" size={32} />
                     </div>
-                    <h3 className="text-lg font-bold text-slate-900">
+                    <h3 className="text-lg font-bold text-[#5A305A]">
                       Tidak ada agenda
                     </h3>
                     <p className="text-slate-500">
@@ -683,7 +683,7 @@ export default function PsikotesSchedules() {
                                 {schedule.candidate?.full_name?.[0] || "?"}
                               </Link>
                               <div>
-                                <p className="font-bold text-slate-900 text-sm">
+                                <p className="font-bold text-[#5A305A] text-sm">
                                   <Link
                                     to={`/candidates/${schedule.candidate_id}`}
                                     className="hover:text-indigo-600 transition-colors"
@@ -704,7 +704,7 @@ export default function PsikotesSchedules() {
                           </td>
                           <td className="px-6 py-4">
                             <div className="space-y-0.5">
-                              <p className="text-sm text-slate-900 font-bold">
+                              <p className="text-sm text-[#5A305A] font-bold">
                                 {new Date(
                                   schedule.schedule_date,
                                 ).toLocaleDateString("id-ID", {
@@ -807,15 +807,15 @@ export default function PsikotesSchedules() {
               <div className="flex items-center gap-4">
                 <p className="text-sm text-slate-500">
                   Menampilkan{" "}
-                  <span className="font-bold text-slate-900">
+                  <span className="font-bold text-[#5A305A]">
                     {startIndex + 1}
                   </span>{" "}
                   -{" "}
-                  <span className="font-bold text-slate-900">
+                  <span className="font-bold text-[#5A305A]">
                     {Math.min(startIndex + itemsPerPage, totalItems)}
                   </span>{" "}
                   dari{" "}
-                  <span className="font-bold text-slate-900">{totalItems}</span>{" "}
+                  <span className="font-bold text-[#5A305A]">{totalItems}</span>{" "}
                   jadwal
                 </p>
                 <div className="h-4 w-px bg-slate-200 hidden md:block" />
@@ -863,7 +863,7 @@ export default function PsikotesSchedules() {
                         className={cn(
                           "w-8 h-8 rounded-lg text-sm font-medium transition-all",
                           currentPage === pageNum
-                            ? "bg-indigo-600 text-white shadow-md shadow-indigo-100"
+                            ? "bg-[#5A305A] text-white shadow-md shadow-indigo-100"
                             : "text-slate-600 hover:bg-slate-50 border border-transparent hover:border-slate-200",
                         )}
                       >
@@ -922,7 +922,7 @@ export default function PsikotesSchedules() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-100 shrink-0">
-              <h2 className="text-lg sm:text-xl font-bold text-slate-900">
+              <h2 className="text-lg sm:text-xl font-bold text-[#5A305A]">
                 Detail Jadwal Psikotes
               </h2>
               <button
@@ -944,7 +944,7 @@ export default function PsikotesSchedules() {
                         {previewSchedule.candidate?.full_name?.[0] || "?"}
                       </div>
                       <div className="min-w-0">
-                        <h3 className="font-bold text-slate-900 truncate">
+                        <h3 className="font-bold text-[#5A305A] truncate">
                           {previewSchedule.candidate?.full_name}
                         </h3>
                         <p className="text-sm text-slate-500 truncate">
@@ -979,7 +979,7 @@ export default function PsikotesSchedules() {
                         <p className="text-xs font-bold text-slate-400 uppercase">
                           Waktu
                         </p>
-                        <p className="text-sm font-bold text-slate-900">
+                        <p className="text-sm font-bold text-[#5A305A]">
                           {formatDate(previewSchedule.schedule_date)},{" "}
                           {new Date(
                             previewSchedule.schedule_date,
@@ -1006,7 +1006,7 @@ export default function PsikotesSchedules() {
                         <p className="text-xs font-bold text-slate-400 uppercase">
                           Lokasi ({previewSchedule.location_type})
                         </p>
-                        <p className="text-sm font-bold text-slate-900 break-words">
+                        <p className="text-sm font-bold text-[#5A305A] break-words">
                           {previewSchedule.location_detail || "-"}
                         </p>
                       </div>
@@ -1033,7 +1033,7 @@ export default function PsikotesSchedules() {
                     });
                   }
                 }}
-                className="flex-1 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2"
               >
                 <Send size={18} />
                 Kirim Email

@@ -372,7 +372,7 @@ const filteredCandidates = candidates.filter(
     <div className="p-8 max-w-7xl mx-auto">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Live Tracking Kandidat</h1>
+          <h1 className="text-3xl font-bold text-[#5A305A]">Live Tracking Kandidat</h1>
           <p className="text-slate-500 mt-2">Monitor progress dan status pelamar</p>
         </div>
       </div>
@@ -386,7 +386,7 @@ const filteredCandidates = candidates.filter(
               placeholder="Cari kandidat..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-10 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#3D2C44] transition-shadow"
+              className="w-full pl-10 pr-10 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#5A305A] transition-shadow"
             />
             {searchTerm && (
               <button 
@@ -400,7 +400,7 @@ const filteredCandidates = candidates.filter(
           <button
             onClick={handleExportExcel}
             disabled={isExporting || isLoading || filteredCandidates.length === 0}
-            className="flex items-center gap-2 bg-[#3D2C44] hover:bg-[#2C1F32] text-white px-4 py-2 rounded-xl transition-colors disabled:opacity-50 whitespace-nowrap"
+            className="flex items-center gap-2 bg-[#5A305A] hover:bg-[#3F223F] text-white px-4 py-2 rounded-xl transition-colors disabled:opacity-50 whitespace-nowrap"
           >
             {isExporting ? <Loader2 className="animate-spin" size={20} /> : <Download size={20} />}
             Export Excel
@@ -423,7 +423,7 @@ const filteredCandidates = candidates.filter(
             </div>
           ) : (
             <table ref={tableRef} className="w-full text-sm text-left min-w-max">
-                            <thead className="text-slate-900 font-bold border-b border-slate-300">
+                            <thead className="text-[#5A305A] font-bold border-b border-slate-300">
                 <tr>
                   
                   <th className="px-4 py-3 bg-[#a895b6] border-x border-slate-300 whitespace-nowrap">No</th>
@@ -520,7 +520,7 @@ const filteredCandidates = candidates.filter(
 
                         <td className="px-4 py-3 border-x border-slate-200 whitespace-nowrap">{c.position}</td>
                         <td className="px-4 py-3 border-x border-slate-200 whitespace-nowrap">{getSourceCv(c)}</td>
-                        <td className="px-4 py-3 border-x border-slate-200 font-medium text-slate-900 whitespace-nowrap">{c.full_name}</td>
+                        <td className="px-4 py-3 border-x border-slate-200 font-medium text-[#5A305A] whitespace-nowrap">{c.full_name}</td>
                         <td className="px-4 py-3 border-x border-slate-200 whitespace-nowrap">{c.phone}</td>
                         <td className="px-4 py-3 border-x border-slate-200 whitespace-nowrap">{c.email}</td>
 
@@ -603,7 +603,7 @@ const filteredCandidates = candidates.filter(
             <div className="flex items-center gap-3">
               <span className="text-sm text-slate-500">Tampilkan</span>
               <select 
-                className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#3D2C44] text-slate-700 font-medium"
+                className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#5A305A] text-slate-700 font-medium"
                 value={pageSize === Infinity ? "all" : pageSize}
                 onChange={(e) => {
                   if (e.target.value === "all") {
@@ -629,7 +629,7 @@ const filteredCandidates = candidates.filter(
                 <button 
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="px-4 py-2 bg-[#3D2C44] text-white rounded-lg hover:bg-[#2C1F32] disabled:opacity-50 text-sm font-medium transition-colors"
+                  className="px-4 py-2 bg-[#5A305A] text-white rounded-lg hover:bg-[#3F223F] disabled:opacity-50 text-sm font-medium transition-colors"
                 >
                   Sebelumnya
                 </button>
@@ -639,7 +639,7 @@ const filteredCandidates = candidates.filter(
                 <button 
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="px-4 py-2 bg-[#3D2C44] text-white rounded-lg hover:bg-[#2C1F32] disabled:opacity-50 text-sm font-medium transition-colors"
+                  className="px-4 py-2 bg-[#5A305A] text-white rounded-lg hover:bg-[#3F223F] disabled:opacity-50 text-sm font-medium transition-colors"
                 >
                   Selanjutnya
                 </button>
@@ -655,7 +655,7 @@ const filteredCandidates = candidates.filter(
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden">
             <div className="flex items-center justify-between p-6 border-b border-slate-200">
               <div>
-                <h3 className="text-xl font-bold text-slate-900">Preview Export Excel</h3>
+                <h3 className="text-xl font-bold text-[#5A305A]">Preview Export Excel</h3>
                 <p className="text-sm text-slate-500 mt-1">Periksa kembali data yang akan didownload.</p>
               </div>
               <button 

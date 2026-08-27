@@ -70,7 +70,7 @@ export default function ConfirmModal({
               "px-4 py-2 text-sm font-bold text-white rounded-xl transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed",
               variant === 'danger' 
                 ? "bg-red-600 hover:bg-red-700 shadow-red-200" 
-                : "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200"
+                : "bg-[#5A305A] hover:bg-[#3F223F] shadow-indigo-200"
             )}
           >
             {loading && <Loader2 size={16} className="animate-spin" />}

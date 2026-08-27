@@ -522,10 +522,10 @@ export default function Settings() {
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="space-y-1 mb-2">
-        <h1 className="text-4xl font-extrabold tracking-tight text-[#3D2C44]">
+        <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
           Pengaturan Akun
         </h1>
-        <p className="text-sm font-medium text-[#3D2C44]/70 max-w-xl">
+        <p className="text-sm font-medium text-[#5A305A]/70 max-w-xl">
           Kelola informasi profil dan keamanan akun Anda.
         </p>
       </div>
@@ -548,7 +548,7 @@ export default function Settings() {
                   </div>
                 )}
               </div>
-              <label className="absolute bottom-0 right-0 p-2 bg-indigo-600 text-white rounded-full shadow-lg cursor-pointer hover:bg-indigo-700 transition-all">
+              <label className="absolute bottom-0 right-0 p-2 bg-[#5A305A] text-white rounded-full shadow-lg cursor-pointer hover:bg-[#3F223F] transition-all">
                 <Camera size={20} />
                 <input
                   type="file"
@@ -559,7 +559,7 @@ export default function Settings() {
               </label>
             </div>
             <div className="mt-4">
-              <h3 className="font-bold text-slate-900">{fullName || "User"}</h3>
+              <h3 className="font-bold text-[#5A305A]">{fullName || "User"}</h3>
               <p className="text-sm text-slate-500">{user.email}</p>
             </div>
           </div>
@@ -574,7 +574,7 @@ export default function Settings() {
               <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
                 <UserIcon size={20} />
               </div>
-              <h2 className="text-xl font-bold text-slate-900">
+              <h2 className="text-xl font-bold text-[#5A305A]">
                 Informasi Profil
               </h2>
             </div>
@@ -629,7 +629,7 @@ export default function Settings() {
                   <div className="p-2 bg-sky-50 text-sky-600 rounded-lg">
                     <Webhook size={20} />
                   </div>
-                  <h2 className="text-xl font-bold text-slate-900">
+                  <h2 className="text-xl font-bold text-[#5A305A]">
                     Pengaturan Webhook
                   </h2>
                 </div>
@@ -681,7 +681,7 @@ export default function Settings() {
                       type="button"
                       onClick={() => testWebhook("email")}
                       disabled={testingWebhook === "email"}
-                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
+                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-[#5A305A] hover:bg-[#3F223F] rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
                     >
                       {testingWebhook === "email" ? (
                         <Loader2 className="animate-spin" size={16} />
@@ -710,7 +710,7 @@ export default function Settings() {
                       type="button"
                       onClick={() => testWebhook("cv")}
                       disabled={testingWebhook === "cv"}
-                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
+                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-[#5A305A] hover:bg-[#3F223F] rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
                     >
                       {testingWebhook === "cv" ? (
                         <Loader2 className="animate-spin" size={16} />
@@ -738,7 +738,7 @@ export default function Settings() {
                       type="button"
                       onClick={() => testWebhook("public_cv")}
                       disabled={testingWebhook === "public_cv"}
-                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
+                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-[#5A305A] hover:bg-[#3F223F] rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
                     >
                       {testingWebhook === "public_cv" ? (
                         <Loader2 className="animate-spin" size={16} />
@@ -765,7 +765,7 @@ export default function Settings() {
                       type="button"
                       onClick={() => testWebhook("sheet")}
                       disabled={testingWebhook === "sheet"}
-                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
+                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-[#5A305A] hover:bg-[#3F223F] rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
                     >
                       {testingWebhook === "sheet" ? (
                         <Loader2 className="animate-spin" size={16} />
@@ -792,7 +792,7 @@ export default function Settings() {
                       type="button"
                       onClick={() => testWebhook("otp")}
                       disabled={testingWebhook === "otp"}
-                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
+                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-[#5A305A] hover:bg-[#3F223F] rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
                     >
                       {testingWebhook === "otp" ? (
                         <Loader2 className="animate-spin" size={16} />
@@ -819,7 +819,7 @@ export default function Settings() {
                       type="button"
                       onClick={() => testWebhook("wa")}
                       disabled={testingWebhook === "wa"}
-                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
+                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-[#5A305A] hover:bg-[#3F223F] rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
                     >
                       {testingWebhook === "wa" ? (
                         <Loader2 className="animate-spin" size={16} />
@@ -848,7 +848,7 @@ export default function Settings() {
                       type="button"
                       onClick={() => testWebhook("external_data_delete")}
                       disabled={testingWebhook === "external_data_delete"}
-                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
+                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-[#5A305A] hover:bg-[#3F223F] rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
                     >
                       {testingWebhook === "external_data_delete" ? (
                         <Loader2 className="animate-spin" size={16} />
@@ -875,7 +875,7 @@ export default function Settings() {
                       type="button"
                       onClick={() => testWebhook("ai_analysis")}
                       disabled={testingWebhook === "ai_analysis"}
-                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
+                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-[#5A305A] hover:bg-[#3F223F] rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
                     >
                       {testingWebhook === "ai_analysis" ? (
                         <Loader2 className="animate-spin" size={16} />
@@ -902,7 +902,7 @@ export default function Settings() {
                       type="button"
                       onClick={() => testWebhook("ai_psikotes")}
                       disabled={testingWebhook === "ai_psikotes"}
-                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
+                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-[#5A305A] hover:bg-[#3F223F] rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
                     >
                       {testingWebhook === "ai_psikotes" ? (
                         <Loader2 className="animate-spin" size={16} />
@@ -929,7 +929,7 @@ export default function Settings() {
                       type="button"
                       onClick={() => testWebhook("ai_interview")}
                       disabled={testingWebhook === "ai_interview"}
-                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
+                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-[#5A305A] hover:bg-[#3F223F] rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
                     >
                       {testingWebhook === "ai_interview" ? (
                         <Loader2 className="animate-spin" size={16} />
@@ -963,7 +963,7 @@ export default function Settings() {
                   <div className="p-2 bg-fuchsia-50 text-fuchsia-600 rounded-lg">
                     <Palette size={20} />
                   </div>
-                  <h2 className="text-xl font-bold text-slate-900">
+                  <h2 className="text-xl font-bold text-[#5A305A]">
                     Pengaturan Tampilan
                   </h2>
                 </div>
@@ -1213,7 +1213,7 @@ export default function Settings() {
                               setNewJobSource("");
                             }
                           }}
-                          className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all text-sm font-medium"
+                          className="px-4 py-2 bg-[#5A305A] text-white rounded-xl hover:bg-[#3F223F] transition-all text-sm font-medium"
                         >
                           Tambah
                         </button>
@@ -1275,7 +1275,7 @@ export default function Settings() {
                               setNewCareerJobSource("");
                             }
                           }}
-                          className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all text-sm font-medium"
+                          className="px-4 py-2 bg-[#5A305A] text-white rounded-xl hover:bg-[#3F223F] transition-all text-sm font-medium"
                         >
                           Tambah
                         </button>
@@ -1332,7 +1332,7 @@ export default function Settings() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all disabled:opacity-50"
+                className="flex items-center gap-2 px-6 py-3 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] transition-all disabled:opacity-50"
               >
                 {loading ? (
                   <Loader2 className="animate-spin" size={20} />
@@ -1349,7 +1349,7 @@ export default function Settings() {
               <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
                 <Lock size={20} />
               </div>
-              <h2 className="text-xl font-bold text-slate-900">Keamanan</h2>
+              <h2 className="text-xl font-bold text-[#5A305A]">Keamanan</h2>
             </div>
             <form onSubmit={handleUpdatePassword} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1400,7 +1400,7 @@ export default function Settings() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between p-6 border-b border-slate-100">
-              <h3 className="text-lg font-bold text-slate-900">
+              <h3 className="text-lg font-bold text-[#5A305A]">
                 Masukkan PIN {pinType === "webhook" ? "Webhook" : "Tampilan"}
               </h3>
               <button
@@ -1447,7 +1447,7 @@ export default function Settings() {
                 <button
                   type="submit"
                   disabled={!pinInput}
-                  className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all disabled:opacity-50"
+                  className="flex-1 py-3 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] transition-all disabled:opacity-50"
                 >
                   Verifikasi
                 </button>

@@ -70,7 +70,7 @@ function AppRoutes() {
 
   return (
     <BrowserRouter>
-      <div className="min-h-screen font-sans text-slate-900 bg-transparent">
+      <div className="min-h-screen font-sans text-[#5A305A] bg-transparent">
         <Suspense fallback={<PageLoader />}>
           <Routes>
             {/* Public Routes */}

@@ -33,11 +33,14 @@ interface ApplicationFormProps {
 const renderAttachment = (url: string | undefined | null, label: string) => {
   if (!url) return <span className="text-sm text-slate-500">-</span>;
 
-  const isPdf = url.split("?")[0].toLowerCase().endsWith(".pdf");
+  const ext = url.split("?")[0].toLowerCase();
+  const isPdf = ext.endsWith(".pdf");
+  const isImage = /\.(jpe?g|png)$/.test(ext);
+  const isPresentation = ext.endsWith(".ppt") || ext.endsWith(".pptx");
 
   return (
     <div className="mt-2 pdf-avoid-break">
-      {isPdf ? (
+      {isPdf || isPresentation ? (
         <a
           href={url}
           target="_blank"
@@ -45,7 +48,7 @@ const renderAttachment = (url: string | undefined | null, label: string) => {
           className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg text-sm hover:bg-indigo-100 transition-colors border border-indigo-100"
         >
           <FileText size={16} />
-          Lihat Dokumen PDF
+          {isPdf ? "Lihat Dokumen PDF" : "Unduh Dokumen PPT"}
         </a>
       ) : (
         <a
@@ -61,7 +64,7 @@ const renderAttachment = (url: string | undefined | null, label: string) => {
           />
         </a>
       )}
-      {!isPdf && (
+      {isImage && (
         <div className="block text-sm text-slate-600 italic mt-1">
           (Lihat gambar ukuran penuh di bagian bawah)
         </div>
@@ -96,6 +99,7 @@ export default function ApplicationForm({
   const [transcriptFile, setTranscriptFile] = useState<File | null>(null);
   const [otherDocFiles, setOtherDocFiles] = useState<File[]>([]);
   const [payslipFiles, setPayslipFiles] = useState<File[]>([]);
+  const [portfolioFiles, setPortfolioFiles] = useState<File[]>([]);
   const [token, setToken] = useState("");
   const [isOffline, setIsOffline] = useState(
     typeof navigator !== "undefined" ? !navigator.onLine : false,
@@ -250,6 +254,7 @@ export default function ApplicationForm({
       "signature_url",
       "payslip_url",
       "remuneration_signature_url",
+      "portfolio_url",
     ];
 
     (async () => {
@@ -825,6 +830,55 @@ export default function ApplicationForm({
     }
   };
 
+  const handlePortfolioFileChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    if (!e.target.files) return;
+    const files = Array.from(e.target.files);
+
+    if (files.length > 2) {
+      toast({
+        title: "Terlalu Banyak File",
+        description:
+          "Maksimal 2 file untuk Bahan Presentasi / Portofolio.",
+        variant: "destructive",
+      });
+      e.target.value = "";
+      return;
+    }
+
+    const allowedExt = [".pdf", ".ppt", ".pptx"];
+    const invalidFile = files.find(
+      (file) =>
+        !allowedExt.includes(
+          "." + (file.name.split(".").pop() || "").toLowerCase(),
+        ),
+    );
+    if (invalidFile) {
+      toast({
+        title: "Format File Tidak Didukung",
+        description: `File ${invalidFile.name} harus berformat PDF, PPT, atau PPTX.`,
+        variant: "destructive",
+      });
+      e.target.value = "";
+      return;
+    }
+
+    const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+    if (totalSize > 5 * 1024 * 1024) {
+      toast({
+        title: "Ukuran File Terlalu Besar",
+        description:
+          "Total ukuran Bahan Presentasi / Portofolio maksimal 5MB.",
+        variant: "destructive",
+      });
+      e.target.value = "";
+      return;
+    }
+
+    setPortfolioFiles(files);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -1325,6 +1379,14 @@ export default function ApplicationForm({
       }
       let payslipUrl = payslipUrls.join(",");
 
+      let portfolioUrls: string[] = [];
+      if (portfolioFiles.length > 0) {
+        for (const file of portfolioFiles) {
+          portfolioUrls.push(await uploadFile(file, "portfolio"));
+        }
+      }
+      let portfolioUrl = portfolioUrls.join(",");
+
       let signatureDataUrl = "";
       if (sigCanvas.current && !sigCanvas.current.isEmpty()) {
         signatureDataUrl = sigCanvas.current.getCanvas().toDataURL("image/png");
@@ -1349,6 +1411,7 @@ export default function ApplicationForm({
         transcript_url: transcriptUrl,
         other_doc_url: otherDocUrl,
         payslip_url: payslipUrl,
+        portfolio_url: portfolioUrl,
         signature_url: signatureDataUrl,
         remuneration_signature_url: remunerationSignatureDataUrl,
         job_vacancy_info: formData.job_vacancy_info.includes("Lainnya")
@@ -1444,14 +1507,14 @@ export default function ApplicationForm({
           <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle2 size={40} />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900">Terima Kasih!</h2>
+          <h2 className="text-2xl font-bold text-[#5A305A]">Terima Kasih!</h2>
           <p className="text-slate-600">
             Formulir lamaran Anda telah berhasil kami terima. Tim rekrutmen kami
             akan segera meninjau data Anda.
           </p>
           <button
             onClick={() => window.location.reload()}
-            className="mt-6 px-6 py-2 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all w-full"
+            className="mt-6 px-6 py-2 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] transition-all w-full"
           >
             Kembali ke Halaman Formulir
           </button>
@@ -1694,7 +1757,7 @@ export default function ApplicationForm({
 
                   {/* Section I: Identitas Pribadi */}
                   <div>
-                    <h2 className="text-lg font-bold text-slate-900 mb-4 bg-slate-100 py-2 px-4 rounded-lg">
+                    <h2 className="text-lg font-bold text-[#5A305A] mb-4 bg-slate-100 py-2 px-4 rounded-lg">
                       I. IDENTITAS PRIBADI{" "}
                       <span className="text-slate-500 font-normal italic">
                         - PERSONAL IDENTITY
@@ -2256,7 +2319,7 @@ export default function ApplicationForm({
                                               ? "bg-red-600 print:bg-red-600"
                                               : sm.platform === "Twitter"
                                                 ? "bg-slate-900 print:bg-slate-900"
-                                                : "bg-indigo-600 print:bg-indigo-600",
+                                                : "bg-[#5A305A] print:bg-[#5A305A]",
                                       )}
                                       style={{
                                         WebkitPrintColorAdjust: "exact",
@@ -2519,7 +2582,7 @@ export default function ApplicationForm({
 
                   {/* Section II: Latar Belakang Keluarga */}
                   <div>
-                    <h2 className="text-lg font-bold text-slate-900 mb-4 bg-slate-100 py-2 px-4 rounded-lg">
+                    <h2 className="text-lg font-bold text-[#5A305A] mb-4 bg-slate-100 py-2 px-4 rounded-lg">
                       II. LATAR BELAKANG KELUARGA{" "}
                       <span className="text-slate-500 font-normal italic">
                         - FAMILY BACKGROUND
@@ -2774,7 +2837,7 @@ export default function ApplicationForm({
 
                   {/* Section III: Pendidikan dan Keterampilan */}
                   <div>
-                    <h2 className="text-lg font-bold text-slate-900 mb-4 bg-slate-100 py-2 px-4 rounded-lg">
+                    <h2 className="text-lg font-bold text-[#5A305A] mb-4 bg-slate-100 py-2 px-4 rounded-lg">
                       III. PENDIDIKAN DAN KETERAMPILAN{" "}
                       <span className="text-slate-500 font-normal italic">
                         - EDUCATION AND SKILL
@@ -3512,7 +3575,7 @@ export default function ApplicationForm({
 
                   {/* Section IV: Riwayat Pekerjaan */}
                   <div>
-                    <h2 className="text-lg font-bold text-slate-900 mb-4 bg-slate-100 py-2 px-4 rounded-lg">
+                    <h2 className="text-lg font-bold text-[#5A305A] mb-4 bg-slate-100 py-2 px-4 rounded-lg">
                       IV. RIWAYAT PEKERJAAN{" "}
                       <span className="text-slate-500 font-normal italic">
                         - WORK HISTORICAL
@@ -3977,7 +4040,7 @@ export default function ApplicationForm({
 
                   {/* Section V: Keterangan Lainnya */}
                   <div>
-                    <h2 className="text-lg font-bold text-slate-900 mb-4 bg-slate-100 py-2 px-4 rounded-lg">
+                    <h2 className="text-lg font-bold text-[#5A305A] mb-4 bg-slate-100 py-2 px-4 rounded-lg">
                       V. KETERANGAN LAINNYA{" "}
                       <span className="text-slate-500 font-normal italic">
                         - OTHER INFORMATION
@@ -4812,7 +4875,7 @@ export default function ApplicationForm({
 
                   {/* Section VI: Dokumen Kelengkapan */}
                   <div className="print:break-before-page">
-                    <h2 className="text-lg font-bold text-slate-900 mb-4 bg-slate-100 py-2 px-4 rounded-lg">
+                    <h2 className="text-lg font-bold text-[#5A305A] mb-4 bg-slate-100 py-2 px-4 rounded-lg">
                       VI. DOKUMEN KELENGKAPAN{" "}
                       <span className="text-slate-500 font-normal italic">
                         - ATTACHMENTS
@@ -4950,6 +5013,46 @@ export default function ApplicationForm({
                           />
                         )}
                       </div>
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-slate-700">
+                          Bahan Presentasi / Portofolio{" "}
+                          <span className="text-slate-400 italic">
+                            (Pitch Deck / Portfolio)
+                          </span>{" "}
+                          {!readOnly && (
+                            <span className="text-xs text-slate-500">
+                              Opsional. Maks. 2 file (PDF/PPT/PPTX), total
+                              maksimal 5MB.
+                            </span>
+                          )}
+                        </label>
+                        {readOnly ? (
+                          <div className="flex flex-col gap-2">
+                            {resolvedDocs.portfolio_url ? (
+                              resolvedDocs.portfolio_url
+                                .split(",")
+                                .map((url: string, index: number) => (
+                                  <div key={index}>
+                                    {renderAttachment(
+                                      url.trim(),
+                                      `Portofolio ${index + 1}`,
+                                    )}
+                                  </div>
+                                ))
+                            ) : (
+                              <span className="text-sm text-slate-500">-</span>
+                            )}
+                          </div>
+                        ) : (
+                          <input
+                            type="file"
+                            multiple
+                            accept=".pdf,.ppt,.pptx"
+                            onChange={handlePortfolioFileChange}
+                            className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                          />
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -5065,11 +5168,11 @@ export default function ApplicationForm({
                           (Full Name & Signature)
                         </p>
                         {readOnly ? (
-                          <p className="text-base font-bold text-slate-900">
+                          <p className="text-base font-bold text-[#5A305A]">
                             {initialData?.full_name || "-"}
                           </p>
                         ) : (
-                          <p className="text-base font-bold text-slate-900 border-b border-slate-300 inline-block px-4 pb-1">
+                          <p className="text-base font-bold text-[#5A305A] border-b border-slate-300 inline-block px-4 pb-1">
                             {formData.full_name || "______________________"}
                           </p>
                         )}
@@ -5084,7 +5187,7 @@ export default function ApplicationForm({
               <div
                 className="w-full block max-w-4xl mx-auto bg-white p-4 sm:p-8 mt-8 border-t-4 border-slate-100 print:border-none print:break-before-page"
               >
-                <h2 className="text-xl font-bold text-slate-900 mb-6 border-b pb-2">
+                <h2 className="text-xl font-bold text-[#5A305A] mb-6 border-b pb-2">
                   LAMPIRAN DOKUMEN
                 </h2>
                 <div className="space-y-12">
@@ -5184,11 +5287,48 @@ export default function ApplicationForm({
                       </div>
                     </div>
                   )}
+                  {resolvedDocs.portfolio_url && (
+                    <div className="pdf-avoid-break">
+                      <h3 className="font-bold text-slate-700 mb-4">
+                        Bahan Presentasi / Portofolio
+                      </h3>
+                      <div className="space-y-8">
+                        {resolvedDocs.portfolio_url
+                          .split(",")
+                          .map((url: string, index: number) => {
+                            const trimmedUrl = url.trim();
+                            const lowerUrl = trimmedUrl
+                              .split("?")[0]
+                              .toLowerCase();
+                            if (lowerUrl.endsWith(".pdf")) {
+                              return (
+                                <div key={index}>
+                                  <PdfToImages
+                                    url={trimmedUrl}
+                                    title={`Portofolio ${index + 1}`}
+                                  />
+                                </div>
+                              );
+                            }
+                            // PPT/PPTX can't be rendered inline — link out instead.
+                            return (
+                              <div key={index}>
+                                {renderAttachment(
+                                  trimmedUrl,
+                                  `Portofolio ${index + 1}`,
+                                )}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
 
                   {!initialData?.ktp_url &&
                     !initialData?.ijazah_url &&
                     !initialData?.transcript_url &&
                     !initialData?.other_doc_url &&
+                    !initialData?.portfolio_url &&
                     (!initialData?.payslip_url || hideSalary) && (
                       <div className="text-slate-500 italic">
                         Tidak ada lampiran dokumen.
@@ -5213,7 +5353,7 @@ export default function ApplicationForm({
               readOnly && !onlyRemuneration ? { pageBreakBefore: "always" } : {}
             }
           >
-            <div className="bg-indigo-600 px-4 sm:px-8 py-4 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <div className="bg-[#5A305A] px-4 sm:px-8 py-4 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
               <h2 className="text-lg font-bold">LEMBARAN PAKET REMUNERASI</h2>
               <span className="text-indigo-200 text-sm">
                 FORM-HC/PST/1114/RO/006
@@ -5383,7 +5523,7 @@ export default function ApplicationForm({
                         Nama:
                       </span>
                       {readOnly ? (
-                        <span className="font-medium text-slate-900 text-center w-full">
+                        <span className="font-medium text-[#5A305A] text-center w-full">
                           {initialData?.remuneration_signature_name || "-"}
                         </span>
                       ) : (
@@ -5393,7 +5533,7 @@ export default function ApplicationForm({
                           value={formData.full_name}
                           readOnly
                           placeholder="Nama Lengkap"
-                          className="w-full bg-transparent border-none focus:ring-0 text-center font-medium text-slate-900 placeholder-slate-400 cursor-not-allowed"
+                          className="w-full bg-transparent border-none focus:ring-0 text-center font-medium text-[#5A305A] placeholder-slate-400 cursor-not-allowed"
                         />
                       )}
                     </div>
@@ -5410,7 +5550,7 @@ export default function ApplicationForm({
                         Tanggal:
                       </span>
                       {readOnly ? (
-                        <span className="font-medium text-slate-900 text-center w-full">
+                        <span className="font-medium text-[#5A305A] text-center w-full">
                           {formatDateDMY(initialData?.remuneration_signature_date)}
                         </span>
                       ) : (
@@ -5419,7 +5559,7 @@ export default function ApplicationForm({
                           name="remuneration_signature_date"
                           value={formData.remuneration_signature_date}
                           readOnly
-                          className="w-full bg-transparent border-none focus:ring-0 text-center font-medium text-slate-900 cursor-not-allowed"
+                          className="w-full bg-transparent border-none focus:ring-0 text-center font-medium text-[#5A305A] cursor-not-allowed"
                         />
                       )}
                     </div>
@@ -5435,7 +5575,7 @@ export default function ApplicationForm({
             <button
               type="submit"
               disabled={loading}
-              className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg"
+              className="px-8 py-3 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg"
             >
               {loading ? (
                 <Loader2 className="animate-spin" size={20} />
@@ -5449,7 +5589,7 @@ export default function ApplicationForm({
           <div
             className="w-full block max-w-4xl mx-auto bg-white p-4 sm:p-8 mt-8 border-t-4 border-slate-100 print:border-none print:break-before-page"
           >
-            <h2 className="text-xl font-bold text-slate-900 mb-6 border-b pb-2">
+            <h2 className="text-xl font-bold text-[#5A305A] mb-6 border-b pb-2">
               LAMPIRAN SLIP GAJI
             </h2>
             <div className="pdf-avoid-break">

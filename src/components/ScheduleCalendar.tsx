@@ -102,7 +102,7 @@ export default function ScheduleCalendar({
               <div className="flex items-center justify-between mb-2">
                 <span className={cn(
                   "w-7 h-7 flex items-center justify-center rounded-full text-sm font-medium",
-                  isCurrentDay ? "bg-indigo-600 text-white" : "text-slate-700",
+                  isCurrentDay ? "bg-[#5A305A] text-white" : "text-slate-700",
                   !isCurrentMonth && !isCurrentDay && "text-slate-400"
                 )}>
                   {format(day, 'd')}

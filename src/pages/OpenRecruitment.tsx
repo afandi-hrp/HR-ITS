@@ -281,10 +281,10 @@ export default function OpenRecruitment() {
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
         <div className="space-y-1">
-          <h1 className="text-4xl font-extrabold tracking-tight text-[#3D2C44]">
+          <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
             Open Recruitment
           </h1>
-          <p className="text-sm font-medium text-[#3D2C44]/70 max-w-xl">
+          <p className="text-sm font-medium text-[#5A305A]/70 max-w-xl">
             Kelola daftar lowongan pekerjaan yang sedang dibuka.
           </p>
         </div>
@@ -295,7 +295,7 @@ export default function OpenRecruitment() {
               setFormData({ position: "", jobdesk: "", kualifikasi: "" });
               setIsModalOpen(true);
             }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white hover:bg-indigo-700 font-bold rounded-xl transition-all shadow-md shadow-indigo-200 hover:-translate-y-0.5"
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#5A305A] text-white hover:bg-[#3F223F] font-bold rounded-xl transition-all shadow-md shadow-indigo-200 hover:-translate-y-0.5"
           >
             <Plus size={18} />
             Tambah Lowongan
@@ -345,7 +345,7 @@ export default function OpenRecruitment() {
           <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Briefcase className="text-slate-400" size={32} />
           </div>
-          <h3 className="text-lg font-bold text-slate-900 mb-1">
+          <h3 className="text-lg font-bold text-[#5A305A] mb-1">
             Belum ada lowongan
           </h3>
           <p className="text-slate-500 mb-6">
@@ -381,7 +381,7 @@ export default function OpenRecruitment() {
                       <Briefcase size={24} />
                     </div>
                     <div>
-                      <h3 className="font-bold text-slate-900 text-lg">
+                      <h3 className="font-bold text-[#5A305A] text-lg">
                         {item.position}
                       </h3>
                       <div className="flex items-center gap-3 mt-1">
@@ -499,7 +499,7 @@ export default function OpenRecruitment() {
                   <Briefcase size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">
+                  <h3 className="text-lg font-bold text-[#5A305A]">
                     {editingId ? "Edit Lowongan" : "Tambah Lowongan Baru"}
                   </h3>
                   <p className="text-xs text-slate-500">
@@ -581,7 +581,7 @@ export default function OpenRecruitment() {
                 type="submit"
                 form="recruitment-form"
                 disabled={saving}
-                className="flex-1 px-6 py-3 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 px-6 py-3 bg-[#5A305A] text-white font-bold rounded-2xl hover:bg-[#3F223F] shadow-lg shadow-indigo-200 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {saving ? (
                   <>
@@ -605,7 +605,7 @@ export default function OpenRecruitment() {
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto text-red-600 mb-2">
                 <Trash2 size={32} />
               </div>
-              <h3 className="text-xl font-bold text-slate-900">
+              <h3 className="text-xl font-bold text-[#5A305A]">
                 Hapus Lowongan?
               </h3>
               <p className="text-slate-500">

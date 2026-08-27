@@ -208,11 +208,11 @@ export default function UserManagement() {
     <div className="p-8 max-w-7xl mx-auto">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-[#3D2C44] flex items-center gap-3">
+          <h1 className="text-3xl font-bold text-[#5A305A] flex items-center gap-3">
             <Users className="w-8 h-8 text-indigo-600" />
             Manajemen Pengguna
           </h1>
-          <p className="text-[#3D2C44]/70 mt-2">
+          <p className="text-[#5A305A]/70 mt-2">
             Kelola akses dan peran pengguna lintas divisi.
           </p>
         </div>
@@ -220,7 +220,7 @@ export default function UserManagement() {
 
       {/* Role summary */}
       <div className="flex flex-wrap items-center gap-2 mb-6">
-        <span className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-[#3D2C44]/5 text-[#3D2C44]">
+        <span className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-[#5A305A]/5 text-[#5A305A]">
           {users.length} Total Pengguna
         </span>
         {Object.entries(roleCounts).map(([role, count]) => (
@@ -337,7 +337,7 @@ export default function UserManagement() {
                           </div>
                         )}
                         <div className="min-w-0">
-                          <p className="font-medium text-slate-900 truncate">
+                          <p className="font-medium text-[#5A305A] truncate">
                             {user.full_name || "Tanpa Nama"}
                           </p>
                           {emailById[user.id] && (
@@ -392,7 +392,7 @@ export default function UserManagement() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
             <div className="p-6 border-b border-slate-200 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-900">
+              <h3 className="text-lg font-bold text-[#5A305A]">
                 Edit Akses Pengguna
               </h3>
               <button
@@ -408,7 +408,7 @@ export default function UserManagement() {
                 <p className="text-sm font-medium text-slate-500 mb-1">
                   Nama Pengguna
                 </p>
-                <p className="font-medium text-slate-900">
+                <p className="font-medium text-[#5A305A]">
                   {editingUser.full_name}
                 </p>
                 {emailById[editingUser.id] && (
@@ -471,7 +471,7 @@ export default function UserManagement() {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+                className="px-4 py-2 bg-[#5A305A] text-white font-medium rounded-xl hover:bg-[#3F223F] transition-colors flex items-center gap-2 disabled:opacity-50"
               >
                 {saving ? (
                   <Loader2 className="w-4 h-4 animate-spin" />

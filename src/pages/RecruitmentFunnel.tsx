@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import {
   Loader2,
@@ -9,6 +10,7 @@ import {
   Clock,
   Filter,
   ChevronDown,
+  ChevronLeft,
   X,
   Mail,
   Calendar,
@@ -33,6 +35,7 @@ interface FunnelData {
 }
 
 export default function RecruitmentFunnel() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [funnelData, setFunnelData] = useState<FunnelData[]>([]);
   const [positions, setPositions] = useState<string[]>([]);
@@ -892,10 +895,16 @@ export default function RecruitmentFunnel() {
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-1">
-          <h1 className="text-4xl font-extrabold tracking-tight text-[#3D2C44]">
+          <button
+            onClick={() => navigate(-1)}
+            className="text-sm text-slate-600 hover:text-[#5A305A] font-bold flex items-center gap-1.5 mb-2 transition-colors border border-slate-200 bg-white/70 backdrop-blur-md hover:bg-white px-3 py-1.5 rounded-xl w-fit shadow-sm"
+          >
+            <ChevronLeft size={16} /> Kembali
+          </button>
+          <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
             Recruitment Funnel
           </h1>
-          <p className="text-sm font-medium text-[#3D2C44]/70 max-w-xl">
+          <p className="text-sm font-medium text-[#5A305A]/70 max-w-xl">
             Analisa konversi kandidat dari pendaftaran hingga diterima.
           </p>
         </div>
@@ -991,7 +1000,7 @@ export default function RecruitmentFunnel() {
               <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
                 Total Applied
               </p>
-              <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
+              <p className="text-2xl font-bold text-[#5A305A]">{stats.total}</p>
             </div>
           </div>
         </div>
@@ -1045,7 +1054,7 @@ export default function RecruitmentFunnel() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Visual Funnel */}
         <div className="lg:col-span-2 bg-white/40 backdrop-blur-xl p-4 sm:p-8 rounded-3xl border border-white/60 shadow-2xl overflow-hidden">
-          <h2 className="text-xl font-bold text-slate-900 mb-4 sm:mb-8 flex items-center gap-2">
+          <h2 className="text-xl font-bold text-[#5A305A] mb-4 sm:mb-8 flex items-center gap-2">
             <TrendingUp className="text-indigo-600" />
             Visualisasi Corong Rekrutmen
           </h2>
@@ -1060,7 +1069,7 @@ export default function RecruitmentFunnel() {
                     <div className="flex items-center gap-6">
                       {/* Stage Name & Count */}
                       <div className="w-48 text-right shrink-0">
-                        <p className="text-sm font-bold text-slate-900">
+                        <p className="text-sm font-bold text-[#5A305A]">
                           {item.stage}
                         </p>
                         <p className="text-xs text-slate-500">
@@ -1122,7 +1131,7 @@ export default function RecruitmentFunnel() {
         {/* Table Data */}
         <div className="bg-white/40 backdrop-blur-xl rounded-3xl border border-white/60 shadow-2xl overflow-hidden flex flex-col">
           <div className="p-6 border-b border-white/40 bg-white/30">
-            <h2 className="text-lg font-bold text-slate-900">
+            <h2 className="text-lg font-bold text-[#5A305A]">
               Detail Konversi
             </h2>
             <p className="text-xs text-slate-600 mt-1">
@@ -1146,11 +1155,11 @@ export default function RecruitmentFunnel() {
                     >
                       <item.icon size={16} />
                     </div>
-                    <span className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                    <span className="font-bold text-[#5A305A] group-hover:text-indigo-600 transition-colors">
                       {item.stage}
                     </span>
                   </div>
-                  <span className="text-lg font-bold text-slate-900">
+                  <span className="text-lg font-bold text-[#5A305A]">
                     {item.count}
                   </span>
                 </div>
@@ -1199,7 +1208,7 @@ export default function RecruitmentFunnel() {
         {/* Monthly Metrics */}
         <div className="bg-white/40 backdrop-blur-xl p-6 sm:p-8 rounded-3xl border border-white/60 shadow-2xl overflow-hidden flex flex-col">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+            <h2 className="text-xl font-bold text-[#5A305A] flex items-center gap-2">
               <Calendar className="text-indigo-600" />
               Monthly Metrics (Past 12 MTHS)
             </h2>
@@ -1275,7 +1284,7 @@ export default function RecruitmentFunnel() {
         {/* Pipeline Efficiency */}
         <div className="bg-white/40 backdrop-blur-xl p-6 sm:p-8 rounded-3xl border border-white/60 shadow-2xl overflow-hidden flex flex-col">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+            <h2 className="text-xl font-bold text-[#5A305A] flex items-center gap-2">
               <Clock className="text-indigo-600" />
               Pipeline Efficiency of Hiring
               <button
@@ -1361,7 +1370,7 @@ export default function RecruitmentFunnel() {
         {/* Source Distribution */}
         <div className="bg-white/40 backdrop-blur-xl p-6 sm:p-8 rounded-3xl border border-white/60 shadow-2xl overflow-hidden flex flex-col">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+            <h2 className="text-xl font-bold text-[#5A305A] flex items-center gap-2">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="24"
@@ -1477,7 +1486,7 @@ export default function RecruitmentFunnel() {
                   <FileText size={20} />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">
+                  <h2 className="text-lg font-bold text-[#5A305A]">
                     Preview Laporan Rekrutmen
                   </h2>
                   <p className="text-xs text-slate-500">
@@ -1498,9 +1507,9 @@ export default function RecruitmentFunnel() {
 
             <div className="flex-1 bg-slate-200 p-4 sm:p-8 overflow-y-auto space-y-8">
               {/* High-Fidelity Visual Preview (HTML) - Page 1 */}
-              <div className="max-w-[800px] mx-auto bg-white shadow-2xl min-h-[1100px] flex flex-col font-sans text-slate-900 shrink-0">
+              <div className="max-w-[800px] mx-auto bg-white shadow-2xl min-h-[1100px] flex flex-col font-sans text-[#5A305A] shrink-0">
                 {/* PDF Header Mockup */}
-                <div className="bg-indigo-600 p-10 text-white relative overflow-hidden shrink-0">
+                <div className="bg-[#5A305A] p-10 text-white relative overflow-hidden shrink-0">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
                   <h1 className="text-3xl font-bold relative z-10">
                     RECRUITMENT ANALYTICS
@@ -1519,7 +1528,7 @@ export default function RecruitmentFunnel() {
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                           Laporan Untuk:
                         </p>
-                        <p className="text-lg font-bold text-slate-900">
+                        <p className="text-lg font-bold text-[#5A305A]">
                           {selectedPosition === "all"
                             ? "SEMUA POSISI"
                             : selectedPosition.toUpperCase()}
@@ -1558,7 +1567,7 @@ export default function RecruitmentFunnel() {
                       {
                         label: "TOTAL PELAMAR",
                         value: stats.total,
-                        color: "bg-indigo-600",
+                        color: "bg-[#5A305A]",
                         light: "bg-indigo-50",
                         text: "text-indigo-600",
                       },
@@ -1609,7 +1618,7 @@ export default function RecruitmentFunnel() {
 
                   {/* Table Mockup: Funnel */}
                   <div className="space-y-4">
-                    <h2 className="text-sm font-bold text-slate-900 border-l-4 border-indigo-600 pl-3 uppercase tracking-wider">
+                    <h2 className="text-sm font-bold text-[#5A305A] border-l-4 border-indigo-600 pl-3 uppercase tracking-wider">
                       Visualisasi Corong (Funnel)
                     </h2>
                     <table className="w-full text-left border-collapse">
@@ -1643,7 +1652,7 @@ export default function RecruitmentFunnel() {
 
                   {/* Table Mockup: Efficiency */}
                   <div className="space-y-4">
-                    <h2 className="text-sm font-bold text-slate-900 border-l-4 border-emerald-500 pl-3 uppercase tracking-wider">
+                    <h2 className="text-sm font-bold text-[#5A305A] border-l-4 border-emerald-500 pl-3 uppercase tracking-wider">
                       Efisiensi Waktu Proses
                     </h2>
                     <table className="w-full text-left border-collapse">
@@ -1678,11 +1687,11 @@ export default function RecruitmentFunnel() {
               </div>
 
               {/* High-Fidelity Visual Preview (HTML) - Page 2 */}
-              <div className="max-w-[800px] mx-auto bg-white shadow-2xl min-h-[1100px] flex flex-col font-sans text-slate-900 shrink-0">
+              <div className="max-w-[800px] mx-auto bg-white shadow-2xl min-h-[1100px] flex flex-col font-sans text-[#5A305A] shrink-0">
                 <div className="p-10 flex-1 space-y-10">
                   {/* Table Mockup: Monthly Trends */}
                   <div className="space-y-4">
-                    <h2 className="text-sm font-bold text-slate-900 border-l-4 border-violet-600 pl-3 uppercase tracking-wider">
+                    <h2 className="text-sm font-bold text-[#5A305A] border-l-4 border-violet-600 pl-3 uppercase tracking-wider">
                       Tren Perekrutan Bulanan
                     </h2>
                     <table className="w-full text-left border-collapse">
@@ -1714,12 +1723,12 @@ export default function RecruitmentFunnel() {
 
                   {/* Table Mockup: Source Distribution */}
                   <div className="space-y-4">
-                    <h2 className="text-sm font-bold text-slate-900 border-l-4 border-indigo-600 pl-3 uppercase tracking-wider">
+                    <h2 className="text-sm font-bold text-[#5A305A] border-l-4 border-indigo-600 pl-3 uppercase tracking-wider">
                       Sumber Lowongan
                     </h2>
                     <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className="bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-wider">
+                        <tr className="bg-[#5A305A] text-white text-[10px] font-bold uppercase tracking-wider">
                           <th className="p-3">Sumber</th>
                           <th className="p-3 text-center">Total</th>
                           <th className="p-3 text-center">Diterima</th>
@@ -1809,7 +1818,7 @@ export default function RecruitmentFunnel() {
                   <selectedStage.icon size={24} />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900">
+                  <h2 className="text-xl font-bold text-[#5A305A]">
                     Detail Kandidat: {selectedStage.stage}
                   </h2>
                   <p className="text-sm text-slate-500">
@@ -1834,7 +1843,7 @@ export default function RecruitmentFunnel() {
                       className="p-4 rounded-2xl border border-white/60 bg-white/40 hover:bg-white/60 hover:shadow-xl transition-all group"
                     >
                       <div className="flex justify-between items-start mb-2">
-                        <h3 className="font-bold text-slate-900 text-lg group-hover:text-indigo-600 transition-colors">
+                        <h3 className="font-bold text-[#5A305A] text-lg group-hover:text-indigo-600 transition-colors">
                           {candidate.full_name}
                         </h3>
                         <span

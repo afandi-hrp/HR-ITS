@@ -310,7 +310,7 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
             <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg shrink-0">
               <Mail size={20} />
             </div>
-            <h2 className="text-lg sm:text-xl font-bold text-slate-900">Kirim Undangan {type === 'psikotes' ? 'Psikotes' : 'Interview'}</h2>
+            <h2 className="text-lg sm:text-xl font-bold text-[#5A305A]">Kirim Undangan {type === 'psikotes' ? 'Psikotes' : 'Interview'}</h2>
           </div>
           <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all shrink-0">
             <X size={20} />
@@ -321,13 +321,13 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Nama Kandidat</label>
-              <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 truncate">
+              <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-[#5A305A] truncate">
                 {candidate.full_name}
               </div>
             </div>
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Email Tujuan</label>
-              <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 truncate">
+              <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-[#5A305A] truncate">
                 {candidate.email}
               </div>
             </div>
@@ -338,12 +338,12 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
                 value={ccEmail}
                 onChange={(e) => setCcEmail(e.target.value)}
                 placeholder="email1@domain.com, email2@domain.com"
-                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all truncate"
+                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-[#5A305A] focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all truncate"
               />
             </div>
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Jadwal {type === 'psikotes' ? 'Psikotes' : 'Interview'}</label>
-              <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 truncate">
+              <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-[#5A305A] truncate">
                 {formatDate(schedule.schedule_date)}, {type === 'interview' ? formatInterviewTimeRange(schedule) : new Date(schedule.schedule_date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
               </div>
             </div>
@@ -432,7 +432,7 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
           <button 
             onClick={handleSend}
             disabled={loading}
-            className="flex-[2] py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+            className="flex-[2] py-3 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {loading ? (
               <Loader2 size={20} className="animate-spin" />

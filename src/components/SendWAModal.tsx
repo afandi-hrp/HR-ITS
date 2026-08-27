@@ -305,7 +305,7 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
             <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg shrink-0">
               <MessageCircle size={20} />
             </div>
-            <h2 className="text-lg sm:text-xl font-bold text-slate-900">Kirim Undangan WA {type === 'psikotes' ? 'Psikotes' : 'Interview'}</h2>
+            <h2 className="text-lg sm:text-xl font-bold text-[#5A305A]">Kirim Undangan WA {type === 'psikotes' ? 'Psikotes' : 'Interview'}</h2>
           </div>
           <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all shrink-0">
             <X size={20} />
@@ -316,19 +316,19 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Nama Kandidat</label>
-              <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 truncate">
+              <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-[#5A305A] truncate">
                 {candidate.full_name}
               </div>
             </div>
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Nomor Telepon</label>
-              <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 truncate">
+              <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-[#5A305A] truncate">
                 {candidate.phone || '-'}
               </div>
             </div>
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Jadwal {type === 'psikotes' ? 'Psikotes' : 'Interview'}</label>
-              <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 truncate">
+              <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-[#5A305A] truncate">
                 {formatDate(schedule.schedule_date)}, {type === 'interview' ? formatInterviewTimeRange(schedule) : new Date(schedule.schedule_date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
               </div>
             </div>

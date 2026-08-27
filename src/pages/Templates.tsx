@@ -332,16 +332,16 @@ export default function Templates() {
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
         <div className="space-y-1">
-          <h1 className="text-4xl font-extrabold tracking-tight text-[#3D2C44]">
+          <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
             Template Email
           </h1>
-          <p className="text-sm font-medium text-[#3D2C44]/70 max-w-xl">
+          <p className="text-sm font-medium text-[#5A305A]/70 max-w-xl">
             Kelola template pesan untuk korespondensi kandidat.
           </p>
         </div>
         <button
           onClick={() => handleOpenModal()}
-          className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all"
+          className="flex items-center gap-2 px-6 py-3 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-100 transition-all"
         >
           <Plus size={20} />
           Tambah Template
@@ -389,7 +389,7 @@ export default function Templates() {
               <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg shrink-0">
                 <Mail size={20} />
               </div>
-              <h3 className="font-bold text-slate-900 break-words mt-0.5">
+              <h3 className="font-bold text-[#5A305A] break-words mt-0.5">
                 {template.name}
               </h3>
             </div>
@@ -426,7 +426,7 @@ export default function Templates() {
             <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
               <Mail className="text-slate-400" size={32} />
             </div>
-            <h3 className="text-lg font-bold text-slate-900">
+            <h3 className="text-lg font-bold text-[#5A305A]">
               Belum ada template
             </h3>
             <p className="text-slate-500">
@@ -441,15 +441,15 @@ export default function Templates() {
         <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-6">
           <div className="text-sm text-slate-500">
             Menampilkan{" "}
-            <span className="font-medium text-slate-900">
+            <span className="font-medium text-[#5A305A]">
               {(currentPage - 1) * itemsPerPage + 1}
             </span>{" "}
             hingga{" "}
-            <span className="font-medium text-slate-900">
+            <span className="font-medium text-[#5A305A]">
               {Math.min(currentPage * itemsPerPage, totalItems)}
             </span>{" "}
             dari{" "}
-            <span className="font-medium text-slate-900">{totalItems}</span>
+            <span className="font-medium text-[#5A305A]">{totalItems}</span>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -478,7 +478,7 @@ export default function Templates() {
                       className={cn(
                         "w-8 h-8 rounded-lg text-sm font-medium transition-all",
                         currentPage === pageNum
-                          ? "bg-indigo-600 text-white shadow-md shadow-indigo-100"
+                          ? "bg-[#5A305A] text-white shadow-md shadow-indigo-100"
                           : "text-slate-600 hover:bg-slate-100",
                       )}
                     >
@@ -508,7 +508,7 @@ export default function Templates() {
                 <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg shrink-0">
                   <Mail size={20} />
                 </div>
-                <h2 className="text-lg sm:text-xl font-bold text-slate-900">
+                <h2 className="text-lg sm:text-xl font-bold text-[#5A305A]">
                   {editingTemplate ? "Edit Template" : "Tambah Template Baru"}
                 </h2>
               </div>
@@ -642,7 +642,7 @@ export default function Templates() {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex-[2] py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+                className="flex-[2] py-3 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
               >
                 {saving ? (
                   <Loader2 size={20} className="animate-spin" />

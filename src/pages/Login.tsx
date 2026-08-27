@@ -140,8 +140,8 @@ export default function Login() {
         {/* Left: Login Panel */}
         <div className="w-full lg:w-[420px] xl:w-[460px] shrink-0 flex flex-col justify-center overflow-y-auto px-6 sm:px-10 py-8 bg-white/40 backdrop-blur-md">
           <div className="w-full max-w-sm mx-auto">
-            <h1 className="text-2xl font-bold text-[#3D2C44] mb-1">Log In</h1>
-            <p className="text-sm text-[#3D2C44]/60 mb-6">
+            <h1 className="text-2xl font-bold text-[#5A305A] mb-1">Log In</h1>
+            <p className="text-sm text-[#5A305A]/60 mb-6">
               Log in to the WARUNA ATS Dashboard
             </p>
 
@@ -166,34 +166,34 @@ export default function Login() {
             <form onSubmit={handleLogin} className="space-y-3">
               <div className="relative">
                 <div className="absolute z-10 left-1.5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white ring-1 ring-black/5 shadow-[0_4px_14px_rgba(255,157,107,0.45)] flex items-center justify-center shrink-0">
-                  <Mail size={16} className="text-[#3D2C44]" />
+                  <Mail size={16} className="text-[#5A305A]" />
                 </div>
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full pl-14 pr-4 py-3.5 bg-white/80 backdrop-blur-sm border border-white shadow-[0_4px_20px_rgba(255,157,107,0.2)] rounded-full text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#3D2C44]/30 transition-all"
+                  className="block w-full pl-14 pr-4 py-3.5 bg-white/80 backdrop-blur-sm border border-white shadow-[0_4px_20px_rgba(255,157,107,0.2)] rounded-full text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#5A305A]/30 transition-all"
                   placeholder="Email"
                 />
               </div>
 
               <div className="relative">
                 <div className="absolute z-10 left-1.5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white ring-1 ring-black/5 shadow-[0_4px_14px_rgba(255,157,107,0.45)] flex items-center justify-center shrink-0">
-                  <Lock size={16} className="text-[#3D2C44]" />
+                  <Lock size={16} className="text-[#5A305A]" />
                 </div>
                 <input
                   type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-14 pr-4 py-3.5 bg-white/80 backdrop-blur-sm border border-white shadow-[0_4px_20px_rgba(255,157,107,0.2)] rounded-full text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#3D2C44]/30 transition-all"
+                  className="block w-full pl-14 pr-4 py-3.5 bg-white/80 backdrop-blur-sm border border-white shadow-[0_4px_20px_rgba(255,157,107,0.2)] rounded-full text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#5A305A]/30 transition-all"
                   placeholder="Password"
                 />
               </div>
 
               <div className="pt-1">
-                <label className="block text-xs font-bold text-[#3D2C44]/70 mb-1.5 px-1 uppercase tracking-wide">
+                <label className="block text-xs font-bold text-[#5A305A]/70 mb-1.5 px-1 uppercase tracking-wide">
                   Security Verification
                 </label>
                 <div className="flex gap-2 items-center">
@@ -203,7 +203,7 @@ export default function Login() {
                     maxLength={4}
                     value={captchaInput}
                     onChange={(e) => setCaptchaInput(e.target.value)}
-                    className="flex-1 min-w-0 px-4 py-3 bg-white/80 backdrop-blur-sm border border-white shadow-[0_4px_20px_rgba(255,157,107,0.2)] rounded-full text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#3D2C44]/30 transition-all font-mono tracking-widest"
+                    className="flex-1 min-w-0 px-4 py-3 bg-white/80 backdrop-blur-sm border border-white shadow-[0_4px_20px_rgba(255,157,107,0.2)] rounded-full text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#5A305A]/30 transition-all font-mono tracking-widest"
                     placeholder="4 characters"
                   />
                   <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur-sm border border-white shadow-[0_4px_20px_rgba(255,157,107,0.2)] p-1.5 rounded-full shrink-0">
@@ -216,7 +216,7 @@ export default function Login() {
                     <button
                       type="button"
                       onClick={generateCaptcha}
-                      className="p-2 text-[#3D2C44]/60 hover:text-[#3D2C44] hover:bg-white rounded-full transition-colors shrink-0"
+                      className="p-2 text-[#5A305A]/60 hover:text-[#5A305A] hover:bg-white rounded-full transition-colors shrink-0"
                       title="Refresh CAPTCHA"
                     >
                       <RefreshCw size={16} />
@@ -226,7 +226,7 @@ export default function Login() {
               </div>
 
               <div className="flex items-center justify-between pt-2">
-                <p className="text-xs text-[#3D2C44]/50 font-semibold">
+                <p className="text-xs text-[#5A305A]/50 font-semibold">
                   Powered by WARUNA Group
                 </p>
                 <button
@@ -234,7 +234,7 @@ export default function Login() {
                   disabled={loading}
                   aria-label="Log In"
                   title="Log In"
-                  className="w-12 h-12 shrink-0 rounded-full bg-[#3D2C44] text-white flex items-center justify-center shadow-lg hover:bg-[#2C1F32] hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100"
+                  className="w-12 h-12 shrink-0 rounded-full bg-[#5A305A] text-white flex items-center justify-center shadow-lg hover:bg-[#3F223F] hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100"
                 >
                   {loading ? (
                     <Loader2 className="animate-spin" size={20} />
@@ -268,17 +268,17 @@ export default function Login() {
                 referrerPolicy="no-referrer"
               />
             ) : (
-              <div className="h-16 w-16 rounded-3xl bg-[#3D2C44] flex items-center justify-center shadow-xl shrink-0">
+              <div className="h-16 w-16 rounded-3xl bg-[#5A305A] flex items-center justify-center shadow-xl shrink-0">
                 <span className="text-3xl font-black text-white">
                   {sidebarText[0]?.toUpperCase()}
                 </span>
               </div>
             )}
             <div className="min-w-0">
-              <h1 className="text-4xl font-black text-[#3D2C44] leading-tight whitespace-nowrap">
-                WARUNA GROUP <span className="font-light text-[#3D2C44]/60">ATS</span>
+              <h1 className="text-4xl font-black text-[#5A305A] leading-tight whitespace-nowrap">
+                WARUNA GROUP <span className="font-light text-[#5A305A]/60">ATS</span>
               </h1>
-              <p className="text-base text-[#3D2C44]/70 mt-3 font-medium">
+              <p className="text-base text-[#5A305A]/70 mt-3 font-medium">
                 Applicant Tracking System
               </p>
             </div>

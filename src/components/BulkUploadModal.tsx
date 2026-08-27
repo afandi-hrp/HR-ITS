@@ -248,7 +248,7 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
       <div className="bg-white rounded-3xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between p-6 border-b border-slate-100">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900">Upload CV Massal</h2>
+            <h2 className="text-2xl font-bold text-[#5A305A]">Upload CV Massal</h2>
             <p className="text-sm text-slate-500 mt-1">Masukkan data kandidat dan unggah CV sekaligus.</p>
           </div>
           <button 
@@ -393,7 +393,7 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
                 </div>
                 <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                   <div 
-                    className="bg-indigo-600 h-full rounded-full transition-all duration-300"
+                    className="bg-[#5A305A] h-full rounded-full transition-all duration-300"
                     style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
                   />
                 </div>
@@ -411,7 +411,7 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
             <button
               onClick={handleUpload}
               disabled={loading}
-              className="flex items-center justify-center gap-2 px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-indigo-200 disabled:opacity-70 disabled:cursor-not-allowed min-w-[160px]"
+              className="flex items-center justify-center gap-2 px-8 py-3 bg-[#5A305A] hover:bg-[#3F223F] text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-indigo-200 disabled:opacity-70 disabled:cursor-not-allowed min-w-[160px]"
             >
               {loading ? (
                 <>

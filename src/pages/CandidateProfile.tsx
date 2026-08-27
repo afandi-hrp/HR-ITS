@@ -1257,7 +1257,7 @@ export default function CandidateProfile() {
         </p>
         <button
           onClick={() => navigate(-1)}
-          className="px-6 py-2 bg-[#3D2C44] text-white font-medium rounded-xl hover:bg-[#3D2C44]/90 transition-colors"
+          className="px-6 py-2 bg-[#5A305A] text-white font-medium rounded-xl hover:bg-[#5A305A]/90 transition-colors"
         >
           Kembali
         </button>
@@ -1291,7 +1291,7 @@ export default function CandidateProfile() {
       case "hired":
         return "bg-emerald-100 text-emerald-700 border-emerald-200";
       case "accepted":
-        return "bg-[#3D2C44] text-white border-[#3D2C44]";
+        return "bg-[#5A305A] text-white border-[#5A305A]";
       case "rejected":
         return "bg-rose-100 text-rose-700 border-rose-200";
       case "invited":
@@ -1326,15 +1326,15 @@ export default function CandidateProfile() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate(-1)}
-            className="p-2 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-colors"
+            className="p-2 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-[#5A305A] hover:bg-slate-50 transition-colors"
           >
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h1 className="text-3xl font-bold text-[#3D2C44]">
+            <h1 className="text-3xl font-bold text-[#5A305A]">
               Profil Kandidat
             </h1>
-            <p className="text-[#3D2C44]/70 text-sm mt-1">
+            <p className="text-[#5A305A]/70 text-sm mt-1">
               Detail informasi dan hasil asesmen kandidat
             </p>
           </div>
@@ -1352,7 +1352,7 @@ export default function CandidateProfile() {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="px-4 py-2 bg-[#3D2C44] text-white rounded-xl hover:bg-[#3D2C44]/90 transition-colors flex items-center gap-2 text-sm font-medium disabled:opacity-50"
+                className="px-4 py-2 bg-[#5A305A] text-white rounded-xl hover:bg-[#5A305A]/90 transition-colors flex items-center gap-2 text-sm font-medium disabled:opacity-50"
               >
                 {saving ? (
                   <Loader2 size={16} className="animate-spin" />
@@ -1368,7 +1368,7 @@ export default function CandidateProfile() {
                 <>
                   <button
                     onClick={() => setIsApprovalModalOpen(true)}
-                    className="px-4 py-2 bg-white text-[#3D2C44] border border-[#3D2C44] rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-2 text-sm font-medium"
+                    className="px-4 py-2 bg-white text-[#5A305A] border border-[#5A305A] rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-2 text-sm font-medium"
                   >
                     <UserCheck size={16} />
                     Approval & Review
@@ -1382,7 +1382,7 @@ export default function CandidateProfile() {
                         );
                         setIsAssignModalOpen(true);
                       }}
-                      className="px-4 py-2 bg-[#3D2C44] text-white rounded-xl hover:bg-[#3D2C44]/90 transition-colors flex items-center gap-2 text-sm font-medium"
+                      className="px-4 py-2 bg-[#5A305A] text-white rounded-xl hover:bg-[#5A305A]/90 transition-colors flex items-center gap-2 text-sm font-medium"
                     >
                       <Users size={16} />
                       Assign User
@@ -1391,7 +1391,7 @@ export default function CandidateProfile() {
                   {!isApprovalRole && (
                     <button
                       onClick={() => setIsEditing(true)}
-                      className="px-4 py-2 bg-[#3D2C44] text-white rounded-xl hover:bg-[#3D2C44]/90 transition-colors flex items-center gap-2 text-sm font-medium"
+                      className="px-4 py-2 bg-[#5A305A] text-white rounded-xl hover:bg-[#5A305A]/90 transition-colors flex items-center gap-2 text-sm font-medium"
                     >
                       <Edit2 size={16} />
                       Edit Profil
@@ -1424,9 +1424,9 @@ export default function CandidateProfile() {
         <div className="space-y-6">
           {/* Profile Card */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="h-24 bg-[#3D2C44]"></div>
+            <div className="h-24 bg-[#5A305A]"></div>
             <div className="px-6 pb-6 relative">
-              <div className="w-20 h-20 bg-white rounded-2xl border-4 border-white shadow-md flex items-center justify-center text-3xl font-bold text-[#3D2C44] absolute -top-10 overflow-hidden">
+              <div className="w-20 h-20 bg-white rounded-2xl border-4 border-white shadow-md flex items-center justify-center text-3xl font-bold text-[#5A305A] absolute -top-10 overflow-hidden">
                 <CandidateAvatar
                   source={linkedData || candidate.source_info}
                   alt={candidate.full_name}
@@ -1441,10 +1441,10 @@ export default function CandidateProfile() {
                     name="full_name"
                     value={editedCandidate.full_name || ""}
                     onChange={handleInputChange}
-                    className="w-full text-2xl font-bold text-slate-900 bg-white border border-slate-300 rounded-lg px-3 py-1 mb-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full text-2xl font-bold text-[#5A305A] bg-white border border-slate-300 rounded-lg px-3 py-1 mb-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 ) : (
-                  <h2 className="text-2xl font-bold text-slate-900">
+                  <h2 className="text-2xl font-bold text-[#5A305A]">
                     {candidate.full_name}
                   </h2>
                 )}
@@ -1539,7 +1539,7 @@ export default function CandidateProfile() {
                 {candidate.resume_url && (
                   <div className="mt-6 pt-6 border-t border-slate-100">
                     <div className="flex items-center justify-between mb-4">
-                      <h4 className="font-bold text-slate-900 flex items-center gap-2 text-sm">
+                      <h4 className="font-bold text-[#5A305A] flex items-center gap-2 text-sm">
                         <FileText size={16} className="text-indigo-500" />
                         Preview CV / Resume
                       </h4>
@@ -1549,7 +1549,7 @@ export default function CandidateProfile() {
                             const url = await resolveDocumentUrl(candidate.resume_url);
                             if (url) setFullScreenPdf(url);
                           }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#3D2C44]/5 hover:bg-[#3D2C44]/10 text-[#3D2C44] rounded-lg transition-colors text-xs font-medium"
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#5A305A]/5 hover:bg-[#5A305A]/10 text-[#5A305A] rounded-lg transition-colors text-xs font-medium"
                         >
                           <ExternalLink size={14} />
                           Full Screen
@@ -1561,7 +1561,7 @@ export default function CandidateProfile() {
                               handleSecureDownload(url, "CV", candidate.full_name);
                             }
                           }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#3D2C44]/10 hover:bg-[#3D2C44]/20 text-[#3D2C44] rounded-lg transition-colors text-xs font-medium"
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#5A305A]/10 hover:bg-[#5A305A]/20 text-[#5A305A] rounded-lg transition-colors text-xs font-medium"
                         >
                           <Download size={14} />
                           Unduh
@@ -1583,7 +1583,7 @@ export default function CandidateProfile() {
 
           {candidate.ai_cv_analysis && (
             <div className="bg-white rounded-2xl border border-slate-200 border-l-4 border-l-indigo-300 shadow-sm p-6 overflow-hidden">
-              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2 mb-4">
+              <h3 className="text-lg font-bold text-[#5A305A] flex items-center gap-2 mb-4">
                 <UserCheck className="text-indigo-500" size={20} />
                 Analisis CV (AI / Manusia)
               </h3>
@@ -1626,7 +1626,7 @@ export default function CandidateProfile() {
 
           {candidate.career_fit_recommendation && (
             <div className="bg-white rounded-2xl border border-slate-200 border-l-4 border-l-sky-300 shadow-sm p-6 overflow-hidden">
-              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2 mb-4">
+              <h3 className="text-lg font-bold text-[#5A305A] flex items-center gap-2 mb-4">
                 <Briefcase className="text-sky-500" size={20} />
                 Rekomendasi Kecocokan Karier (Career Fit)
               </h3>
@@ -1643,7 +1643,7 @@ export default function CandidateProfile() {
           <div className="bg-white rounded-2xl border border-slate-200 border-l-4 border-l-sky-300 shadow-sm p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
-                <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                <h3 className="text-lg font-bold text-[#5A305A] mb-4 flex items-center gap-2">
                   <Briefcase className="text-indigo-500" size={20} />
                   Pengalaman Kerja
                 </h3>
@@ -1658,7 +1658,7 @@ export default function CandidateProfile() {
               </div>
 
               <div>
-                <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                <h3 className="text-lg font-bold text-[#5A305A] mb-4 flex items-center gap-2">
                   <GraduationCap className="text-indigo-500" size={20} />
                   Pendidikan
                 </h3>
@@ -1675,7 +1675,7 @@ export default function CandidateProfile() {
             </div>
 
             <div className="mt-8 pt-8 border-t border-slate-100">
-              <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+              <h3 className="text-lg font-bold text-[#5A305A] mb-4 flex items-center gap-2">
                 <Lightbulb className="text-indigo-500" size={20} />
                 Keahlian (Skills)
               </h3>
@@ -1719,7 +1719,7 @@ export default function CandidateProfile() {
 
           {/* Assessment Details */}
           <div className="bg-white rounded-2xl border border-slate-200 border-l-4 border-l-sky-300 shadow-sm p-6">
-            <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+            <h3 className="text-lg font-bold text-[#5A305A] mb-6 flex items-center gap-2">
               <FileText className="text-indigo-500" size={20} />
               CV Summary
             </h3>
@@ -1751,12 +1751,12 @@ export default function CandidateProfile() {
                 </div>
               </div>
 
-              <div className="bg-[#3D2C44]/5 border border-[#3D2C44]/20 rounded-xl p-4">
-                <h4 className="font-bold text-[#3D2C44] flex items-center gap-2 mb-2">
+              <div className="bg-[#5A305A]/5 border border-[#5A305A]/20 rounded-xl p-4">
+                <h4 className="font-bold text-[#5A305A] flex items-center gap-2 mb-2">
                   <Star size={16} />
                   Potensi
                 </h4>
-                <div className="text-sm text-[#3D2C44]/80">
+                <div className="text-sm text-[#5A305A]/80">
                   {formatLevelAndList(
                     candidate.potential_factors,
                     <span className="italic opacity-70">Belum dianalisis</span>,
@@ -1782,7 +1782,7 @@ export default function CandidateProfile() {
               <div className="flex items-start gap-4">
                 <div className="shrink-0 flex flex-col items-center mt-1">
                   <div
-                    className="w-14 h-14 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-2xl font-bold shadow-lg shadow-indigo-200"
+                    className="w-14 h-14 rounded-xl bg-[#5A305A] text-white flex items-center justify-center text-2xl font-bold shadow-lg shadow-indigo-200"
                     title="Skor CV (AI)"
                   >
                     {candidate.assessment_score || 0}
@@ -1819,7 +1819,7 @@ export default function CandidateProfile() {
                   setIsBiodataSummaryExpanded(!isBiodataSummaryExpanded)
                 }
               >
-                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <h3 className="text-lg font-bold text-[#5A305A] flex items-center gap-2">
                   <Sparkles className="text-indigo-500" size={20} />
                   Ringkasan AI (Berdasarkan Biodata)
                   {isBiodataSummaryExpanded ? (
@@ -1847,7 +1847,7 @@ export default function CandidateProfile() {
                 }
               >
                 <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <h3 className="text-lg font-bold text-[#5A305A] flex items-center gap-2">
                     <Sparkles className="text-indigo-500" size={20} />
                     Ringkasan AI (Berdasarkan Psikotes)
                   </h3>
@@ -1898,7 +1898,7 @@ export default function CandidateProfile() {
                 setIsInterviewQuestionsExpanded(!isInterviewQuestionsExpanded)
               }
             >
-              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <h3 className="text-lg font-bold text-[#5A305A] flex items-center gap-2">
                 <Sparkles className="text-indigo-500" size={20} />
                 Pertanyaan Interview (AI)
                 {isInterviewQuestionsExpanded ? (
@@ -1915,7 +1915,7 @@ export default function CandidateProfile() {
                   <button
                     onClick={handleGenerateInterviewQuestions}
                     disabled={isGeneratingInterview}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#3D2C44] text-white text-sm font-bold rounded-xl hover:bg-[#3D2C44]/90 disabled:opacity-50 transition-all shadow-sm shrink-0"
+                    className="flex items-center gap-2 px-4 py-2 bg-[#5A305A] text-white text-sm font-bold rounded-xl hover:bg-[#5A305A]/90 disabled:opacity-50 transition-all shadow-sm shrink-0"
                   >
                     {isGeneratingInterview ? (
                       <Loader2 className="animate-spin" size={16} />
@@ -1984,7 +1984,7 @@ export default function CandidateProfile() {
                                     key={num}
                                     className="p-4 bg-slate-50 border border-slate-100 rounded-xl flex items-start gap-3"
                                   >
-                                    <span className="shrink-0 w-6 h-6 rounded-full bg-[#3D2C44] text-white text-xs font-bold flex items-center justify-center mt-0.5">
+                                    <span className="shrink-0 w-6 h-6 rounded-full bg-[#5A305A] text-white text-xs font-bold flex items-center justify-center mt-0.5">
                                       {num}
                                     </span>
                                     <div className="flex-1 min-w-0">
@@ -2015,7 +2015,7 @@ export default function CandidateProfile() {
                                 setGeneratedQuestions(questions);
                                 setShowInterviewModal(true);
                               }}
-                              className="text-sm font-medium text-[#3D2C44] hover:text-[#3D2C44]/80"
+                              className="text-sm font-medium text-[#5A305A] hover:text-[#5A305A]/80"
                             >
                               Edit Daftar Pertanyaan
                             </button>
@@ -2045,13 +2045,13 @@ export default function CandidateProfile() {
           {/* Psikotes Eksternal */}
           <div className="bg-white rounded-2xl border border-slate-200 border-l-4 border-l-sky-300 shadow-sm p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <h3 className="text-lg font-bold text-[#5A305A] flex items-center gap-2">
                 <FileText className="text-indigo-500" size={20} />
                 Hasil Psikotes Eksternal
               </h3>
               {!isUserManager && !isArchived && (
                 <div>
-                  <label className="cursor-pointer px-4 py-2 bg-[#3D2C44]/10 text-[#3D2C44] hover:bg-[#3D2C44]/20 rounded-xl transition-colors flex items-center gap-2 text-sm font-medium">
+                  <label className="cursor-pointer px-4 py-2 bg-[#5A305A]/10 text-[#5A305A] hover:bg-[#5A305A]/20 rounded-xl transition-colors flex items-center gap-2 text-sm font-medium">
                     {isUploadingPsikotes ? (
                       <Loader2 className="animate-spin" size={16} />
                     ) : (
@@ -2077,7 +2077,7 @@ export default function CandidateProfile() {
                     <button
                       onClick={handleAnalyzePsikotes}
                       disabled={isAnalyzingPsikotes}
-                      className="flex items-center gap-2 px-4 py-2 bg-[#3D2C44] text-white text-sm font-bold rounded-xl hover:bg-[#3D2C44]/90 disabled:opacity-50 transition-all shadow-sm"
+                      className="flex items-center gap-2 px-4 py-2 bg-[#5A305A] text-white text-sm font-bold rounded-xl hover:bg-[#5A305A]/90 disabled:opacity-50 transition-all shadow-sm"
                     >
                       {isAnalyzingPsikotes ? (
                         <Loader2 className="animate-spin" size={16} />
@@ -2094,7 +2094,7 @@ export default function CandidateProfile() {
                       const url = await resolveDocumentUrl(candidate.psikotes_result_url);
                       if (url) setFullScreenPdf(url);
                     }}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#3D2C44]/5 hover:bg-[#3D2C44]/10 text-[#3D2C44] rounded-xl transition-colors text-sm font-medium shadow-sm"
+                    className="flex items-center gap-2 px-4 py-2 bg-[#5A305A]/5 hover:bg-[#5A305A]/10 text-[#5A305A] rounded-xl transition-colors text-sm font-medium shadow-sm"
                   >
                     <ExternalLink size={16} />
                     Full Screen
@@ -2106,7 +2106,7 @@ export default function CandidateProfile() {
                         handleSecureDownload(url, "Psikotes", candidate.full_name);
                       }
                     }}
-                    className="flex items-center gap-2 px-4 py-2 bg-white border border-[#3D2C44]/20 text-[#3D2C44] hover:bg-[#3D2C44]/5 rounded-xl transition-colors text-sm font-medium shadow-sm"
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-[#5A305A]/20 text-[#5A305A] hover:bg-[#5A305A]/5 rounded-xl transition-colors text-sm font-medium shadow-sm"
                   >
                     <Download size={16} />
                     Unduh
@@ -2137,7 +2137,7 @@ export default function CandidateProfile() {
 
           {/* External Data Integration */}
           <div className="bg-white rounded-2xl border border-slate-200 border-l-4 border-l-sky-300 shadow-sm p-6">
-            <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+            <h3 className="text-lg font-bold text-[#5A305A] mb-4 flex items-center gap-2">
               <Database className="text-indigo-500" size={20} />
               Data Eksternal
             </h3>
@@ -2153,7 +2153,7 @@ export default function CandidateProfile() {
                     <button
                       onClick={handleAnalyzeBiodata}
                       disabled={isAnalyzing}
-                      className="flex items-center gap-2 px-4 py-2 bg-[#3D2C44] text-white text-sm font-bold rounded-xl hover:bg-[#3D2C44]/90 disabled:opacity-50 transition-all shadow-sm"
+                      className="flex items-center gap-2 px-4 py-2 bg-[#5A305A] text-white text-sm font-bold rounded-xl hover:bg-[#5A305A]/90 disabled:opacity-50 transition-all shadow-sm"
                     >
                       {isAnalyzing ? (
                         <Loader2 className="animate-spin" size={16} />
@@ -2167,7 +2167,7 @@ export default function CandidateProfile() {
                   )}
                   <button
                     onClick={() => setFullScreenData(linkedData)}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#3D2C44]/5 hover:bg-[#3D2C44]/10 text-[#3D2C44] rounded-xl transition-colors text-sm font-medium shadow-sm"
+                    className="flex items-center gap-2 px-4 py-2 bg-[#5A305A]/5 hover:bg-[#5A305A]/10 text-[#5A305A] rounded-xl transition-colors text-sm font-medium shadow-sm"
                   >
                     <ExternalLink size={16} />
                     Full Screen
@@ -2298,7 +2298,7 @@ export default function CandidateProfile() {
                               handleLinkExternalData(data.uid_sheet)
                             }
                             disabled={isLinking}
-                            className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                            className="px-3 py-1.5 bg-[#5A305A] text-white text-xs font-bold rounded-lg hover:bg-[#3F223F] disabled:opacity-50"
                           >
                             Tautkan Data Ini
                           </button>
@@ -2399,7 +2399,7 @@ export default function CandidateProfile() {
           {/* Internal Notes */}
           <div className="bg-white rounded-2xl border border-slate-200 border-l-4 border-l-slate-300 shadow-sm p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <h3 className="text-lg font-bold text-[#5A305A] flex items-center gap-2">
                 <FileText className="text-indigo-500" size={20} />
                 Catatan Internal
               </h3>
@@ -2423,7 +2423,7 @@ export default function CandidateProfile() {
                       <button
                         onClick={handleAddNote}
                         disabled={!newNote.trim() || isAddingNote}
-                        className="px-4 py-2 bg-[#3D2C44] text-white text-sm font-bold rounded-xl hover:bg-[#3D2C44]/90 disabled:opacity-50 transition-colors flex items-center gap-2"
+                        className="px-4 py-2 bg-[#5A305A] text-white text-sm font-bold rounded-xl hover:bg-[#5A305A]/90 disabled:opacity-50 transition-colors flex items-center gap-2"
                       >
                         {isAddingNote ? (
                           <Loader2 size={16} className="animate-spin" />
@@ -2471,7 +2471,7 @@ export default function CandidateProfile() {
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-1">
-                          <p className="font-bold text-slate-900 text-sm">
+                          <p className="font-bold text-[#5A305A] text-sm">
                             {note.author?.full_name || "Unknown User"}
                           </p>
                           <p className="text-xs text-slate-500">
@@ -2492,7 +2492,7 @@ export default function CandidateProfile() {
           {/* Interview Evaluations */}
           <div className="bg-white rounded-2xl border border-slate-200 border-l-4 border-l-fuchsia-300 shadow-sm p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <h3 className="text-lg font-bold text-[#5A305A] flex items-center gap-2">
                 <FileText className="text-indigo-500" size={20} />
                 Hasil Interview
               </h3>
@@ -2503,7 +2503,7 @@ export default function CandidateProfile() {
                       setExistingEvaluation(null);
                       setIsEvaluationModalOpen(true);
                     }}
-                    className="px-4 py-2 bg-[#3D2C44]/10 text-[#3D2C44] hover:bg-[#3D2C44]/20 rounded-xl transition-colors flex items-center gap-2 text-sm font-medium"
+                    className="px-4 py-2 bg-[#5A305A]/10 text-[#5A305A] hover:bg-[#5A305A]/20 rounded-xl transition-colors flex items-center gap-2 text-sm font-medium"
                   >
                     <PlusCircle size={16} />
                     Input Hasil
@@ -2541,14 +2541,14 @@ export default function CandidateProfile() {
                           className={cn(
                             "px-2.5 py-1 rounded-md text-xs font-bold tracking-wider",
                             evalItem.evaluation_type === "HR"
-                              ? "bg-[#3D2C44]/10 text-[#3D2C44]"
+                              ? "bg-[#5A305A]/10 text-[#5A305A]"
                               : "bg-violet-100 text-violet-700",
                           )}
                         >
                           {evalItem.evaluation_type}
                         </span>
                         <div>
-                          <p className="text-sm font-bold text-slate-900">
+                          <p className="text-sm font-bold text-[#5A305A]">
                             {evalItem.template?.name}
                           </p>
                           <p className="text-xs text-slate-500">
@@ -2569,7 +2569,7 @@ export default function CandidateProfile() {
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => toggleEvaluation(evalItem.id)}
-                            className="p-2 text-slate-400 hover:text-[#3D2C44] hover:bg-[#3D2C44]/10 rounded-lg transition-colors"
+                            className="p-2 text-slate-400 hover:text-[#5A305A] hover:bg-[#5A305A]/10 rounded-lg transition-colors"
                             title={
                               expandedEvaluations.includes(evalItem.id)
                                 ? "Tutup Preview"
@@ -2589,7 +2589,7 @@ export default function CandidateProfile() {
                                   setExistingEvaluation(evalItem);
                                   setIsEvaluationModalOpen(true);
                                 }}
-                                className="p-2 text-slate-400 hover:text-[#3D2C44] hover:bg-[#3D2C44]/10 rounded-lg transition-colors"
+                                className="p-2 text-slate-400 hover:text-[#5A305A] hover:bg-[#5A305A]/10 rounded-lg transition-colors"
                                 title="Edit Penilaian"
                               >
                                 <Edit2 size={18} />
@@ -2763,7 +2763,7 @@ export default function CandidateProfile() {
           {canSeeReferenceCheck && (
             <div className="bg-white rounded-2xl border border-slate-200 border-l-4 border-l-fuchsia-300 shadow-sm p-6">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <h3 className="text-lg font-bold text-[#5A305A] flex items-center gap-2">
                   <FileText className="text-fuchsia-500" size={20} />
                   Reference Check
                 </h3>
@@ -2800,7 +2800,7 @@ export default function CandidateProfile() {
                       >
                         <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
                           <div>
-                            <p className="text-sm font-bold text-slate-900">
+                            <p className="text-sm font-bold text-[#5A305A]">
                               Checked by: {evalItem.interviewer_name}
                             </p>
                             <p className="text-xs text-slate-500">
@@ -2815,7 +2815,7 @@ export default function CandidateProfile() {
                                   setExistingReferenceCheck(evalItem);
                                   setIsReferenceCheckModalOpen(true);
                                 }}
-                                className="p-2 text-slate-400 hover:text-[#3D2C44] hover:bg-[#3D2C44]/10 rounded-lg transition-colors"
+                                className="p-2 text-slate-400 hover:text-[#5A305A] hover:bg-[#5A305A]/10 rounded-lg transition-colors"
                                 title="Edit Reference Check"
                               >
                                 <Edit2 size={18} />
@@ -2855,7 +2855,7 @@ export default function CandidateProfile() {
 
           {/* Schedules */}
           <div className="bg-white rounded-2xl border border-slate-200 border-l-4 border-l-amber-300 shadow-sm p-6">
-            <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+            <h3 className="text-lg font-bold text-[#5A305A] mb-6 flex items-center gap-2">
               <CalendarIcon className="text-indigo-500" size={20} />
               Jadwal & Status
             </h3>
@@ -2866,7 +2866,7 @@ export default function CandidateProfile() {
                   <FileText size={18} />
                 </div>
                 <div className="flex-1">
-                  <h4 className="font-bold text-slate-900 text-sm">Psikotes</h4>
+                  <h4 className="font-bold text-[#5A305A] text-sm">Psikotes</h4>
                   {candidate.psikotes_schedules &&
                   candidate.psikotes_schedules.length > 0 ? (
                     <div className="mt-2 space-y-2">
@@ -2918,7 +2918,7 @@ export default function CandidateProfile() {
                       <Users size={18} />
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-bold text-slate-900 text-sm">{label}</h4>
+                      <h4 className="font-bold text-[#5A305A] text-sm">{label}</h4>
                       {schedules.length > 0 ? (
                         <div className="mt-2 space-y-2">
                           {schedules.map((schedule, idx) => (
@@ -2959,7 +2959,7 @@ export default function CandidateProfile() {
                           <Users size={18} />
                         </div>
                         <div className="flex-1">
-                          <h4 className="font-bold text-slate-900 text-sm">Interview</h4>
+                          <h4 className="font-bold text-[#5A305A] text-sm">Interview</h4>
                           <p className="text-sm text-slate-500 mt-1">
                             Status:{" "}
                             <span className="font-medium text-slate-700">
@@ -3119,7 +3119,7 @@ export default function CandidateProfile() {
               </button>
               <button
                 onClick={handleSaveInterviewQuestions}
-                className="px-6 py-2.5 text-sm font-bold text-white bg-[#3D2C44] hover:bg-[#3D2C44]/90 rounded-xl transition-colors shadow-sm flex items-center gap-2"
+                className="px-6 py-2.5 text-sm font-bold text-white bg-[#5A305A] hover:bg-[#5A305A]/90 rounded-xl transition-colors shadow-sm flex items-center gap-2"
               >
                 <Save size={18} />
                 Simpan Daftar Pertanyaan
@@ -3159,7 +3159,7 @@ export default function CandidateProfile() {
       {/* Full Screen Data Modal */}
       {fullScreenData && (
         <div className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-sm flex flex-col">
-          <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 bg-[#3D2C44]/80 backdrop-blur-xl border-b border-white/10 shadow-lg shrink-0">
+          <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 bg-[#5A305A]/80 backdrop-blur-xl border-b border-white/10 shadow-lg shrink-0">
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
               <Database className="text-indigo-300" size={20} />
               Preview Data Eksternal
@@ -3188,8 +3188,8 @@ export default function CandidateProfile() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh] overflow-hidden">
             <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
-              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Users size={20} className="text-[#3D2C44]" />
+              <h3 className="text-lg font-bold text-[#5A305A] flex items-center gap-2">
+                <Users size={20} className="text-[#5A305A]" />
                 Status Approval & Review
               </h3>
               <button
@@ -3276,7 +3276,7 @@ export default function CandidateProfile() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[90vh] overflow-hidden">
             <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
-              <h3 className="text-lg font-bold text-slate-900">
+              <h3 className="text-lg font-bold text-[#5A305A]">
                 Assign Kandidat ke User
               </h3>
               <button
@@ -3449,7 +3449,7 @@ export default function CandidateProfile() {
               <button
                 onClick={handleAssign}
                 disabled={assigning}
-                className="px-4 py-2 bg-[#3D2C44] text-white font-medium rounded-xl hover:bg-[#3D2C44]/90 transition-colors flex items-center gap-2 disabled:opacity-50"
+                className="px-4 py-2 bg-[#5A305A] text-white font-medium rounded-xl hover:bg-[#5A305A]/90 transition-colors flex items-center gap-2 disabled:opacity-50"
               >
                 {assigning ? (
                   <Loader2 size={16} className="animate-spin" />

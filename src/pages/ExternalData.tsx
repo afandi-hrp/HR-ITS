@@ -431,11 +431,11 @@ export default function ExternalData() {
     <div className="p-8 max-w-7xl mx-auto space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-[#3D2C44] flex items-center gap-3">
+          <h1 className="text-3xl font-bold text-[#5A305A] flex items-center gap-3">
             <Database className="text-indigo-600" size={32} />
             Data Eksternal
           </h1>
-          <p className="text-[#3D2C44]/70 mt-1">
+          <p className="text-[#5A305A]/70 mt-1">
             Menampilkan data dari Form yang disubmit oleh user.
           </p>
         </div>
@@ -565,7 +565,7 @@ export default function ExternalData() {
                     <div className="p-5 flex-1 min-w-0 md:w-1/4 md:flex-none border-b md:border-b-0 md:border-r border-white/50 bg-white/40 flex flex-col justify-center">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <h3
-                          className="font-bold text-lg text-slate-900 truncate group-hover:text-indigo-600 transition-colors w-full"
+                          className="font-bold text-lg text-[#5A305A] truncate group-hover:text-indigo-600 transition-colors w-full"
                           title={String(titleEntry[1])}
                         >
                           {String(titleEntry[1]) || "Tanpa Judul"}
@@ -797,7 +797,7 @@ export default function ExternalData() {
                   <FileText size={24} />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">
+                  <h2 className="text-lg font-bold text-[#5A305A]">
                     Preview Dokumen PDF
                   </h2>
                   <p className="text-xs text-slate-500">
@@ -837,7 +837,7 @@ export default function ExternalData() {
               <button
                 onClick={() => handleDownloadPdf()}
                 disabled={isGeneratingPdf}
-                className="px-8 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                className="px-8 py-2.5 bg-[#5A305A] text-white text-sm font-bold rounded-xl hover:bg-[#3F223F] transition-all shadow-lg shadow-indigo-200 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {isGeneratingPdf ? (
                   <>
@@ -864,7 +864,7 @@ export default function ExternalData() {
               <div className="p-3 bg-red-50 rounded-full">
                 <Trash2 size={24} />
               </div>
-              <h3 className="text-xl font-bold text-slate-900">Hapus Data?</h3>
+              <h3 className="text-xl font-bold text-[#5A305A]">Hapus Data?</h3>
             </div>
             <p className="text-slate-600 mb-6">
               Apakah Anda yakin ingin menghapus data ini beserta file lampirannya?

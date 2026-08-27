@@ -164,7 +164,7 @@ export default function SchedulingModal({ candidate, type, initialData, onClose,
       >
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-100 shrink-0">
           <div>
-            <h2 className="text-lg sm:text-xl font-bold text-slate-900">{initialData ? 'Edit' : 'Buat'} Jadwal {type === 'psikotes' ? 'Psikotes' : 'Interview'}</h2>
+            <h2 className="text-lg sm:text-xl font-bold text-[#5A305A]">{initialData ? 'Edit' : 'Buat'} Jadwal {type === 'psikotes' ? 'Psikotes' : 'Interview'}</h2>
             {candidate && (
               <p className="text-xs sm:text-sm text-slate-500 mt-1">Kandidat: <span className="font-semibold text-indigo-600 truncate inline-block max-w-[200px] align-bottom">{candidate.full_name}</span></p>
             )}
@@ -360,7 +360,7 @@ export default function SchedulingModal({ candidate, type, initialData, onClose,
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-[#3D2C44] text-white font-bold rounded-xl hover:bg-[#3D2C44]/90 shadow-lg shadow-[#3D2C44]/20 transition-all disabled:opacity-50"
+              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#5A305A]/90 shadow-lg shadow-[#5A305A]/20 transition-all disabled:opacity-50"
             >
               {loading ? <Loader2 className="animate-spin" size={20} /> : initialData ? 'Perbarui Jadwal' : 'Simpan Jadwal'}
             </button>

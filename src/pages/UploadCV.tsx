@@ -401,10 +401,10 @@ export default function UploadCV() {
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div className="space-y-1">
-          <h1 className="text-4xl font-extrabold tracking-tight text-[#3D2C44]">
+          <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
             Upload CV Kandidat
           </h1>
-          <p className="text-sm font-medium text-[#3D2C44]/70 max-w-xl">
+          <p className="text-sm font-medium text-[#5A305A]/70 max-w-xl">
             Unggah file CV dan teruskan ke workflow n8n Anda.
           </p>
         </div>
@@ -553,7 +553,7 @@ export default function UploadCV() {
                               )}
                             </div>
                             <div>
-                              <p className="font-bold text-slate-900 text-sm truncate max-w-[200px]">
+                              <p className="font-bold text-[#5A305A] text-sm truncate max-w-[200px]">
                                 {file.name}
                               </p>
                               <p className="text-xs text-slate-500">
@@ -585,7 +585,7 @@ export default function UploadCV() {
                         <Upload size={32} />
                       </div>
                       <div className="text-center">
-                        <p className="font-bold text-slate-900">
+                        <p className="font-bold text-[#5A305A]">
                           Klik atau seret file ke sini
                         </p>
                         <p className="text-xs text-slate-500">
@@ -609,7 +609,7 @@ export default function UploadCV() {
                   </div>
                   <div className="w-full bg-slate-200/50 rounded-full h-2 overflow-hidden">
                     <div
-                      className="bg-indigo-600 h-full rounded-full transition-all duration-300"
+                      className="bg-[#5A305A] h-full rounded-full transition-all duration-300"
                       style={{
                         width: `${(uploadProgress.current / uploadProgress.total) * 100}%`,
                       }}
@@ -626,7 +626,7 @@ export default function UploadCV() {
                   !candidateEmail ||
                   !position
                 }
-                className="w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-4 bg-[#5A305A] text-white font-bold rounded-2xl hover:bg-[#3F223F] shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <Loader2 size={24} className="animate-spin" />
@@ -646,7 +646,7 @@ export default function UploadCV() {
           <div className="bg-white/40 backdrop-blur-xl rounded-3xl border border-white/60 shadow-2xl overflow-hidden flex flex-col h-full max-h-[800px]">
             <div className="p-6 border-b border-white/40 bg-white/30 space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-slate-900">
+                <h2 className="text-xl font-bold text-[#5A305A]">
                   Riwayat Upload
                 </h2>
                 <div className="flex items-center gap-2">
@@ -730,7 +730,7 @@ export default function UploadCV() {
                           />
                         </div>
                         <div className="flex-1 space-y-1">
-                          <h3 className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                          <h3 className="font-bold text-[#5A305A] group-hover:text-indigo-600 transition-colors">
                             {upload.candidate_name}
                           </h3>
                           <div className="flex items-center gap-2 text-xs text-slate-500">
@@ -774,15 +774,15 @@ export default function UploadCV() {
                     <div className="flex items-center justify-between pt-4 border-t border-white/40 mt-6">
                       <div className="text-sm text-slate-500">
                         Menampilkan{" "}
-                        <span className="font-medium text-slate-900">
+                        <span className="font-medium text-[#5A305A]">
                           {(currentPage - 1) * itemsPerPage + 1}
                         </span>{" "}
                         hingga{" "}
-                        <span className="font-medium text-slate-900">
+                        <span className="font-medium text-[#5A305A]">
                           {Math.min(currentPage * itemsPerPage, totalItems)}
                         </span>{" "}
                         dari{" "}
-                        <span className="font-medium text-slate-900">
+                        <span className="font-medium text-[#5A305A]">
                           {totalItems}
                         </span>
                       </div>
@@ -820,7 +820,7 @@ export default function UploadCV() {
                                   className={cn(
                                     "w-8 h-8 rounded-lg text-sm font-medium transition-all",
                                     currentPage === pageNum
-                                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-100"
+                                      ? "bg-[#5A305A] text-white shadow-md shadow-indigo-100"
                                       : "text-slate-600 hover:bg-white/50",
                                   )}
                                 >

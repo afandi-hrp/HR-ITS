@@ -157,8 +157,8 @@ export default function RegistrationTokens() {
     <div className="p-8 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-[#3D2C44]">Token Pelamar</h1>
-          <p className="text-[#3D2C44]/70 mt-1">
+          <h1 className="text-2xl font-bold text-[#5A305A]">Token Pelamar</h1>
+          <p className="text-[#5A305A]/70 mt-1">
             Kelola token akses satu kali pakai untuk form pelamar publik.
           </p>
         </div>
@@ -190,7 +190,7 @@ export default function RegistrationTokens() {
           <button
             onClick={() => generateToken(1)}
             disabled={generating}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-70 font-medium"
+            className="bg-[#5A305A] text-white px-4 py-2 rounded-xl hover:bg-[#3F223F] transition-colors flex items-center gap-2 disabled:opacity-70 font-medium"
           >
             {generating ? (
               <Loader2 size={20} className="animate-spin" />
@@ -246,7 +246,7 @@ export default function RegistrationTokens() {
                     <td className="p-4">
                       <div className="flex items-center gap-2">
                         <KeyRound size={16} className="text-slate-400" />
-                        <span className="font-mono font-medium text-slate-900">
+                        <span className="font-mono font-medium text-[#5A305A]">
                           {token.token}
                         </span>
                       </div>

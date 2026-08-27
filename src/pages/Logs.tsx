@@ -531,10 +531,10 @@ export default function Logs() {
     <div className="space-y-8 pb-10">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
         <div className="space-y-1">
-          <h1 className="text-4xl font-extrabold tracking-tight text-[#3D2C44]">
+          <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
             Log Kandidat
           </h1>
-          <p className="text-sm font-medium text-[#3D2C44]/70 max-w-xl">
+          <p className="text-sm font-medium text-[#5A305A]/70 max-w-xl">
             Arsip riwayat kandidat yang telah diproses.
           </p>
         </div>
@@ -706,7 +706,7 @@ export default function Logs() {
                 />
               </div>
               <div className="flex flex-col items-center gap-1 mt-1">
-                <h3 className="text-lg font-bold text-slate-900 line-clamp-1">
+                <h3 className="text-lg font-bold text-[#5A305A] line-clamp-1">
                   {log.full_name}
                 </h3>
                 {log.is_blacklisted && (
@@ -811,7 +811,7 @@ export default function Logs() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
             <Users className="text-slate-400" size={32} />
           </div>
-          <h3 className="text-lg font-bold text-slate-900">Arsip kosong</h3>
+          <h3 className="text-lg font-bold text-[#5A305A]">Arsip kosong</h3>
           <p className="text-slate-500">
             Kandidat yang dipindahkan ke log akan muncul di sini.
           </p>
@@ -824,13 +824,13 @@ export default function Logs() {
           <div className="flex items-center gap-4">
             <p className="text-sm text-slate-500">
               Menampilkan{" "}
-              <span className="font-bold text-slate-900">{startIndex + 1}</span>{" "}
+              <span className="font-bold text-[#5A305A]">{startIndex + 1}</span>{" "}
               -{" "}
-              <span className="font-bold text-slate-900">
+              <span className="font-bold text-[#5A305A]">
                 {Math.min(startIndex + itemsPerPage, totalItems)}
               </span>{" "}
               dari{" "}
-              <span className="font-bold text-slate-900">{totalItems}</span>{" "}
+              <span className="font-bold text-[#5A305A]">{totalItems}</span>{" "}
               arsip
             </p>
             <div className="h-4 w-px bg-slate-200 hidden md:block" />
@@ -876,7 +876,7 @@ export default function Logs() {
                       className={cn(
                         "w-8 h-8 rounded-lg text-sm font-bold transition-all",
                         currentPage === pageNum
-                          ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
+                          ? "bg-[#5A305A] text-white shadow-md shadow-indigo-200"
                           : "text-slate-600 hover:bg-slate-100",
                       )}
                     >
@@ -906,7 +906,7 @@ export default function Logs() {
               <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
                 <RotateCcw size={32} />
               </div>
-              <h3 className="text-xl font-bold text-slate-900">
+              <h3 className="text-xl font-bold text-[#5A305A]">
                 Aktifkan Kembali Kandidat
               </h3>
               <p className="text-slate-500">
@@ -982,7 +982,7 @@ export default function Logs() {
               <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Trash2 size={32} />
               </div>
-              <h3 className="text-xl font-bold text-slate-900">
+              <h3 className="text-xl font-bold text-[#5A305A]">
                 Hapus Kandidat
               </h3>
               <p className="text-slate-500">
@@ -1028,7 +1028,7 @@ export default function Logs() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between p-6 border-b border-slate-100">
-              <h2 className="text-xl font-bold text-slate-900">
+              <h2 className="text-xl font-bold text-[#5A305A]">
                 Detail Arsip Kandidat
               </h2>
               <button
@@ -1052,7 +1052,7 @@ export default function Logs() {
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
-                    <h3 className="text-2xl font-bold text-slate-900">
+                    <h3 className="text-2xl font-bold text-[#5A305A]">
                       {selectedLog.full_name}
                     </h3>
                     {selectedLog.status_screening === "hired" && (
@@ -1247,7 +1247,7 @@ export default function Logs() {
               <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Trash2 size={32} />
               </div>
-              <h3 className="text-xl font-bold text-slate-900">Hapus Masal</h3>
+              <h3 className="text-xl font-bold text-[#5A305A]">Hapus Masal</h3>
               <p className="text-slate-500">
                 Apakah Anda yakin ingin menghapus{" "}
                 <span className="font-bold text-slate-800">
@@ -1291,7 +1291,7 @@ export default function Logs() {
                   <Download size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">
+                  <h3 className="text-lg font-bold text-[#5A305A]">
                     Preview Data Excel
                   </h3>
                   <p className="text-xs text-slate-500">

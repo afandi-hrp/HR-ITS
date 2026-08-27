@@ -1013,7 +1013,7 @@ export default function Screening() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
             <div className="space-y-1">
               {isRestrictedScreeningRole && profile?.full_name && (
-                <div className="text-xl font-semibold text-[#3D2C44]/80 mb-1 flex items-center flex-wrap gap-2">
+                <div className="text-xl font-semibold text-[#5A305A]/80 mb-1 flex items-center flex-wrap gap-2">
                   <span className="tracking-tight">
                     {(() => {
                       const hour = new Date().getHours();
@@ -1023,7 +1023,7 @@ export default function Screening() {
                       return 'Selamat malam,';
                     })()}
                   </span>
-                  <span className="text-[#3D2C44] font-bold">
+                  <span className="text-[#5A305A] font-bold">
                     {profile.full_name.split(' ')[0]}
                   </span>
                   <span className="ml-1 inline-flex items-center">
@@ -1037,14 +1037,14 @@ export default function Screening() {
                   </span>
                 </div>
               )}
-              <h1 className="text-4xl font-extrabold tracking-tight text-[#3D2C44]">
+              <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
                 {isUserManager
                   ? "Kandidat Saya"
                   : isApprovalRole
                     ? "Approval Kandidat"
                     : "Screening Awal"}
               </h1>
-              <p className="text-sm font-medium text-[#3D2C44]/70 max-w-xl">
+              <p className="text-sm font-medium text-[#5A305A]/70 max-w-xl">
                 {isUserManager
                   ? "Tinjau dan kelola kandidat yang ditugaskan kepada Anda."
                   : isApprovalRole
@@ -1065,7 +1065,7 @@ export default function Screening() {
                     placeholder="Cari nama kandidat atau posisi..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3D2C44] transition-all text-sm"
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] transition-all text-sm"
                   />
                 </div>
               </div>
@@ -1132,7 +1132,7 @@ export default function Screening() {
 
               <button
                 onClick={fetchCandidates}
-                className="p-2 text-[#3D2C44] bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 rounded-xl transition-all shadow-sm flex items-center gap-2 shrink-0"
+                className="p-2 text-[#5A305A] bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 rounded-xl transition-all shadow-sm flex items-center gap-2 shrink-0"
                 title="Refresh Data"
               >
                 <RefreshCcw size={18} className={loading ? "animate-spin" : ""} />
@@ -1177,7 +1177,7 @@ export default function Screening() {
                      className="bg-white border border-amber-300 rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-amber-400 transition-all cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4 group"
                    >
                      <div className="space-y-2">
-                       <h3 className="text-xl font-bold text-slate-900 underline decoration-slate-300 decoration-2 underline-offset-4 group-hover:text-[#3D2C44] transition-colors">{position}</h3>
+                       <h3 className="text-xl font-bold text-[#5A305A] underline decoration-slate-300 decoration-2 underline-offset-4 group-hover:text-[#5A305A] transition-colors">{position}</h3>
                        <div className="text-sm text-slate-500 flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3 sm:gap-4 mt-2">
                          <span className="flex items-center gap-1.5"><Users size={16} className="text-slate-400" /> <span className="font-medium">{total} Total Pelamar</span></span>
                          
@@ -1204,7 +1204,7 @@ export default function Screening() {
                        </div>
                      </div>
                      <div className="flex items-center gap-4">
-                        <span className="text-sm text-slate-400 group-hover:text-[#3D2C44] font-medium transition-colors hidden sm:block">Lihat kandidat &rarr;</span>
+                        <span className="text-sm text-slate-400 group-hover:text-[#5A305A] font-medium transition-colors hidden sm:block">Lihat kandidat &rarr;</span>
                      </div>
                    </div>
                  );
@@ -1218,11 +1218,11 @@ export default function Screening() {
             <div className="space-y-1">
               <button 
                 onClick={() => { setSelectedPosition(null); setCurrentPage(1); setSearch(""); }}
-                className="text-sm text-slate-600 hover:text-[#3D2C44] font-bold flex items-center gap-1.5 mb-2 transition-colors border border-slate-200 bg-white/70 backdrop-blur-md hover:bg-white px-3 py-1.5 rounded-xl w-fit shadow-sm"
+                className="text-sm text-slate-600 hover:text-[#5A305A] font-bold flex items-center gap-1.5 mb-2 transition-colors border border-slate-200 bg-white/70 backdrop-blur-md hover:bg-white px-3 py-1.5 rounded-xl w-fit shadow-sm"
               >
                 <ChevronLeft size={16} /> Kembali ke Lowongan
               </button>
-              <h1 className="text-3xl font-extrabold tracking-tight text-[#3D2C44]">
+              <h1 className="text-3xl font-extrabold tracking-tight text-[#5A305A]">
                 {selectedPosition}
               </h1>
             </div>
@@ -1249,7 +1249,7 @@ export default function Screening() {
                 
                 {/* Search */}
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900 mb-2 px-1">Cari Kandidat</h3>
+                  <h3 className="text-sm font-bold text-[#5A305A] mb-2 px-1">Cari Kandidat</h3>
                   <div className="relative w-full">
                     <Search
                       className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -1260,14 +1260,14 @@ export default function Screening() {
                       placeholder="Nama atau posisi..."
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3D2C44] transition-all text-sm"
+                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] transition-all text-sm"
                     />
                   </div>
                 </div>
 
                 {/* Date Filter */}
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900 mb-2 px-1">Tanggal Apply</h3>
+                  <h3 className="text-sm font-bold text-[#5A305A] mb-2 px-1">Tanggal Apply</h3>
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 w-full">
                       <CalendarIcon size={14} className="text-slate-400 shrink-0" />
@@ -1297,7 +1297,7 @@ export default function Screening() {
                 <div>
                   <button
                     onClick={() => setIsStatusExpanded(!isStatusExpanded)}
-                    className="w-full flex items-center justify-between text-sm font-bold text-slate-900 mb-2 px-1 hover:text-indigo-600 transition-colors"
+                    className="w-full flex items-center justify-between text-sm font-bold text-[#5A305A] mb-2 px-1 hover:text-indigo-600 transition-colors"
                   >
                     <span>Status</span>
                     <ChevronDown size={16} className={cn("transition-transform duration-300", !isStatusExpanded && "rotate-180")} />
@@ -1326,13 +1326,13 @@ export default function Screening() {
                             }}
                             className={cn(
                               "w-full flex items-center justify-between px-3 py-2 text-sm rounded-xl transition-all duration-200",
-                              currentFilter === opt ? "bg-[#3D2C44]/10 text-[#3D2C44] font-bold" : "text-slate-600 hover:bg-slate-50"
+                              currentFilter === opt ? "bg-[#5A305A]/10 text-[#5A305A] font-bold" : "text-slate-600 hover:bg-slate-50"
                             )}
                           >
                             <span className="text-left leading-tight truncate mr-2">{filterLabel}</span>
                             <span className={cn(
                               "text-xs px-2 py-0.5 rounded-full font-medium transition-colors shrink-0",
-                              currentFilter === opt ? "bg-[#3D2C44]/20 text-[#3D2C44] font-bold" : "bg-slate-100 text-slate-500"
+                              currentFilter === opt ? "bg-[#5A305A]/20 text-[#5A305A] font-bold" : "bg-slate-100 text-slate-500"
                             )}>{count}</span>
                           </button>
                         );
@@ -1409,7 +1409,7 @@ export default function Screening() {
                               <div className="flex items-center gap-2">
                                 <Link
                                   to={`/candidates/${candidate.id}`}
-                                  className="text-lg font-bold text-slate-900 hover:text-indigo-600 transition-colors truncate min-w-0"
+                                  className="text-lg font-bold text-[#5A305A] hover:text-indigo-600 transition-colors truncate min-w-0"
                                 >
                                   {candidate.full_name}
                                 </Link>
@@ -1541,7 +1541,7 @@ export default function Screening() {
                               <Popover>
                                 <PopoverTrigger
                                   render={
-                                    <button className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs sm:text-sm font-bold border border-[#3D2C44]/20 text-[#3D2C44] bg-white rounded-xl hover:bg-[#3D2C44] hover:text-white transition-all hover:-translate-y-0.5 shadow-sm">
+                                    <button className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs sm:text-sm font-bold border border-[#5A305A]/20 text-[#5A305A] bg-white rounded-xl hover:bg-[#5A305A] hover:text-white transition-all hover:-translate-y-0.5 shadow-sm">
                                       <ClipboardCheck size={16} />
                                       <span>Status Kandidat</span>
                                       <ChevronDown size={14} className="opacity-60" />
@@ -1552,13 +1552,13 @@ export default function Screening() {
                                   <div className="flex flex-col gap-0.5">
                                     <button
                                       onClick={() => handleUpdateStatus(candidate.id, "accepted")}
-                                      className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-slate-700 rounded-lg hover:bg-[#3D2C44]/10 hover:text-[#3D2C44] transition-colors text-left"
+                                      className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-slate-700 rounded-lg hover:bg-[#5A305A]/10 hover:text-[#5A305A] transition-colors text-left"
                                     >
                                       <ThumbsUp size={16} /> Terima Kandidat
                                     </button>
                                     <button
                                       onClick={() => handleUpdateStatus(candidate.id, "hired")}
-                                      className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-slate-700 rounded-lg hover:bg-[#3D2C44]/10 hover:text-[#3D2C44] transition-colors text-left"
+                                      className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-slate-700 rounded-lg hover:bg-[#5A305A]/10 hover:text-[#5A305A] transition-colors text-left"
                                     >
                                       <Briefcase size={16} /> Rekrut (Hired)
                                     </button>
@@ -1577,7 +1577,7 @@ export default function Screening() {
                             <Popover>
                               <PopoverTrigger
                                 render={
-                                  <button className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs sm:text-sm font-bold border border-[#3D2C44]/20 text-[#3D2C44] bg-white rounded-xl hover:bg-[#3D2C44] hover:text-white transition-all hover:-translate-y-0.5 shadow-sm">
+                                  <button className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs sm:text-sm font-bold border border-[#5A305A]/20 text-[#5A305A] bg-white rounded-xl hover:bg-[#5A305A] hover:text-white transition-all hover:-translate-y-0.5 shadow-sm">
                                     <CalendarClock size={16} />
                                     <span>Jadwal dan Konfirmasi</span>
                                     <ChevronDown size={14} className="opacity-60" />
@@ -1697,12 +1697,12 @@ export default function Screening() {
                               </div>
                             </div>
 
-                            <div className="bg-[#3D2C44]/5 border border-[#3D2C44]/20 rounded-xl p-4">
-                              <h4 className="font-bold text-[#3D2C44] flex items-center gap-2 mb-2 text-sm">
+                            <div className="bg-[#5A305A]/5 border border-[#5A305A]/20 rounded-xl p-4">
+                              <h4 className="font-bold text-[#5A305A] flex items-center gap-2 mb-2 text-sm">
                                 <Star size={16} />
                                 Potensi
                               </h4>
-                              <div className="text-sm text-[#3D2C44]/80">
+                              <div className="text-sm text-[#5A305A]/80">
                                 {formatLevelAndList(
                                   candidate.potential_factors,
                                   <span className="italic opacity-70">Belum dianalisis</span>,
@@ -1809,7 +1809,7 @@ export default function Screening() {
                   <FolderInput size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">
+                  <h3 className="text-lg font-bold text-[#5A305A]">
                     Pindahkan ke Log
                   </h3>
                   <p className="text-xs text-slate-500">
@@ -1827,7 +1827,7 @@ export default function Screening() {
 
             <div className="p-6 space-y-6 overflow-y-auto">
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                <h4 className="font-bold text-slate-900">
+                <h4 className="font-bold text-[#5A305A]">
                   {logModalData.full_name}
                 </h4>
                 <p className="text-sm text-slate-500">{logModalData.email}</p>
@@ -1864,7 +1864,7 @@ export default function Screening() {
               <button
                 onClick={handleMoveToLog}
                 disabled={movingToLog}
-                className="flex-1 px-6 py-3 bg-[#3D2C44] text-white font-bold rounded-2xl hover:bg-[#3D2C44]/90 shadow-lg shadow-[#3D2C44]/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 px-6 py-3 bg-[#5A305A] text-white font-bold rounded-2xl hover:bg-[#5A305A]/90 shadow-lg shadow-[#5A305A]/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {movingToLog ? (
                   <RefreshCcw className="animate-spin" size={18} />
@@ -1885,7 +1885,7 @@ export default function Screening() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
             <Users className="text-slate-400" size={32} />
           </div>
-          <h3 className="text-lg font-bold text-slate-900">
+          <h3 className="text-lg font-bold text-[#5A305A]">
             Tidak ada kandidat
           </h3>
           <p className="text-slate-500">
@@ -1900,13 +1900,13 @@ export default function Screening() {
           <div className="flex items-center gap-4">
             <p className="text-sm text-slate-500">
               Menampilkan{" "}
-              <span className="font-bold text-slate-900">{startIndex + 1}</span>{" "}
+              <span className="font-bold text-[#5A305A]">{startIndex + 1}</span>{" "}
               -{" "}
-              <span className="font-bold text-slate-900">
+              <span className="font-bold text-[#5A305A]">
                 {Math.min(startIndex + itemsPerPage, totalFilteredItems)}
               </span>{" "}
               dari{" "}
-              <span className="font-bold text-slate-900">{totalFilteredItems}</span>{" "}
+              <span className="font-bold text-[#5A305A]">{totalFilteredItems}</span>{" "}
               kandidat
             </p>
             <div className="h-4 w-px bg-slate-200 hidden md:block" />
@@ -1918,7 +1918,7 @@ export default function Screening() {
                   setItemsPerPage(Number(e.target.value));
                   setCurrentPage(1);
                 }}
-                className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D2C44]"
+                className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#5A305A]"
               >
                 {[5, 10, 20, 50, 100].map((val) => (
                   <option key={val} value={val}>
@@ -1954,7 +1954,7 @@ export default function Screening() {
                     className={cn(
                       "w-8 h-8 rounded-lg text-sm font-medium transition-all",
                       currentPage === pageNum
-                        ? "bg-[#3D2C44] text-white shadow-md shadow-[#3D2C44]/20"
+                        ? "bg-[#5A305A] text-white shadow-md shadow-[#5A305A]/20"
                         : "text-slate-600 hover:bg-slate-50 border border-transparent hover:border-slate-200",
                     )}
                   >
@@ -1983,7 +1983,7 @@ export default function Screening() {
               <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 shrink-0">
                 <ThumbsUp size={32} />
               </div>
-              <h3 className="text-xl font-bold text-slate-900">
+              <h3 className="text-xl font-bold text-[#5A305A]">
                 Konfirmasi Terima
               </h3>
               <p className="text-slate-500">
@@ -2015,7 +2015,7 @@ export default function Screening() {
               <button
                 onClick={confirmAccept}
                 disabled={accepting}
-                className="flex-1 py-2.5 bg-[#3D2C44] text-white font-bold rounded-xl hover:bg-[#3D2C44]/90 transition-all shadow-sm shadow-[#3D2C44]/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#5A305A]/90 transition-all shadow-sm shadow-[#5A305A]/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {accepting ? (
                   <Loader2 className="animate-spin" size={18} />
@@ -2036,7 +2036,7 @@ export default function Screening() {
               <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 shrink-0">
                 <AlertTriangle size={32} />
               </div>
-              <h3 className="text-xl font-bold text-slate-900">
+              <h3 className="text-xl font-bold text-[#5A305A]">
                 Konfirmasi Penolakan
               </h3>
               <p className="text-slate-500">
@@ -2053,7 +2053,7 @@ export default function Screening() {
                 <textarea
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
-                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all resize-none"
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[#5A305A] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all resize-none"
                   placeholder="Ditolak pada tahap Screening Awal"
                   rows={3}
                 />
@@ -2066,10 +2066,10 @@ export default function Screening() {
                       type="checkbox"
                       checked={addToBlacklist}
                       onChange={(e) => setAddToBlacklist(e.target.checked)}
-                      className="w-4 h-4 text-slate-900 rounded border-slate-300 focus:ring-slate-900 transition-all cursor-pointer"
+                      className="w-4 h-4 text-[#5A305A] rounded border-slate-300 focus:ring-slate-900 transition-all cursor-pointer"
                     />
                     <div className="flex flex-col">
-                      <span className="text-sm font-bold text-slate-900 group-hover:text-black transition-colors">
+                      <span className="text-sm font-bold text-[#5A305A] group-hover:text-[#5A305A] transition-colors">
                         Tambahkan ke Blacklist
                       </span>
                       <span className="text-xs text-slate-500">
@@ -2087,7 +2087,7 @@ export default function Screening() {
                       <textarea
                         value={blacklistReason}
                         onChange={(e) => setBlacklistReason(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all resize-none text-sm"
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[#5A305A] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all resize-none text-sm"
                         placeholder="Masukkan alasan detail blacklist untuk referensi HR..."
                         rows={2}
                         required={addToBlacklist}
@@ -2103,7 +2103,7 @@ export default function Screening() {
                     onChange={(e) => setSendRejectEmail(e.target.checked)}
                     className="w-4 h-4 text-red-600 rounded border-slate-300 focus:ring-red-500 transition-all cursor-pointer"
                   />
-                  <span className="text-sm font-semibold text-slate-700 group-hover:text-slate-900 transition-colors">
+                  <span className="text-sm font-semibold text-slate-700 group-hover:text-[#5A305A] transition-colors">
                     Kirim Email Penolakan Otomatis
                   </span>
                 </label>
@@ -2120,7 +2120,7 @@ export default function Screening() {
                           onChange={(e) =>
                             setSelectedRejectTemplate(e.target.value)
                           }
-                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500 transition-all appearance-none"
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[#5A305A] focus:outline-none focus:ring-2 focus:ring-red-500 transition-all appearance-none"
                         >
                           <option value="">-- Pilih Template --</option>
                           {rejectEmailTemplates.map((t) => (
@@ -2144,7 +2144,7 @@ export default function Screening() {
                         value={rejectCcEmail}
                         onChange={(e) => setRejectCcEmail(e.target.value)}
                         placeholder="hr.manager@example.com, manager@example.com"
-                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[#5A305A] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
                       />
                     </div>
                   </div>
@@ -2167,7 +2167,7 @@ export default function Screening() {
               <button
                 onClick={confirmReject}
                 disabled={rejecting}
-                className="flex-1 py-2.5 bg-[#3D2C44] text-white font-bold rounded-xl hover:bg-[#3D2C44]/90 transition-all shadow-sm shadow-[#3D2C44]/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#5A305A]/90 transition-all shadow-sm shadow-[#5A305A]/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {rejecting ? (
                   <Loader2 className="animate-spin" size={18} />
@@ -2190,7 +2190,7 @@ export default function Screening() {
                   <Briefcase size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">
+                  <h3 className="text-lg font-bold text-[#5A305A]">
                     Konfirmasi Rekrut Kandidat
                   </h3>
                   <p className="text-sm text-slate-500">
@@ -2208,7 +2208,7 @@ export default function Screening() {
 
             <div className="p-6 space-y-6 overflow-y-auto">
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                <h4 className="font-bold text-slate-900">
+                <h4 className="font-bold text-[#5A305A]">
                   {hireModalData.full_name}
                 </h4>
                 <p className="text-sm text-slate-500">{hireModalData.email}</p>
@@ -2279,7 +2279,7 @@ export default function Screening() {
               <button
                 onClick={confirmHire}
                 disabled={hiring}
-                className="flex-1 px-6 py-3 bg-[#3D2C44] text-white font-bold rounded-2xl hover:bg-[#3D2C44]/90 shadow-lg shadow-[#3D2C44]/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 px-6 py-3 bg-[#5A305A] text-white font-bold rounded-2xl hover:bg-[#5A305A]/90 shadow-lg shadow-[#5A305A]/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {hiring ? (
                   <RefreshCcw className="animate-spin" size={18} />
@@ -2305,7 +2305,7 @@ export default function Screening() {
                   <Star size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">
+                  <h3 className="text-lg font-bold text-[#5A305A]">
                     Rincian Skor Asesmen
                   </h3>
                   <p className="text-sm text-slate-500">
@@ -2444,7 +2444,7 @@ export default function Screening() {
               <button
                 onClick={handleSaveAssessment}
                 disabled={savingAssessment}
-                className="flex-1 px-6 py-3 bg-[#3D2C44] text-white font-bold rounded-2xl hover:bg-[#3D2C44]/90 shadow-lg shadow-[#3D2C44]/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 px-6 py-3 bg-[#5A305A] text-white font-bold rounded-2xl hover:bg-[#5A305A]/90 shadow-lg shadow-[#5A305A]/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {savingAssessment ? (
                   <RefreshCcw className="animate-spin" size={18} />

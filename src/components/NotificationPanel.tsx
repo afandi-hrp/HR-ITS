@@ -302,7 +302,7 @@ export default function NotificationPanel({ isMobile = false }: { isMobile?: boo
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/50">
             <div className="flex items-center gap-2">
-              <h4 className="font-semibold text-slate-900">Notifikasi</h4>
+              <h4 className="font-semibold text-[#5A305A]">Notifikasi</h4>
               {hasUnread && (
                 <span className="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
                   {unreadCount} Baru
@@ -325,7 +325,7 @@ export default function NotificationPanel({ isMobile = false }: { isMobile?: boo
                 <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
                   <Bell className="h-8 w-8 text-slate-300" />
                 </div>
-                <p className="text-slate-900 font-medium mb-1">Belum ada notifikasi</p>
+                <p className="text-[#5A305A] font-medium mb-1">Belum ada notifikasi</p>
                 <p className="text-slate-500 text-sm">Anda akan melihat notifikasi di sini saat ada aktivitas baru.</p>
               </div>
             ) : (
@@ -360,7 +360,7 @@ export default function NotificationPanel({ isMobile = false }: { isMobile?: boo
                                 <div className="flex justify-between items-start gap-2 mb-0.5">
                                   <h5 className={cn(
                                     "text-sm font-semibold truncate pr-4",
-                                    !notif.is_read ? "text-slate-900" : "text-slate-700"
+                                    !notif.is_read ? "text-[#5A305A]" : "text-slate-700"
                                   )}>
                                     {notif.title}
                                   </h5>

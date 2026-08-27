@@ -166,10 +166,10 @@ export default function CandidateArchive() {
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
         <div className="space-y-1">
-          <h1 className="text-4xl font-extrabold tracking-tight text-[#3D2C44]">
+          <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
             Candidate Archive
           </h1>
-          <p className="text-sm font-medium text-[#3D2C44]/70 max-w-xl">
+          <p className="text-sm font-medium text-[#5A305A]/70 max-w-xl">
             Daftar kandidat yang telah diarsipkan.
           </p>
         </div>
@@ -281,7 +281,7 @@ export default function CandidateArchive() {
                     </Link>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <h3 className="text-base font-bold text-slate-900 truncate">
+                        <h3 className="text-base font-bold text-[#5A305A] truncate">
                           <Link
                             to={`/candidates/${log.id}`}
                             className="hover:text-indigo-600 transition-colors"
@@ -411,7 +411,7 @@ export default function CandidateArchive() {
                       </Link>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <h3 className="text-lg font-bold text-slate-900 truncate">
+                          <h3 className="text-lg font-bold text-[#5A305A] truncate">
                             <Link
                               to={`/candidates/${log.id}`}
                               className="hover:text-indigo-600 transition-colors"
@@ -595,7 +595,7 @@ export default function CandidateArchive() {
                       </div>
 
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-xl font-bold shadow-lg shadow-indigo-200">
+                        <div className="w-12 h-12 rounded-xl bg-[#5A305A] text-white flex items-center justify-center text-xl font-bold shadow-lg shadow-indigo-200">
                           {log.assessment_score || 0}
                         </div>
                         <div className="flex-1">
@@ -672,7 +672,7 @@ export default function CandidateArchive() {
             <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
               <RefreshCcw className="text-slate-400" size={32} />
             </div>
-            <h3 className="text-lg font-bold text-slate-900">Arsip kosong</h3>
+            <h3 className="text-lg font-bold text-[#5A305A]">Arsip kosong</h3>
             <p className="text-slate-500">
               Kandidat yang diarsipkan akan muncul di sini.
             </p>
@@ -686,13 +686,13 @@ export default function CandidateArchive() {
           <div className="flex items-center gap-4">
             <p className="text-sm text-slate-500">
               Menampilkan{" "}
-              <span className="font-bold text-slate-900">{startIndex + 1}</span>{" "}
+              <span className="font-bold text-[#5A305A]">{startIndex + 1}</span>{" "}
               -{" "}
-              <span className="font-bold text-slate-900">
+              <span className="font-bold text-[#5A305A]">
                 {Math.min(startIndex + itemsPerPage, totalItems)}
               </span>{" "}
               dari{" "}
-              <span className="font-bold text-slate-900">{totalItems}</span>{" "}
+              <span className="font-bold text-[#5A305A]">{totalItems}</span>{" "}
               arsip
             </p>
             <div className="h-4 w-px bg-slate-200 hidden md:block" />
@@ -740,7 +740,7 @@ export default function CandidateArchive() {
                     className={cn(
                       "w-8 h-8 rounded-lg text-sm font-medium transition-all",
                       currentPage === pageNum
-                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-100"
+                        ? "bg-[#5A305A] text-white shadow-md shadow-indigo-100"
                         : "text-slate-600 hover:bg-slate-50 border border-transparent hover:border-slate-200",
                     )}
                   >

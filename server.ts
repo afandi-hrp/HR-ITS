@@ -63,25 +63,28 @@ const upload = multer({
 });
 
 // Separate multer config for application-form document uploads (photo/KTP/
-// ijazah/transcript/payslip/other) — these can be images as well as PDFs,
-// and are capped at 3MB to match the storage.objects RLS policy so a
-// too-large file is rejected here with a clear message instead of a vague
-// Storage-layer error.
+// ijazah/transcript/payslip/other/portfolio) — these can be images, PDFs, or
+// (for the portfolio field) PowerPoint files. The hard ceiling here is 5MB
+// to fit the largest allowed single file (a lone portfolio upload); ktp/
+// ijazah/etc. are already capped tighter (3MB) client-side in
+// ApplicationForm.tsx before the request is even sent.
 const uploadDocument = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 3 * 1024 * 1024 }, // 3MB limit
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
     const allowedMimeTypes = [
       'image/jpeg',
       'image/png',
       'application/pdf',
       'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation'
     ];
     if (allowedMimeTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error("Invalid file type. Only images, PDF, and Word documents are allowed."));
+      cb(new Error("Invalid file type. Only images, PDF, Word, and PowerPoint documents are allowed."));
     }
   }
 });
@@ -1154,13 +1157,33 @@ app.use((req: any, res, next) => {
       return res.status(400).json({ error: "File is required" });
     }
 
-    const allowedDocTypes = ['photo', 'ktp', 'ijazah', 'transcript', 'payslip', 'other'];
+    const allowedDocTypes = ['photo', 'ktp', 'ijazah', 'transcript', 'payslip', 'other', 'portfolio'];
     if (!docType || !allowedDocTypes.includes(docType)) {
       return res.status(400).json({ error: "Invalid document type" });
     }
 
     if (!token) {
       return res.status(401).json({ error: "Token pendaftaran wajib diisi sebelum mengunggah dokumen." });
+    }
+
+    // The shared multer instance allows up to 5MB (the portfolio field's
+    // ceiling) — everything else stays capped at 3MB server-side too, not
+    // just via the client-side check in ApplicationForm.tsx.
+    const maxSizeByDocType: Record<string, number> = { portfolio: 5 * 1024 * 1024 };
+    const maxSize = maxSizeByDocType[docType] ?? 3 * 1024 * 1024;
+    if (file.size > maxSize) {
+      return res.status(413).json({ error: `Ukuran file untuk ${docType} maksimal ${Math.round(maxSize / (1024 * 1024))}MB.` });
+    }
+
+    if (docType === 'portfolio') {
+      const allowedPortfolioMimeTypes = [
+        'application/pdf',
+        'application/vnd.ms-powerpoint',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      ];
+      if (!allowedPortfolioMimeTypes.includes(file.mimetype)) {
+        return res.status(400).json({ error: "Bahan Presentasi / Portofolio harus berformat PDF, PPT, atau PPTX." });
+      }
     }
 
     try {

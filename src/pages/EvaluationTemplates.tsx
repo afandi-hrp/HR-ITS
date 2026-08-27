@@ -509,16 +509,16 @@ export default function EvaluationTemplates() {
     <div className="space-y-8 pb-12">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
         <div className="space-y-1">
-          <h1 className="text-4xl font-extrabold tracking-tight text-[#3D2C44]">
+          <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
             Template Evaluasi
           </h1>
-          <p className="text-sm font-medium text-[#3D2C44]/70 max-w-xl">
+          <p className="text-sm font-medium text-[#5A305A]/70 max-w-xl">
             Kelola form penilaian untuk interview HR dan User dengan mudah.
           </p>
         </div>
         <button
           onClick={() => handleOpenModal()}
-          className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all"
+          className="flex items-center gap-2 px-6 py-3 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-100 transition-all"
         >
           <Plus size={20} />
           Tambah Template
@@ -568,7 +568,7 @@ export default function EvaluationTemplates() {
             </div>
             
             <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-slate-900 truncate">
+              <h3 className="font-bold text-[#5A305A] truncate">
                 {template.name}
               </h3>
               <p className="text-sm text-slate-500 mt-0.5">
@@ -608,7 +608,7 @@ export default function EvaluationTemplates() {
             <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
               <FileText className="text-slate-400" size={32} />
             </div>
-            <h3 className="text-lg font-bold text-slate-900">
+            <h3 className="text-lg font-bold text-[#5A305A]">
               Belum ada template evaluasi
             </h3>
             <p className="text-slate-500">
@@ -629,7 +629,7 @@ export default function EvaluationTemplates() {
                   <Settings2 size={20} />
                 </div>
                 <div>
-                  <h2 className="text-lg sm:text-xl font-bold text-slate-900">
+                  <h2 className="text-lg sm:text-xl font-bold text-[#5A305A]">
                     {editingTemplate
                       ? "Edit Template Evaluasi"
                       : "Buat Template Evaluasi"}
@@ -652,7 +652,7 @@ export default function EvaluationTemplates() {
               <div className="max-w-4xl mx-auto space-y-8">
                 {/* Basic Info */}
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                  <h3 className="text-lg font-bold text-slate-900 border-b border-slate-100 pb-3">
+                  <h3 className="text-lg font-bold text-[#5A305A] border-b border-slate-100 pb-3">
                     Informasi Dasar
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -734,7 +734,7 @@ export default function EvaluationTemplates() {
                 <>
                 {/* Reference Check: Text Content */}
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                  <h3 className="text-lg font-bold text-slate-900 border-b border-slate-100 pb-3">
+                  <h3 className="text-lg font-bold text-[#5A305A] border-b border-slate-100 pb-3">
                     Judul & Teks
                   </h3>
                   <div className="space-y-2">
@@ -765,7 +765,7 @@ export default function EvaluationTemplates() {
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                     <div>
-                      <h3 className="text-lg font-bold text-slate-900">
+                      <h3 className="text-lg font-bold text-[#5A305A]">
                         Tabel 2 Kolom (Info Pelamar vs Referensi)
                       </h3>
                       <p className="text-sm text-slate-500">
@@ -828,7 +828,7 @@ export default function EvaluationTemplates() {
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                     <div>
-                      <h3 className="text-lg font-bold text-slate-900">
+                      <h3 className="text-lg font-bold text-[#5A305A]">
                         Tabel Komentar Referee
                       </h3>
                       <p className="text-sm text-slate-500">
@@ -889,7 +889,7 @@ export default function EvaluationTemplates() {
 
                 {/* Reference Check: Footer labels */}
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                  <h3 className="text-lg font-bold text-slate-900 border-b border-slate-100 pb-3">
+                  <h3 className="text-lg font-bold text-[#5A305A] border-b border-slate-100 pb-3">
                     Label Tambahan
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -924,7 +924,7 @@ export default function EvaluationTemplates() {
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                     <div>
-                      <h3 className="text-lg font-bold text-slate-900">
+                      <h3 className="text-lg font-bold text-[#5A305A]">
                         Skala Penilaian
                       </h3>
                       <p className="text-sm text-slate-500">
@@ -978,7 +978,7 @@ export default function EvaluationTemplates() {
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                     <div>
-                      <h3 className="text-lg font-bold text-slate-900">
+                      <h3 className="text-lg font-bold text-[#5A305A]">
                         Kategori & Kriteria
                       </h3>
                       <p className="text-sm text-slate-500">
@@ -1008,7 +1008,7 @@ export default function EvaluationTemplates() {
                               updateCategoryName(catIdx, e.target.value)
                             }
                             placeholder="Nama Kategori (Cth: Core Values)"
-                            className="flex-1 px-3 py-2 font-bold text-slate-900 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="flex-1 px-3 py-2 font-bold text-[#5A305A] bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
                           <button
                             onClick={() => removeCategory(catIdx)}
@@ -1080,7 +1080,7 @@ export default function EvaluationTemplates() {
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                     <div>
-                      <h3 className="text-lg font-bold text-slate-900">
+                      <h3 className="text-lg font-bold text-[#5A305A]">
                         Kolom Kesimpulan (Summary)
                       </h3>
                       <p className="text-sm text-slate-500">
@@ -1205,7 +1205,7 @@ export default function EvaluationTemplates() {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex-[2] py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+                className="flex-[2] py-3 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
               >
                 {saving ? (
                   <Loader2 size={20} className="animate-spin" />
