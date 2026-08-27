@@ -15,6 +15,7 @@ import {
   Linkedin,
   Youtube,
   Link,
+  Anchor,
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import SignatureCanvas from "react-signature-canvas";
@@ -31,7 +32,7 @@ interface ApplicationFormProps {
 }
 
 const renderAttachment = (url: string | undefined | null, label: string) => {
-  if (!url) return <span className="text-sm text-slate-500">-</span>;
+  if (!url) return <span className="text-sm text-[#73507B]">-</span>;
 
   const ext = url.split("?")[0].toLowerCase();
   const isPdf = ext.endsWith(".pdf");
@@ -45,7 +46,7 @@ const renderAttachment = (url: string | undefined | null, label: string) => {
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg text-sm hover:bg-indigo-100 transition-colors border border-indigo-100"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-[#5A305A]/5 text-[#5A305A] rounded-lg text-sm hover:bg-[#5A305A]/10 transition-colors border border-[#5A305A]/20"
         >
           <FileText size={16} />
           {isPdf ? "Lihat Dokumen PDF" : "Unduh Dokumen PPT"}
@@ -65,7 +66,7 @@ const renderAttachment = (url: string | undefined | null, label: string) => {
         </a>
       )}
       {isImage && (
-        <div className="block text-sm text-slate-600 italic mt-1">
+        <div className="block text-sm text-[#73507B] italic mt-1">
           (Lihat gambar ukuran penuh di bagian bawah)
         </div>
       )}
@@ -1508,7 +1509,7 @@ export default function ApplicationForm({
             <CheckCircle2 size={40} />
           </div>
           <h2 className="text-2xl font-bold text-[#5A305A]">Terima Kasih!</h2>
-          <p className="text-slate-600">
+          <p className="text-[#73507B]">
             Formulir lamaran Anda telah berhasil kami terima. Tim rekrutmen kami
             akan segera meninjau data Anda.
           </p>
@@ -1533,7 +1534,7 @@ export default function ApplicationForm({
       id="application-form-container"
     >
       {isOffline && !readOnly && (
-        <div className="mx-auto w-full max-w-4xl bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-xl shadow-sm">
+        <div className="mx-auto w-full max-w-6xl bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-xl shadow-sm">
           <div className="flex items-start">
             <div className="flex-shrink-0">
               <svg
@@ -1573,14 +1574,14 @@ export default function ApplicationForm({
                 "mx-auto bg-white overflow-hidden print:overflow-visible print:shadow-none print:border-none",
                 readOnly
                   ? "w-full rounded-2xl shadow-sm border border-slate-200"
-                  : "w-full max-w-4xl rounded-2xl shadow-xl",
+                  : "w-full max-w-6xl rounded-2xl shadow-xl",
               )}
             >
               {!compact && (
                 <div className="bg-[#5D1F57] relative overflow-hidden px-5 sm:px-8 py-5 sm:py-7 text-white flex flex-row items-center gap-4 sm:gap-6 rounded-t-2xl print:rounded-none print:px-8 print:py-7">
                   {/* Dotted pattern decoration */}
                   <div
-                    className="absolute right-0 top-0 bottom-0 w-64 opacity-20 pointer-events-none block"
+                    className="absolute right-0 top-0 bottom-0 w-96 opacity-20 pointer-events-none hidden sm:block"
                     style={{
                       backgroundImage: 'radial-gradient(circle, white 1.5px, transparent 1.5px)',
                       backgroundSize: '12px 12px',
@@ -1588,6 +1589,14 @@ export default function ApplicationForm({
                       WebkitMaskImage: 'linear-gradient(to left, black, transparent)'
                     }}
                   ></div>
+
+                  {/* Anchor watermark — gives the wide banner's empty right side a purpose
+                      instead of just fading dots into nothing. */}
+                  <Anchor
+                    className="absolute -right-3 top-1/2 -translate-y-1/2 text-white/10 pointer-events-none hidden md:block print:hidden"
+                    size={100}
+                    strokeWidth={1}
+                  />
 
                   {siteSettings?.career_logo_url && (
                     <div className="shrink-0 flex items-center z-10 h-10 sm:h-14 print:h-12">
@@ -1626,12 +1635,12 @@ export default function ApplicationForm({
                 <fieldset disabled={readOnly} className="space-y-8 min-w-0">
                   {/* Token Section */}
                   {!readOnly && (
-                    <div className="bg-indigo-50 border border-indigo-100 p-6 rounded-xl mb-8">
-                      <label className="block text-sm font-bold text-indigo-900 mb-2">
+                    <div className="bg-[#5A305A]/5 border border-[#5A305A]/20 p-6 rounded-xl mb-8">
+                      <label className="block text-sm font-bold text-[#5A305A] mb-2">
                         Token Pendaftaran{" "}
                         <span className="text-red-500">*</span>
                       </label>
-                      <p className="text-xs text-indigo-700 mb-3">
+                      <p className="text-xs text-[#5A305A] mb-3">
                         Masukkan token pendaftaran yang telah diberikan oleh tim
                         rekrutmen kami.
                       </p>
@@ -1641,7 +1650,7 @@ export default function ApplicationForm({
                         value={token}
                         onChange={(e) => setToken(e.target.value)}
                         placeholder="Contoh: WRN-ABC123XY"
-                        className="w-full md:w-1/2 px-4 py-3 bg-white border border-indigo-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-lg uppercase"
+                        className="w-full md:w-1/2 px-4 py-3 bg-white border border-[#5A305A]/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] font-mono text-lg uppercase"
                       />
                     </div>
                   )}
@@ -1650,9 +1659,9 @@ export default function ApplicationForm({
                   <div className="flex flex-col md:flex-row gap-8 items-start border-b border-slate-200 pb-8">
                     <div className="flex-1 space-y-6 w-full">
                       <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1">
+                        <label className="block text-sm font-semibold text-[#5A305A] mb-1">
                           Posisi yang dilamar{" "}
-                          <span className="text-slate-400 font-normal italic">
+                          <span className="text-[#73507B] font-normal italic">
                             (Position applied)
                           </span>{" "}
                           <span className="text-red-500">*</span>
@@ -1668,9 +1677,9 @@ export default function ApplicationForm({
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        <label className="block text-sm font-semibold text-[#5A305A] mb-2">
                           Info lowongan kerja{" "}
-                          <span className="text-slate-400 font-normal italic">
+                          <span className="text-[#73507B] font-normal italic">
                             (Job vacancy information)
                           </span>{" "}
                           <span className="text-red-500">*</span>
@@ -1701,7 +1710,7 @@ export default function ApplicationForm({
                                 }
                                 className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
                               />
-                              <span className="text-sm text-slate-700">
+                              <span className="text-sm text-[#5A305A]">
                                 {item}
                               </span>
                             </label>
@@ -1721,9 +1730,9 @@ export default function ApplicationForm({
                     </div>
 
                     <div className="w-full md:w-48 shrink-0">
-                      <label className="block text-sm font-semibold text-slate-700 mb-1 text-center">
+                      <label className="block text-sm font-semibold text-[#5A305A] mb-1 text-center">
                         Foto Terbaru <span className="text-xs font-normal italic">(Recent Photo)</span> <span className="text-red-500">*</span>{" "}
-                        <span className="text-xs font-normal text-slate-500">
+                        <span className="text-xs font-normal text-[#73507B]">
                           (Maks. 3MB)
                         </span>
                       </label>
@@ -1743,7 +1752,7 @@ export default function ApplicationForm({
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-3 text-slate-400 group-hover:text-indigo-500">
+                          <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-3 text-[#73507B] group-hover:text-indigo-500">
                             <Upload size={24} className="mb-2" />
                             <span className="text-xs font-medium">
                               Unggah Foto Terbaru <span className="italic font-normal">(Upload Recent Photo)</span>
@@ -1759,16 +1768,16 @@ export default function ApplicationForm({
                   <div>
                     <h2 className="text-lg font-bold text-[#5A305A] mb-4 bg-slate-100 py-2 px-4 rounded-lg">
                       I. IDENTITAS PRIBADI{" "}
-                      <span className="text-slate-500 font-normal italic">
+                      <span className="text-[#73507B] font-normal italic">
                         - PERSONAL IDENTITY
                       </span>
                     </h2>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
                       <div className="md:col-span-2">
-                        <label className="block text-sm font-semibold text-slate-700 mb-1">
+                        <label className="block text-sm font-semibold text-[#5A305A] mb-1">
                           1. Nama Lengkap{" "}
-                          <span className="text-slate-400 font-normal italic">
+                          <span className="text-[#73507B] font-normal italic">
                             (Full Name)
                           </span>{" "}
                           <span className="text-red-500">*</span>
@@ -1784,9 +1793,9 @@ export default function ApplicationForm({
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        <label className="block text-sm font-semibold text-[#5A305A] mb-2">
                           2. Jenis Kelamin{" "}
-                          <span className="text-slate-400 font-normal italic">
+                          <span className="text-[#73507B] font-normal italic">
                             (Sex)
                           </span>{" "}
                           <span className="text-red-500">*</span>
@@ -1801,9 +1810,9 @@ export default function ApplicationForm({
                               onChange={handleInputChange}
                               className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500"
                             />
-                            <span className="text-sm text-slate-700">
+                            <span className="text-sm text-[#5A305A]">
                               Laki-laki{" "}
-                              <span className="text-slate-400 italic">
+                              <span className="text-[#73507B] italic">
                                 (Male)
                               </span>
                             </span>
@@ -1817,9 +1826,9 @@ export default function ApplicationForm({
                               onChange={handleInputChange}
                               className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500"
                             />
-                            <span className="text-sm text-slate-700">
+                            <span className="text-sm text-[#5A305A]">
                               Perempuan{" "}
-                              <span className="text-slate-400 italic">
+                              <span className="text-[#73507B] italic">
                                 (Female)
                               </span>
                             </span>
@@ -1829,9 +1838,9 @@ export default function ApplicationForm({
 
                       <div className="flex gap-4">
                         <div className="flex-1">
-                          <label className="block text-sm font-semibold text-slate-700 mb-1">
+                          <label className="block text-sm font-semibold text-[#5A305A] mb-1">
                             3. Tempat Lahir{" "}
-                            <span className="text-slate-400 font-normal italic">
+                            <span className="text-[#73507B] font-normal italic">
                               (Place of Birth)
                             </span>{" "}
                             <span className="text-red-500">*</span>
@@ -1846,9 +1855,9 @@ export default function ApplicationForm({
                           />
                         </div>
                         <div className="flex-1">
-                          <label className="block text-sm font-semibold text-slate-700 mb-1">
+                          <label className="block text-sm font-semibold text-[#5A305A] mb-1">
                             Tanggal Lahir{" "}
-                            <span className="text-slate-400 font-normal italic">
+                            <span className="text-[#73507B] font-normal italic">
                               (Date of Birth)
                             </span>{" "}
                             <span className="text-red-500">*</span>
@@ -1878,9 +1887,9 @@ export default function ApplicationForm({
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1">
+                        <label className="block text-sm font-semibold text-[#5A305A] mb-1">
                           4. Agama{" "}
-                          <span className="text-slate-400 font-normal italic">
+                          <span className="text-[#73507B] font-normal italic">
                             (Religion)
                           </span>{" "}
                           <span className="text-red-500">*</span>
@@ -1915,9 +1924,9 @@ export default function ApplicationForm({
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1">
+                        <label className="block text-sm font-semibold text-[#5A305A] mb-1">
                           5. Kewarganegaraan{" "}
-                          <span className="text-slate-400 font-normal italic">
+                          <span className="text-[#73507B] font-normal italic">
                             (Nationality)
                           </span>{" "}
                           <span className="text-red-500">*</span>
@@ -1932,9 +1941,9 @@ export default function ApplicationForm({
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1">
+                        <label className="block text-sm font-semibold text-[#5A305A] mb-1">
                           6. Suku{" "}
-                          <span className="text-slate-400 font-normal italic">
+                          <span className="text-[#73507B] font-normal italic">
                             (Ethnic)
                           </span>{" "}
                           <span className="text-red-500">*</span>
@@ -1950,9 +1959,9 @@ export default function ApplicationForm({
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1">
+                        <label className="block text-sm font-semibold text-[#5A305A] mb-1">
                           7. Hoby{" "}
-                          <span className="text-slate-400 font-normal italic">
+                          <span className="text-[#73507B] font-normal italic">
                             (Hobby)
                           </span>{" "}
                           <span className="text-red-500">*</span>
@@ -1968,9 +1977,9 @@ export default function ApplicationForm({
                       </div>
 
                       <div className="md:col-span-2">
-                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        <label className="block text-sm font-semibold text-[#5A305A] mb-2">
                           8. Status Perkawinan{" "}
-                          <span className="text-slate-400 font-normal italic">
+                          <span className="text-[#73507B] font-normal italic">
                             (Marital Status)
                           </span>{" "}
                           <span className="text-red-500">*</span>
@@ -1987,9 +1996,9 @@ export default function ApplicationForm({
                               onChange={handleInputChange}
                               className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500"
                             />
-                            <span className="text-sm text-slate-700">
+                            <span className="text-sm text-[#5A305A]">
                               Belum Menikah{" "}
-                              <span className="text-slate-400 italic">
+                              <span className="text-[#73507B] italic">
                                 (Single)
                               </span>
                             </span>
@@ -2004,9 +2013,9 @@ export default function ApplicationForm({
                                 onChange={handleInputChange}
                                 className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500"
                               />
-                              <span className="text-sm text-slate-700">
+                              <span className="text-sm text-[#5A305A]">
                                 Menikah{" "}
-                                <span className="text-slate-400 italic">
+                                <span className="text-[#73507B] italic">
                                   (Married)
                                 </span>
                               </span>
@@ -2037,9 +2046,9 @@ export default function ApplicationForm({
                                 onChange={handleInputChange}
                                 className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500"
                               />
-                              <span className="text-sm text-slate-700">
+                              <span className="text-sm text-[#5A305A]">
                                 Janda / Duda{" "}
-                                <span className="text-slate-400 italic">
+                                <span className="text-[#73507B] italic">
                                   (Widow/er)
                                 </span>
                               </span>
@@ -2062,9 +2071,9 @@ export default function ApplicationForm({
                       </div>
 
                       <div className="md:col-span-2">
-                        <label className="block text-sm font-semibold text-slate-700 mb-1">
+                        <label className="block text-sm font-semibold text-[#5A305A] mb-1">
                           9. No. KTP/Passport{" "}
-                          <span className="text-slate-400 font-normal italic">
+                          <span className="text-[#73507B] font-normal italic">
                             (Identity Number)
                           </span>{" "}
                           <span className="text-red-500">*</span>
@@ -2080,9 +2089,9 @@ export default function ApplicationForm({
                       </div>
 
                       <div className="md:col-span-2">
-                        <label className="block text-sm font-semibold text-slate-700 mb-1">
+                        <label className="block text-sm font-semibold text-[#5A305A] mb-1">
                           10. Alamat Sesuai KTP{" "}
-                          <span className="text-slate-400 font-normal italic">
+                          <span className="text-[#73507B] font-normal italic">
                             (Address Based Identity Card)
                           </span>{" "}
                           <span className="text-red-500">*</span>
@@ -2095,9 +2104,9 @@ export default function ApplicationForm({
                           className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
                         ></textarea>
                         <div className="flex justify-end mt-2 items-center gap-2">
-                          <span className="text-sm text-slate-600">
+                          <span className="text-sm text-[#73507B]">
                             Kode Pos{" "}
-                            <span className="text-slate-400 italic">
+                            <span className="text-[#73507B] italic">
                               (Postal Code)
                             </span>{" "}
                             :
@@ -2113,9 +2122,9 @@ export default function ApplicationForm({
                       </div>
 
                       <div className="md:col-span-2">
-                        <label className="block text-sm font-semibold text-slate-700 mb-1">
+                        <label className="block text-sm font-semibold text-[#5A305A] mb-1">
                           11. Alamat Saat Ini{" "}
-                          <span className="text-slate-400 font-normal italic">
+                          <span className="text-[#73507B] font-normal italic">
                             (Current Address)
                           </span>{" "}
                           <span className="text-red-500">*</span>
@@ -2135,7 +2144,7 @@ export default function ApplicationForm({
                               }}
                               className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
                             />
-                            <span className="text-sm text-slate-600 italic">
+                            <span className="text-sm text-[#73507B] italic">
                               Sama dengan Alamat KTP
                             </span>
                           </label>
@@ -2149,9 +2158,9 @@ export default function ApplicationForm({
                           className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
                         ></textarea>
                         <div className="flex justify-end mt-2 items-center gap-2">
-                          <span className="text-sm text-slate-600">
+                          <span className="text-sm text-[#73507B]">
                             Kode Pos{" "}
-                            <span className="text-slate-400 italic">
+                            <span className="text-[#73507B] italic">
                               (Postal Code)
                             </span>{" "}
                             :
@@ -2167,9 +2176,9 @@ export default function ApplicationForm({
                       </div>
 
                       <div className="md:col-span-2">
-                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        <label className="block text-sm font-semibold text-[#5A305A] mb-2">
                           12. Status Tempat Tinggal{" "}
-                          <span className="text-slate-400 font-normal italic">
+                          <span className="text-[#73507B] font-normal italic">
                             (Residential Status)
                           </span>{" "}
                           <span className="text-red-500">*</span>
@@ -2193,7 +2202,7 @@ export default function ApplicationForm({
                                 onChange={handleInputChange}
                                 className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500"
                               />
-                              <span className="text-sm text-slate-700">
+                              <span className="text-sm text-[#5A305A]">
                                 {status}
                               </span>
                             </label>
@@ -2202,9 +2211,9 @@ export default function ApplicationForm({
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1">
+                        <label className="block text-sm font-semibold text-[#5A305A] mb-1">
                           13. Handphone / Telp. Rumah{" "}
-                          <span className="text-slate-400 font-normal italic">
+                          <span className="text-[#73507B] font-normal italic">
                             (Mobile/Home){" "}
                             <span className="text-red-500">*</span>
                           </span>
@@ -2220,7 +2229,7 @@ export default function ApplicationForm({
                             onChange={handlePhoneInputChange}
                             className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
-                          <span className="text-slate-400">/</span>
+                          <span className="text-[#73507B]">/</span>
                           <input
                             type="text"
                             inputMode="tel"
@@ -2234,9 +2243,9 @@ export default function ApplicationForm({
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1">
+                        <label className="block text-sm font-semibold text-[#5A305A] mb-1">
                           14. Tinggi / Berat Badan{" "}
-                          <span className="text-slate-400 font-normal italic">
+                          <span className="text-[#73507B] font-normal italic">
                             (Height/Weight)
                           </span>{" "}
                           <span className="text-red-500">*</span>
@@ -2251,11 +2260,11 @@ export default function ApplicationForm({
                               onChange={handleInputChange}
                               className="w-full pl-4 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
                             />
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-[#73507B]">
                               Cm
                             </span>
                           </div>
-                          <span className="text-slate-400">/</span>
+                          <span className="text-[#73507B]">/</span>
                           <div className="relative flex-1">
                             <input
                               type="number"
@@ -2265,7 +2274,7 @@ export default function ApplicationForm({
                               onChange={handleInputChange}
                               className="w-full pl-4 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
                             />
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-[#73507B]">
                               Kg
                             </span>
                           </div>
@@ -2273,9 +2282,9 @@ export default function ApplicationForm({
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1">
+                        <label className="block text-sm font-semibold text-[#5A305A] mb-1">
                           15. Email{" "}
-                          <span className="text-slate-400 font-normal italic">
+                          <span className="text-[#73507B] font-normal italic">
                             (E-Mail)
                           </span>{" "}
                           <span className="text-red-500">*</span>
@@ -2291,9 +2300,9 @@ export default function ApplicationForm({
                       </div>
 
                       <div className="md:col-span-2">
-                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        <label className="block text-sm font-semibold text-[#5A305A] mb-2">
                           16. Sosial Media{" "}
-                          <span className="text-slate-400 font-normal italic">
+                          <span className="text-[#73507B] font-normal italic">
                             (Social Media Account)
                           </span>{" "}
                           <span className="text-red-500">*</span>
@@ -2442,8 +2451,8 @@ export default function ApplicationForm({
                                         className={cn(
                                           "p-2 rounded-lg border transition-colors",
                                           sm.platform === platform.id
-                                            ? "bg-indigo-100 border-indigo-300 text-indigo-700 print:border-indigo-300 print:text-indigo-700"
-                                            : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50",
+                                            ? "bg-indigo-100 border-indigo-300 text-[#5A305A] print:border-indigo-300 print:text-[#5A305A]"
+                                            : "bg-white border-slate-200 text-[#73507B] hover:bg-slate-50",
                                         )}
                                         style={
                                           sm.platform === platform.id
@@ -2493,7 +2502,7 @@ export default function ApplicationForm({
                             <button
                               type="button"
                               onClick={addSocialMedia}
-                              className="text-sm text-indigo-600 font-semibold hover:text-indigo-700 flex items-center gap-1"
+                              className="text-sm text-[#5A305A] font-semibold hover:text-[#3F223F] flex items-center gap-1"
                             >
                               <Plus size={16} /> Tambah Sosial Media
                             </button>
@@ -2502,9 +2511,9 @@ export default function ApplicationForm({
                       </div>
 
                       <div className="md:col-span-2">
-                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        <label className="block text-sm font-semibold text-[#5A305A] mb-2">
                           17. Surat Izin Mengemudi{" "}
-                          <span className="text-slate-400 font-normal italic">
+                          <span className="text-[#73507B] font-normal italic">
                             (Driver License)
                           </span>
                         </label>
@@ -2527,7 +2536,7 @@ export default function ApplicationForm({
                                 className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
                                 disabled={readOnly}
                               />
-                              <span className="text-sm text-slate-700">
+                              <span className="text-sm text-[#5A305A]">
                                 {sim}
                               </span>
                             </label>
@@ -2540,7 +2549,7 @@ export default function ApplicationForm({
                                 key={sim}
                                 className="flex items-center gap-3"
                               >
-                                <span className="text-sm font-medium text-slate-700 whitespace-nowrap min-w-[80px]">
+                                <span className="text-sm font-medium text-[#5A305A] whitespace-nowrap min-w-[80px]">
                                   No. {sim}:
                                 </span>
                                 {readOnly ? (
@@ -2584,7 +2593,7 @@ export default function ApplicationForm({
                   <div>
                     <h2 className="text-lg font-bold text-[#5A305A] mb-4 bg-slate-100 py-2 px-4 rounded-lg">
                       II. LATAR BELAKANG KELUARGA{" "}
-                      <span className="text-slate-500 font-normal italic">
+                      <span className="text-[#73507B] font-normal italic">
                         - FAMILY BACKGROUND
                       </span>
                     </h2>
@@ -2594,11 +2603,11 @@ export default function ApplicationForm({
                       <div>
                         <h3 className="text-sm font-semibold text-[#5A305A] mb-3">
                           1. Susunan Anggota Keluarga{" "}
-                          <span className="text-slate-500 italic font-normal">
+                          <span className="text-[#73507B] italic font-normal">
                             (Family Member)
                           </span>
                           , Termasuk Anda{" "}
-                          <span className="text-slate-500 italic font-normal">
+                          <span className="text-[#73507B] italic font-normal">
                             (Including You)
                           </span>{" "}
                           <span className="text-red-500">
@@ -2607,7 +2616,7 @@ export default function ApplicationForm({
                         </h3>
                         <div className="overflow-x-auto print:overflow-visible border border-slate-200 rounded-xl">
                           <table className="w-full min-w-[800px] print:min-w-0 text-sm text-left">
-                            <thead className="bg-indigo-50 text-indigo-900 border-b border-indigo-100">
+                            <thead className="bg-[#5A305A]/5 text-[#5A305A] border-b border-[#5A305A]/20">
                               <tr>
                                 <th className="px-4 py-3 font-semibold w-1/4">
                                   Anggota Keluarga <br />
@@ -2644,7 +2653,7 @@ export default function ApplicationForm({
                             <tbody className="divide-y divide-slate-200">
                               {formData.family_members.map((member, index) => (
                                 <tr key={index} className="hover:bg-slate-50">
-                                  <td className="px-4 py-2 font-medium text-slate-700 bg-slate-50 border-r border-slate-200">
+                                  <td className="px-4 py-2 font-medium text-[#5A305A] bg-slate-50 border-r border-slate-200">
                                     {member.relation}
                                   </td>
                                   <td className="p-0 border-r border-slate-200">
@@ -2718,13 +2727,13 @@ export default function ApplicationForm({
                       <div>
                         <h3 className="text-sm font-semibold text-[#5A305A] mb-3">
                           2. Isilah kolom ini bila sudah menikah{" "}
-                          <span className="text-slate-500 italic font-normal">
+                          <span className="text-[#73507B] italic font-normal">
                             (Fill this columns if you are married)
                           </span>
                         </h3>
                         <div className="overflow-x-auto print:overflow-visible border border-slate-200 rounded-xl">
                           <table className="w-full min-w-[800px] print:min-w-0 text-sm text-left">
-                            <thead className="bg-indigo-50 text-indigo-900 border-b border-indigo-100">
+                            <thead className="bg-[#5A305A]/5 text-[#5A305A] border-b border-[#5A305A]/20">
                               <tr>
                                 <th className="px-4 py-3 font-semibold w-1/4">
                                   Anggota Keluarga <br />
@@ -2762,7 +2771,7 @@ export default function ApplicationForm({
                               {formData.married_family_members.map(
                                 (member, index) => (
                                   <tr key={index} className="hover:bg-slate-50">
-                                    <td className="px-4 py-2 font-medium text-slate-700 bg-slate-50 border-r border-slate-200">
+                                    <td className="px-4 py-2 font-medium text-[#5A305A] bg-slate-50 border-r border-slate-200">
                                       {member.relation}
                                     </td>
                                     <td className="p-0 border-r border-slate-200">
@@ -2839,7 +2848,7 @@ export default function ApplicationForm({
                   <div>
                     <h2 className="text-lg font-bold text-[#5A305A] mb-4 bg-slate-100 py-2 px-4 rounded-lg">
                       III. PENDIDIKAN DAN KETERAMPILAN{" "}
-                      <span className="text-slate-500 font-normal italic">
+                      <span className="text-[#73507B] font-normal italic">
                         - EDUCATION AND SKILL
                       </span>
                     </h2>
@@ -2849,14 +2858,14 @@ export default function ApplicationForm({
                       <div>
                         <h3 className="text-sm font-semibold text-[#5A305A] mb-3">
                           1. Pendidikan Formal{" "}
-                          <span className="text-slate-500 italic font-normal">
+                          <span className="text-[#73507B] italic font-normal">
                             (Formal Education)
                           </span>{" "}
                           <span className="text-red-500">*Minimal 1</span>
                         </h3>
                         <div className="overflow-x-auto print:overflow-visible border border-slate-200 rounded-xl">
                           <table className="w-full min-w-[800px] print:min-w-0 text-sm text-left">
-                            <thead className="bg-indigo-50 text-indigo-900 border-b border-indigo-100">
+                            <thead className="bg-[#5A305A]/5 text-[#5A305A] border-b border-[#5A305A]/20">
                               <tr>
                                 <th className="px-4 py-3 font-semibold w-1/5">
                                   Tingkat <br />
@@ -2893,7 +2902,7 @@ export default function ApplicationForm({
                             <tbody className="divide-y divide-slate-200">
                               {formData.formal_education.map((edu, index) => (
                                 <tr key={index} className="hover:bg-slate-50">
-                                  <td className="px-4 py-2 font-medium text-slate-700 bg-slate-50 border-r border-slate-200 whitespace-pre-line">
+                                  <td className="px-4 py-2 font-medium text-[#5A305A] bg-slate-50 border-r border-slate-200 whitespace-pre-line">
                                     {edu.level}
                                   </td>
                                   <td className="p-0 border-r border-slate-200">
@@ -2967,13 +2976,13 @@ export default function ApplicationForm({
                       <div>
                         <h3 className="text-sm font-semibold text-[#5A305A] mb-3">
                           2. Pendidikan Non Formal{" "}
-                          <span className="text-slate-500 italic font-normal">
+                          <span className="text-[#73507B] italic font-normal">
                             (Non Formal Education)
                           </span>
                         </h3>
                         <div className="overflow-x-auto print:overflow-visible border border-slate-200 rounded-xl">
                           <table className="w-full min-w-[800px] print:min-w-0 text-sm text-left">
-                            <thead className="bg-indigo-50 text-indigo-900 border-b border-indigo-100">
+                            <thead className="bg-[#5A305A]/5 text-[#5A305A] border-b border-[#5A305A]/20">
                               <tr>
                                 <th className="px-4 py-3 font-semibold w-12 text-center">
                                   No
@@ -2999,7 +3008,7 @@ export default function ApplicationForm({
                               {formData.non_formal_education.map(
                                 (edu, index) => (
                                   <tr key={index} className="hover:bg-slate-50">
-                                    <td className="px-4 py-2 font-medium text-slate-700 bg-slate-50 border-r border-slate-200 text-center">
+                                    <td className="px-4 py-2 font-medium text-[#5A305A] bg-slate-50 border-r border-slate-200 text-center">
                                       {index + 1}
                                     </td>
                                     <td className="p-0 border-r border-slate-200">
@@ -3068,13 +3077,13 @@ export default function ApplicationForm({
                       <div>
                         <h3 className="text-sm font-semibold text-[#5A305A] mb-3">
                           3. Organisasi yang pernah Anda ikuti{" "}
-                          <span className="text-slate-500 italic font-normal">
+                          <span className="text-[#73507B] italic font-normal">
                             (Organizations you have Joined)
                           </span>
                         </h3>
                         <div className="overflow-x-auto print:overflow-visible border border-slate-200 rounded-xl">
                           <table className="w-full min-w-[800px] print:min-w-0 text-sm text-left">
-                            <thead className="bg-indigo-50 text-indigo-900 border-b border-indigo-100">
+                            <thead className="bg-[#5A305A]/5 text-[#5A305A] border-b border-[#5A305A]/20">
                               <tr>
                                 <th className="px-4 py-3 font-semibold w-12 text-center">
                                   No
@@ -3099,7 +3108,7 @@ export default function ApplicationForm({
                             <tbody className="divide-y divide-slate-200">
                               {formData.organizations.map((org, index) => (
                                 <tr key={index} className="hover:bg-slate-50">
-                                  <td className="px-4 py-2 font-medium text-slate-700 bg-slate-50 border-r border-slate-200 text-center">
+                                  <td className="px-4 py-2 font-medium text-[#5A305A] bg-slate-50 border-r border-slate-200 text-center">
                                     {index + 1}
                                   </td>
                                   <td className="p-0 border-r border-slate-200">
@@ -3174,7 +3183,7 @@ export default function ApplicationForm({
                         <div className="flex items-center justify-between mb-3">
                           <h3 className="text-sm font-semibold text-[#5A305A]">
                             4. Penguasaan Bahasa Asing{" "}
-                            <span className="text-slate-500 italic font-normal">
+                            <span className="text-[#73507B] italic font-normal">
                               (Non Mother Tongue Language Ability) Poor / Fair /
                               Good
                             </span>
@@ -3183,7 +3192,7 @@ export default function ApplicationForm({
                             <button
                               type="button"
                               onClick={addLanguage}
-                              className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors flex items-center gap-1"
+                              className="text-xs font-bold text-[#5A305A] bg-[#5A305A]/5 px-3 py-1.5 rounded-lg hover:bg-[#5A305A]/10 transition-colors flex items-center gap-1"
                             >
                               <Plus size={14} /> Tambah Bahasa
                             </button>
@@ -3191,7 +3200,7 @@ export default function ApplicationForm({
                         </div>
                         <div className="overflow-x-auto print:overflow-visible border border-slate-200 rounded-xl">
                           <table className="w-full min-w-[800px] print:min-w-0 text-sm text-left relative">
-                            <thead className="bg-indigo-50 text-indigo-900 border-b border-indigo-100">
+                            <thead className="bg-[#5A305A]/5 text-[#5A305A] border-b border-[#5A305A]/20">
                               <tr>
                                 <th className="px-4 py-3 font-semibold w-12 text-center">
                                   No
@@ -3229,16 +3238,16 @@ export default function ApplicationForm({
                                   key={index}
                                   className="hover:bg-slate-50 group"
                                 >
-                                  <td className="px-4 py-2 font-medium text-slate-700 bg-slate-50 border-r border-slate-200 text-center">
+                                  <td className="px-4 py-2 font-medium text-[#5A305A] bg-slate-50 border-r border-slate-200 text-center">
                                     {index + 1}
                                   </td>
                                   <td className="p-0 border-r border-slate-200">
                                     {index < 2 ? (
-                                      <div className="px-4 py-2 font-medium text-slate-700 bg-slate-50 h-full flex items-center">
+                                      <div className="px-4 py-2 font-medium text-[#5A305A] bg-slate-50 h-full flex items-center">
                                         {lang.language}
                                       </div>
                                     ) : readOnly ? (
-                                      <div className="px-4 py-2 text-slate-700 h-full flex items-center">
+                                      <div className="px-4 py-2 text-[#5A305A] h-full flex items-center">
                                         {lang.language || "-"}
                                       </div>
                                     ) : (
@@ -3264,7 +3273,7 @@ export default function ApplicationForm({
                                   </td>
                                   <td className="p-0 border-r border-slate-200">
                                     {readOnly ? (
-                                      <div className="px-4 py-2 text-slate-700 text-center h-full flex items-center justify-center">
+                                      <div className="px-4 py-2 text-[#5A305A] text-center h-full flex items-center justify-center">
                                         {lang.writing || "-"}
                                       </div>
                                     ) : (
@@ -3289,7 +3298,7 @@ export default function ApplicationForm({
                                   </td>
                                   <td className="p-0 border-r border-slate-200">
                                     {readOnly ? (
-                                      <div className="px-4 py-2 text-slate-700 text-center h-full flex items-center justify-center">
+                                      <div className="px-4 py-2 text-[#5A305A] text-center h-full flex items-center justify-center">
                                         {lang.reading || "-"}
                                       </div>
                                     ) : (
@@ -3314,7 +3323,7 @@ export default function ApplicationForm({
                                   </td>
                                   <td className="p-0">
                                     {readOnly ? (
-                                      <div className="px-4 py-2 text-slate-700 text-center h-full flex items-center justify-center">
+                                      <div className="px-4 py-2 text-[#5A305A] text-center h-full flex items-center justify-center">
                                         {lang.speaking || "-"}
                                       </div>
                                     ) : (
@@ -3343,7 +3352,7 @@ export default function ApplicationForm({
                                         <button
                                           type="button"
                                           onClick={() => removeLanguage(index)}
-                                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors focus:opacity-100"
+                                          className="p-1.5 text-[#73507B] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors focus:opacity-100"
                                         >
                                           <Trash2 size={16} />
                                         </button>
@@ -3362,10 +3371,10 @@ export default function ApplicationForm({
                         <div className="flex items-center justify-between mb-3">
                           <h3 className="text-sm font-semibold text-[#5A305A]">
                             5. Penguasaan Keterampilan Tambahan{" "}
-                            <span className="text-slate-500 italic font-normal">
+                            <span className="text-[#73507B] italic font-normal">
                               (Skill Abilities)
                             </span>{" "}
-                            <span className="text-xs text-slate-400 font-normal">
+                            <span className="text-xs text-[#73507B] font-normal">
                               *Level 1 - 4 menunjukkan rendah ke tinggi
                             </span>
                           </h3>
@@ -3373,7 +3382,7 @@ export default function ApplicationForm({
                             <button
                               type="button"
                               onClick={addSkill}
-                              className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors flex items-center gap-1"
+                              className="text-xs font-bold text-[#5A305A] bg-[#5A305A]/5 px-3 py-1.5 rounded-lg hover:bg-[#5A305A]/10 transition-colors flex items-center gap-1"
                             >
                               <Plus size={14} /> Tambah Keterampilan
                             </button>
@@ -3381,7 +3390,7 @@ export default function ApplicationForm({
                         </div>
                         <div className="overflow-x-auto print:overflow-visible border border-slate-200 rounded-xl">
                           <table className="w-full min-w-[800px] print:min-w-0 text-sm text-left relative">
-                            <thead className="bg-indigo-50 text-indigo-900 border-b border-indigo-100">
+                            <thead className="bg-[#5A305A]/5 text-[#5A305A] border-b border-[#5A305A]/20">
                               <tr>
                                 <th
                                   className="px-4 py-3 font-semibold w-12 text-center"
@@ -3441,7 +3450,7 @@ export default function ApplicationForm({
                                   key={index}
                                   className="hover:bg-slate-50 group"
                                 >
-                                  <td className="px-4 py-2 font-medium text-slate-700 bg-slate-50 border-r border-slate-200 text-center">
+                                  <td className="px-4 py-2 font-medium text-[#5A305A] bg-slate-50 border-r border-slate-200 text-center">
                                     {index + 1}
                                   </td>
                                   <td className="p-0 border-r border-slate-200">
@@ -3557,7 +3566,7 @@ export default function ApplicationForm({
                                         <button
                                           type="button"
                                           onClick={() => removeSkill(index)}
-                                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors focus:opacity-100"
+                                          className="p-1.5 text-[#73507B] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors focus:opacity-100"
                                         >
                                           <Trash2 size={16} />
                                         </button>
@@ -3577,7 +3586,7 @@ export default function ApplicationForm({
                   <div>
                     <h2 className="text-lg font-bold text-[#5A305A] mb-4 bg-slate-100 py-2 px-4 rounded-lg">
                       IV. RIWAYAT PEKERJAAN{" "}
-                      <span className="text-slate-500 font-normal italic">
+                      <span className="text-[#73507B] font-normal italic">
                         - WORK HISTORICAL
                       </span>
                     </h2>
@@ -3587,7 +3596,7 @@ export default function ApplicationForm({
                         <h3 className="text-sm font-semibold text-[#5A305A] mb-3">
                           1. Isi pengalaman kerja dimulai dari pekerjaan
                           sekarang/terbaru{" "}
-                          <span className="text-slate-500 italic font-normal">
+                          <span className="text-[#73507B] italic font-normal">
                             (Work experience start from the current job/recent
                             work/newest)
                           </span>
@@ -3601,7 +3610,7 @@ export default function ApplicationForm({
                             >
                               {formData.work_experience.length > 1 && (
                                 <div className="flex items-center justify-between px-4 py-2 bg-slate-50 border-b border-slate-200 print:hidden">
-                                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                                  <span className="text-xs font-semibold text-[#73507B] uppercase tracking-wide">
                                     Riwayat Pekerjaan #{index + 1}
                                   </span>
                                   <button
@@ -3628,7 +3637,7 @@ export default function ApplicationForm({
                                     <td className="px-4 py-2">
                                       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
                                         <div className="flex items-center gap-2">
-                                          <span className="text-slate-500">
+                                          <span className="text-[#73507B]">
                                             Dari:
                                           </span>
                                           {readOnly ? (
@@ -3653,15 +3662,15 @@ export default function ApplicationForm({
                                             />
                                           )}
                                         </div>
-                                        <span className="text-slate-400 hidden sm:inline">
+                                        <span className="text-[#73507B] hidden sm:inline">
                                           s/d
                                         </span>
                                         <div className="flex items-center gap-2">
-                                          <span className="text-slate-500">
+                                          <span className="text-[#73507B]">
                                             Sampai:
                                           </span>
                                           {exp.is_current_job ? (
-                                            <span className="px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-sm text-slate-500 font-medium whitespace-nowrap">
+                                            <span className="px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-sm text-[#73507B] font-medium whitespace-nowrap">
                                               Saat Ini
                                             </span>
                                           ) : readOnly ? (
@@ -3712,7 +3721,7 @@ export default function ApplicationForm({
                                               }}
                                               className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
                                             />
-                                            <span className="text-sm text-slate-600">
+                                            <span className="text-sm text-[#73507B]">
                                               Sampai saat ini
                                             </span>
                                           </label>
@@ -3721,7 +3730,7 @@ export default function ApplicationForm({
                                     </td>
                                   </tr>
                                   <tr>
-                                    <td className="px-4 py-3 font-medium text-slate-700 bg-slate-50 border-r border-slate-200">
+                                    <td className="px-4 py-3 font-medium text-[#5A305A] bg-slate-50 border-r border-slate-200">
                                       Nama Perusahaan{" "}
                                       <span className="text-xs font-normal italic">
                                         (Company Name)
@@ -3743,7 +3752,7 @@ export default function ApplicationForm({
                                     </td>
                                   </tr>
                                   <tr>
-                                    <td className="px-4 py-3 font-medium text-slate-700 bg-slate-50 border-r border-slate-200">
+                                    <td className="px-4 py-3 font-medium text-[#5A305A] bg-slate-50 border-r border-slate-200">
                                       Alamat Perusahaan{" "}
                                       <span className="text-xs font-normal italic">
                                         (Company Address)
@@ -3765,7 +3774,7 @@ export default function ApplicationForm({
                                     </td>
                                   </tr>
                                   <tr>
-                                    <td className="px-4 py-3 font-medium text-slate-700 bg-slate-50 border-r border-slate-200">
+                                    <td className="px-4 py-3 font-medium text-[#5A305A] bg-slate-50 border-r border-slate-200">
                                       Bidang Usaha{" "}
                                       <span className="text-xs font-normal italic">
                                         (Business Line)
@@ -3787,7 +3796,7 @@ export default function ApplicationForm({
                                     </td>
                                   </tr>
                                   <tr>
-                                    <td className="px-4 py-3 font-medium text-slate-700 bg-slate-50 border-r border-slate-200">
+                                    <td className="px-4 py-3 font-medium text-[#5A305A] bg-slate-50 border-r border-slate-200">
                                       Jabatan{" "}
                                       <span className="text-xs font-normal italic">
                                         (Current Position)
@@ -3809,7 +3818,7 @@ export default function ApplicationForm({
                                     </td>
                                   </tr>
                                   <tr>
-                                    <td className="px-4 py-3 font-medium text-slate-700 bg-slate-50 border-r border-slate-200">
+                                    <td className="px-4 py-3 font-medium text-[#5A305A] bg-slate-50 border-r border-slate-200">
                                       Jabatan Atasan Langsung{" "}
                                       <span className="text-xs font-normal italic">
                                         (Direct Superior Title)
@@ -3831,7 +3840,7 @@ export default function ApplicationForm({
                                     </td>
                                   </tr>
                                   <tr>
-                                    <td className="px-4 py-3 font-medium text-slate-700 bg-slate-50 border-r border-slate-200">
+                                    <td className="px-4 py-3 font-medium text-[#5A305A] bg-slate-50 border-r border-slate-200">
                                       Total Karyawan{" "}
                                       <span className="text-xs font-normal italic">
                                         (Total number of employees)
@@ -3853,7 +3862,7 @@ export default function ApplicationForm({
                                     </td>
                                   </tr>
                                   <tr>
-                                    <td className="px-4 py-3 font-medium text-slate-700 bg-slate-50 border-r border-slate-200">
+                                    <td className="px-4 py-3 font-medium text-[#5A305A] bg-slate-50 border-r border-slate-200">
                                       Jumlah Bawahan{" "}
                                       <span className="text-xs font-normal italic">
                                         (Number of Sub-Ordinates)
@@ -3890,7 +3899,7 @@ export default function ApplicationForm({
                                   across pages instead. */}
                               <div className="divide-y divide-slate-200 border-t border-slate-200 text-sm text-left">
                                 <div>
-                                  <div className="px-4 py-3 font-medium text-slate-700 bg-slate-50 border-b border-slate-200">
+                                  <div className="px-4 py-3 font-medium text-[#5A305A] bg-slate-50 border-b border-slate-200">
                                     Deskripsi Pekerjaan{" "}
                                     <span className="text-xs font-normal italic">
                                       (Job Description)
@@ -3910,7 +3919,7 @@ export default function ApplicationForm({
                                   ></textarea>
                                 </div>
                                 <div>
-                                  <div className="px-4 py-3 font-medium text-slate-700 bg-slate-50 border-b border-slate-200">
+                                  <div className="px-4 py-3 font-medium text-[#5A305A] bg-slate-50 border-b border-slate-200">
                                     Alasan Keluar{" "}
                                     <span className="text-xs font-normal italic">
                                       (Reason for leaving)
@@ -3937,7 +3946,7 @@ export default function ApplicationForm({
                         <button
                           type="button"
                           onClick={addWorkExperience}
-                          className="mt-4 flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 font-medium rounded-lg hover:bg-indigo-100 transition-colors text-sm"
+                          className="mt-4 flex items-center gap-2 px-4 py-2 bg-[#5A305A]/5 text-[#5A305A] font-medium rounded-lg hover:bg-[#5A305A]/10 transition-colors text-sm"
                         >
                           <Plus size={16} />
                           Tambah Riwayat Pekerjaan
@@ -3949,7 +3958,7 @@ export default function ApplicationForm({
                         <div>
                           <h3 className="text-sm font-semibold text-[#5A305A] mb-2">
                             2. Prestasi yang pernah dicapai selama bekerja{" "}
-                            <span className="text-slate-500 italic font-normal">
+                            <span className="text-[#73507B] italic font-normal">
                               (achievement & accomplishment in work)?
                             </span>{" "}
                             <span className="text-red-500">*</span>
@@ -3966,7 +3975,7 @@ export default function ApplicationForm({
                           <h3 className="text-sm font-semibold text-[#5A305A] mb-2">
                             3. Bagaimana respon Anda saat bekerja di bawah
                             tekanan dan dikejar tenggat waktu?{" "}
-                            <span className="text-slate-500 italic font-normal">
+                            <span className="text-[#73507B] italic font-normal">
                               (How do you respond when working under pressure
                               and facing deadlines?)
                             </span>{" "}
@@ -3984,7 +3993,7 @@ export default function ApplicationForm({
                           <h3 className="text-sm font-semibold text-[#5A305A] mb-2">
                             4. Jelaskan tugas dari posisi yang Anda lamar, dan
                             alasan Anda melamar posisi ini.{" "}
-                            <span className="text-slate-500 italic font-normal">
+                            <span className="text-[#73507B] italic font-normal">
                               (Please explain about the job desc and the reason
                               why you interested in this position.)
                             </span>{" "}
@@ -4003,7 +4012,7 @@ export default function ApplicationForm({
                             5. Bagaimana strategi Anda agar dapat terus
                             berkembang dan memberikan kontribusi bagi
                             perusahaan?{" "}
-                            <span className="text-slate-500 italic font-normal">
+                            <span className="text-[#73507B] italic font-normal">
                               (What is your strategy to continue to develop and
                               contribute to the company?)
                             </span>{" "}
@@ -4021,7 +4030,7 @@ export default function ApplicationForm({
                           <h3 className="text-sm font-semibold text-[#5A305A] mb-2">
                             6. Mengapa Anda tertarik bergabung dengan Waruna
                             Group?{" "}
-                            <span className="text-slate-500 italic font-normal">
+                            <span className="text-[#73507B] italic font-normal">
                               (Why are you interested in joining Waruna Group?)
                             </span>{" "}
                             <span className="text-red-500">*</span>
@@ -4042,7 +4051,7 @@ export default function ApplicationForm({
                   <div>
                     <h2 className="text-lg font-bold text-[#5A305A] mb-4 bg-slate-100 py-2 px-4 rounded-lg">
                       V. KETERANGAN LAINNYA{" "}
-                      <span className="text-slate-500 font-normal italic">
+                      <span className="text-[#73507B] font-normal italic">
                         - OTHER INFORMATION
                       </span>
                     </h2>
@@ -4053,7 +4062,7 @@ export default function ApplicationForm({
                         <h3 className="text-sm font-semibold text-[#5A305A] mb-2">
                           1. Apakah Anda pernah menderita sakit berat hingga
                           dirawat di rumah sakit{" "}
-                          <span className="text-slate-500 italic font-normal">
+                          <span className="text-[#73507B] italic font-normal">
                             (Have you ever been hospitalized or seriously ill in
                             long time period)?
                           </span>{" "}
@@ -4070,9 +4079,9 @@ export default function ApplicationForm({
                                 onChange={handleInputChange}
                                 className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500"
                               />
-                              <span className="text-sm text-slate-700">
+                              <span className="text-sm text-[#5A305A]">
                                 Tidak{" "}
-                                <span className="text-slate-400 italic">
+                                <span className="text-[#73507B] italic">
                                   / No
                                 </span>
                               </span>
@@ -4086,9 +4095,9 @@ export default function ApplicationForm({
                                 onChange={handleInputChange}
                                 className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500"
                               />
-                              <span className="text-sm text-slate-700">
+                              <span className="text-sm text-[#5A305A]">
                                 Ya{" "}
-                                <span className="text-slate-400 italic">
+                                <span className="text-[#73507B] italic">
                                   / Yes
                                 </span>
                               </span>
@@ -4096,9 +4105,9 @@ export default function ApplicationForm({
                           </div>
                           {formData.hospitalized === "Ya" && (
                             <div className="flex-1 flex items-center gap-2">
-                              <span className="text-sm text-slate-600 whitespace-nowrap">
+                              <span className="text-sm text-[#73507B] whitespace-nowrap">
                                 Jelaskan{" "}
-                                <span className="text-slate-400 italic">
+                                <span className="text-[#73507B] italic">
                                   (please explain)
                                 </span>{" "}
                                 :
@@ -4120,7 +4129,7 @@ export default function ApplicationForm({
                         <h3 className="text-sm font-semibold text-[#5A305A] mb-2">
                           2. Apakah Anda pernah terlibat/menjadi terdakwa dalam
                           tindak pidana/perdata?{" "}
-                          <span className="text-slate-500 italic font-normal">
+                          <span className="text-[#73507B] italic font-normal">
                             (Do you ever have involved in crime/civil issue)?
                           </span>{" "}
                           <span className="text-red-500">*</span>
@@ -4136,9 +4145,9 @@ export default function ApplicationForm({
                                 onChange={handleInputChange}
                                 className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500"
                               />
-                              <span className="text-sm text-slate-700">
+                              <span className="text-sm text-[#5A305A]">
                                 Tidak{" "}
-                                <span className="text-slate-400 italic">
+                                <span className="text-[#73507B] italic">
                                   / No
                                 </span>
                               </span>
@@ -4152,9 +4161,9 @@ export default function ApplicationForm({
                                 onChange={handleInputChange}
                                 className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500"
                               />
-                              <span className="text-sm text-slate-700">
+                              <span className="text-sm text-[#5A305A]">
                                 Ya{" "}
-                                <span className="text-slate-400 italic">
+                                <span className="text-[#73507B] italic">
                                   / Yes
                                 </span>
                               </span>
@@ -4162,9 +4171,9 @@ export default function ApplicationForm({
                           </div>
                           {formData.crime_involved === "Ya" && (
                             <div className="flex-1 flex items-center gap-2">
-                              <span className="text-sm text-slate-600 whitespace-nowrap">
+                              <span className="text-sm text-[#73507B] whitespace-nowrap">
                                 Jelaskan{" "}
-                                <span className="text-slate-400 italic">
+                                <span className="text-[#73507B] italic">
                                   (please explain)
                                 </span>{" "}
                                 :
@@ -4185,7 +4194,7 @@ export default function ApplicationForm({
                       <div>
                         <h3 className="text-sm font-semibold text-[#5A305A] mb-2">
                           3. Apakah Anda pernah bergabung di Waruna Group?{" "}
-                          <span className="text-slate-500 italic font-normal">
+                          <span className="text-[#73507B] italic font-normal">
                             (Do you ever worked in Waruna Group?)
                           </span>{" "}
                           <span className="text-red-500">*</span>
@@ -4201,9 +4210,9 @@ export default function ApplicationForm({
                                 onChange={handleInputChange}
                                 className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500"
                               />
-                              <span className="text-sm text-slate-700">
+                              <span className="text-sm text-[#5A305A]">
                                 Tidak{" "}
-                                <span className="text-slate-400 italic">
+                                <span className="text-[#73507B] italic">
                                   / No
                                 </span>
                               </span>
@@ -4217,9 +4226,9 @@ export default function ApplicationForm({
                                 onChange={handleInputChange}
                                 className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500"
                               />
-                              <span className="text-sm text-slate-700">
+                              <span className="text-sm text-[#5A305A]">
                                 Ya{" "}
-                                <span className="text-slate-400 italic">
+                                <span className="text-[#73507B] italic">
                                   / Yes
                                 </span>
                               </span>
@@ -4228,9 +4237,9 @@ export default function ApplicationForm({
                           {formData.worked_in_waruna === "Ya" && (
                             <div className="flex-1 space-y-2">
                               <div className="flex items-center gap-2">
-                                <span className="text-sm text-slate-600 w-48">
+                                <span className="text-sm text-[#73507B] w-48">
                                   Posisi/Lokasi{" "}
-                                  <span className="text-slate-400 italic">
+                                  <span className="text-[#73507B] italic">
                                     (Position/Location)
                                   </span>
                                 </span>
@@ -4243,9 +4252,9 @@ export default function ApplicationForm({
                                 />
                               </div>
                               <div className="flex items-center gap-2">
-                                <span className="text-sm text-slate-600 w-48">
+                                <span className="text-sm text-[#73507B] w-48">
                                   Periode{" "}
-                                  <span className="text-slate-400 italic">
+                                  <span className="text-[#73507B] italic">
                                     (Periode)
                                   </span>
                                 </span>
@@ -4267,7 +4276,7 @@ export default function ApplicationForm({
                         <h3 className="text-sm font-semibold text-[#5A305A] mb-2">
                           4. Apakah Anda sedang proses seleksi di perusahaan
                           lain?{" "}
-                          <span className="text-slate-500 italic font-normal">
+                          <span className="text-[#73507B] italic font-normal">
                             Are you currently applying and being processed at
                             another company?
                           </span>{" "}
@@ -4286,9 +4295,9 @@ export default function ApplicationForm({
                                 onChange={handleInputChange}
                                 className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500"
                               />
-                              <span className="text-sm text-slate-700">
+                              <span className="text-sm text-[#5A305A]">
                                 Tidak{" "}
-                                <span className="text-slate-400 italic">
+                                <span className="text-[#73507B] italic">
                                   / No
                                 </span>
                               </span>
@@ -4304,9 +4313,9 @@ export default function ApplicationForm({
                                 onChange={handleInputChange}
                                 className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500"
                               />
-                              <span className="text-sm text-slate-700">
+                              <span className="text-sm text-[#5A305A]">
                                 Ya{" "}
-                                <span className="text-slate-400 italic">
+                                <span className="text-[#73507B] italic">
                                   / Yes
                                 </span>
                               </span>
@@ -4314,9 +4323,9 @@ export default function ApplicationForm({
                           </div>
                           {formData.applying_other_company === "Ya" && (
                             <div className="flex-1 flex items-center gap-2">
-                              <span className="text-sm text-slate-600 whitespace-nowrap">
+                              <span className="text-sm text-[#73507B] whitespace-nowrap">
                                 Jelaskan{" "}
-                                <span className="text-slate-400 italic">
+                                <span className="text-[#73507B] italic">
                                   (please explain)
                                 </span>{" "}
                                 :
@@ -4338,14 +4347,14 @@ export default function ApplicationForm({
                         <h3 className="text-sm font-semibold text-[#5A305A] mb-3">
                           5. Apakah ada karyawan/karyawati yang Anda kenal di
                           Waruna Group?{" "}
-                          <span className="text-slate-500 italic font-normal">
+                          <span className="text-[#73507B] italic font-normal">
                             Are there any employees that you know at Waruna
                             Group?
                           </span>
                         </h3>
                         <div className="overflow-x-auto print:overflow-visible border border-slate-200 rounded-xl">
                           <table className="w-full min-w-[800px] print:min-w-0 text-sm text-left">
-                            <thead className="bg-purple-50 text-indigo-900 border-b border-indigo-100">
+                            <thead className="bg-[#5A305A]/5 text-[#5A305A] border-b border-[#5A305A]/20">
                               <tr>
                                 <th className="px-4 py-3 font-semibold w-1/3 text-center">
                                   Nama Lengkap{" "}
@@ -4428,7 +4437,7 @@ export default function ApplicationForm({
                           6. Sebutkan 3 kenalan mis. mantan atasan (tidak ada
                           hubungan keluarga) yg dapat memberikan keterangan
                           tentang kinerja Anda /{" "}
-                          <span className="text-slate-500 italic font-normal">
+                          <span className="text-[#73507B] italic font-normal">
                             Please attach 3 references from the people (not
                             family member) that might give the information about
                             you?
@@ -4437,7 +4446,7 @@ export default function ApplicationForm({
                         </h3>
                         <div className="overflow-x-auto print:overflow-visible border border-slate-200 rounded-xl">
                           <table className="w-full min-w-[800px] print:min-w-0 text-sm text-left">
-                            <thead className="bg-purple-50 text-indigo-900 border-b border-indigo-100">
+                            <thead className="bg-[#5A305A]/5 text-[#5A305A] border-b border-[#5A305A]/20">
                               <tr>
                                 <th className="px-4 py-3 font-semibold w-1/5 text-center">
                                   Nama Lengkap <br />
@@ -4562,7 +4571,7 @@ export default function ApplicationForm({
                         <h3 className="text-sm font-semibold text-[#5A305A] mb-3">
                           7. Referensi keluarga yang dapat dihubungi ketika
                           keadaan darurat{" "}
-                          <span className="text-slate-500 italic font-normal">
+                          <span className="text-[#73507B] italic font-normal">
                             (Family member that available to contact in
                             emergency)?
                           </span>{" "}
@@ -4570,7 +4579,7 @@ export default function ApplicationForm({
                         </h3>
                         <div className="overflow-x-auto print:overflow-visible border border-slate-200 rounded-xl">
                           <table className="w-full min-w-[800px] print:min-w-0 text-sm text-left">
-                            <thead className="bg-purple-50 text-indigo-900 border-b border-indigo-100">
+                            <thead className="bg-[#5A305A]/5 text-[#5A305A] border-b border-[#5A305A]/20">
                               <tr>
                                 <th className="px-4 py-3 font-semibold w-1/4 text-center">
                                   Nama{" "}
@@ -4661,7 +4670,7 @@ export default function ApplicationForm({
                         <h3 className="text-sm font-semibold text-[#5A305A] mb-2">
                           8. Jelaskan faktor yang membuat anda bertahan lama
                           (loyal) di suatu perusahaan?{" "}
-                          <span className="text-slate-500 italic font-normal">
+                          <span className="text-[#73507B] italic font-normal">
                             (Explain what was the most important thing that
                             retain you in a company?)
                           </span>{" "}
@@ -4681,7 +4690,7 @@ export default function ApplicationForm({
                         <h3 className="text-sm font-semibold text-[#5A305A] mb-2">
                           9. Hal apa yang paling membuat Anda dapat meningkatkan
                           produktivitas kerja?{" "}
-                          <span className="text-slate-500 italic font-normal">
+                          <span className="text-[#73507B] italic font-normal">
                             (What is the most important thing that can increase
                             your work productivity?)
                           </span>{" "}
@@ -4701,7 +4710,7 @@ export default function ApplicationForm({
                         <h3 className="text-sm font-semibold text-[#5A305A] mb-3">
                           10. Urutkan berdasarkan skala prioritas dari 1 sampai
                           6 Motivasi Anda bergabung dengan Waruna Group.{" "}
-                          <span className="text-slate-500 italic font-normal">
+                          <span className="text-[#73507B] italic font-normal">
                             (Please arrange from 1 to 6 the motivation to join
                             Waruna Group on below lists).
                           </span>{" "}
@@ -4725,9 +4734,9 @@ export default function ApplicationForm({
                                 }
                                 className="w-12 shrink-0 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                               />
-                              <span className="text-sm text-slate-700">
+                              <span className="text-sm text-[#5A305A]">
                                 Lokasi Kerja{" "}
-                                <span className="text-slate-400 italic">
+                                <span className="text-[#73507B] italic">
                                   (Work Location)
                                 </span>
                               </span>
@@ -4746,9 +4755,9 @@ export default function ApplicationForm({
                                 }
                                 className="w-12 shrink-0 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                               />
-                              <span className="text-sm text-slate-700">
+                              <span className="text-sm text-[#5A305A]">
                                 Jenjang Karir/Status Karyawan{" "}
-                                <span className="text-slate-400 italic">
+                                <span className="text-[#73507B] italic">
                                   (Career Path/employee status)
                                 </span>
                               </span>
@@ -4770,9 +4779,9 @@ export default function ApplicationForm({
                                 }
                                 className="w-12 shrink-0 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                               />
-                              <span className="text-sm text-slate-700">
+                              <span className="text-sm text-[#5A305A]">
                                 Pengembangan Diri{" "}
-                                <span className="text-slate-400 italic">
+                                <span className="text-[#73507B] italic">
                                   (Self-Actualization)
                                 </span>
                               </span>
@@ -4793,9 +4802,9 @@ export default function ApplicationForm({
                                 }
                                 className="w-12 shrink-0 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                               />
-                              <span className="text-sm text-slate-700">
+                              <span className="text-sm text-[#5A305A]">
                                 Tantangan/variasi pekerjaan{" "}
-                                <span className="text-slate-400 italic">
+                                <span className="text-[#73507B] italic">
                                   (Challenge / task variation)
                                 </span>
                               </span>
@@ -4817,9 +4826,9 @@ export default function ApplicationForm({
                                 }
                                 className="w-12 shrink-0 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                               />
-                              <span className="text-sm text-slate-700">
+                              <span className="text-sm text-[#5A305A]">
                                 Lingkungan Kerja{" "}
-                                <span className="text-slate-400 italic">
+                                <span className="text-[#73507B] italic">
                                   (Social Working Environment)
                                 </span>
                               </span>
@@ -4840,9 +4849,9 @@ export default function ApplicationForm({
                                 }
                                 className="w-12 shrink-0 px-2 py-1 text-center bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                               />
-                              <span className="text-sm text-slate-700">
+                              <span className="text-sm text-[#5A305A]">
                                 Salary & Benefit{" "}
-                                <span className="text-slate-400 italic">
+                                <span className="text-[#73507B] italic">
                                   (Compensation & Benefit)
                                 </span>
                               </span>
@@ -4855,7 +4864,7 @@ export default function ApplicationForm({
                       <div className="flex flex-col sm:flex-row sm:items-center print:flex-col print:items-stretch gap-4 border border-slate-200 p-4 rounded-xl bg-slate-50">
                         <h3 className="text-sm font-semibold text-[#5A305A]">
                           11. Jika DITERIMA, kapan Anda dapat mulai bekerja{" "}
-                          <span className="text-slate-500 italic font-normal">
+                          <span className="text-[#73507B] italic font-normal">
                             (if you are ACCEPTED, when will you able to join)?
                           </span>{" "}
                           <span className="text-red-500">*</span>
@@ -4877,15 +4886,15 @@ export default function ApplicationForm({
                   <div className="print:break-before-page">
                     <h2 className="text-lg font-bold text-[#5A305A] mb-4 bg-slate-100 py-2 px-4 rounded-lg">
                       VI. DOKUMEN KELENGKAPAN{" "}
-                      <span className="text-slate-500 font-normal italic">
+                      <span className="text-[#73507B] font-normal italic">
                         - ATTACHMENTS
                       </span>
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <label className="block text-sm font-medium text-slate-700">
+                        <label className="block text-sm font-medium text-[#5A305A]">
                           Scan KTP{" "}
-                          <span className="text-slate-400 italic">
+                          <span className="text-[#73507B] italic">
                             (ID Card)
                           </span>{" "}
                           <span className="text-red-500">*</span>{" "}
@@ -4904,14 +4913,14 @@ export default function ApplicationForm({
                             onChange={(e) =>
                               handleFileChange(e, setKtpFile, "KTP")
                             }
-                            className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                            className="w-full text-sm text-[#73507B] file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-[#5A305A] hover:file:bg-indigo-100"
                           />
                         )}
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-sm font-medium text-slate-700">
+                        <label className="block text-sm font-medium text-[#5A305A]">
                           Scan Ijazah{" "}
-                          <span className="text-slate-400 italic">
+                          <span className="text-[#73507B] italic">
                             (Certificate)
                           </span>{" "}
                           <span className="text-red-500">*</span>{" "}
@@ -4930,14 +4939,14 @@ export default function ApplicationForm({
                             onChange={(e) =>
                               handleFileChange(e, setIjazahFile, "Ijazah")
                             }
-                            className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                            className="w-full text-sm text-[#73507B] file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-[#5A305A] hover:file:bg-indigo-100"
                           />
                         )}
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-sm font-medium text-slate-700">
+                        <label className="block text-sm font-medium text-[#5A305A]">
                           Scan Transkrip Nilai{" "}
-                          <span className="text-slate-400 italic">
+                          <span className="text-[#73507B] italic">
                             (Transcript)
                           </span>{" "}
                           <span className="text-red-500">*</span>{" "}
@@ -4963,14 +4972,14 @@ export default function ApplicationForm({
                                 "Transkrip Nilai",
                               )
                             }
-                            className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                            className="w-full text-sm text-[#73507B] file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-[#5A305A] hover:file:bg-indigo-100"
                           />
                         )}
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-sm font-medium text-slate-700">
+                        <label className="block text-sm font-medium text-[#5A305A]">
                           Dokumen Lainnya{" "}
-                          <span className="text-slate-400 italic">
+                          <span className="text-[#73507B] italic">
                             (Other Documents)
                           </span>{" "}
                           {!readOnly && (
@@ -4993,7 +5002,7 @@ export default function ApplicationForm({
                                   </div>
                                 ))
                             ) : (
-                              <span className="text-sm text-slate-500">-</span>
+                              <span className="text-sm text-[#73507B]">-</span>
                             )}
                           </div>
                         ) : (
@@ -5009,18 +5018,18 @@ export default function ApplicationForm({
                                 3,
                               )
                             }
-                            className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                            className="w-full text-sm text-[#73507B] file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-[#5A305A] hover:file:bg-indigo-100"
                           />
                         )}
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-sm font-medium text-slate-700">
+                        <label className="block text-sm font-medium text-[#5A305A]">
                           Bahan Presentasi / Portofolio{" "}
-                          <span className="text-slate-400 italic">
+                          <span className="text-[#73507B] italic">
                             (Pitch Deck / Portfolio)
                           </span>{" "}
                           {!readOnly && (
-                            <span className="text-xs text-slate-500">
+                            <span className="text-xs text-[#73507B]">
                               Opsional. Maks. 2 file (PDF/PPT/PPTX), total
                               maksimal 5MB.
                             </span>
@@ -5040,7 +5049,7 @@ export default function ApplicationForm({
                                   </div>
                                 ))
                             ) : (
-                              <span className="text-sm text-slate-500">-</span>
+                              <span className="text-sm text-[#73507B]">-</span>
                             )}
                           </div>
                         ) : (
@@ -5049,7 +5058,7 @@ export default function ApplicationForm({
                             multiple
                             accept=".pdf,.ppt,.pptx"
                             onChange={handlePortfolioFileChange}
-                            className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                            className="w-full text-sm text-[#73507B] file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-[#5A305A] hover:file:bg-indigo-100"
                           />
                         )}
                       </div>
@@ -5057,7 +5066,7 @@ export default function ApplicationForm({
                   </div>
 
                   {/* Declaration Section */}
-                  <div className="mt-12 border-2 border-indigo-100 bg-indigo-50 rounded-2xl p-6 sm:p-8">
+                  <div className="mt-12 border-2 border-[#5A305A]/20 bg-[#5A305A]/5 rounded-2xl p-6 sm:p-8">
                     <div className="text-center space-y-4 mb-8">
                       <p className="text-sm font-medium text-[#5A305A] leading-relaxed">
                         Dengan ini saya menjamin bahwa jawaban yang saya berikan
@@ -5068,7 +5077,7 @@ export default function ApplicationForm({
                         palsu, maka Saya bersedia diambil tindakan sesuai dengan
                         peraturan yang berlaku.
                       </p>
-                      <p className="text-xs text-slate-500 italic leading-relaxed">
+                      <p className="text-xs text-[#73507B] italic leading-relaxed">
                         (Hereby I certify that all of the statements above are
                         CORRECT and give the authorization to PT. Waruna Nusa
                         Sentana to make any inquiries concerning my self, If one
@@ -5078,7 +5087,7 @@ export default function ApplicationForm({
                       </p>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-8 border-t border-indigo-100 pt-8">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-8 border-t border-[#5A305A]/20 pt-8">
                       <div className="flex items-center gap-3">
                         <input
                           type="checkbox"
@@ -5096,7 +5105,7 @@ export default function ApplicationForm({
                         />
                         <label
                           htmlFor="declaration_agreed"
-                          className="text-sm font-semibold text-slate-700 cursor-pointer select-none"
+                          className="text-sm font-semibold text-[#5A305A] cursor-pointer select-none"
                         >
                           Saya menyetujui pernyataan di atas{" "}
                           <span className="text-red-500">*</span>
@@ -5104,7 +5113,7 @@ export default function ApplicationForm({
                       </div>
 
                       <div className="text-center">
-                        <p className="text-sm text-slate-600 mb-4">
+                        <p className="text-sm text-[#73507B] mb-4">
                           Medan,{" "}
                           {new Date().toLocaleDateString("id-ID", {
                             day: "numeric",
@@ -5121,7 +5130,7 @@ export default function ApplicationForm({
                                 className="w-full h-32 sm:w-64 object-contain"
                               />
                             ) : (
-                              <div className="w-full h-32 sm:w-64 flex items-center justify-center text-slate-400 text-sm">
+                              <div className="w-full h-32 sm:w-64 flex items-center justify-center text-[#73507B] text-sm">
                                 Tidak ada tanda tangan
                               </div>
                             )
@@ -5146,7 +5155,7 @@ export default function ApplicationForm({
                                   sigCanvas.current?.clear();
                                   lastSignatureData.current = null;
                                 }}
-                                className="absolute top-2 right-2 p-1.5 bg-slate-100 text-slate-500 rounded-lg transition-colors hover:bg-red-50 hover:text-red-600 shadow-sm"
+                                className="absolute top-2 right-2 p-1.5 bg-slate-100 text-[#73507B] rounded-lg transition-colors hover:bg-red-50 hover:text-red-600 shadow-sm"
                                 title="Hapus Tanda Tangan"
                               >
                                 <Eraser size={16} />
@@ -5164,7 +5173,7 @@ export default function ApplicationForm({
                           Nama lengkap & tanda tangan{" "}
                           <span className="text-red-500">*</span>
                         </p>
-                        <p className="text-xs text-slate-500 italic mb-2">
+                        <p className="text-xs text-[#73507B] italic mb-2">
                           (Full Name & Signature)
                         </p>
                         {readOnly ? (
@@ -5185,7 +5194,7 @@ export default function ApplicationForm({
 
             {readOnly && (
               <div
-                className="w-full block max-w-4xl mx-auto bg-white p-4 sm:p-8 mt-8 border-t-4 border-slate-100 print:border-none print:break-before-page"
+                className="w-full block max-w-6xl mx-auto bg-white p-4 sm:p-8 mt-8 border-t-4 border-slate-100 print:border-none print:break-before-page"
               >
                 <h2 className="text-xl font-bold text-[#5A305A] mb-6 border-b pb-2">
                   LAMPIRAN DOKUMEN
@@ -5193,7 +5202,7 @@ export default function ApplicationForm({
                 <div className="space-y-12">
                   {resolvedDocs.ktp_url && (
                     <div className="pdf-avoid-break">
-                      <h3 className="font-bold text-slate-700 mb-4">
+                      <h3 className="font-bold text-[#5A305A] mb-4">
                         Scan KTP
                       </h3>
                       {resolvedDocs.ktp_url
@@ -5212,7 +5221,7 @@ export default function ApplicationForm({
                   )}
                   {resolvedDocs.ijazah_url && (
                     <div className="pdf-avoid-break">
-                      <h3 className="font-bold text-slate-700 mb-4">
+                      <h3 className="font-bold text-[#5A305A] mb-4">
                         Scan Ijazah
                       </h3>
                       {resolvedDocs.ijazah_url
@@ -5234,7 +5243,7 @@ export default function ApplicationForm({
                   )}
                   {resolvedDocs.transcript_url && (
                     <div className="pdf-avoid-break">
-                      <h3 className="font-bold text-slate-700 mb-4">
+                      <h3 className="font-bold text-[#5A305A] mb-4">
                         Scan Transkrip Nilai
                       </h3>
                       {resolvedDocs.transcript_url
@@ -5256,7 +5265,7 @@ export default function ApplicationForm({
                   )}
                   {resolvedDocs.other_doc_url && (
                     <div className="pdf-avoid-break">
-                      <h3 className="font-bold text-slate-700 mb-4">
+                      <h3 className="font-bold text-[#5A305A] mb-4">
                         Dokumen Lainnya
                       </h3>
                       <div className="space-y-8">
@@ -5289,7 +5298,7 @@ export default function ApplicationForm({
                   )}
                   {resolvedDocs.portfolio_url && (
                     <div className="pdf-avoid-break">
-                      <h3 className="font-bold text-slate-700 mb-4">
+                      <h3 className="font-bold text-[#5A305A] mb-4">
                         Bahan Presentasi / Portofolio
                       </h3>
                       <div className="space-y-8">
@@ -5330,7 +5339,7 @@ export default function ApplicationForm({
                     !initialData?.other_doc_url &&
                     !initialData?.portfolio_url &&
                     (!initialData?.payslip_url || hideSalary) && (
-                      <div className="text-slate-500 italic">
+                      <div className="text-[#73507B] italic">
                         Tidak ada lampiran dokumen.
                       </div>
                     )}
@@ -5347,7 +5356,7 @@ export default function ApplicationForm({
               "mx-auto bg-white overflow-hidden print:overflow-visible print:shadow-none print:border-none print:mt-8 mt-8",
               readOnly
                 ? "w-full rounded-2xl shadow-sm border border-slate-200"
-                : "w-full max-w-4xl rounded-2xl shadow-xl",
+                : "w-full max-w-6xl rounded-2xl shadow-xl",
             )}
             style={
               readOnly && !onlyRemuneration ? { pageBreakBefore: "always" } : {}
@@ -5363,14 +5372,14 @@ export default function ApplicationForm({
               <fieldset disabled={readOnly} className="space-y-8 min-w-0">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-2">
-                    <label className="block text-sm font-bold text-slate-700">
+                    <label className="block text-sm font-bold text-[#5A305A]">
                       Gaji Sekarang / Gaji terakhir saat bekerja{" "}
-                      <span className="text-slate-400 font-normal italic">
+                      <span className="text-[#73507B] font-normal italic">
                         *Diisi jika ada
                       </span>
                     </label>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-medium">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#73507B] font-medium">
                         Rp.
                       </span>
                       <input
@@ -5388,12 +5397,12 @@ export default function ApplicationForm({
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="block text-sm font-bold text-slate-700">
+                    <label className="block text-sm font-bold text-[#5A305A]">
                       Gaji Yang Diharapkan{" "}
                       <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-medium">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#73507B] font-medium">
                         Rp.
                       </span>
                       <input
@@ -5414,7 +5423,7 @@ export default function ApplicationForm({
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-sm font-bold text-slate-700">
+                  <label className="block text-sm font-bold text-[#5A305A]">
                     Upload Slip Gaji Terakhir{" "}
                     {!readOnly && <span className="text-red-500">*</span>}{" "}
                     {!readOnly && (
@@ -5437,7 +5446,7 @@ export default function ApplicationForm({
                             </div>
                           ))
                       ) : (
-                        <span className="text-sm text-slate-500">-</span>
+                        <span className="text-sm text-[#73507B]">-</span>
                       )}
                     </div>
                   ) : (
@@ -5453,14 +5462,14 @@ export default function ApplicationForm({
                           2,
                         )
                       }
-                      className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                      className="w-full text-sm text-[#73507B] file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-[#5A305A] hover:file:bg-indigo-100"
                     />
                   )}
                 </div>
 
                 <div className="border border-slate-200 rounded-xl overflow-hidden mt-8">
                   <div className="bg-slate-50 px-4 py-3 border-b border-slate-200">
-                    <h3 className="font-bold text-slate-700 text-center">
+                    <h3 className="font-bold text-[#5A305A] text-center">
                       Dibuat Oleh,
                     </h3>
                   </div>
@@ -5474,7 +5483,7 @@ export default function ApplicationForm({
                             className="w-full h-40 object-contain"
                           />
                         ) : (
-                          <div className="w-full h-40 flex items-center justify-center text-slate-400 text-sm">
+                          <div className="w-full h-40 flex items-center justify-center text-[#73507B] text-sm">
                             Tidak ada tanda tangan
                           </div>
                         )
@@ -5499,7 +5508,7 @@ export default function ApplicationForm({
                               remunerationSigCanvas.current?.clear();
                               lastRemunerationSignatureData.current = null;
                             }}
-                            className="absolute top-2 right-2 p-1.5 bg-slate-100 text-slate-500 rounded-lg transition-colors hover:bg-red-50 hover:text-red-600 shadow-sm"
+                            className="absolute top-2 right-2 p-1.5 bg-slate-100 text-[#73507B] rounded-lg transition-colors hover:bg-red-50 hover:text-red-600 shadow-sm"
                             title="Hapus Tanda Tangan"
                           >
                             <Eraser size={16} />
@@ -5513,13 +5522,13 @@ export default function ApplicationForm({
                         </>
                       )}
                     </div>
-                    <p className="text-sm font-semibold text-slate-500">
+                    <p className="text-sm font-semibold text-[#73507B]">
                       Tanda Tangan <span className="text-red-500">*</span>
                     </p>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-200">
                     <div className="p-4 flex items-center justify-between sm:justify-center gap-4">
-                      <span className="text-sm font-bold text-slate-500 sm:hidden">
+                      <span className="text-sm font-bold text-[#73507B] sm:hidden">
                         Nama:
                       </span>
                       {readOnly ? (
@@ -5538,15 +5547,15 @@ export default function ApplicationForm({
                       )}
                     </div>
                     <div className="p-4 flex items-center justify-between sm:justify-center gap-4 bg-slate-50">
-                      <span className="text-sm font-bold text-slate-500 sm:hidden">
+                      <span className="text-sm font-bold text-[#73507B] sm:hidden">
                         Jabatan:
                       </span>
-                      <span className="font-medium text-slate-700 text-center w-full">
+                      <span className="font-medium text-[#5A305A] text-center w-full">
                         Calon Karyawan
                       </span>
                     </div>
                     <div className="p-4 flex items-center justify-between sm:justify-center gap-4">
-                      <span className="text-sm font-bold text-slate-500 sm:hidden">
+                      <span className="text-sm font-bold text-[#73507B] sm:hidden">
                         Tanggal:
                       </span>
                       {readOnly ? (
@@ -5571,7 +5580,7 @@ export default function ApplicationForm({
         )}
 
         {!readOnly && (
-          <div className="w-full max-w-4xl mx-auto flex justify-end no-print">
+          <div className="w-full max-w-6xl mx-auto flex justify-end no-print">
             <button
               type="submit"
               disabled={loading}
@@ -5587,7 +5596,7 @@ export default function ApplicationForm({
 
         {readOnly && !hideSalary && resolvedDocs.payslip_url && (
           <div
-            className="w-full block max-w-4xl mx-auto bg-white p-4 sm:p-8 mt-8 border-t-4 border-slate-100 print:border-none print:break-before-page"
+            className="w-full block max-w-6xl mx-auto bg-white p-4 sm:p-8 mt-8 border-t-4 border-slate-100 print:border-none print:break-before-page"
           >
             <h2 className="text-xl font-bold text-[#5A305A] mb-6 border-b pb-2">
               LAMPIRAN SLIP GAJI
