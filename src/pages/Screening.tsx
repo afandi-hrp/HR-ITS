@@ -1059,7 +1059,7 @@ export default function Screening() {
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex-1 min-w-[120px]">
                 <div className="relative w-full">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#73507B]" size={18} />
                   <input
                     type="text"
                     placeholder="Cari nama kandidat atau posisi..."
@@ -1071,11 +1071,11 @@ export default function Screening() {
               </div>
               <div className="flex flex-wrap items-center gap-2">
               <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 max-w-[150px]">
-                <Filter size={16} className="text-slate-400 shrink-0" />
+                <Filter size={16} className="text-[#73507B] shrink-0" />
                 <select
                   value={positionFilter}
                   onChange={(e) => setPositionFilter(e.target.value)}
-                  className="bg-transparent text-sm focus:outline-none text-slate-700 w-full truncate"
+                  className="bg-transparent text-sm focus:outline-none text-[#5A305A] w-full truncate"
                 >
                   <option value="all">Semua Lowongan</option>
                   {openPositions.map((pos) => (
@@ -1084,11 +1084,11 @@ export default function Screening() {
                 </select>
               </div>
               <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 max-w-[140px]">
-                <Filter size={16} className="text-slate-400 shrink-0" />
+                <Filter size={16} className="text-[#73507B] shrink-0" />
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="bg-transparent text-sm focus:outline-none text-slate-700 w-full truncate"
+                  className="bg-transparent text-sm focus:outline-none text-[#5A305A] w-full truncate"
                 >
                   <option value="all">Semua Status</option>
                   <option value="pending">Pending</option>
@@ -1099,19 +1099,19 @@ export default function Screening() {
                 </select>
               </div>
               <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 shrink-0">
-                <CalendarIcon size={16} className="text-slate-400 shrink-0" />
+                <CalendarIcon size={16} className="text-[#73507B] shrink-0" />
                 <input
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="bg-transparent text-sm focus:outline-none text-slate-700 w-[104px]"
+                  className="bg-transparent text-sm focus:outline-none text-[#5A305A] w-[104px]"
                 />
-                <span className="text-slate-400">-</span>
+                <span className="text-[#73507B]">-</span>
                 <input
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="bg-transparent text-sm focus:outline-none text-slate-700 w-[104px]"
+                  className="bg-transparent text-sm focus:outline-none text-[#5A305A] w-[104px]"
                 />
               </div>
               <button
@@ -1123,7 +1123,7 @@ export default function Screening() {
                   setEndDate("");
                   setCurrentPage(1);
                 }}
-                className="p-2 text-slate-500 hover:text-red-600 bg-white border border-slate-200 hover:bg-red-50 hover:border-red-200 rounded-xl transition-all shadow-sm flex items-center gap-2 shrink-0"
+                className="p-2 text-[#73507B] hover:text-red-600 bg-white border border-slate-200 hover:bg-red-50 hover:border-red-200 rounded-xl transition-all shadow-sm flex items-center gap-2 shrink-0"
                 title="Reset Filter"
               >
                 <FilterX size={18} />
@@ -1154,7 +1154,7 @@ export default function Screening() {
           <div className="flex flex-col gap-4">
              {paginatedPositions.length === 0 && !loading ? (
                 <div className="py-12 text-center bg-white/50 backdrop-blur-sm rounded-2xl border border-dashed border-slate-300">
-                  <p className="text-slate-500 font-medium">Tidak ada lowongan ditemukan.</p>
+                  <p className="text-[#73507B] font-medium">Tidak ada lowongan ditemukan.</p>
                 </div>
              ) : (
                paginatedPositions.map(position => {
@@ -1178,8 +1178,8 @@ export default function Screening() {
                    >
                      <div className="space-y-2">
                        <h3 className="text-xl font-bold text-[#5A305A] underline decoration-slate-300 decoration-2 underline-offset-4 group-hover:text-[#5A305A] transition-colors">{position}</h3>
-                       <div className="text-sm text-slate-500 flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3 sm:gap-4 mt-2">
-                         <span className="flex items-center gap-1.5"><Users size={16} className="text-slate-400" /> <span className="font-medium">{total} Total Pelamar</span></span>
+                       <div className="text-sm text-[#73507B] flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3 sm:gap-4 mt-2">
+                         <span className="flex items-center gap-1.5"><Users size={16} className="text-[#73507B]" /> <span className="font-medium">{total} Total Pelamar</span></span>
                          
                          <span className="flex items-center gap-1.5 bg-slate-100 px-2 py-1 rounded-lg"><Search size={14} className="text-indigo-500" /> <span className="font-medium text-indigo-700">{newCount} Baru</span></span>
                          <span className="flex items-center gap-1.5 bg-emerald-50 px-2 py-1 rounded-lg text-emerald-700 font-medium" title="Lolos screening awal tetapi belum dijadwalkan test/interview"><Star size={14} /> {highFitCount} Lolos Awal</span>
@@ -1204,7 +1204,7 @@ export default function Screening() {
                        </div>
                      </div>
                      <div className="flex items-center gap-4">
-                        <span className="text-sm text-slate-400 group-hover:text-[#5A305A] font-medium transition-colors hidden sm:block">Lihat kandidat &rarr;</span>
+                        <span className="text-sm text-[#73507B] group-hover:text-[#5A305A] font-medium transition-colors hidden sm:block">Lihat kandidat &rarr;</span>
                      </div>
                    </div>
                  );
@@ -1218,7 +1218,7 @@ export default function Screening() {
             <div className="space-y-1">
               <button 
                 onClick={() => { setSelectedPosition(null); setCurrentPage(1); setSearch(""); }}
-                className="text-sm text-slate-600 hover:text-[#5A305A] font-bold flex items-center gap-1.5 mb-2 transition-colors border border-slate-200 bg-white/70 backdrop-blur-md hover:bg-white px-3 py-1.5 rounded-xl w-fit shadow-sm"
+                className="text-sm text-[#73507B] hover:text-[#5A305A] font-bold flex items-center gap-1.5 mb-2 transition-colors border border-slate-200 bg-white/70 backdrop-blur-md hover:bg-white px-3 py-1.5 rounded-xl w-fit shadow-sm"
               >
                 <ChevronLeft size={16} /> Kembali ke Lowongan
               </button>
@@ -1228,11 +1228,11 @@ export default function Screening() {
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center bg-white/70 backdrop-blur-md border border-slate-200 rounded-xl px-3 h-[42px] gap-2 shadow-sm">
-                <span className="text-sm font-medium text-slate-500">Urutkan:</span>
+                <span className="text-sm font-medium text-[#73507B]">Urutkan:</span>
                 <select
                   value={sortOption}
                   onChange={(e) => setSortOption(e.target.value as any)}
-                  className="bg-transparent text-sm font-bold text-slate-800 focus:outline-none cursor-pointer"
+                  className="bg-transparent text-sm font-bold text-[#5A305A] focus:outline-none cursor-pointer"
                 >
                   <option value="terbaru">Terbaru</option>
                   <option value="skor">Skor Tertinggi</option>
@@ -1252,7 +1252,7 @@ export default function Screening() {
                   <h3 className="text-sm font-bold text-[#5A305A] mb-2 px-1">Cari Kandidat</h3>
                   <div className="relative w-full">
                     <Search
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-[#73507B]"
                       size={16}
                     />
                     <input
@@ -1270,22 +1270,22 @@ export default function Screening() {
                   <h3 className="text-sm font-bold text-[#5A305A] mb-2 px-1">Tanggal Apply</h3>
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 w-full">
-                      <CalendarIcon size={14} className="text-slate-400 shrink-0" />
+                      <CalendarIcon size={14} className="text-[#73507B] shrink-0" />
                       <input
                         type="date"
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
-                        className="bg-transparent text-sm focus:outline-none text-slate-700 w-full"
+                        className="bg-transparent text-sm focus:outline-none text-[#5A305A] w-full"
                         placeholder="Mulai"
                       />
                     </div>
                     <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 w-full">
-                      <CalendarIcon size={14} className="text-slate-400 shrink-0" />
+                      <CalendarIcon size={14} className="text-[#73507B] shrink-0" />
                       <input
                         type="date"
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
-                        className="bg-transparent text-sm focus:outline-none text-slate-700 w-full"
+                        className="bg-transparent text-sm focus:outline-none text-[#5A305A] w-full"
                         placeholder="Selesai"
                       />
                     </div>
@@ -1326,13 +1326,13 @@ export default function Screening() {
                             }}
                             className={cn(
                               "w-full flex items-center justify-between px-3 py-2 text-sm rounded-xl transition-all duration-200",
-                              currentFilter === opt ? "bg-[#5A305A]/10 text-[#5A305A] font-bold" : "text-slate-600 hover:bg-slate-50"
+                              currentFilter === opt ? "bg-[#5A305A]/10 text-[#5A305A] font-bold" : "text-[#73507B] hover:bg-slate-50"
                             )}
                           >
                             <span className="text-left leading-tight truncate mr-2">{filterLabel}</span>
                             <span className={cn(
                               "text-xs px-2 py-0.5 rounded-full font-medium transition-colors shrink-0",
-                              currentFilter === opt ? "bg-[#5A305A]/20 text-[#5A305A] font-bold" : "bg-slate-100 text-slate-500"
+                              currentFilter === opt ? "bg-[#5A305A]/20 text-[#5A305A] font-bold" : "bg-slate-100 text-[#73507B]"
                             )}>{count}</span>
                           </button>
                         );
@@ -1357,7 +1357,7 @@ export default function Screening() {
                       });
                       setCurrentPage(1);
                     }}
-                    className="w-full flex items-center justify-center gap-2 p-2 text-slate-500 hover:text-red-600 bg-white border border-slate-200 hover:bg-red-50 hover:border-red-200 rounded-xl transition-all shadow-sm"
+                    className="w-full flex items-center justify-center gap-2 p-2 text-[#73507B] hover:text-red-600 bg-white border border-slate-200 hover:bg-red-50 hover:border-red-200 rounded-xl transition-all shadow-sm"
                   >
                     <FilterX size={16} />
                     <span className="font-medium text-sm">Reset Filter</span>
@@ -1422,27 +1422,27 @@ export default function Screening() {
                                   </span>
                                 )}
                               </div>
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                              <p className="text-[10px] font-bold text-[#73507B] uppercase tracking-widest mt-1">
                                 Applied: {formatDate(candidate.date)} • ID: {candidate.id.substring(0, 8)}
                               </p>
                             </div>
                             
                             {/* Info Grid */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 mt-2 w-full">
-                              <div className="flex items-center gap-2 text-sm text-slate-600 min-w-0">
-                                <Mail size={14} className="text-slate-400 shrink-0" />
+                              <div className="flex items-center gap-2 text-sm text-[#73507B] min-w-0">
+                                <Mail size={14} className="text-[#73507B] shrink-0" />
                                 <span className="truncate">{candidate.email || "-"}</span>
                               </div>
-                              <div className="flex items-center gap-2 text-sm text-slate-600 min-w-0">
-                                <Phone size={14} className="text-slate-400 shrink-0" />
+                              <div className="flex items-center gap-2 text-sm text-[#73507B] min-w-0">
+                                <Phone size={14} className="text-[#73507B] shrink-0" />
                                 <span className="truncate">{candidate.phone || "-"}</span>
                               </div>
-                              <div className="flex items-center gap-2 text-sm text-slate-600 min-w-0 sm:col-span-2">
-                                <GraduationCap size={14} className="text-slate-400 shrink-0" />
+                              <div className="flex items-center gap-2 text-sm text-[#73507B] min-w-0 sm:col-span-2">
+                                <GraduationCap size={14} className="text-[#73507B] shrink-0" />
                                 <span className="truncate">{candidate.education || "-"}</span>
                               </div>
-                              <div className="flex items-center gap-2 text-sm text-slate-600 min-w-0 sm:col-span-2">
-                                <Briefcase size={14} className="text-slate-400 shrink-0" />
+                              <div className="flex items-center gap-2 text-sm text-[#73507B] min-w-0 sm:col-span-2">
+                                <Briefcase size={14} className="text-[#73507B] shrink-0" />
                                 <span className="truncate">{candidate.work_experience || "-"}</span>
                               </div>
                             </div>
@@ -1522,7 +1522,7 @@ export default function Screening() {
                              
                              <button
                                onClick={() => toggleCandidate(candidate.id)}
-                               className="p-1.5 rounded-lg bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all flex items-center gap-1"
+                               className="p-1.5 rounded-lg bg-slate-50 text-[#73507B] hover:text-indigo-600 hover:bg-indigo-50 transition-all flex items-center gap-1"
                                title="Lihat Detail & Resume"
                              >
                                <span className="text-[10px] font-bold uppercase hidden sm:block">{isExpanded ? "Tutup" : "Preview"}</span>
@@ -1533,7 +1533,7 @@ export default function Screening() {
                           {/* Buttons */}
                           <div className="flex flex-col gap-2 mt-auto">
                             {candidate._isArchived && (
-                              <div className="px-3 py-2.5 text-xs font-bold text-slate-500 bg-slate-100 rounded-xl text-center" title="Kandidat ini sudah diarsipkan (dipindahkan ke Log Kandidat) — buka profilnya untuk detail lengkap.">
+                              <div className="px-3 py-2.5 text-xs font-bold text-[#73507B] bg-slate-100 rounded-xl text-center" title="Kandidat ini sudah diarsipkan (dipindahkan ke Log Kandidat) — buka profilnya untuk detail lengkap.">
                                 Diarsipkan
                               </div>
                             )}
@@ -1552,13 +1552,13 @@ export default function Screening() {
                                   <div className="flex flex-col gap-0.5">
                                     <button
                                       onClick={() => handleUpdateStatus(candidate.id, "accepted")}
-                                      className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-slate-700 rounded-lg hover:bg-[#5A305A]/10 hover:text-[#5A305A] transition-colors text-left"
+                                      className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-[#5A305A] rounded-lg hover:bg-[#5A305A]/10 hover:text-[#5A305A] transition-colors text-left"
                                     >
                                       <ThumbsUp size={16} /> Terima Kandidat
                                     </button>
                                     <button
                                       onClick={() => handleUpdateStatus(candidate.id, "hired")}
-                                      className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-slate-700 rounded-lg hover:bg-[#5A305A]/10 hover:text-[#5A305A] transition-colors text-left"
+                                      className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-[#5A305A] rounded-lg hover:bg-[#5A305A]/10 hover:text-[#5A305A] transition-colors text-left"
                                     >
                                       <Briefcase size={16} /> Rekrut (Hired)
                                     </button>
@@ -1588,13 +1588,13 @@ export default function Screening() {
                                 <div className="flex flex-col gap-0.5">
                                   <button
                                     onClick={() => setSchedulingData({ candidate, type: "psikotes" })}
-                                    className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-slate-700 rounded-lg hover:bg-sky-50 hover:text-sky-700 transition-colors text-left"
+                                    className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-[#5A305A] rounded-lg hover:bg-sky-50 hover:text-sky-700 transition-colors text-left"
                                   >
                                     <FileText size={16} /> Jadwalkan Psikotes
                                   </button>
                                   <button
                                     onClick={() => setSchedulingData({ candidate, type: "interview" })}
-                                    className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-slate-700 rounded-lg hover:bg-amber-50 hover:text-amber-700 transition-colors text-left"
+                                    className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-[#5A305A] rounded-lg hover:bg-amber-50 hover:text-amber-700 transition-colors text-left"
                                   >
                                     <Users size={16} /> Jadwalkan Interview
                                   </button>
@@ -1606,7 +1606,7 @@ export default function Screening() {
                                     <button
                                       key={s.id}
                                       onClick={() => setConfirmScheduleData({ table: "psikotes_schedules", scheduleId: s.id, label: "Psikotes" })}
-                                      className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-slate-700 rounded-lg hover:bg-sky-50 hover:text-sky-700 transition-colors text-left"
+                                      className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-[#5A305A] rounded-lg hover:bg-sky-50 hover:text-sky-700 transition-colors text-left"
                                     >
                                       <CheckCheck size={16} /> Konfirmasi Psikotes Selesai
                                     </button>
@@ -1619,7 +1619,7 @@ export default function Screening() {
                                         scheduleId: s.id,
                                         label: `Interview ${isUserInterview(s) ? "User" : "HC"}`,
                                       })}
-                                      className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-slate-700 rounded-lg hover:bg-amber-50 hover:text-amber-700 transition-colors text-left"
+                                      className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-[#5A305A] rounded-lg hover:bg-amber-50 hover:text-amber-700 transition-colors text-left"
                                     >
                                       <CheckCheck size={16} /> Konfirmasi Interview {isUserInterview(s) ? "User" : "HC"} Selesai
                                     </button>
@@ -1632,7 +1632,7 @@ export default function Screening() {
                                     <button
                                       key={`email-${schedule.id}`}
                                       onClick={() => setCommsModalData({ candidate, schedule, type, channel: "email" })}
-                                      className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-slate-700 rounded-lg hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-left"
+                                      className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-[#5A305A] rounded-lg hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-left"
                                     >
                                       <Mail size={16} className="shrink-0" />
                                       <span className="truncate">
@@ -1644,7 +1644,7 @@ export default function Screening() {
                                     <button
                                       key={`wa-${schedule.id}`}
                                       onClick={() => setCommsModalData({ candidate, schedule, type, channel: "wa" })}
-                                      className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-slate-700 rounded-lg hover:bg-emerald-50 hover:text-emerald-700 transition-colors text-left"
+                                      className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-[#5A305A] rounded-lg hover:bg-emerald-50 hover:text-emerald-700 transition-colors text-left"
                                     >
                                       <MessageCircle size={16} className="shrink-0" />
                                       <span className="truncate">
@@ -1664,8 +1664,8 @@ export default function Screening() {
                       {isExpanded && (
                         <div className="px-5 pb-5 pt-4 border-t border-slate-100 bg-slate-50/50 animate-in slide-in-from-top-2 duration-300">
                           <div className="mb-6">
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Ringkasan Pengalaman</p>
-                            <p className="text-sm text-slate-700 leading-relaxed font-medium">
+                            <p className="text-[10px] font-bold text-[#73507B] uppercase tracking-widest mb-1.5">Ringkasan Pengalaman</p>
+                            <p className="text-sm text-[#5A305A] leading-relaxed font-medium">
                               {candidate.resume_summary || "Tidak ada ringkasan"}
                             </p>
                           </div>
@@ -1812,14 +1812,14 @@ export default function Screening() {
                   <h3 className="text-lg font-bold text-[#5A305A]">
                     Pindahkan ke Log
                   </h3>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-[#73507B]">
                     Konfirmasi pemindahan kandidat
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setLogModalData(null)}
-                className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-400"
+                className="p-2 hover:bg-slate-200 rounded-full transition-colors text-[#73507B]"
               >
                 <ChevronDown className="rotate-90" size={20} />
               </button>
@@ -1830,19 +1830,19 @@ export default function Screening() {
                 <h4 className="font-bold text-[#5A305A]">
                   {logModalData.full_name}
                 </h4>
-                <p className="text-sm text-slate-500">{logModalData.email}</p>
+                <p className="text-sm text-[#73507B]">{logModalData.email}</p>
                 <div className="mt-3 pt-3 border-t border-slate-200">
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
+                  <p className="text-xs font-bold text-[#73507B] uppercase tracking-widest mb-1">
                     Posisi
                   </p>
-                  <p className="text-sm font-medium text-slate-700">
+                  <p className="text-sm font-medium text-[#5A305A]">
                     {logModalData.position}
                   </p>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">
+                <label className="text-xs font-bold text-[#73507B] uppercase tracking-widest ml-1">
                   Catatan / Keterangan
                 </label>
                 <textarea
@@ -1883,12 +1883,12 @@ export default function Screening() {
       {candidates.length === 0 && !loading && (
         <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-300">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
-            <Users className="text-slate-400" size={32} />
+            <Users className="text-[#73507B]" size={32} />
           </div>
           <h3 className="text-lg font-bold text-[#5A305A]">
             Tidak ada kandidat
           </h3>
-          <p className="text-slate-500">
+          <p className="text-[#73507B]">
             Kandidat baru akan muncul di sini setelah mereka mendaftar.
           </p>
         </div>
@@ -1898,7 +1898,7 @@ export default function Screening() {
       {candidates.length > 0 && (
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-sm">
           <div className="flex items-center gap-4">
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-[#73507B]">
               Menampilkan{" "}
               <span className="font-bold text-[#5A305A]">{startIndex + 1}</span>{" "}
               -{" "}
@@ -1911,7 +1911,7 @@ export default function Screening() {
             </p>
             <div className="h-4 w-px bg-slate-200 hidden md:block" />
             <div className="flex items-center gap-2">
-              <label className="text-sm text-slate-500">Tampilkan:</label>
+              <label className="text-sm text-[#73507B]">Tampilkan:</label>
               <select
                 value={itemsPerPage}
                 onChange={(e) => {
@@ -1955,7 +1955,7 @@ export default function Screening() {
                       "w-8 h-8 rounded-lg text-sm font-medium transition-all",
                       currentPage === pageNum
                         ? "bg-[#5A305A] text-white shadow-md shadow-[#5A305A]/20"
-                        : "text-slate-600 hover:bg-slate-50 border border-transparent hover:border-slate-200",
+                        : "text-[#73507B] hover:bg-slate-50 border border-transparent hover:border-slate-200",
                     )}
                   >
                     {pageNum}
@@ -1986,9 +1986,9 @@ export default function Screening() {
               <h3 className="text-xl font-bold text-[#5A305A]">
                 Konfirmasi Terima
               </h3>
-              <p className="text-slate-500">
+              <p className="text-[#73507B]">
                 Apakah Anda yakin ingin menerima kandidat{" "}
-                <span className="font-bold text-slate-800">
+                <span className="font-bold text-[#5A305A]">
                   {acceptModalData.full_name}
                 </span>
                 ? Status kandidat akan diubah menjadi Lolos Screening.
@@ -1996,7 +1996,7 @@ export default function Screening() {
 
               <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 text-left">
                 <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                  <p className="text-[10px] font-bold text-[#73507B] uppercase tracking-widest mb-1">
                     Skor Screening
                   </p>
                   <p className="text-sm font-bold text-indigo-600">
@@ -2039,15 +2039,15 @@ export default function Screening() {
               <h3 className="text-xl font-bold text-[#5A305A]">
                 Konfirmasi Penolakan
               </h3>
-              <p className="text-slate-500">
+              <p className="text-[#73507B]">
                 Apakah Anda yakin ingin menolak kandidat{" "}
-                <span className="font-bold text-slate-800">
+                <span className="font-bold text-[#5A305A]">
                   {rejectModalData.full_name}
                 </span>
                 ? Kandidat ini akan dipindahkan ke Candidate Archive.
               </p>
               <div className="text-left mt-4">
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <label className="block text-sm font-semibold text-[#5A305A] mb-2">
                   Alasan Penolakan (Opsional)
                 </label>
                 <textarea
@@ -2072,7 +2072,7 @@ export default function Screening() {
                       <span className="text-sm font-bold text-[#5A305A] group-hover:text-[#5A305A] transition-colors">
                         Tambahkan ke Blacklist
                       </span>
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-[#73507B]">
                         Kandidat akan ditandai hitam jika melamar kembali di
                         masa depan.
                       </span>
@@ -2081,7 +2081,7 @@ export default function Screening() {
 
                   {addToBlacklist && (
                     <div className="pl-2 animate-in fade-in slide-in-from-top-2">
-                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                      <label className="block text-sm font-medium text-[#5A305A] mb-1">
                         Alasan Blacklist <span className="text-red-500">*</span>
                       </label>
                       <textarea
@@ -2103,7 +2103,7 @@ export default function Screening() {
                     onChange={(e) => setSendRejectEmail(e.target.checked)}
                     className="w-4 h-4 text-red-600 rounded border-slate-300 focus:ring-red-500 transition-all cursor-pointer"
                   />
-                  <span className="text-sm font-semibold text-slate-700 group-hover:text-[#5A305A] transition-colors">
+                  <span className="text-sm font-semibold text-[#5A305A] group-hover:text-[#5A305A] transition-colors">
                     Kirim Email Penolakan Otomatis
                   </span>
                 </label>
@@ -2111,7 +2111,7 @@ export default function Screening() {
                 {sendRejectEmail && (
                   <div className="mt-3 space-y-3">
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">
+                      <label className="block text-xs font-bold text-[#73507B] mb-2 uppercase tracking-wide">
                         Pilih Template Email
                       </label>
                       <div className="relative">
@@ -2131,12 +2131,12 @@ export default function Screening() {
                         </select>
                         <ChevronDown
                           size={16}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#73507B] pointer-events-none"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">
+                      <label className="block text-xs font-bold text-[#73507B] mb-2 uppercase tracking-wide">
                         CC Email (Opsional)
                       </label>
                       <input
@@ -2193,14 +2193,14 @@ export default function Screening() {
                   <h3 className="text-lg font-bold text-[#5A305A]">
                     Konfirmasi Rekrut Kandidat
                   </h3>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-[#73507B]">
                     Review singkat sebelum merekrut
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setHireModalData(null)}
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
+                className="p-2 text-[#73507B] hover:text-[#73507B] hover:bg-slate-100 rounded-xl transition-all"
               >
                 <X size={20} />
               </button>
@@ -2211,18 +2211,18 @@ export default function Screening() {
                 <h4 className="font-bold text-[#5A305A]">
                   {hireModalData.full_name}
                 </h4>
-                <p className="text-sm text-slate-500">{hireModalData.email}</p>
+                <p className="text-sm text-[#73507B]">{hireModalData.email}</p>
                 <div className="mt-3 pt-3 border-t border-slate-200 grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
+                    <p className="text-xs font-bold text-[#73507B] uppercase tracking-widest mb-1">
                       Posisi
                     </p>
-                    <p className="text-sm font-medium text-slate-700">
+                    <p className="text-sm font-medium text-[#5A305A]">
                       {hireModalData.position}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
+                    <p className="text-xs font-bold text-[#73507B] uppercase tracking-widest mb-1">
                       Skor Screening
                     </p>
                     <p className="text-sm font-bold text-indigo-600">
@@ -2237,7 +2237,7 @@ export default function Screening() {
                         <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-1">
                           Kekuatan
                         </p>
-                        <p className="text-xs font-medium text-slate-600 line-clamp-2">
+                        <p className="text-xs font-medium text-[#73507B] line-clamp-2">
                           {hireModalData.strengths}
                         </p>
                       </div>
@@ -2247,7 +2247,7 @@ export default function Screening() {
                         <p className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-1">
                           Faktor Risiko
                         </p>
-                        <p className="text-xs font-medium text-slate-600 line-clamp-2">
+                        <p className="text-xs font-medium text-[#73507B] line-clamp-2">
                           {hireModalData.risk_factors}
                         </p>
                       </div>
@@ -2257,7 +2257,7 @@ export default function Screening() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">
+                <label className="text-xs font-bold text-[#73507B] uppercase tracking-widest ml-1">
                   Keterangan / Catatan Rekrutmen
                 </label>
                 <textarea
@@ -2308,14 +2308,14 @@ export default function Screening() {
                   <h3 className="text-lg font-bold text-[#5A305A]">
                     Rincian Skor Asesmen
                   </h3>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-[#73507B]">
                     {assessmentModalData.full_name}
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setAssessmentModalData(null)}
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
+                className="p-2 text-[#73507B] hover:text-[#73507B] hover:bg-slate-100 rounded-xl transition-all"
               >
                 <X size={20} />
               </button>
@@ -2324,7 +2324,7 @@ export default function Screening() {
             <div className="p-6 space-y-4 overflow-y-auto">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  <label className="text-xs font-bold text-[#73507B] uppercase tracking-wider">
                     Technical
                   </label>
                   <input
@@ -2342,7 +2342,7 @@ export default function Screening() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  <label className="text-xs font-bold text-[#73507B] uppercase tracking-wider">
                     Communication
                   </label>
                   <input
@@ -2360,7 +2360,7 @@ export default function Screening() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  <label className="text-xs font-bold text-[#73507B] uppercase tracking-wider">
                     Problem Solving
                   </label>
                   <input
@@ -2378,7 +2378,7 @@ export default function Screening() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  <label className="text-xs font-bold text-[#73507B] uppercase tracking-wider">
                     Teamwork
                   </label>
                   <input
@@ -2396,7 +2396,7 @@ export default function Screening() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  <label className="text-xs font-bold text-[#73507B] uppercase tracking-wider">
                     Leadership
                   </label>
                   <input
@@ -2414,7 +2414,7 @@ export default function Screening() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  <label className="text-xs font-bold text-[#73507B] uppercase tracking-wider">
                     Adaptability
                   </label>
                   <input

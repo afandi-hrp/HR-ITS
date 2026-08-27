@@ -910,7 +910,7 @@ export default function Logs() {
                 Aktifkan Kembali Kandidat
               </h3>
               <p className="text-slate-500">
-                <span className="font-bold text-slate-800">
+                <span className="font-bold text-[#5A305A]">
                   {restoreModalData.full_name}
                 </span>{" "}
                 akan dipindahkan kembali ke pipeline aktif (Screening).
@@ -987,7 +987,7 @@ export default function Logs() {
               </h3>
               <p className="text-slate-500">
                 Apakah Anda yakin ingin menghapus kandidat{" "}
-                <span className="font-bold text-slate-800">
+                <span className="font-bold text-[#5A305A]">
                   {deleteModalData.full_name}
                 </span>{" "}
                 dari arsip? Tindakan ini tidak dapat dibatalkan.
@@ -1124,7 +1124,7 @@ export default function Logs() {
                           "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
                           selectedLog.psikotes_status === "Sudah Psikotes"
                             ? "bg-emerald-100 text-emerald-800"
-                            : "bg-slate-200 text-slate-800",
+                            : "bg-slate-200 text-[#5A305A]",
                         )}
                       >
                         {selectedLog.psikotes_status || "Belum"}
@@ -1139,7 +1139,7 @@ export default function Logs() {
                           "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
                           selectedLog.interview_status === "Sudah Interview"
                             ? "bg-emerald-100 text-emerald-800"
-                            : "bg-slate-200 text-slate-800",
+                            : "bg-slate-200 text-[#5A305A]",
                         )}
                       >
                         {selectedLog.interview_status || "Belum"}
@@ -1250,7 +1250,7 @@ export default function Logs() {
               <h3 className="text-xl font-bold text-[#5A305A]">Hapus Masal</h3>
               <p className="text-slate-500">
                 Apakah Anda yakin ingin menghapus{" "}
-                <span className="font-bold text-slate-800">
+                <span className="font-bold text-[#5A305A]">
                   {selectedIds.length}
                 </span>{" "}
                 kandidat terpilih dari arsip? Tindakan ini tidak dapat
@@ -1349,7 +1349,7 @@ export default function Logs() {
                           key={i}
                           className="hover:bg-slate-50 transition-colors"
                         >
-                          <td className="p-4 py-2 font-medium text-slate-800">
+                          <td className="p-4 py-2 font-medium text-[#5A305A]">
                             {row["Nama Kandidat"]}
                           </td>
                           <td className="p-4 py-2 text-slate-600">
@@ -1408,7 +1408,7 @@ export default function Logs() {
             <div className="p-6 bg-white border-t border-slate-100 flex items-center justify-between shrink-0">
               <span className="text-sm font-medium text-slate-500">
                 Total Baris:{" "}
-                <strong className="text-slate-800">{exportData.length}</strong>
+                <strong className="text-[#5A305A]">{exportData.length}</strong>
               </span>
               <div className="flex gap-3">
                 <button

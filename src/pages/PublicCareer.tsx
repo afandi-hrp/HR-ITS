@@ -704,7 +704,7 @@ export default function PublicCareer() {
             ) : jobs.length === 0 ? (
               <div className="bg-white/40 backdrop-blur-xl rounded-3xl border border-white/60 p-12 text-center shadow-xl">
                 <Briefcase className="mx-auto text-slate-400 mb-4" size={48} />
-                <h3 className="text-lg font-bold text-slate-800">
+                <h3 className="text-lg font-bold text-[#5A305A]">
                   Belum Ada Lowongan
                 </h3>
                 <p className="text-slate-600 mt-2">
@@ -1209,7 +1209,7 @@ export default function PublicCareer() {
               </div>
               <button
                 onClick={() => setSelectedJob(null)}
-                className="p-2 text-slate-500 hover:text-slate-800 hover:bg-white/50 rounded-xl transition-colors"
+                className="p-2 text-slate-500 hover:text-[#5A305A] hover:bg-white/50 rounded-xl transition-colors"
               >
                 <X size={24} />
               </button>

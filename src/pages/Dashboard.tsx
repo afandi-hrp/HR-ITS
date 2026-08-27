@@ -706,7 +706,7 @@ useEffect(() => {
       {/* Top 5 Candidates Section */}
       {Object.keys(topCandidatesByPosition).length > 0 && (
         <div className="space-y-4 animate-in fade-in duration-500">
-          <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+          <h2 className="text-xl font-bold text-[#5A305A] flex items-center gap-2">
             <Star className="text-amber-500 fill-amber-500" size={24} />
             Top 5 Kandidat Terkuat
           </h2>
@@ -718,7 +718,7 @@ useEffect(() => {
                   className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col"
                 >
                   <div className="bg-gradient-to-r from-indigo-50 to-white border-b border-slate-100 p-5">
-                    <h3 className="font-bold text-slate-800 text-lg">{pos}</h3>
+                    <h3 className="font-bold text-[#5A305A] text-lg">{pos}</h3>
                     <p className="text-xs text-slate-500 mt-1">
                       Berdasarkan skor assessment tertinggi
                     </p>
@@ -800,7 +800,7 @@ useEffect(() => {
       {/* Top 5 Detailed Average Section */}
       {Object.keys(topCandidatesByDetailed).length > 0 && (
         <div className="space-y-4 animate-in fade-in duration-500">
-          <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+          <h2 className="text-xl font-bold text-[#5A305A] flex items-center gap-2">
             <Star className="text-indigo-500 fill-indigo-500" size={24} />
             Top 5 Rata-rata Asesmen Detail
           </h2>
@@ -812,7 +812,7 @@ useEffect(() => {
                   className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col"
                 >
                   <div className="bg-gradient-to-r from-indigo-50 to-white border-b border-slate-100 p-5">
-                    <h3 className="font-bold text-slate-800 text-lg">{pos}</h3>
+                    <h3 className="font-bold text-[#5A305A] text-lg">{pos}</h3>
                     <p className="text-xs text-slate-500 mt-1">
                       Berdasarkan rata-rata 6 kriteria asesmen
                     </p>
@@ -929,7 +929,7 @@ useEffect(() => {
                           {notif.title}
                         </p>
                         <p className="text-sm text-slate-600 truncate mt-0.5">
-                          <span className="font-bold text-slate-800">
+                          <span className="font-bold text-[#5A305A]">
                             {notif.name}
                           </span>{" "}
                           • {notif.position}
@@ -1061,7 +1061,7 @@ useEffect(() => {
                     {cand.title}
                   </p>
                   <p className="text-sm text-slate-600 truncate mt-0.5">
-                    <span className="font-bold text-slate-800">
+                    <span className="font-bold text-[#5A305A]">
                       {cand.name}
                     </span>{" "}
                     • {cand.position}

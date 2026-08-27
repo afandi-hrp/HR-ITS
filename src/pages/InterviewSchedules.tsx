@@ -469,7 +469,7 @@ export default function InterviewSchedules() {
           {activeTab === "pending" && (
             <div className="space-y-4">
               <div className="flex items-center gap-3 px-2">
-                <h2 className="text-xl font-bold text-slate-800">
+                <h2 className="text-xl font-bold text-[#5A305A]">
                   Agenda Interview
                 </h2>
                 <div className="px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-full uppercase tracking-wider">
@@ -630,7 +630,7 @@ export default function InterviewSchedules() {
           {activeTab === "confirmed" && (
             <div className="space-y-4">
               <div className="flex items-center gap-3 px-2">
-                <h2 className="text-xl font-bold text-slate-800">
+                <h2 className="text-xl font-bold text-[#5A305A]">
                   Daftar Interview Selesai
                 </h2>
                 <div className="px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-full uppercase tracking-wider">
@@ -962,7 +962,7 @@ export default function InterviewSchedules() {
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                       Posisi
                     </p>
-                    <div className="flex items-center gap-2 text-slate-700">
+                    <div className="flex items-center gap-2 text-[#5A305A]">
                       <Briefcase
                         size={16}
                         className="text-slate-400 shrink-0"
@@ -1018,12 +1018,12 @@ export default function InterviewSchedules() {
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                   Catatan Tambahan
                 </p>
-                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 text-sm text-slate-700 leading-relaxed italic">
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 text-sm text-[#5A305A] leading-relaxed italic">
                   "{previewSchedule.additional_notes?.replace(/^\[(HR|USER)\]\s*/, '') || "Tidak ada catatan."}"
                 </div>
               </div>
             </div>
-            <div className="p-4 sm:p-6 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row gap-3 shrink-0">
+            <div className="p-4 sm:p-6 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row gap-2 shrink-0">
               <button
                 onClick={() => {
                   if (previewSchedule.candidate) {
@@ -1033,9 +1033,9 @@ export default function InterviewSchedules() {
                     });
                   }
                 }}
-                className="flex-1 py-2.5 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2"
+                className="flex-1 py-2 text-sm bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
               >
-                <Send size={18} />
+                <Send size={16} />
                 Kirim Email
               </button>
               <button
@@ -1047,21 +1047,21 @@ export default function InterviewSchedules() {
                     });
                   }
                 }}
-                className="flex-1 py-2.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all flex items-center justify-center gap-2"
+                className="flex-1 py-2 text-sm bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
               >
-                <MessageCircle size={18} />
+                <MessageCircle size={16} />
                 Kirim WA
               </button>
               <button
                 onClick={() => handleConfirm(previewSchedule)}
                 className={cn(
-                  "flex-1 py-2.5 rounded-xl font-bold transition-all flex items-center justify-center gap-2",
+                  "flex-1 py-2 text-sm rounded-xl font-bold transition-all flex items-center justify-center gap-2",
                   previewSchedule.is_confirmed
                     ? "bg-slate-200 text-slate-600 hover:bg-slate-300"
-                    : "bg-cyan-600 text-white hover:bg-cyan-700 shadow-lg shadow-cyan-200",
+                    : "bg-[#F58C77] text-white hover:bg-[#E8765F] shadow-lg shadow-[#F58C77]/30",
                 )}
               >
-                <CheckCircle2 size={18} />
+                <CheckCircle2 size={16} />
                 <span className="truncate">
                   {previewSchedule.is_confirmed
                     ? "Batalkan Konfirmasi"
@@ -1070,7 +1070,7 @@ export default function InterviewSchedules() {
               </button>
               <button
                 onClick={() => setPreviewSchedule(null)}
-                className="px-6 py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all"
+                className="px-6 py-2 text-sm bg-[#FFF5C5] text-[#5A305A] font-bold rounded-xl hover:bg-[#FFEC94] transition-all whitespace-nowrap"
               >
                 Tutup
               </button>

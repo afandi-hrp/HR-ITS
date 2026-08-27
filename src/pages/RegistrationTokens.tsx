@@ -25,6 +25,8 @@ export default function RegistrationTokens() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchTokens();
@@ -153,8 +155,18 @@ export default function RegistrationTokens() {
     });
   };
 
+  const totalPages = Math.max(1, Math.ceil(tokens.length / itemsPerPage));
+  const paginatedTokens = tokens.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage,
+  );
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [totalPages, currentPage]);
+
   return (
-    <div className="p-8 max-w-7xl mx-auto">
+    <div className="p-8">
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-2xl font-bold text-[#5A305A]">Token Pelamar</h1>
@@ -166,36 +178,36 @@ export default function RegistrationTokens() {
           <button
             onClick={handleDeleteUsedTokens}
             disabled={deleting || tokens.filter((t) => t.is_used).length === 0}
-            className="bg-white border border-rose-200 text-rose-600 px-4 py-2 rounded-xl hover:bg-rose-50 transition-colors flex items-center gap-2 disabled:opacity-50"
+            className="bg-white border border-rose-200 text-rose-600 px-3.5 py-1.5 text-sm rounded-xl hover:bg-rose-50 transition-colors flex items-center gap-1.5 disabled:opacity-50"
           >
             {deleting ? (
-              <Loader2 size={20} className="animate-spin" />
+              <Loader2 size={16} className="animate-spin" />
             ) : (
-              <Trash2 size={20} />
+              <Trash2 size={16} />
             )}
             Hapus Token Terpakai
           </button>
           <button
             onClick={() => generateToken(10)}
             disabled={generating}
-            className="bg-indigo-100 text-indigo-700 px-4 py-2 rounded-xl hover:bg-indigo-200 transition-colors flex items-center gap-2 disabled:opacity-70 font-medium"
+            className="bg-indigo-100 text-indigo-700 px-3.5 py-1.5 text-sm rounded-xl hover:bg-indigo-200 transition-colors flex items-center gap-1.5 disabled:opacity-70 font-medium"
           >
             {generating ? (
-              <Loader2 size={20} className="animate-spin" />
+              <Loader2 size={16} className="animate-spin" />
             ) : (
-              <Plus size={20} />
+              <Plus size={16} />
             )}
             Buat 10 Token
           </button>
           <button
             onClick={() => generateToken(1)}
             disabled={generating}
-            className="bg-[#5A305A] text-white px-4 py-2 rounded-xl hover:bg-[#3F223F] transition-colors flex items-center gap-2 disabled:opacity-70 font-medium"
+            className="bg-[#5A305A] text-white px-3.5 py-1.5 text-sm rounded-xl hover:bg-[#3F223F] transition-colors flex items-center gap-1.5 disabled:opacity-70 font-medium"
           >
             {generating ? (
-              <Loader2 size={20} className="animate-spin" />
+              <Loader2 size={16} className="animate-spin" />
             ) : (
-              <Plus size={20} />
+              <Plus size={16} />
             )}
             Buat 1 Token
           </button>
@@ -207,15 +219,15 @@ export default function RegistrationTokens() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="p-4 font-semibold text-slate-600">Token</th>
-                <th className="p-4 font-semibold text-slate-600">Status</th>
-                <th className="p-4 font-semibold text-slate-600">
+                <th className="p-4 font-semibold text-[#5A305A]">Token</th>
+                <th className="p-4 font-semibold text-[#5A305A]">Status</th>
+                <th className="p-4 font-semibold text-[#5A305A]">
                   Dibuat Pada
                 </th>
-                <th className="p-4 font-semibold text-slate-600">
+                <th className="p-4 font-semibold text-[#5A305A]">
                   Digunakan Pada
                 </th>
-                <th className="p-4 font-semibold text-slate-600 text-right">
+                <th className="p-4 font-semibold text-[#5A305A] text-right">
                   Aksi
                 </th>
               </tr>
@@ -238,7 +250,7 @@ export default function RegistrationTokens() {
                   </td>
                 </tr>
               ) : (
-                tokens.map((token) => (
+                paginatedTokens.map((token) => (
                   <tr
                     key={token.id}
                     className="hover:bg-slate-50 transition-colors"
@@ -290,6 +302,31 @@ export default function RegistrationTokens() {
             </tbody>
           </table>
         </div>
+        {!loading && tokens.length > 0 && (
+          <div className="flex items-center justify-between p-4 border-t border-slate-100">
+            <p className="text-sm text-slate-500">
+              Halaman {currentPage} dari {totalPages} ({tokens.length} token)
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 text-[#5A305A] font-medium hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Sebelumnya
+              </button>
+              <button
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 text-[#5A305A] font-medium hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Berikutnya
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

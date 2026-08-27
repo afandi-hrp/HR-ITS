@@ -462,22 +462,22 @@ export default function OpenRecruitment() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-3">
                         <FileText size={16} className="text-indigo-500" />
-                        <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wider">
+                        <h4 className="text-sm font-bold text-[#5A305A] uppercase tracking-wider">
                           Jobdesk
                         </h4>
                       </div>
-                      <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100">
+                      <p className="text-sm text-[#5A305A] whitespace-pre-wrap leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100">
                         {item.jobdesk}
                       </p>
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-3">
                         <GraduationCap size={16} className="text-indigo-500" />
-                        <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wider">
+                        <h4 className="text-sm font-bold text-[#5A305A] uppercase tracking-wider">
                           Kualifikasi
                         </h4>
                       </div>
-                      <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100">
+                      <p className="text-sm text-[#5A305A] whitespace-pre-wrap leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100">
                         {item.kualifikasi}
                       </p>
                     </div>

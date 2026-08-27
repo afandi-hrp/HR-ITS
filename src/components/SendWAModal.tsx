@@ -383,21 +383,16 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
               rows={8}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-sm resize-none leading-relaxed"
             />
-            <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
-              <p className="text-[10px] text-slate-400 italic">
-                Variabel: {"{{nama}}"}, {"{{email_kandidat}}"}, {"{{posisi}}"}, {"{{pendidikan_terakhir}}"}, {"{{pengalaman_kerja}}"}, {"{{jadwal}}"}, {"{{hari}}"}, {"{{jadwal_interview}}"}, {"{{tanggal_interview}}"}, {"{{waktu_interview}}"}, {"{{jadwal_psikotes}}"}, {"{{lokasi_interview}}"}, {"{{lokasi_psikotes}}"}
-              </p>
-              <p className="text-[10px] text-amber-600 italic sm:max-w-[200px] sm:text-right">
-                Jika notifikasi "Berhasil" tapi WA tidak masuk, pastikan workflow n8n Anda sudah Active.
-              </p>
-            </div>
+            <p className="text-[10px] text-slate-400 italic">
+              Variabel: {"{{nama}}"}, {"{{email_kandidat}}"}, {"{{posisi}}"}, {"{{pendidikan_terakhir}}"}, {"{{pengalaman_kerja}}"}, {"{{jadwal}}"}, {"{{hari}}"}, {"{{jadwal_interview}}"}, {"{{tanggal_interview}}"}, {"{{waktu_interview}}"}, {"{{jadwal_psikotes}}"}, {"{{lokasi_interview}}"}, {"{{lokasi_psikotes}}"}
+            </p>
           </div>
         </div>
 
         <div className="p-4 sm:p-6 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row gap-3 shrink-0">
-          <button 
+          <button
             onClick={onClose}
-            className="flex-1 py-3 bg-white text-slate-600 font-bold rounded-xl border border-slate-200 hover:bg-slate-50 transition-all"
+            className="flex-1 py-3 bg-[#FFF5C5] text-[#5A305A] font-bold rounded-xl border border-slate-200 hover:bg-[#FFEC94] transition-all"
           >
             Batal
           </button>

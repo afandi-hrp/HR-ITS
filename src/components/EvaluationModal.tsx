@@ -342,7 +342,7 @@ export default function EvaluationModal({ isOpen, onClose, candidateId, onSucces
                   {/* Scoring Categories */}
                   {(selectedTemplate.form_schema as any).categories?.map((category: any, catIdx: number) => (
                     <div key={catIdx} className="space-y-4">
-                      <h3 className="text-lg font-bold text-slate-800 border-b pb-2">{category.name}</h3>
+                      <h3 className="text-lg font-bold text-[#5A305A] border-b pb-2">{category.name}</h3>
                       <div className="space-y-6">
                         {category.criteria.map((crit: any, critIdx: number) => (
                           <div key={critIdx} className="bg-slate-50 p-4 rounded-xl border border-slate-100">
@@ -383,7 +383,7 @@ export default function EvaluationModal({ isOpen, onClose, candidateId, onSucces
                   {/* Summary Fields */}
                   {(selectedTemplate.form_schema as any).summary_fields && (
                     <div className="space-y-6 pt-6 border-t border-slate-200">
-                      <h3 className="text-lg font-bold text-slate-800">Summary & Conclusion</h3>
+                      <h3 className="text-lg font-bold text-[#5A305A]">Summary & Conclusion</h3>
                       
                       {(selectedTemplate.form_schema as any).summary_fields.map((field: any, idx: number) => (
                         <div key={idx} className="space-y-2">

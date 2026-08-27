@@ -173,7 +173,7 @@ export default function Login() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full pl-14 pr-4 py-3.5 bg-white/80 backdrop-blur-sm border border-white shadow-[0_4px_20px_rgba(255,157,107,0.2)] rounded-full text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#5A305A]/30 transition-all"
+                  className="block w-full pl-14 pr-4 py-3.5 bg-white/80 backdrop-blur-sm border border-white shadow-[0_4px_20px_rgba(255,157,107,0.2)] rounded-full text-sm text-[#5A305A] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#5A305A]/30 transition-all"
                   placeholder="Email"
                 />
               </div>
@@ -187,7 +187,7 @@ export default function Login() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-14 pr-4 py-3.5 bg-white/80 backdrop-blur-sm border border-white shadow-[0_4px_20px_rgba(255,157,107,0.2)] rounded-full text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#5A305A]/30 transition-all"
+                  className="block w-full pl-14 pr-4 py-3.5 bg-white/80 backdrop-blur-sm border border-white shadow-[0_4px_20px_rgba(255,157,107,0.2)] rounded-full text-sm text-[#5A305A] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#5A305A]/30 transition-all"
                   placeholder="Password"
                 />
               </div>
@@ -203,7 +203,7 @@ export default function Login() {
                     maxLength={4}
                     value={captchaInput}
                     onChange={(e) => setCaptchaInput(e.target.value)}
-                    className="flex-1 min-w-0 px-4 py-3 bg-white/80 backdrop-blur-sm border border-white shadow-[0_4px_20px_rgba(255,157,107,0.2)] rounded-full text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#5A305A]/30 transition-all font-mono tracking-widest"
+                    className="flex-1 min-w-0 px-4 py-3 bg-white/80 backdrop-blur-sm border border-white shadow-[0_4px_20px_rgba(255,157,107,0.2)] rounded-full text-sm text-[#5A305A] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#5A305A]/30 transition-all font-mono tracking-widest"
                     placeholder="4 characters"
                   />
                   <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur-sm border border-white shadow-[0_4px_20px_rgba(255,157,107,0.2)] p-1.5 rounded-full shrink-0">

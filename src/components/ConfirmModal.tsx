@@ -38,7 +38,7 @@ export default function ConfirmModal({
             )}>
               <AlertTriangle size={20} />
             </div>
-            <h2 className="text-xl font-bold text-slate-800">{title}</h2>
+            <h2 className="text-xl font-bold text-[#5A305A]">{title}</h2>
           </div>
           <button
             onClick={onClose}

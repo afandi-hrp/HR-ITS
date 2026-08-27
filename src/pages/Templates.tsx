@@ -351,7 +351,7 @@ export default function Templates() {
       <div className="bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">
           <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-[#73507B]"
             size={18}
           />
           <input
@@ -394,15 +394,15 @@ export default function Templates() {
               </h3>
             </div>
             <div className="space-y-2 mb-6 flex-1">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+              <p className="text-xs font-bold text-[#73507B] uppercase tracking-wider">
                 Subjek
               </p>
-              <p className="text-sm text-slate-600 line-clamp-2">
+              <p className="text-sm text-[#73507B] line-clamp-2">
                 {template.subject}
               </p>
             </div>
             <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-auto">
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-[#73507B]">
                 Dibuat: {new Date(template.created_at).toLocaleDateString()}
               </span>
               <div className="flex gap-2">
@@ -411,7 +411,7 @@ export default function Templates() {
                     e.stopPropagation();
                     handleDelete(template.id);
                   }}
-                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                  className="p-2 text-[#73507B] hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                   title="Hapus Template"
                 >
                   <Trash2 size={18} />
@@ -424,12 +424,12 @@ export default function Templates() {
         {templates.length === 0 && !loading && (
           <div className="col-span-full text-center py-20 bg-white/70 backdrop-blur-md rounded-2xl border border-dashed border-slate-300">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
-              <Mail className="text-slate-400" size={32} />
+              <Mail className="text-[#73507B]" size={32} />
             </div>
             <h3 className="text-lg font-bold text-[#5A305A]">
               Belum ada template
             </h3>
-            <p className="text-slate-500">
+            <p className="text-[#73507B]">
               Buat template email pertama Anda untuk mempercepat screening.
             </p>
           </div>
@@ -439,7 +439,7 @@ export default function Templates() {
       {/* Pagination Controls */}
       {totalItems > itemsPerPage && (
         <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-6">
-          <div className="text-sm text-slate-500">
+          <div className="text-sm text-[#73507B]">
             Menampilkan{" "}
             <span className="font-medium text-[#5A305A]">
               {(currentPage - 1) * itemsPerPage + 1}
@@ -455,7 +455,7 @@ export default function Templates() {
             <button
               disabled={currentPage === 1}
               onClick={() => setCurrentPage((prev) => prev - 1)}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-[#73507B] hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               Sebelumnya
             </button>
@@ -479,7 +479,7 @@ export default function Templates() {
                         "w-8 h-8 rounded-lg text-sm font-medium transition-all",
                         currentPage === pageNum
                           ? "bg-[#5A305A] text-white shadow-md shadow-indigo-100"
-                          : "text-slate-600 hover:bg-slate-100",
+                          : "text-[#73507B] hover:bg-slate-100",
                       )}
                     >
                       {pageNum}
@@ -491,7 +491,7 @@ export default function Templates() {
             <button
               disabled={currentPage === Math.ceil(totalItems / itemsPerPage)}
               onClick={() => setCurrentPage((prev) => prev + 1)}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-[#73507B] hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               Selanjutnya
             </button>
@@ -514,7 +514,7 @@ export default function Templates() {
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all shrink-0"
+                className="p-2 text-[#73507B] hover:text-[#73507B] hover:bg-slate-100 rounded-full transition-all shrink-0"
               >
                 <X size={20} />
               </button>
@@ -522,7 +522,7 @@ export default function Templates() {
 
             <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 overflow-y-auto">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                <label className="text-xs font-bold text-[#73507B] uppercase tracking-widest">
                   Nama Template
                 </label>
                 <input
@@ -537,7 +537,7 @@ export default function Templates() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                <label className="text-xs font-bold text-[#73507B] uppercase tracking-widest">
                   Subject Email
                 </label>
                 <input
@@ -552,7 +552,7 @@ export default function Templates() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                <label className="text-xs font-bold text-[#73507B] uppercase tracking-widest">
                   Isi Pesan Email
                 </label>
                 <textarea
@@ -635,7 +635,7 @@ export default function Templates() {
             <div className="p-4 sm:p-6 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row gap-3 shrink-0">
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="flex-1 py-3 bg-white text-slate-600 font-bold rounded-xl border border-slate-200 hover:bg-slate-50 transition-all"
+                className="flex-1 py-3 bg-[#FFF5C5] text-[#5A305A] font-bold rounded-xl border border-slate-200 hover:bg-[#FFEC94] transition-all"
               >
                 Batal
               </button>

@@ -205,7 +205,7 @@ export default function UserManagement() {
   });
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
+    <div className="p-8">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-bold text-[#5A305A] flex items-center gap-3">
@@ -281,19 +281,19 @@ export default function UserManagement() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="px-6 py-4 text-sm font-semibold text-slate-600">
+                <th className="px-6 py-4 text-sm font-semibold text-[#5A305A]">
                   Pengguna
                 </th>
-                <th className="px-6 py-4 text-sm font-semibold text-slate-600">
+                <th className="px-6 py-4 text-sm font-semibold text-[#5A305A]">
                   Peran (Role)
                 </th>
-                <th className="px-6 py-4 text-sm font-semibold text-slate-600">
+                <th className="px-6 py-4 text-sm font-semibold text-[#5A305A]">
                   Divisi
                 </th>
-                <th className="px-6 py-4 text-sm font-semibold text-slate-600">
+                <th className="px-6 py-4 text-sm font-semibold text-[#5A305A]">
                   Jabatan
                 </th>
-                <th className="px-6 py-4 text-sm font-semibold text-slate-600 text-right">
+                <th className="px-6 py-4 text-sm font-semibold text-[#5A305A] text-right">
                   Aksi
                 </th>
               </tr>
@@ -358,13 +358,13 @@ export default function UserManagement() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-slate-600">
+                      <div className="flex items-center gap-2 text-[#5A305A]">
                         <Building2 className="w-4 h-4 shrink-0" />
                         {user.department || "-"}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-slate-600">
+                      <div className="flex items-center gap-2 text-[#5A305A]">
                         <Briefcase className="w-4 h-4 shrink-0 text-slate-400" />
                         <span className="truncate max-w-[220px]">
                           {user.job_title || "-"}

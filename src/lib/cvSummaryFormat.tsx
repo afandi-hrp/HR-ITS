@@ -114,15 +114,15 @@ export const formatAsNumberedList = (
 
                 return (
                   <li key={idx} className="leading-relaxed pl-1 mb-1.5">
-                    <span className="font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded mr-1 inline-block mb-1 sm:mb-0">
+                    <span className="font-bold text-[#5A305A] bg-[#F58C77] px-1.5 py-0.5 rounded mr-1 inline-block mb-1 sm:mb-0">
                       {titlePart.trim()}
                     </span>
                     {scorePart && (
-                      <span className="font-bold text-yellow-800 bg-yellow-100 px-1.5 py-0.5 rounded mr-1 inline-block mb-1 sm:mb-0">
+                      <span className="font-bold text-[#5A305A] bg-[#FFF5C5] px-1.5 py-0.5 rounded mr-1 inline-block mb-1 sm:mb-0">
                         {scorePart.trim()}
                       </span>
                     )}
-                    <span className="text-slate-700">
+                    <span className="text-[#5A305A]">
                       {hasColon ? ": " : " "}
                       {description}
                     </span>
@@ -140,7 +140,7 @@ export const formatAsNumberedList = (
       )}
       {conclusionPoints.length > 0 && (
         <div className="mt-4 bg-indigo-100/50 border border-indigo-200 rounded-lg p-4 shadow-sm">
-          <h5 className="font-semibold text-indigo-900 mb-2 text-sm flex items-center gap-2">
+          <h5 className="font-semibold text-[#5A305A] mb-2 text-sm flex items-center gap-2">
             Kesimpulan & Rekomendasi
           </h5>
           <ol
@@ -149,7 +149,7 @@ export const formatAsNumberedList = (
             {conclusionPoints.map((point, idx) => (
               <li
                 key={idx}
-                className="leading-relaxed pl-1 text-indigo-950 font-medium"
+                className="leading-relaxed pl-1 text-[#5A305A] font-medium"
               >
                 {point}
               </li>
@@ -182,7 +182,7 @@ export const formatLevelAndList = (
   let headerText = "";
   let pointLines = lines;
   let badgeClass =
-    "bg-gray-100 text-gray-800 font-medium px-2 py-1 rounded inline-block mb-2 mt-1";
+    "bg-gray-100 text-[#5A305A] font-medium px-2 py-1 rounded inline-block mb-2 mt-1";
 
   if (
     headerIndex !== -1 &&

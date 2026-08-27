@@ -428,7 +428,7 @@ export default function ExternalData() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
+    <div className="p-8 space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-[#5A305A] flex items-center gap-3">
@@ -467,7 +467,7 @@ export default function ExternalData() {
               setStatusFilter(e.target.value as any);
               setCurrentPage(1);
             }}
-            className="w-full sm:w-auto px-4 py-2.5 border border-white/60 bg-white/50 backdrop-blur-md rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-sm text-slate-700 font-medium"
+            className="w-full sm:w-auto px-4 py-2.5 border border-white/60 bg-white/50 backdrop-blur-md rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-sm text-[#5A305A] font-medium"
           >
             <option value="all">Semua Data</option>
             <option value="hide_archived">Sembunyikan Arsip</option>
@@ -499,7 +499,7 @@ export default function ExternalData() {
           <div className="bg-slate-50 p-6 rounded-full mb-6">
             <Database size={64} className="text-slate-300" />
           </div>
-          <h3 className="text-xl font-bold text-slate-700 mb-2">
+          <h3 className="text-xl font-bold text-[#5A305A] mb-2">
             Belum Ada Data
           </h3>
           <p className="text-slate-500 max-w-md mx-auto">
@@ -603,7 +603,7 @@ export default function ExternalData() {
                             <span className="font-medium text-slate-500 block text-[10px] uppercase tracking-wider mb-1 truncate" title={key}>
                               {key}
                             </span>
-                            <span className="text-slate-800 font-medium line-clamp-1 text-sm" title={formatValue(value)}>
+                            <span className="text-[#5A305A] font-medium line-clamp-1 text-sm" title={formatValue(value)}>
                               {formatValue(value)}
                             </span>
                           </div>
@@ -620,7 +620,7 @@ export default function ExternalData() {
                     <div className="p-4 border-t md:border-t-0 md:border-l border-white/50 bg-white/40 flex flex-row md:flex-col items-center justify-center gap-2 shrink-0 md:w-32">
                       <button
                         onClick={() => handlePreview(row)}
-                        className="flex-1 w-full flex items-center justify-center gap-2 px-3 py-2 bg-white/50 border border-white/60 text-slate-700 text-xs font-semibold rounded-xl hover:bg-white/80 hover:text-indigo-600 hover:border-white transition-all shadow-sm backdrop-blur-sm whitespace-nowrap"
+                        className="flex-1 w-full flex items-center justify-center gap-2 px-3 py-2 bg-white/50 border border-white/60 text-[#5A305A] text-xs font-semibold rounded-xl hover:bg-white/80 hover:text-indigo-600 hover:border-white transition-all shadow-sm backdrop-blur-sm whitespace-nowrap"
                       >
                         <FileText size={14} />
                         Preview
@@ -670,7 +670,7 @@ export default function ExternalData() {
                     </select>
                     <span className="text-sm text-slate-600">baris</span>
                   </div>
-                  <p className="text-sm text-slate-700 hidden sm:block">
+                  <p className="text-sm text-[#5A305A] hidden sm:block">
                     Menampilkan{" "}
                     <span className="font-medium">{startIndex + 1}</span> hingga{" "}
                     <span className="font-medium">
@@ -723,7 +723,7 @@ export default function ExternalData() {
                           1
                         </button>
                         {currentPage > 3 && (
-                          <span className="relative inline-flex items-center px-4 py-2 border border-white/60 bg-white/50 backdrop-blur-md text-sm font-medium text-slate-700">
+                          <span className="relative inline-flex items-center px-4 py-2 border border-white/60 bg-white/50 backdrop-blur-md text-sm font-medium text-[#5A305A]">
                             ...
                           </span>
                         )}
@@ -753,7 +753,7 @@ export default function ExternalData() {
                         )}
 
                         {currentPage < totalPages - 2 && (
-                          <span className="relative inline-flex items-center px-4 py-2 border border-white/60 bg-white/50 backdrop-blur-md text-sm font-medium text-slate-700">
+                          <span className="relative inline-flex items-center px-4 py-2 border border-white/60 bg-white/50 backdrop-blur-md text-sm font-medium text-[#5A305A]">
                             ...
                           </span>
                         )}
@@ -830,7 +830,7 @@ export default function ExternalData() {
               <button
                 onClick={() => setPreviewData(null)}
                 disabled={isGeneratingPdf}
-                className="px-6 py-2.5 text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all disabled:opacity-50"
+                className="px-6 py-2.5 text-sm font-bold text-[#5A305A] bg-slate-100 hover:bg-slate-200 rounded-xl transition-all disabled:opacity-50"
               >
                 Batal
               </button>

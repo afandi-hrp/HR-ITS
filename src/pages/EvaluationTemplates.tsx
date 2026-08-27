@@ -528,7 +528,7 @@ export default function EvaluationTemplates() {
       <div className="bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">
           <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-[#73507B]"
             size={18}
           />
           <input
@@ -571,7 +571,7 @@ export default function EvaluationTemplates() {
               <h3 className="font-bold text-[#5A305A] truncate">
                 {template.name}
               </h3>
-              <p className="text-sm text-slate-500 mt-0.5">
+              <p className="text-sm text-[#73507B] mt-0.5">
                 Dibuat: {new Date(template.created_at).toLocaleDateString()}
               </p>
             </div>
@@ -594,7 +594,7 @@ export default function EvaluationTemplates() {
                   e.stopPropagation();
                   handleDelete(template.id);
                 }}
-                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                className="p-2 text-[#73507B] hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                 title="Hapus Template"
               >
                 <Trash2 size={18} />
@@ -606,12 +606,12 @@ export default function EvaluationTemplates() {
         {templates.length === 0 && !loading && (
           <div className="text-center py-20 bg-white/70 backdrop-blur-md rounded-2xl border border-dashed border-slate-300">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
-              <FileText className="text-slate-400" size={32} />
+              <FileText className="text-[#73507B]" size={32} />
             </div>
             <h3 className="text-lg font-bold text-[#5A305A]">
               Belum ada template evaluasi
             </h3>
-            <p className="text-slate-500">
+            <p className="text-[#73507B]">
               Buat template evaluasi pertama Anda.
             </p>
           </div>
@@ -634,14 +634,14 @@ export default function EvaluationTemplates() {
                       ? "Edit Template Evaluasi"
                       : "Buat Template Evaluasi"}
                   </h2>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-[#73507B]">
                     Rancang form penilaian tanpa perlu coding.
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all shrink-0"
+                className="p-2 text-[#73507B] hover:text-[#73507B] hover:bg-slate-100 rounded-full transition-all shrink-0"
               >
                 <X size={20} />
               </button>
@@ -657,7 +657,7 @@ export default function EvaluationTemplates() {
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">
+                      <label className="text-sm font-bold text-[#5A305A]">
                         Nama Template
                       </label>
                       <input
@@ -670,7 +670,7 @@ export default function EvaluationTemplates() {
                     </div>
                     {type === "REFERENCE_CHECK" ? (
                       <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700">
+                        <label className="text-sm font-bold text-[#5A305A]">
                           Jenis Template
                         </label>
                         <div className="w-full px-4 py-2.5 bg-amber-50 border border-amber-200 text-amber-700 font-bold rounded-xl text-sm">
@@ -680,7 +680,7 @@ export default function EvaluationTemplates() {
                     ) : (
                       <>
                         <div className="space-y-2">
-                          <label className="text-sm font-bold text-slate-700">
+                          <label className="text-sm font-bold text-[#5A305A]">
                             Jenis Template
                           </label>
                           <select
@@ -695,7 +695,7 @@ export default function EvaluationTemplates() {
                           </select>
                         </div>
                         <div className="space-y-2">
-                          <label className="text-sm font-bold text-slate-700">
+                          <label className="text-sm font-bold text-[#5A305A]">
                             Akses Role
                           </label>
                           <select
@@ -709,7 +709,7 @@ export default function EvaluationTemplates() {
                           </select>
                         </div>
                         <div className="space-y-2">
-                          <label className="text-sm font-bold text-slate-700">
+                          <label className="text-sm font-bold text-[#5A305A]">
                             Akses Departemen
                           </label>
                           <select
@@ -738,7 +738,7 @@ export default function EvaluationTemplates() {
                     Judul & Teks
                   </h3>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">
+                    <label className="text-sm font-bold text-[#5A305A]">
                       Judul Form (gunakan {"{{full_name}}"} untuk nama kandidat)
                     </label>
                     <input
@@ -749,7 +749,7 @@ export default function EvaluationTemplates() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">
+                    <label className="text-sm font-bold text-[#5A305A]">
                       Teks Pengantar
                     </label>
                     <input
@@ -768,7 +768,7 @@ export default function EvaluationTemplates() {
                       <h3 className="text-lg font-bold text-[#5A305A]">
                         Tabel 2 Kolom (Info Pelamar vs Referensi)
                       </h3>
-                      <p className="text-sm text-slate-500">
+                      <p className="text-sm text-[#73507B]">
                         Baris data yang dibandingkan antara pengakuan pelamar dan info dari referensi.
                       </p>
                     </div>
@@ -810,14 +810,14 @@ export default function EvaluationTemplates() {
                         />
                         <button
                           onClick={() => removeRcTwoColumnRow(idx)}
-                          className="p-1.5 shrink-0 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                          className="p-1.5 shrink-0 text-[#73507B] hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
                         >
                           <Trash2 size={16} />
                         </button>
                       </div>
                     ))}
                     {rcTwoColumnRows.length === 0 && (
-                      <p className="text-center text-sm text-slate-500 py-4 italic">
+                      <p className="text-center text-sm text-[#73507B] py-4 italic">
                         Belum ada baris.
                       </p>
                     )}
@@ -831,7 +831,7 @@ export default function EvaluationTemplates() {
                       <h3 className="text-lg font-bold text-[#5A305A]">
                         Tabel Komentar Referee
                       </h3>
-                      <p className="text-sm text-slate-500">
+                      <p className="text-sm text-[#73507B]">
                         Baris komentar satu kolom dari pihak referensi.
                       </p>
                     </div>
@@ -873,14 +873,14 @@ export default function EvaluationTemplates() {
                         />
                         <button
                           onClick={() => removeRcSingleColumnRow(idx)}
-                          className="p-1.5 shrink-0 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                          className="p-1.5 shrink-0 text-[#73507B] hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
                         >
                           <Trash2 size={16} />
                         </button>
                       </div>
                     ))}
                     {rcSingleColumnRows.length === 0 && (
-                      <p className="text-center text-sm text-slate-500 py-4 italic">
+                      <p className="text-center text-sm text-[#73507B] py-4 italic">
                         Belum ada baris.
                       </p>
                     )}
@@ -894,7 +894,7 @@ export default function EvaluationTemplates() {
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">
+                      <label className="text-sm font-bold text-[#5A305A]">
                         Label "Additional Comments"
                       </label>
                       <input
@@ -905,7 +905,7 @@ export default function EvaluationTemplates() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">
+                      <label className="text-sm font-bold text-[#5A305A]">
                         Label Tanggal
                       </label>
                       <input
@@ -927,7 +927,7 @@ export default function EvaluationTemplates() {
                       <h3 className="text-lg font-bold text-[#5A305A]">
                         Skala Penilaian
                       </h3>
-                      <p className="text-sm text-slate-500">
+                      <p className="text-sm text-[#73507B]">
                         Tentukan rentang nilai (misal: 1-4 atau 1-5).
                       </p>
                     </div>
@@ -965,7 +965,7 @@ export default function EvaluationTemplates() {
                         />
                         <button
                           onClick={() => removeScale(idx)}
-                          className="p-1.5 shrink-0 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                          className="p-1.5 shrink-0 text-[#73507B] hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -981,7 +981,7 @@ export default function EvaluationTemplates() {
                       <h3 className="text-lg font-bold text-[#5A305A]">
                         Kategori & Kriteria
                       </h3>
-                      <p className="text-sm text-slate-500">
+                      <p className="text-sm text-[#73507B]">
                         Pertanyaan atau poin yang akan dinilai.
                       </p>
                     </div>
@@ -1012,7 +1012,7 @@ export default function EvaluationTemplates() {
                           />
                           <button
                             onClick={() => removeCategory(catIdx)}
-                            className="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                            className="p-2 text-[#73507B] hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                             title="Hapus Kategori"
                           >
                             <Trash2 size={18} />
@@ -1058,7 +1058,7 @@ export default function EvaluationTemplates() {
                               </div>
                               <button
                                 onClick={() => removeCriterion(catIdx, critIdx)}
-                                className="p-2 h-fit text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors mt-1"
+                                className="p-2 h-fit text-[#73507B] hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors mt-1"
                               >
                                 <Trash2 size={16} />
                               </button>
@@ -1066,7 +1066,7 @@ export default function EvaluationTemplates() {
                           ))}
                           <button
                             onClick={() => addCriterion(catIdx)}
-                            className="w-full py-2 border-2 border-dashed border-slate-300 text-slate-500 hover:border-indigo-400 hover:text-indigo-600 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                            className="w-full py-2 border-2 border-dashed border-slate-300 text-[#73507B] hover:border-indigo-400 hover:text-indigo-600 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2"
                           >
                             <Plus size={16} /> Tambah Kriteria
                           </button>
@@ -1083,7 +1083,7 @@ export default function EvaluationTemplates() {
                       <h3 className="text-lg font-bold text-[#5A305A]">
                         Kolom Kesimpulan (Summary)
                       </h3>
-                      <p className="text-sm text-slate-500">
+                      <p className="text-sm text-[#73507B]">
                         Input tambahan di akhir form (Catatan, Rekomendasi,
                         dll).
                       </p>
@@ -1166,7 +1166,7 @@ export default function EvaluationTemplates() {
                                 }
                                 className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                               />
-                              <p className="text-xs text-slate-500">
+                              <p className="text-xs text-[#73507B]">
                                 Pisahkan setiap{" "}
                                 {field.type === "scoring" ? "item" : "opsi"}{" "}
                                 dengan tanda koma (,)
@@ -1176,14 +1176,14 @@ export default function EvaluationTemplates() {
                         </div>
                         <button
                           onClick={() => removeSummaryField(idx)}
-                          className="p-2 h-fit text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors mt-1"
+                          className="p-2 h-fit text-[#73507B] hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors mt-1"
                         >
                           <Trash2 size={18} />
                         </button>
                       </div>
                     ))}
                     {summaryFields.length === 0 && (
-                      <p className="text-center text-sm text-slate-500 py-4 italic">
+                      <p className="text-center text-sm text-[#73507B] py-4 italic">
                         Tidak ada kolom kesimpulan tambahan.
                       </p>
                     )}
@@ -1198,7 +1198,7 @@ export default function EvaluationTemplates() {
             <div className="p-4 sm:p-6 bg-white border-t border-slate-100 flex flex-col sm:flex-row gap-3 shrink-0 z-10">
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="flex-1 py-3 bg-white text-slate-600 font-bold rounded-xl border border-slate-200 hover:bg-slate-50 transition-all"
+                className="flex-1 py-3 bg-[#FFF5C5] text-[#5A305A] font-bold rounded-xl border border-slate-200 hover:bg-[#FFEC94] transition-all"
               >
                 Batal
               </button>

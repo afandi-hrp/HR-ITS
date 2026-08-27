@@ -1898,7 +1898,7 @@ export default function RecruitmentFunnel() {
             <div className="p-6 border-t border-white/40 bg-white/30 shrink-0 rounded-b-3xl">
               <button
                 onClick={() => setSelectedStage(null)}
-                className="w-full py-3 bg-white/50 border border-white/60 text-slate-800 font-bold rounded-xl hover:bg-white/80 transition-all shadow-sm"
+                className="w-full py-3 bg-white/50 border border-white/60 text-[#5A305A] font-bold rounded-xl hover:bg-white/80 transition-all shadow-sm"
               >
                 Tutup
               </button>

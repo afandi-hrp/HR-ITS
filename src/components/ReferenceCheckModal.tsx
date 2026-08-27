@@ -195,7 +195,7 @@ export default function ReferenceCheckModal({
               </div>
 
               <div className="space-y-3">
-                <h3 className="text-sm font-bold text-slate-800">{schema.single_column.section_title}</h3>
+                <h3 className="text-sm font-bold text-[#5A305A]">{schema.single_column.section_title}</h3>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm border border-slate-200 rounded-xl overflow-hidden">
                     <thead>

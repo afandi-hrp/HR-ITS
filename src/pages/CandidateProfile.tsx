@@ -1252,7 +1252,7 @@ export default function CandidateProfile() {
         <h2 className="text-2xl font-bold text-slate-700 mb-2">
           Kandidat Tidak Ditemukan
         </h2>
-        <p className="text-slate-500 mb-6">
+        <p className="text-[#73507B] mb-6">
           Profil kandidat yang Anda cari tidak ada atau telah dihapus.
         </p>
         <button
@@ -1297,7 +1297,7 @@ export default function CandidateProfile() {
       case "invited":
         return "bg-amber-100 text-amber-700 border-amber-200";
       default:
-        return "bg-slate-100 text-slate-700 border-slate-200";
+        return "bg-slate-100 text-[#5A305A] border-slate-200";
     }
   };
 
@@ -1320,13 +1320,13 @@ export default function CandidateProfile() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className="space-y-6 pb-12">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate(-1)}
-            className="p-2 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-[#5A305A] hover:bg-slate-50 transition-colors"
+            className="p-2 bg-white border border-slate-200 rounded-xl text-[#73507B] hover:text-[#5A305A] hover:bg-slate-50 transition-colors"
           >
             <ArrowLeft size={20} />
           </button>
@@ -1449,7 +1449,7 @@ export default function CandidateProfile() {
                   </h2>
                 )}
 
-                <div className="flex items-center gap-2 text-indigo-600 font-medium mt-1">
+                <div className="flex items-center gap-2 text-[#5A305A] font-medium mt-1">
                   <Briefcase size={16} />
                   {isEditing ? (
                     <input
@@ -1465,8 +1465,8 @@ export default function CandidateProfile() {
                 </div>
 
                 <div className="mt-6 space-y-3">
-                  <div className="flex items-center gap-3 text-slate-600">
-                    <Mail size={16} className="text-slate-400 shrink-0" />
+                  <div className="flex items-center gap-3 text-[#73507B]">
+                    <Mail size={16} className="text-[#73507B] shrink-0" />
                     {isEditing ? (
                       <input
                         type="email"
@@ -1484,8 +1484,8 @@ export default function CandidateProfile() {
                       </a>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 text-slate-600">
-                    <Phone size={16} className="text-slate-400 shrink-0" />
+                  <div className="flex items-center gap-3 text-[#73507B]">
+                    <Phone size={16} className="text-[#73507B] shrink-0" />
                     {isEditing ? (
                       <input
                         type="text"
@@ -1502,17 +1502,17 @@ export default function CandidateProfile() {
                         {candidate.phone}
                       </a>
                     ) : (
-                      <span className="text-slate-400 italic">
+                      <span className="text-[#73507B] italic">
                         Belum ada nomor telepon
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 text-slate-600">
-                    <CalendarIcon size={16} className="text-slate-400" />
+                  <div className="flex items-center gap-3 text-[#73507B]">
+                    <CalendarIcon size={16} className="text-[#73507B]" />
                     <span>Melamar pada {formatDate(candidate.date)}</span>
                   </div>
                   {candidate.source_info && (
-                    <div className="flex items-center gap-3 text-slate-600">
+                    <div className="flex items-center gap-3 text-[#73507B]">
                       <div className="w-4 h-4 flex items-center justify-center shrink-0">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -1524,7 +1524,7 @@ export default function CandidateProfile() {
                           strokeWidth="2"
                           strokeLinecap="round"
                           strokeLinejoin="round"
-                          className="text-slate-400"
+                          className="text-[#73507B]"
                         >
                           <circle cx="12" cy="12" r="10" />
                           <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
@@ -1587,7 +1587,7 @@ export default function CandidateProfile() {
                 <UserCheck className="text-indigo-500" size={20} />
                 Analisis CV (AI / Manusia)
               </h3>
-              <p className="text-sm text-slate-600 leading-relaxed">
+              <p className="text-sm text-[#73507B] leading-relaxed">
                 {(() => {
                   const analysis = candidate.ai_cv_analysis as string;
                   if (!analysis) return null;
@@ -1604,15 +1604,15 @@ export default function CandidateProfile() {
                     return (
                       <span>
                         Persentase AI{" "}
-                        <span className="font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded-md border border-indigo-100">
+                        <span className="font-semibold text-[#5A305A] bg-[#FFF5C5] px-1.5 py-0.5 rounded-md border border-[#FFEC94]">
                           {percentage}%
                         </span>
                         , probabilitas penggunaan AI{" "}
-                        <span className="font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded-md border border-indigo-100">
+                        <span className="font-semibold text-[#5A305A] bg-[#FFF5C5] px-1.5 py-0.5 rounded-md border border-[#FFEC94]">
                           {probability}
                         </span>
                         , dengan Alasan:{" "}
-                        <span className="font-medium text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded-md border border-slate-200">
+                        <span className="font-medium text-[#5A305A] bg-[#FFF5C5] px-1.5 py-0.5 rounded-md border border-[#FFEC94]">
                           {reason}
                         </span>
                       </span>
@@ -1630,8 +1630,69 @@ export default function CandidateProfile() {
                 <Briefcase className="text-sky-500" size={20} />
                 Rekomendasi Kecocokan Karier (Career Fit)
               </h3>
-              <div className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
-                {candidate.career_fit_recommendation}
+              <div className="text-sm text-[#73507B] leading-relaxed">
+                {(() => {
+                  const lines = (candidate.career_fit_recommendation as string)
+                    .split("\n")
+                    .map((s) => s.trim())
+                    .filter(Boolean);
+                  if (lines.length === 0) return null;
+
+                  const primaryPosition = lines[0];
+                  const altIndex = lines.findIndex((l) =>
+                    /^alternatif\s*:/i.test(l),
+                  );
+                  const alternatives =
+                    altIndex !== -1
+                      ? lines[altIndex]
+                          .replace(/^alternatif\s*:\s*/i, "")
+                          .split(",")
+                          .map((s) => s.trim())
+                          .filter(Boolean)
+                      : [];
+                  const paragraphs = lines.filter(
+                    (_, idx) => idx !== 0 && idx !== altIndex,
+                  );
+
+                  return (
+                    <div className="space-y-4">
+                      <div>
+                        <span className="text-xs font-bold text-[#73507B] uppercase tracking-wider block mb-1.5">
+                          Posisi Paling Cocok
+                        </span>
+                        <span className="inline-block font-bold text-white bg-[#5A305A] px-3 py-1.5 rounded-lg text-base">
+                          {primaryPosition}
+                        </span>
+                      </div>
+                      {alternatives.length > 0 && (
+                        <div>
+                          <span className="text-xs font-bold text-[#73507B] uppercase tracking-wider block mb-1.5">
+                            Alternatif
+                          </span>
+                          <div className="flex flex-wrap gap-2">
+                            {alternatives.map((alt, idx) => (
+                              <span
+                                key={idx}
+                                className="inline-block font-semibold text-[#5A305A] bg-[#FFF5C5] px-3 py-1 rounded-lg text-sm"
+                              >
+                                {alt}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {paragraphs.length > 0 && (
+                        <div className="space-y-2 pt-3 border-t border-slate-100">
+                          {paragraphs.map((p, idx) => (
+                            <p key={idx} className="whitespace-pre-wrap">
+                              {p}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}
@@ -1647,10 +1708,10 @@ export default function CandidateProfile() {
                   <Briefcase className="text-indigo-500" size={20} />
                   Pengalaman Kerja
                 </h3>
-                <div className="text-sm text-slate-600">
+                <div className="text-sm text-[#73507B]">
                   {formatAsNumberedList(
                     candidate.work_experience,
-                    <p className="text-slate-400 italic text-sm">
+                    <p className="text-[#73507B] italic text-sm">
                       Tidak ada data pengalaman kerja.
                     </p>,
                   )}
@@ -1663,11 +1724,11 @@ export default function CandidateProfile() {
                   Pendidikan
                 </h3>
                 {candidate.education ? (
-                  <div className="prose prose-sm text-slate-600 whitespace-pre-wrap">
+                  <div className="prose prose-sm text-[#73507B] whitespace-pre-wrap">
                     {candidate.education}
                   </div>
                 ) : (
-                  <p className="text-slate-400 italic text-sm">
+                  <p className="text-[#73507B] italic text-sm">
                     Tidak ada data pendidikan.
                   </p>
                 )}
@@ -1703,14 +1764,14 @@ export default function CandidateProfile() {
                   })().map((skill, index) => (
                     <span
                       key={index}
-                      className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-medium border border-indigo-100"
+                      className="px-3 py-1 bg-[#5A305A]/10 text-[#5A305A] rounded-lg text-sm font-medium border border-[#5A305A]/20"
                     >
                       {skill}
                     </span>
                   ))}
                 </div>
               ) : (
-                <p className="text-slate-400 italic text-sm">
+                <p className="text-[#73507B] italic text-sm">
                   Tidak ada data keahlian.
                 </p>
               )}
@@ -1726,11 +1787,11 @@ export default function CandidateProfile() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4">
-                <h4 className="font-bold text-emerald-800 flex items-center gap-2 mb-2">
-                  <ThumbsUp size={16} />
+                <h4 className="font-bold text-[#5A305A] flex items-center gap-2 mb-2">
+                  <ThumbsUp size={16} className="text-emerald-600" />
                   Kekuatan (Strengths)
                 </h4>
-                <div className="text-sm text-emerald-700">
+                <div className="text-sm text-[#73507B]">
                   {formatAsNumberedList(
                     candidate.strengths,
                     <span className="italic opacity-70">Belum dianalisis</span>,
@@ -1739,11 +1800,11 @@ export default function CandidateProfile() {
               </div>
 
               <div className="bg-rose-50/50 border border-rose-100 rounded-xl p-4">
-                <h4 className="font-bold text-rose-800 flex items-center gap-2 mb-2">
-                  <ThumbsDown size={16} />
+                <h4 className="font-bold text-[#5A305A] flex items-center gap-2 mb-2">
+                  <ThumbsDown size={16} className="text-rose-600" />
                   Kelemahan (Weaknesses)
                 </h4>
-                <div className="text-sm text-rose-700">
+                <div className="text-sm text-[#73507B]">
                   {formatAsNumberedList(
                     candidate.weaknesses,
                     <span className="italic opacity-70">Belum dianalisis</span>,
@@ -1751,12 +1812,12 @@ export default function CandidateProfile() {
                 </div>
               </div>
 
-              <div className="bg-[#5A305A]/5 border border-[#5A305A]/20 rounded-xl p-4">
+              <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4">
                 <h4 className="font-bold text-[#5A305A] flex items-center gap-2 mb-2">
-                  <Star size={16} />
+                  <Star size={16} className="text-indigo-500" />
                   Potensi
                 </h4>
-                <div className="text-sm text-[#5A305A]/80">
+                <div className="text-sm text-[#73507B]">
                   {formatLevelAndList(
                     candidate.potential_factors,
                     <span className="italic opacity-70">Belum dianalisis</span>,
@@ -1765,11 +1826,11 @@ export default function CandidateProfile() {
               </div>
 
               <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-4">
-                <h4 className="font-bold text-amber-800 flex items-center gap-2 mb-2">
-                  <AlertTriangle size={16} />
+                <h4 className="font-bold text-[#5A305A] flex items-center gap-2 mb-2">
+                  <AlertTriangle size={16} className="text-amber-600" />
                   Faktor Risiko
                 </h4>
-                <div className="text-sm text-amber-700">
+                <div className="text-sm text-[#73507B]">
                   {formatLevelAndList(
                     candidate.risk_factors,
                     <span className="italic opacity-70">Belum dianalisis</span>,
@@ -1787,16 +1848,16 @@ export default function CandidateProfile() {
                   >
                     {candidate.assessment_score || 0}
                   </div>
-                  <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider mt-2">
+                  <span className="text-[10px] font-bold text-[#73507B] uppercase tracking-wider mt-2">
                     Skor AI
                   </span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-bold text-indigo-900 mb-2 flex items-center gap-2">
+                  <h4 className="font-bold text-[#5A305A] mb-2 flex items-center gap-2">
                     <FileText size={16} className="text-indigo-500" />
                     Alasan Penilaian
                   </h4>
-                  <div className="text-sm text-indigo-800">
+                  <div className="text-sm text-[#5A305A]">
                     {formatAsNumberedList(
                       candidate.assessment_reason,
                       <span className="italic opacity-70">
@@ -1823,9 +1884,9 @@ export default function CandidateProfile() {
                   <Sparkles className="text-indigo-500" size={20} />
                   Ringkasan AI (Berdasarkan Biodata)
                   {isBiodataSummaryExpanded ? (
-                    <ChevronUp size={20} className="text-slate-400 ml-2" />
+                    <ChevronUp size={20} className="text-[#73507B] ml-2" />
                   ) : (
-                    <ChevronDown size={20} className="text-slate-400 ml-2" />
+                    <ChevronDown size={20} className="text-[#73507B] ml-2" />
                   )}
                 </h3>
               </div>
@@ -1876,9 +1937,9 @@ export default function CandidateProfile() {
                     return null;
                   })()}
                   {isPsikotesSummaryExpanded ? (
-                    <ChevronUp size={20} className="text-slate-400 ml-2" />
+                    <ChevronUp size={20} className="text-[#73507B] ml-2" />
                   ) : (
-                    <ChevronDown size={20} className="text-slate-400 ml-2" />
+                    <ChevronDown size={20} className="text-[#73507B] ml-2" />
                   )}
                 </div>
               </div>
@@ -1902,9 +1963,9 @@ export default function CandidateProfile() {
                 <Sparkles className="text-indigo-500" size={20} />
                 Pertanyaan Interview (AI)
                 {isInterviewQuestionsExpanded ? (
-                  <ChevronUp size={20} className="text-slate-400 ml-2" />
+                  <ChevronUp size={20} className="text-[#73507B] ml-2" />
                 ) : (
-                  <ChevronDown size={20} className="text-slate-400 ml-2" />
+                  <ChevronDown size={20} className="text-[#73507B] ml-2" />
                 )}
               </h3>
               <div
@@ -1988,11 +2049,11 @@ export default function CandidateProfile() {
                                       {num}
                                     </span>
                                     <div className="flex-1 min-w-0">
-                                      <p className="text-slate-800 font-medium mb-2">
+                                      <p className="text-[#5A305A] font-medium mb-2">
                                         {q.question}
                                       </p>
                                       {q.reasoning && (
-                                        <div className="flex gap-2 text-sm text-slate-500 bg-white p-3 rounded-lg border border-slate-100">
+                                        <div className="flex gap-2 text-sm text-[#73507B] bg-white p-3 rounded-lg border border-slate-100">
                                           <Sparkles
                                             size={16}
                                             className="text-indigo-400 shrink-0 mt-0.5"
@@ -2028,10 +2089,10 @@ export default function CandidateProfile() {
                   return (
                     <div className="text-center py-8 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
                       <Sparkles className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                      <p className="text-slate-500 font-medium">
+                      <p className="text-[#73507B] font-medium">
                         Belum ada pertanyaan interview
                       </p>
-                      <p className="text-sm text-slate-400 mt-1">
+                      <p className="text-sm text-[#73507B] mt-1">
                         Klik tombol "Generate (AI)" untuk membuat daftar
                         pertanyaan yang terpersonalisasi.
                       </p>
@@ -2124,10 +2185,10 @@ export default function CandidateProfile() {
             ) : (
               <div className="text-center py-8 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
                 <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <p className="text-slate-500 font-medium">
+                <p className="text-[#73507B] font-medium">
                   Belum ada hasil psikotes
                 </p>
-                <p className="text-sm text-slate-400 mt-1">
+                <p className="text-sm text-[#73507B] mt-1">
                   Klik tombol "Upload PDF" untuk menambahkan dokumen hasil
                   psikotes eksternal.
                 </p>
@@ -2143,7 +2204,7 @@ export default function CandidateProfile() {
             </h3>
 
             {isSearchingExternal ? (
-              <div className="flex items-center justify-center py-6 text-slate-500">
+              <div className="flex items-center justify-center py-6 text-[#73507B]">
                 <Loader2 size={24} className="animate-spin text-indigo-600" />
               </div>
             ) : linkedData ? (
@@ -2289,7 +2350,7 @@ export default function CandidateProfile() {
                       className="border border-slate-200 rounded-xl p-4 hover:border-indigo-300 transition-colors"
                     >
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-md">
+                        <span className="text-xs font-bold bg-slate-100 text-[#73507B] px-2 py-1 rounded-md">
                           Opsi {idx + 1}
                         </span>
                         {!isUserManager && !isArchived && (
@@ -2359,10 +2420,10 @@ export default function CandidateProfile() {
 
                           return previewFields.map((field, i) => (
                             <div key={i} className="text-sm">
-                              <span className="font-medium text-slate-500 block text-xs uppercase tracking-wider mb-0.5">
+                              <span className="font-medium text-[#73507B] block text-xs uppercase tracking-wider mb-0.5">
                                 {field.label}
                               </span>
-                              <span className="text-slate-800 whitespace-pre-wrap">
+                              <span className="text-[#5A305A] whitespace-pre-wrap">
                                 {field.value}
                               </span>
                             </div>
@@ -2385,10 +2446,10 @@ export default function CandidateProfile() {
             ) : (
               <div className="text-center py-6 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
                 <Database className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                <p className="text-sm text-slate-500 font-medium">
+                <p className="text-sm text-[#73507B] font-medium">
                   Tidak ada data eksternal yang cocok
                 </p>
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-[#73507B] mt-1">
                   Sistem tidak menemukan data dengan email, nomor telepon, atau
                   nama yang sama.
                 </p>
@@ -2448,7 +2509,7 @@ export default function CandidateProfile() {
                   </div>
                 ) : notes.length === 0 ? (
                   <div className="text-center py-6 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
-                    <p className="text-slate-500 font-medium">
+                    <p className="text-[#73507B] font-medium">
                       Belum ada catatan internal
                     </p>
                   </div>
@@ -2466,7 +2527,7 @@ export default function CandidateProfile() {
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <User size={20} className="text-slate-500" />
+                          <User size={20} className="text-[#73507B]" />
                         )}
                       </div>
                       <div className="flex-1">
@@ -2474,7 +2535,7 @@ export default function CandidateProfile() {
                           <p className="font-bold text-[#5A305A] text-sm">
                             {note.author?.full_name || "Unknown User"}
                           </p>
-                          <p className="text-xs text-slate-500">
+                          <p className="text-xs text-[#73507B]">
                             {formatDate(note.created_at)}
                           </p>
                         </div>
@@ -2514,15 +2575,15 @@ export default function CandidateProfile() {
             {interviewEvaluations.length === 0 ? (
               <div className="text-center py-8 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
                 <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <p className="text-slate-500 font-medium">
+                <p className="text-[#73507B] font-medium">
                   Belum ada hasil interview
                 </p>
                 {["accepted", "hired"].includes(candidate.status_screening) ? (
-                  <p className="text-sm text-slate-400 mt-1">
+                  <p className="text-sm text-[#73507B] mt-1">
                     Klik tombol "Input Hasil" untuk menambahkan penilaian.
                   </p>
                 ) : (
-                  <p className="text-sm text-slate-400 mt-1">
+                  <p className="text-sm text-[#73507B] mt-1">
                     Kandidat harus diterima (Lolos Screening) terlebih dahulu
                     untuk mengisi evaluasi.
                   </p>
@@ -2551,7 +2612,7 @@ export default function CandidateProfile() {
                           <p className="text-sm font-bold text-[#5A305A]">
                             {evalItem.template?.name}
                           </p>
-                          <p className="text-xs text-slate-500">
+                          <p className="text-xs text-[#73507B]">
                             Oleh: {evalItem.interviewer_name} •{" "}
                             {formatDate(evalItem.created_at)}
                           </p>
@@ -2559,7 +2620,7 @@ export default function CandidateProfile() {
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="text-right">
-                          <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-0.5">
+                          <p className="text-xs text-[#73507B] font-medium uppercase tracking-wider mb-0.5">
                             Total Skor
                           </p>
                           <p className="text-lg font-black text-indigo-600">
@@ -2569,7 +2630,7 @@ export default function CandidateProfile() {
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => toggleEvaluation(evalItem.id)}
-                            className="p-2 text-slate-400 hover:text-[#5A305A] hover:bg-[#5A305A]/10 rounded-lg transition-colors"
+                            className="p-2 text-[#73507B] hover:text-[#5A305A] hover:bg-[#5A305A]/10 rounded-lg transition-colors"
                             title={
                               expandedEvaluations.includes(evalItem.id)
                                 ? "Tutup Preview"
@@ -2589,7 +2650,7 @@ export default function CandidateProfile() {
                                   setExistingEvaluation(evalItem);
                                   setIsEvaluationModalOpen(true);
                                 }}
-                                className="p-2 text-slate-400 hover:text-[#5A305A] hover:bg-[#5A305A]/10 rounded-lg transition-colors"
+                                className="p-2 text-[#73507B] hover:text-[#5A305A] hover:bg-[#5A305A]/10 rounded-lg transition-colors"
                                 title="Edit Penilaian"
                               >
                                 <Edit2 size={18} />
@@ -2603,7 +2664,7 @@ export default function CandidateProfile() {
                         {(evalItem.template?.form_schema as any)?.categories?.map(
                           (category: any, catIdx: number) => (
                             <div key={catIdx} className="mb-6 last:mb-0">
-                              <h4 className="font-bold text-slate-800 mb-3 pb-2 border-b border-slate-100">
+                              <h4 className="font-bold text-[#5A305A] mb-3 pb-2 border-b border-slate-100">
                                 {category.name}
                               </h4>
                               <div className="space-y-3">
@@ -2626,7 +2687,7 @@ export default function CandidateProfile() {
                                       </span>
                                       <div className="flex items-center gap-3 shrink-0">
                                         {scaleItem && (
-                                          <span className="text-xs text-slate-500 bg-white border border-slate-200 px-2 py-1 rounded-md">
+                                          <span className="text-xs text-[#73507B] bg-white border border-slate-200 px-2 py-1 rounded-md">
                                             {scaleItem.label}
                                           </span>
                                         )}
@@ -2643,11 +2704,11 @@ export default function CandidateProfile() {
                         )}
                         {evalItem.notes && (
                           <div className="mt-6 pt-4 border-t border-slate-200">
-                            <h4 className="font-bold text-slate-800 mb-2 text-sm flex items-center gap-2">
-                              <FileText size={16} className="text-slate-400" />
+                            <h4 className="font-bold text-[#5A305A] mb-2 text-sm flex items-center gap-2">
+                              <FileText size={16} className="text-[#73507B]" />
                               Catatan Tambahan
                             </h4>
-                            <p className="text-sm text-slate-600 whitespace-pre-wrap bg-amber-50 p-4 rounded-xl border border-amber-100">
+                            <p className="text-sm text-[#73507B] whitespace-pre-wrap bg-amber-50 p-4 rounded-xl border border-amber-100">
                               {evalItem.notes}
                             </p>
                           </div>
@@ -2698,7 +2759,7 @@ export default function CandidateProfile() {
                                 key={key}
                                 className={`space-y-2 bg-slate-50 border border-slate-100 rounded-xl p-4 ${isScoring ? "col-span-1 md:col-span-2" : ""}`}
                               >
-                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+                                <p className="text-xs font-bold text-[#73507B] uppercase tracking-wider mb-3">
                                   {fieldName}
                                 </p>
                                 {isObject ? (
@@ -2784,7 +2845,7 @@ export default function CandidateProfile() {
               {referenceChecks.length === 0 ? (
                 <div className="text-center py-8 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
                   <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                  <p className="text-slate-500 font-medium">
+                  <p className="text-[#73507B] font-medium">
                     Belum ada reference check.
                   </p>
                 </div>
@@ -2803,7 +2864,7 @@ export default function CandidateProfile() {
                             <p className="text-sm font-bold text-[#5A305A]">
                               Checked by: {evalItem.interviewer_name}
                             </p>
-                            <p className="text-xs text-slate-500">
+                            <p className="text-xs text-[#73507B]">
                               Tanggal: {rcData?.checked_date ? formatDate(rcData.checked_date) : "-"}
                             </p>
                           </div>
@@ -2815,7 +2876,7 @@ export default function CandidateProfile() {
                                   setExistingReferenceCheck(evalItem);
                                   setIsReferenceCheckModalOpen(true);
                                 }}
-                                className="p-2 text-slate-400 hover:text-[#5A305A] hover:bg-[#5A305A]/10 rounded-lg transition-colors"
+                                className="p-2 text-[#73507B] hover:text-[#5A305A] hover:bg-[#5A305A]/10 rounded-lg transition-colors"
                                 title="Edit Reference Check"
                               >
                                 <Edit2 size={18} />
@@ -2826,20 +2887,20 @@ export default function CandidateProfile() {
                           {schema?.two_column?.rows?.map((row: any) => (
                             <div key={row.key} className="grid grid-cols-1 sm:grid-cols-3 gap-2 border-b border-slate-100 pb-2 last:border-0">
                               <span className="font-medium text-slate-700">{row.label}</span>
-                              <span className="text-slate-600">{rcData?.applicant?.[row.key] || "-"}</span>
-                              <span className="text-slate-600">{rcData?.reference?.[row.key] || "-"}</span>
+                              <span className="text-[#73507B]">{rcData?.applicant?.[row.key] || "-"}</span>
+                              <span className="text-[#73507B]">{rcData?.reference?.[row.key] || "-"}</span>
                             </div>
                           ))}
                           {schema?.single_column?.rows?.map((row: any) => (
                             <div key={row.key} className="grid grid-cols-1 sm:grid-cols-2 gap-2 border-b border-slate-100 pb-2 last:border-0">
                               <span className="font-medium text-slate-700">{row.label}</span>
-                              <span className="text-slate-600">{rcData?.referee_comments?.[row.key] || "-"}</span>
+                              <span className="text-[#73507B]">{rcData?.referee_comments?.[row.key] || "-"}</span>
                             </div>
                           ))}
                           {rcData?.additional_comments && (
                             <div className="pt-2">
                               <p className="font-medium text-slate-700 mb-1">Additional Comments</p>
-                              <p className="text-slate-600 whitespace-pre-wrap bg-amber-50 p-3 rounded-xl border border-amber-100">
+                              <p className="text-[#73507B] whitespace-pre-wrap bg-amber-50 p-3 rounded-xl border border-amber-100">
                                 {rcData.additional_comments}
                               </p>
                             </div>
@@ -2875,7 +2936,7 @@ export default function CandidateProfile() {
                           key={idx}
                           className="flex items-center justify-between text-sm"
                         >
-                          <div className="flex items-center gap-2 text-slate-600">
+                          <div className="flex items-center gap-2 text-[#73507B]">
                             <Clock size={14} />
                             <span>{formatDate(schedule.schedule_date)}</span>
                           </div>
@@ -2892,14 +2953,14 @@ export default function CandidateProfile() {
                       ))}
                     </div>
                   ) : candidate.psikotes_status ? (
-                    <p className="text-sm text-slate-500 mt-1">
+                    <p className="text-sm text-[#73507B] mt-1">
                       Status:{" "}
                       <span className="font-medium text-slate-700">
                         {candidate.psikotes_status}
                       </span>
                     </p>
                   ) : (
-                    <p className="text-sm text-slate-500 mt-1">
+                    <p className="text-sm text-[#73507B] mt-1">
                       Belum ada jadwal psikotes.
                     </p>
                   )}
@@ -2926,7 +2987,7 @@ export default function CandidateProfile() {
                               key={idx}
                               className="flex items-center justify-between text-sm"
                             >
-                              <div className="flex items-center gap-2 text-slate-600">
+                              <div className="flex items-center gap-2 text-[#73507B]">
                                 <Clock size={14} />
                                 <span>{formatDate(schedule.schedule_date)}</span>
                               </div>
@@ -2943,7 +3004,7 @@ export default function CandidateProfile() {
                           ))}
                         </div>
                       ) : (
-                        <p className="text-sm text-slate-500 mt-1">
+                        <p className="text-sm text-[#73507B] mt-1">
                           Belum ada jadwal {label.toLowerCase()}.
                         </p>
                       )}
@@ -2960,7 +3021,7 @@ export default function CandidateProfile() {
                         </div>
                         <div className="flex-1">
                           <h4 className="font-bold text-[#5A305A] text-sm">Interview</h4>
-                          <p className="text-sm text-slate-500 mt-1">
+                          <p className="text-sm text-[#73507B] mt-1">
                             Status:{" "}
                             <span className="font-medium text-slate-700">
                               {candidate.interview_status}
@@ -3015,18 +3076,18 @@ export default function CandidateProfile() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
             <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50">
               <div>
-                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <h2 className="text-xl font-bold text-[#5A305A] flex items-center gap-2">
                   <Sparkles className="text-indigo-600" size={24} />
                   Kurasi Pertanyaan Interview
                 </h2>
-                <p className="text-sm text-slate-500 mt-1">
+                <p className="text-sm text-[#73507B] mt-1">
                   Review, edit, atau hapus pertanyaan yang dihasilkan AI sebelum
                   disimpan.
                 </p>
               </div>
               <button
                 onClick={() => setShowInterviewModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-2 rounded-lg hover:bg-slate-100 transition-colors"
+                className="text-[#73507B] hover:text-[#73507B] p-2 rounded-lg hover:bg-slate-100 transition-colors"
               >
                 <X size={24} />
               </button>
@@ -3075,13 +3136,13 @@ export default function CandidateProfile() {
                       newQuestions[index].question = e.target.value;
                       setGeneratedQuestions(newQuestions);
                     }}
-                    className="w-full text-slate-800 font-medium bg-transparent border-none focus:ring-0 p-0 resize-none"
+                    className="w-full text-[#5A305A] font-medium bg-transparent border-none focus:ring-0 p-0 resize-none"
                     rows={2}
                     placeholder="Tulis pertanyaan di sini..."
                   />
 
                   {q.reasoning && (
-                    <div className="mt-3 flex gap-2 text-sm text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <div className="mt-3 flex gap-2 text-sm text-[#73507B] bg-slate-50 p-3 rounded-lg border border-slate-100">
                       <Sparkles
                         size={16}
                         className="text-indigo-400 shrink-0 mt-0.5"
@@ -3103,7 +3164,7 @@ export default function CandidateProfile() {
                     },
                   ]);
                 }}
-                className="w-full py-4 border-2 border-dashed border-slate-200 rounded-xl text-slate-500 font-medium hover:bg-slate-50 hover:border-indigo-300 hover:text-indigo-600 transition-all flex items-center justify-center gap-2"
+                className="w-full py-4 border-2 border-dashed border-slate-200 rounded-xl text-[#73507B] font-medium hover:bg-slate-50 hover:border-indigo-300 hover:text-indigo-600 transition-all flex items-center justify-center gap-2"
               >
                 <PlusCircle size={18} />
                 Tambah Pertanyaan Manual
@@ -3194,7 +3255,7 @@ export default function CandidateProfile() {
               </h3>
               <button
                 onClick={() => setIsApprovalModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 transition-colors"
+                className="text-[#73507B] hover:text-[#73507B] transition-colors"
               >
                 <X size={20} />
               </button>
@@ -3203,18 +3264,18 @@ export default function CandidateProfile() {
             <div className="p-6 overflow-y-auto space-y-6">
               {/* Approval Status Card */}
               <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
-                <h3 className="text-sm font-semibold text-slate-800 mb-3">Status Approval Manajemen</h3>
+                <h3 className="text-sm font-semibold text-[#5A305A] mb-3">Status Approval Manajemen</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Director Approval */}
                   <div className="p-4 bg-slate-50 border border-slate-100 rounded-lg">
                     <div className="flex items-center justify-between">
-                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Direktur</p>
+                      <p className="text-xs font-medium text-[#73507B] uppercase tracking-wider">Direktur</p>
                       <span className={cn(
                         "px-2.5 py-1 text-xs font-bold rounded-md",
                         candidate.director_status === 'accepted' ? 'bg-emerald-100 text-emerald-700' :
                         candidate.director_status === 'rejected' ? 'bg-rose-100 text-rose-700' :
                         candidate.director_status === 'hold' ? 'bg-amber-100 text-amber-700' :
-                        'bg-slate-200 text-slate-700'
+                        'bg-slate-200 text-[#5A305A]'
                       )}>
                         {(candidate.director_status || 'pending').toUpperCase()}
                       </span>
@@ -3231,12 +3292,12 @@ export default function CandidateProfile() {
                   {/* Finance Director Approval */}
                   <div className="p-4 bg-slate-50 border border-slate-100 rounded-lg">
                     <div className="flex items-center justify-between">
-                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Finance Director</p>
+                      <p className="text-xs font-medium text-[#73507B] uppercase tracking-wider">Finance Director</p>
                       <span className={cn(
                         "px-2.5 py-1 text-xs font-bold rounded-md",
                         candidate.finance_status === 'accepted' ? 'bg-emerald-100 text-emerald-700' :
                         candidate.finance_status === 'rejected' ? 'bg-rose-100 text-rose-700' :
-                        'bg-slate-200 text-slate-700'
+                        'bg-slate-200 text-[#5A305A]'
                       )}>
                         {(candidate.finance_status || 'pending').toUpperCase()}
                       </span>
@@ -3281,14 +3342,14 @@ export default function CandidateProfile() {
               </h3>
               <button
                 onClick={() => setIsAssignModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600"
+                className="text-[#73507B] hover:text-[#73507B]"
               >
                 <X size={20} />
               </button>
             </div>
 
             <div className="p-6 space-y-6 overflow-y-auto">
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-[#73507B]">
                 Pilih siapa saja yang akan me-review kandidat ini. User yang
                 dipilih akan dapat melihat profil kandidat ini di halaman
                 mereka.

@@ -2381,7 +2381,7 @@ export default function ApplicationForm({
                                             : sm.platform === "YouTube"
                                               ? "text-red-600 print:text-red-600"
                                               : sm.platform === "Twitter"
-                                                ? "text-slate-800 print:text-slate-800"
+                                                ? "text-[#5A305A] print:text-[#5A305A]"
                                                 : "text-indigo-600 print:text-indigo-600",
                                       )}
                                     >
@@ -2544,7 +2544,7 @@ export default function ApplicationForm({
                                   No. {sim}:
                                 </span>
                                 {readOnly ? (
-                                  <div className="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-800">
+                                  <div className="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-[#5A305A]">
                                     {formData.driver_license_numbers?.[sim] ||
                                       formData.driver_license_number ||
                                       "-"}
@@ -2592,7 +2592,7 @@ export default function ApplicationForm({
                     <div className="space-y-8">
                       {/* Table 1: Susunan Anggota Keluarga */}
                       <div>
-                        <h3 className="text-sm font-semibold text-slate-800 mb-3">
+                        <h3 className="text-sm font-semibold text-[#5A305A] mb-3">
                           1. Susunan Anggota Keluarga{" "}
                           <span className="text-slate-500 italic font-normal">
                             (Family Member)
@@ -2716,7 +2716,7 @@ export default function ApplicationForm({
 
                       {/* Table 2: Isilah kolom ini bila sudah menikah */}
                       <div>
-                        <h3 className="text-sm font-semibold text-slate-800 mb-3">
+                        <h3 className="text-sm font-semibold text-[#5A305A] mb-3">
                           2. Isilah kolom ini bila sudah menikah{" "}
                           <span className="text-slate-500 italic font-normal">
                             (Fill this columns if you are married)
@@ -2847,7 +2847,7 @@ export default function ApplicationForm({
                     <div className="space-y-10">
                       {/* 1. Pendidikan Formal */}
                       <div>
-                        <h3 className="text-sm font-semibold text-slate-800 mb-3">
+                        <h3 className="text-sm font-semibold text-[#5A305A] mb-3">
                           1. Pendidikan Formal{" "}
                           <span className="text-slate-500 italic font-normal">
                             (Formal Education)
@@ -2965,7 +2965,7 @@ export default function ApplicationForm({
 
                       {/* 2. Pendidikan Non Formal */}
                       <div>
-                        <h3 className="text-sm font-semibold text-slate-800 mb-3">
+                        <h3 className="text-sm font-semibold text-[#5A305A] mb-3">
                           2. Pendidikan Non Formal{" "}
                           <span className="text-slate-500 italic font-normal">
                             (Non Formal Education)
@@ -3066,7 +3066,7 @@ export default function ApplicationForm({
 
                       {/* 3. Organisasi */}
                       <div>
-                        <h3 className="text-sm font-semibold text-slate-800 mb-3">
+                        <h3 className="text-sm font-semibold text-[#5A305A] mb-3">
                           3. Organisasi yang pernah Anda ikuti{" "}
                           <span className="text-slate-500 italic font-normal">
                             (Organizations you have Joined)
@@ -3172,7 +3172,7 @@ export default function ApplicationForm({
                       {/* 4. Penguasaan Bahasa Asing */}
                       <div>
                         <div className="flex items-center justify-between mb-3">
-                          <h3 className="text-sm font-semibold text-slate-800">
+                          <h3 className="text-sm font-semibold text-[#5A305A]">
                             4. Penguasaan Bahasa Asing{" "}
                             <span className="text-slate-500 italic font-normal">
                               (Non Mother Tongue Language Ability) Poor / Fair /
@@ -3360,7 +3360,7 @@ export default function ApplicationForm({
                       {/* 5. Penguasaan Keterampilan Tambahan */}
                       <div>
                         <div className="flex items-center justify-between mb-3">
-                          <h3 className="text-sm font-semibold text-slate-800">
+                          <h3 className="text-sm font-semibold text-[#5A305A]">
                             5. Penguasaan Keterampilan Tambahan{" "}
                             <span className="text-slate-500 italic font-normal">
                               (Skill Abilities)
@@ -3584,7 +3584,7 @@ export default function ApplicationForm({
 
                     <div className="space-y-6">
                       <div>
-                        <h3 className="text-sm font-semibold text-slate-800 mb-3">
+                        <h3 className="text-sm font-semibold text-[#5A305A] mb-3">
                           1. Isi pengalaman kerja dimulai dari pekerjaan
                           sekarang/terbaru{" "}
                           <span className="text-slate-500 italic font-normal">
@@ -3619,7 +3619,7 @@ export default function ApplicationForm({
                               <table className="w-full min-w-[800px] print:min-w-0 text-sm text-left">
                                 <tbody className="divide-y divide-slate-200">
                                   <tr className="bg-purple-50">
-                                    <td className="px-4 py-3 font-semibold text-slate-800 w-1/3 border-r border-slate-200">
+                                    <td className="px-4 py-3 font-semibold text-[#5A305A] w-1/3 border-r border-slate-200">
                                       Masa Kerja{" "}
                                       <span className="text-xs font-normal italic">
                                         (Work Period)
@@ -3947,7 +3947,7 @@ export default function ApplicationForm({
                       {/* Pertanyaan Esai Riwayat Pekerjaan */}
                       <div className="space-y-6 pt-4">
                         <div>
-                          <h3 className="text-sm font-semibold text-slate-800 mb-2">
+                          <h3 className="text-sm font-semibold text-[#5A305A] mb-2">
                             2. Prestasi yang pernah dicapai selama bekerja{" "}
                             <span className="text-slate-500 italic font-normal">
                               (achievement & accomplishment in work)?
@@ -3963,7 +3963,7 @@ export default function ApplicationForm({
                           ></textarea>
                         </div>
                         <div>
-                          <h3 className="text-sm font-semibold text-slate-800 mb-2">
+                          <h3 className="text-sm font-semibold text-[#5A305A] mb-2">
                             3. Bagaimana respon Anda saat bekerja di bawah
                             tekanan dan dikejar tenggat waktu?{" "}
                             <span className="text-slate-500 italic font-normal">
@@ -3981,7 +3981,7 @@ export default function ApplicationForm({
                           ></textarea>
                         </div>
                         <div>
-                          <h3 className="text-sm font-semibold text-slate-800 mb-2">
+                          <h3 className="text-sm font-semibold text-[#5A305A] mb-2">
                             4. Jelaskan tugas dari posisi yang Anda lamar, dan
                             alasan Anda melamar posisi ini.{" "}
                             <span className="text-slate-500 italic font-normal">
@@ -3999,7 +3999,7 @@ export default function ApplicationForm({
                           ></textarea>
                         </div>
                         <div>
-                          <h3 className="text-sm font-semibold text-slate-800 mb-2">
+                          <h3 className="text-sm font-semibold text-[#5A305A] mb-2">
                             5. Bagaimana strategi Anda agar dapat terus
                             berkembang dan memberikan kontribusi bagi
                             perusahaan?{" "}
@@ -4018,7 +4018,7 @@ export default function ApplicationForm({
                           ></textarea>
                         </div>
                         <div>
-                          <h3 className="text-sm font-semibold text-slate-800 mb-2">
+                          <h3 className="text-sm font-semibold text-[#5A305A] mb-2">
                             6. Mengapa Anda tertarik bergabung dengan Waruna
                             Group?{" "}
                             <span className="text-slate-500 italic font-normal">
@@ -4050,7 +4050,7 @@ export default function ApplicationForm({
                     <div className="space-y-8">
                       {/* 1. Sakit Berat */}
                       <div>
-                        <h3 className="text-sm font-semibold text-slate-800 mb-2">
+                        <h3 className="text-sm font-semibold text-[#5A305A] mb-2">
                           1. Apakah Anda pernah menderita sakit berat hingga
                           dirawat di rumah sakit{" "}
                           <span className="text-slate-500 italic font-normal">
@@ -4117,7 +4117,7 @@ export default function ApplicationForm({
 
                       {/* 2. Tindak Pidana */}
                       <div>
-                        <h3 className="text-sm font-semibold text-slate-800 mb-2">
+                        <h3 className="text-sm font-semibold text-[#5A305A] mb-2">
                           2. Apakah Anda pernah terlibat/menjadi terdakwa dalam
                           tindak pidana/perdata?{" "}
                           <span className="text-slate-500 italic font-normal">
@@ -4183,7 +4183,7 @@ export default function ApplicationForm({
 
                       {/* 3. Pernah bergabung di Waruna */}
                       <div>
-                        <h3 className="text-sm font-semibold text-slate-800 mb-2">
+                        <h3 className="text-sm font-semibold text-[#5A305A] mb-2">
                           3. Apakah Anda pernah bergabung di Waruna Group?{" "}
                           <span className="text-slate-500 italic font-normal">
                             (Do you ever worked in Waruna Group?)
@@ -4264,7 +4264,7 @@ export default function ApplicationForm({
 
                       {/* 4. Proses seleksi di perusahaan lain */}
                       <div>
-                        <h3 className="text-sm font-semibold text-slate-800 mb-2">
+                        <h3 className="text-sm font-semibold text-[#5A305A] mb-2">
                           4. Apakah Anda sedang proses seleksi di perusahaan
                           lain?{" "}
                           <span className="text-slate-500 italic font-normal">
@@ -4335,7 +4335,7 @@ export default function ApplicationForm({
 
                       {/* 5. Karyawan yang dikenal */}
                       <div>
-                        <h3 className="text-sm font-semibold text-slate-800 mb-3">
+                        <h3 className="text-sm font-semibold text-[#5A305A] mb-3">
                           5. Apakah ada karyawan/karyawati yang Anda kenal di
                           Waruna Group?{" "}
                           <span className="text-slate-500 italic font-normal">
@@ -4424,7 +4424,7 @@ export default function ApplicationForm({
 
                       {/* 6. Referensi */}
                       <div>
-                        <h3 className="text-sm font-semibold text-slate-800 mb-3">
+                        <h3 className="text-sm font-semibold text-[#5A305A] mb-3">
                           6. Sebutkan 3 kenalan mis. mantan atasan (tidak ada
                           hubungan keluarga) yg dapat memberikan keterangan
                           tentang kinerja Anda /{" "}
@@ -4559,7 +4559,7 @@ export default function ApplicationForm({
 
                       {/* 7. Referensi Keluarga Darurat */}
                       <div>
-                        <h3 className="text-sm font-semibold text-slate-800 mb-3">
+                        <h3 className="text-sm font-semibold text-[#5A305A] mb-3">
                           7. Referensi keluarga yang dapat dihubungi ketika
                           keadaan darurat{" "}
                           <span className="text-slate-500 italic font-normal">
@@ -4658,7 +4658,7 @@ export default function ApplicationForm({
 
                       {/* 8. Faktor Bertahan Lama */}
                       <div>
-                        <h3 className="text-sm font-semibold text-slate-800 mb-2">
+                        <h3 className="text-sm font-semibold text-[#5A305A] mb-2">
                           8. Jelaskan faktor yang membuat anda bertahan lama
                           (loyal) di suatu perusahaan?{" "}
                           <span className="text-slate-500 italic font-normal">
@@ -4678,7 +4678,7 @@ export default function ApplicationForm({
 
                       {/* 9. Faktor Produktivitas */}
                       <div>
-                        <h3 className="text-sm font-semibold text-slate-800 mb-2">
+                        <h3 className="text-sm font-semibold text-[#5A305A] mb-2">
                           9. Hal apa yang paling membuat Anda dapat meningkatkan
                           produktivitas kerja?{" "}
                           <span className="text-slate-500 italic font-normal">
@@ -4698,7 +4698,7 @@ export default function ApplicationForm({
 
                       {/* 10. Motivasi Bergabung */}
                       <div>
-                        <h3 className="text-sm font-semibold text-slate-800 mb-3">
+                        <h3 className="text-sm font-semibold text-[#5A305A] mb-3">
                           10. Urutkan berdasarkan skala prioritas dari 1 sampai
                           6 Motivasi Anda bergabung dengan Waruna Group.{" "}
                           <span className="text-slate-500 italic font-normal">
@@ -4853,7 +4853,7 @@ export default function ApplicationForm({
 
                       {/* 11. Kapan mulai bekerja */}
                       <div className="flex flex-col sm:flex-row sm:items-center print:flex-col print:items-stretch gap-4 border border-slate-200 p-4 rounded-xl bg-slate-50">
-                        <h3 className="text-sm font-semibold text-slate-800">
+                        <h3 className="text-sm font-semibold text-[#5A305A]">
                           11. Jika DITERIMA, kapan Anda dapat mulai bekerja{" "}
                           <span className="text-slate-500 italic font-normal">
                             (if you are ACCEPTED, when will you able to join)?
@@ -5059,7 +5059,7 @@ export default function ApplicationForm({
                   {/* Declaration Section */}
                   <div className="mt-12 border-2 border-indigo-100 bg-indigo-50 rounded-2xl p-6 sm:p-8">
                     <div className="text-center space-y-4 mb-8">
-                      <p className="text-sm font-medium text-slate-800 leading-relaxed">
+                      <p className="text-sm font-medium text-[#5A305A] leading-relaxed">
                         Dengan ini saya menjamin bahwa jawaban yang saya berikan
                         atas pertanyaan - pertanyaan di atas adalah BENAR adanya
                         dan saya memberikan kuasa kepada PT. Waruna Nusa Sentana
@@ -5160,7 +5160,7 @@ export default function ApplicationForm({
                             </>
                           )}
                         </div>
-                        <p className="text-sm font-semibold text-slate-800">
+                        <p className="text-sm font-semibold text-[#5A305A]">
                           Nama lengkap & tanda tangan{" "}
                           <span className="text-red-500">*</span>
                         </p>

@@ -409,15 +409,9 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
               rows={8}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm resize-none leading-relaxed"
             />
-            <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
-              <div className="text-[10px] text-slate-400 italic">
-                <p>Variabel: {"{{nama}}"}, {"{{email_kandidat}}"}, {"{{posisi}}"}, {"{{pendidikan_terakhir}}"}, {"{{pengalaman_kerja}}"}, {"{{jadwal}}"}, {"{{hari}}"}, {"{{jadwal_interview}}"}, {"{{tanggal_interview}}"}, {"{{waktu_interview}}"}, {"{{jadwal_psikotes}}"}, {"{{lokasi_interview}}"}, {"{{lokasi_psikotes}}"}, {"{{token}}"}</p>
-                <p className="mt-1">Format: Gunakan tanda asteris (*) untuk teks tebal. Contoh: *Teks Tebal*</p>
-                <p className="mt-1 font-semibold text-indigo-500">Tips n8n: Untuk format tebal, gunakan variabel <code>body_html</code> di payload dan aktifkan "Is HTML". Untuk menghilangkan tulisan "This email was sent...", nonaktifkan opsi "Append Attribution" pada node email n8n Anda.</p>
-              </div>
-              <p className="text-[10px] text-amber-600 italic sm:max-w-[200px] sm:text-right">
-                Jika notifikasi "Berhasil" tapi email tidak masuk, pastikan workflow n8n Anda sudah Active.
-              </p>
+            <div className="text-[10px] text-slate-400 italic">
+              <p>Variabel: {"{{nama}}"}, {"{{email_kandidat}}"}, {"{{posisi}}"}, {"{{pendidikan_terakhir}}"}, {"{{pengalaman_kerja}}"}, {"{{jadwal}}"}, {"{{hari}}"}, {"{{jadwal_interview}}"}, {"{{tanggal_interview}}"}, {"{{waktu_interview}}"}, {"{{jadwal_psikotes}}"}, {"{{lokasi_interview}}"}, {"{{lokasi_psikotes}}"}, {"{{token}}"}</p>
+              <p className="mt-1">Format: Gunakan tanda asteris (*) untuk teks tebal. Contoh: *Teks Tebal*</p>
             </div>
           </div>
         </div>

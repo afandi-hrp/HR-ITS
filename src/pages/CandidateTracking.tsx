@@ -369,7 +369,7 @@ const filteredCandidates = candidates.filter(
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
+    <div className="p-8">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold text-[#5A305A]">Live Tracking Kandidat</h1>
