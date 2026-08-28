@@ -166,59 +166,59 @@ export default function RegistrationTokens() {
   }, [totalPages, currentPage]);
 
   return (
-    <div className="pb-8 pt-2">
-      <div className="flex justify-between items-center mb-2">
-        <div>
-          <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">Token Pelamar</h1>
-          <p className="text-[#5A305A]/70 mt-1">
-            Kelola token akses satu kali pakai untuk form pelamar publik.
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={handleDeleteUsedTokens}
-            disabled={deleting || tokens.filter((t) => t.is_used).length === 0}
-            className="bg-white border border-rose-200 text-rose-600 px-3.5 py-1.5 text-sm rounded-xl hover:bg-rose-50 transition-colors flex items-center gap-1.5 disabled:opacity-50"
-          >
-            {deleting ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <Trash2 size={16} />
-            )}
-            Hapus Token Terpakai
-          </button>
-          <button
-            onClick={() => generateToken(10)}
-            disabled={generating}
-            className="bg-indigo-100 text-indigo-700 px-3.5 py-1.5 text-sm rounded-xl hover:bg-indigo-200 transition-colors flex items-center gap-1.5 disabled:opacity-70 font-medium"
-          >
-            {generating ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <Plus size={16} />
-            )}
-            Buat 10 Token
-          </button>
-          <button
-            onClick={() => generateToken(1)}
-            disabled={generating}
-            className="bg-[#5A305A] text-white px-3.5 py-1.5 text-sm rounded-xl hover:bg-[#3F223F] transition-colors flex items-center gap-1.5 disabled:opacity-70 font-medium"
-          >
-            {generating ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <Plus size={16} />
-            )}
-            Buat 1 Token
-          </button>
-        </div>
+    <div className="pb-8 space-y-4">
+      <div className="mb-2">
+        <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">Token Pelamar</h1>
+        <p className="text-[#5A305A]/70 mt-1">
+          Kelola token akses satu kali pakai untuk form pelamar publik.
+        </p>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap justify-end gap-3">
+        <button
+          onClick={handleDeleteUsedTokens}
+          disabled={deleting || tokens.filter((t) => t.is_used).length === 0}
+          className="bg-white border border-rose-200 text-rose-600 px-3.5 py-1.5 text-sm rounded-xl hover:bg-rose-50 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+        >
+          {deleting ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <Trash2 size={16} />
+          )}
+          Hapus Token Terpakai
+        </button>
+        <button
+          onClick={() => generateToken(10)}
+          disabled={generating}
+          className="bg-indigo-100 text-indigo-700 px-3.5 py-1.5 text-sm rounded-xl hover:bg-indigo-200 transition-colors flex items-center gap-1.5 disabled:opacity-70 font-medium"
+        >
+          {generating ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <Plus size={16} />
+          )}
+          Buat 10 Token
+        </button>
+        <button
+          onClick={() => generateToken(1)}
+          disabled={generating}
+          className="bg-[#5A305A] text-white px-3.5 py-1.5 text-sm rounded-xl hover:bg-[#3F223F] transition-colors flex items-center gap-1.5 disabled:opacity-70 font-medium"
+        >
+          {generating ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <Plus size={16} />
+          )}
+          Buat 1 Token
+        </button>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
+              <tr className="bg-[#5A305A]/5 border-b border-[#5A305A]/20">
                 <th className="p-4 font-semibold text-[#5A305A]">Token</th>
                 <th className="p-4 font-semibold text-[#5A305A]">Status</th>
                 <th className="p-4 font-semibold text-[#5A305A]">

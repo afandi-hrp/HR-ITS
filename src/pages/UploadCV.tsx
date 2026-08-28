@@ -15,6 +15,8 @@ import {
   File,
   Plus,
   Info,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useToast } from "../components/ui/use-toast";
@@ -398,23 +400,16 @@ export default function UploadCV() {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+    <div className="space-y-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
         <div className="space-y-1">
           <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
             Upload CV Kandidat
           </h1>
           <p className="text-sm font-medium text-[#5A305A]/70 max-w-xl">
-            Unggah file CV dan teruskan ke workflow n8n Anda.
+            Unggah file CV Kandidat.
           </p>
         </div>
-        <button
-          onClick={() => setIsBulkModalOpen(true)}
-          className="flex items-center gap-2 px-6 py-3 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-bold rounded-xl transition-all shadow-sm"
-        >
-          <Plus size={18} />
-          Upload Massal
-        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -643,7 +638,7 @@ export default function UploadCV() {
 
         {/* History / Search */}
         <div className="space-y-6">
-          <div className="bg-white/40 backdrop-blur-xl rounded-3xl border border-white/60 shadow-2xl overflow-hidden flex flex-col h-full max-h-[800px]">
+          <div className="bg-white/40 backdrop-blur-xl rounded-3xl border border-white/60 shadow-2xl overflow-hidden flex flex-col">
             <div className="p-6 border-b border-white/40 bg-white/30 space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold text-[#5A305A]">
@@ -667,6 +662,13 @@ export default function UploadCV() {
                       size={20}
                       className={fetchingUploads ? "animate-spin" : ""}
                     />
+                  </button>
+                  <button
+                    onClick={() => setIsBulkModalOpen(true)}
+                    className="flex items-center justify-center gap-2 px-4 py-2 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] transition-all shadow-sm text-sm whitespace-nowrap"
+                  >
+                    <Plus size={18} />
+                    Upload Massal
                   </button>
                 </div>
               </div>
@@ -702,7 +704,7 @@ export default function UploadCV() {
               )}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="p-6 space-y-4">
               {fetchingUploads ? (
                 <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
                   <Loader2 size={32} className="animate-spin" />
@@ -771,28 +773,29 @@ export default function UploadCV() {
 
                   {/* Pagination Controls */}
                   {totalItems > itemsPerPage && (
-                    <div className="flex items-center justify-between pt-4 border-t border-white/40 mt-6">
-                      <div className="text-sm text-slate-500">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-5 mt-6 border-t border-white/60">
+                      <div className="text-sm text-[#73507B]">
                         Menampilkan{" "}
-                        <span className="font-medium text-[#5A305A]">
+                        <span className="font-semibold text-[#5A305A]">
                           {(currentPage - 1) * itemsPerPage + 1}
                         </span>{" "}
-                        hingga{" "}
-                        <span className="font-medium text-[#5A305A]">
+                        &ndash;{" "}
+                        <span className="font-semibold text-[#5A305A]">
                           {Math.min(currentPage * itemsPerPage, totalItems)}
                         </span>{" "}
                         dari{" "}
-                        <span className="font-medium text-[#5A305A]">
+                        <span className="font-semibold text-[#5A305A]">
                           {totalItems}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         <button
                           disabled={currentPage === 1}
                           onClick={() => setCurrentPage((prev) => prev - 1)}
-                          className="px-3 py-1.5 rounded-lg border border-white/60 text-sm font-medium text-slate-600 hover:bg-white/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                          className="p-2 rounded-full border border-[#5A305A]/20 bg-white/60 text-[#5A305A] hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center"
+                          title="Sebelumnya"
                         >
-                          Sebelumnya
+                          <ChevronLeft size={16} />
                         </button>
                         <div className="flex items-center gap-1">
                           {Array.from(
@@ -818,10 +821,10 @@ export default function UploadCV() {
                                   key={pageNum}
                                   onClick={() => setCurrentPage(pageNum)}
                                   className={cn(
-                                    "w-8 h-8 rounded-lg text-sm font-medium transition-all",
+                                    "w-9 h-9 rounded-full text-sm font-semibold transition-all",
                                     currentPage === pageNum
-                                      ? "bg-[#5A305A] text-white shadow-md shadow-indigo-100"
-                                      : "text-slate-600 hover:bg-white/50",
+                                      ? "bg-[#5A305A] text-white shadow-md shadow-[#5A305A]/30"
+                                      : "text-[#5A305A] hover:bg-white/70",
                                   )}
                                 >
                                   {pageNum}
@@ -835,9 +838,10 @@ export default function UploadCV() {
                             currentPage === Math.ceil(totalItems / itemsPerPage)
                           }
                           onClick={() => setCurrentPage((prev) => prev + 1)}
-                          className="px-3 py-1.5 rounded-lg border border-white/60 text-sm font-medium text-slate-600 hover:bg-white/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                          className="p-2 rounded-full border border-[#5A305A]/20 bg-white/60 text-[#5A305A] hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center"
+                          title="Selanjutnya"
                         >
-                          Selanjutnya
+                          <ChevronRight size={16} />
                         </button>
                       </div>
                     </div>

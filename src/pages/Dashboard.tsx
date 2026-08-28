@@ -18,7 +18,7 @@ import {
   X,
   RefreshCcw,
   BarChart3,
-  Sunrise, Sun, Sunset, Moon
+  FilterX,
 } from "lucide-react";
 import { cn, formatDate } from "../lib/utils";
 
@@ -40,7 +40,6 @@ export default function Dashboard() {
   const [topCandidatesByPosition, setTopCandidatesByPosition] = useState<
     Record<string, any[]>
   >({});
-  const [userName, setUserName] = useState<string>("");
   const [topCandidatesByDetailed, setTopCandidatesByDetailed] = useState<
     Record<string, any[]>
   >({});
@@ -103,16 +102,6 @@ export default function Dashboard() {
       }
     };
     fetchPositions();
-  }, []);
-
-useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserName(user.user_metadata?.full_name || user.email?.split('@')?.[0] || "");
-      }
-    };
-    fetchUser();
   }, []);
 
   useEffect(() => {
@@ -576,51 +565,16 @@ useEffect(() => {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
         <div className="space-y-1">
-          {userName && (
-            <div className="text-xl font-semibold text-[#5A305A]/80 mb-1 flex items-center flex-wrap gap-2">
-              <span className="tracking-tight">
-                {(() => {
-                  const hour = new Date().getHours();
-                  if (hour >= 5 && hour < 11) return 'Selamat pagi,';
-                  if (hour >= 11 && hour < 15) return 'Selamat siang,';
-                  if (hour >= 15 && hour < 18) return 'Selamat sore,';
-                  return 'Selamat malam,';
-                })()}
-              </span>
-              <span className="text-[#5A305A] font-bold">
-                {userName.split(' ')[0]}
-              </span>
-              <span className="ml-1 inline-flex items-center">
-                {(() => {
-                  const hour = new Date().getHours();
-                  if (hour >= 5 && hour < 11) return <Sunrise className="text-amber-500 drop-shadow-sm" size={22} />;
-                  if (hour >= 11 && hour < 15) return <Sun className="text-amber-500 drop-shadow-sm" size={22} />;
-                  if (hour >= 15 && hour < 18) return <Sunset className="text-amber-500 drop-shadow-sm" size={22} />;
-                  return <Moon className="text-indigo-500 drop-shadow-sm" size={22} />;
-                })()}
-              </span>
-            </div>
-          )}
           <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
             Dashboard
           </h1>
           <p className="text-sm font-medium text-slate-500 max-w-xl">
-            Ringkasan aktivitas rekrutmen dan status kandidat untuk hari ini, {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.
+            Ringkasan aktivitas rekrutmen dan status kandidat.
           </p>
         </div>
-        <button
-          onClick={() => navigate("/funnel")}
-          className="px-6 py-3 bg-[#5A305A] text-white font-bold rounded-xl shadow-lg shadow-[#5A305A]/20 hover:bg-[#3F223F] hover:shadow-xl hover:shadow-[#5A305A]/30 hover:-translate-y-1 transition-all flex items-center gap-2 group"
-        >
-          <BarChart3
-            size={20}
-            className="group-hover:scale-110 transition-transform"
-          />
-          Recruitment Funnel
-        </button>
       </div>
 
       {/* Panel Pencarian & Filter */}
@@ -663,9 +617,10 @@ useEffect(() => {
           </select>
           <button
             onClick={handleReset}
-            className="px-4 py-2.5 text-sm font-bold text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm whitespace-nowrap"
+            className="p-2.5 text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm flex items-center justify-center"
+            title="Reset Filter"
           >
-            Reset
+            <FilterX size={20} />
           </button>
           <button
             onClick={() => setRefreshTrigger((prev) => prev + 1)}
@@ -673,6 +628,16 @@ useEffect(() => {
             title="Refresh Data"
           >
             <RefreshCcw size={20} className={loading ? "animate-spin" : ""} />
+          </button>
+          <button
+            onClick={() => navigate("/funnel")}
+            className="px-4 py-2.5 bg-[#5A305A] text-white font-bold rounded-xl shadow-sm hover:bg-[#3F223F] transition-all flex items-center justify-center gap-2 text-sm whitespace-nowrap group"
+          >
+            <BarChart3
+              size={18}
+              className="group-hover:scale-110 transition-transform"
+            />
+            Recruitment Funnel
           </button>
         </div>
       </div>
@@ -710,16 +675,18 @@ useEffect(() => {
             <Star className="text-amber-500 fill-amber-500" size={24} />
             Top 5 Kandidat Terkuat
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-4">
+          <div className="max-h-[600px] overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-[#5A305A]/20 [&::-webkit-scrollbar-thumb]:rounded-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {Object.entries(topCandidatesByPosition).map(
               ([pos, topCands]: [string, any]) => (
                 <div
                   key={pos}
-                  className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col"
+                  className="flex flex-col rounded-2xl border-2 border-[#5A305A]/15 overflow-hidden"
                 >
-                  <div className="bg-gradient-to-r from-indigo-50 to-white border-b border-slate-100 p-5">
-                    <h3 className="font-bold text-[#5A305A] text-lg">{pos}</h3>
-                    <p className="text-xs text-slate-500 mt-1">
+                  <div className="bg-[#5A305A]/5 border-b-2 border-[#5A305A]/15 px-5 py-4">
+                    <h3 className="font-bold text-[#5A305A] text-base">{pos}</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
                       Berdasarkan skor assessment tertinggi
                     </p>
                   </div>
@@ -793,6 +760,8 @@ useEffect(() => {
                 </div>
               ),
             )}
+          </div>
+          </div>
           </div>
         </div>
       )}

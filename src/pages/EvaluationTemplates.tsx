@@ -506,7 +506,7 @@ export default function EvaluationTemplates() {
     setRcSingleColumnRows(rcSingleColumnRows.filter((_, i) => i !== index));
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-4 pb-12">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
         <div className="space-y-1">
           <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
@@ -516,13 +516,6 @@ export default function EvaluationTemplates() {
             Kelola form penilaian untuk interview HR dan User dengan mudah.
           </p>
         </div>
-        <button
-          onClick={() => handleOpenModal()}
-          className="flex items-center gap-2 px-6 py-3 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-100 transition-all"
-        >
-          <Plus size={20} />
-          Tambah Template
-        </button>
       </div>
 
       <div className="bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4">
@@ -544,6 +537,13 @@ export default function EvaluationTemplates() {
           className="p-2.5 text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm flex items-center justify-center"
         >
           <RefreshCcw size={20} className={loading ? "animate-spin" : ""} />
+        </button>
+        <button
+          onClick={() => handleOpenModal()}
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-100 transition-all text-sm whitespace-nowrap"
+        >
+          <Plus size={18} />
+          Tambah Template
         </button>
       </div>
 

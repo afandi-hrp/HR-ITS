@@ -35,10 +35,6 @@ import {
   CheckCheck,
   ClipboardCheck,
   CalendarClock,
-  Sunrise,
-  Sun,
-  Sunset,
-  Moon,
 } from "lucide-react";
 import { cn, formatDate, fetchWithRetry } from "../lib/utils";
 import { CandidateAvatar } from "../components/CandidateAvatar";
@@ -1009,36 +1005,11 @@ export default function Screening() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       {!selectedPosition ? (
         <>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
             <div className="space-y-1">
-              {isRestrictedScreeningRole && profile?.full_name && (
-                <div className="text-xl font-semibold text-[#5A305A]/80 mb-1 flex items-center flex-wrap gap-2">
-                  <span className="tracking-tight">
-                    {(() => {
-                      const hour = new Date().getHours();
-                      if (hour >= 5 && hour < 11) return 'Selamat pagi,';
-                      if (hour >= 11 && hour < 15) return 'Selamat siang,';
-                      if (hour >= 15 && hour < 18) return 'Selamat sore,';
-                      return 'Selamat malam,';
-                    })()}
-                  </span>
-                  <span className="text-[#5A305A] font-bold">
-                    {profile.full_name.split(' ')[0]}
-                  </span>
-                  <span className="ml-1 inline-flex items-center">
-                    {(() => {
-                      const hour = new Date().getHours();
-                      if (hour >= 5 && hour < 11) return <Sunrise className="text-amber-500 drop-shadow-sm" size={22} />;
-                      if (hour >= 11 && hour < 15) return <Sun className="text-amber-500 drop-shadow-sm" size={22} />;
-                      if (hour >= 15 && hour < 18) return <Sunset className="text-amber-500 drop-shadow-sm" size={22} />;
-                      return <Moon className="text-indigo-500 drop-shadow-sm" size={22} />;
-                    })()}
-                  </span>
-                </div>
-              )}
               <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
                 {isUserManager
                   ? "Kandidat Saya"
@@ -1129,7 +1100,6 @@ export default function Screening() {
                 title="Reset Filter"
               >
                 <FilterX size={18} />
-                <span className="font-medium hidden 2xl:inline">Reset</span>
               </button>
 
               <button
@@ -1256,15 +1226,15 @@ export default function Screening() {
         </>
       ) : (
         <>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-4 mt-3">
             <div className="space-y-1">
-              <button 
+              <button
                 onClick={() => { setSelectedPosition(null); setCurrentPage(1); setSearch(""); }}
                 className="text-sm text-[#73507B] hover:text-[#5A305A] font-bold flex items-center gap-1.5 mb-2 transition-colors border border-slate-200 bg-white/70 backdrop-blur-md hover:bg-white px-3 py-1.5 rounded-xl w-fit shadow-sm"
               >
                 <ChevronLeft size={16} /> Kembali ke Lowongan
               </button>
-              <h1 className="text-3xl font-extrabold tracking-tight text-[#5A305A]">
+              <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
                 {selectedPosition}
               </h1>
             </div>
@@ -1400,9 +1370,9 @@ export default function Screening() {
                       setCurrentPage(1);
                     }}
                     className="w-full flex items-center justify-center gap-2 p-2 text-[#73507B] hover:text-red-600 bg-white border border-slate-200 hover:bg-red-50 hover:border-red-200 rounded-xl transition-all shadow-sm"
+                    title="Reset Filter"
                   >
                     <FilterX size={16} />
-                    <span className="font-medium text-sm">Reset Filter</span>
                   </button>
                 </div>
 

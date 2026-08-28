@@ -13,6 +13,7 @@ import {
   ChevronDown,
   Eye,
   EyeOff,
+  FilterX,
 } from "lucide-react";
 import { useToast } from "../components/ui/use-toast";
 import { cn, fetchWithRetry } from "../lib/utils";
@@ -278,7 +279,7 @@ export default function OpenRecruitment() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
         <div className="space-y-1">
           <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
@@ -288,24 +289,11 @@ export default function OpenRecruitment() {
             Kelola daftar lowongan pekerjaan yang sedang dibuka.
           </p>
         </div>
-        <div className="flex gap-3">
-          <button
-            onClick={() => {
-              setEditingId(null);
-              setFormData({ position: "", jobdesk: "", kualifikasi: "" });
-              setIsModalOpen(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-[#5A305A] text-white hover:bg-[#3F223F] font-bold rounded-xl transition-all shadow-md shadow-indigo-200 hover:-translate-y-0.5"
-          >
-            <Plus size={18} />
-            Tambah Lowongan
-          </button>
-        </div>
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-sm flex gap-4">
-        <div className="relative flex-1">
+      <div className="bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap gap-4">
+        <div className="relative flex-1 min-w-[200px]">
           <Search
             className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
             size={18}
@@ -322,9 +310,10 @@ export default function OpenRecruitment() {
           onClick={() => {
             setSearch("");
           }}
-          className="px-4 py-2 text-sm font-bold text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm"
+          className="p-2.5 text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm flex items-center justify-center"
+          title="Reset Filter"
         >
-          Reset
+          <FilterX size={20} />
         </button>
         <button
           onClick={fetchItems}
@@ -332,6 +321,17 @@ export default function OpenRecruitment() {
           title="Refresh Data"
         >
           <RefreshCcw size={20} className={loading ? "animate-spin" : ""} />
+        </button>
+        <button
+          onClick={() => {
+            setEditingId(null);
+            setFormData({ position: "", jobdesk: "", kualifikasi: "" });
+            setIsModalOpen(true);
+          }}
+          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#5A305A] text-white hover:bg-[#3F223F] font-bold rounded-xl transition-all shadow-md shadow-indigo-200 text-sm whitespace-nowrap"
+        >
+          <Plus size={18} />
+          Tambah Lowongan
         </button>
       </div>
 

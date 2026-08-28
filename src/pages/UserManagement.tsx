@@ -205,7 +205,7 @@ export default function UserManagement() {
   });
 
   return (
-    <div className="pb-8 pt-2">
+    <div className="pb-8">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
         <div>
           <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A] flex items-center gap-3">
@@ -280,7 +280,7 @@ export default function UserManagement() {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
+              <tr className="bg-[#5A305A]/5 border-b border-[#5A305A]/20">
                 <th className="px-6 py-4 text-sm font-semibold text-[#5A305A]">
                   Pengguna
                 </th>

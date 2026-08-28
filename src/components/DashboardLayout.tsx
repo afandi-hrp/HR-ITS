@@ -18,7 +18,11 @@ import {
   ClipboardList,
   Briefcase,
   Database,
-  KeyRound
+  KeyRound,
+  Sunrise,
+  Sun,
+  Sunset,
+  Moon
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
@@ -46,6 +50,41 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
 
   // Extract current path from location (e.g., "/dashboard" -> "dashboard")
   const currentPath = location.pathname.substring(1) || 'dashboard';
+
+  // The greeting is a fixed overlay, so it visually collides with any page
+  // that already puts its own content in the same top-right corner —
+  // Candidate Profile's header buttons/status badge, and Screening's
+  // per-position drill-down (still the /screening route, distinguished only
+  // by the selectedPosition query param) which has its own sort control there.
+  const hideGreeting =
+    location.pathname.startsWith('/candidates/') ||
+    (location.pathname === '/screening' && location.search.includes('selectedPosition='));
+
+  const now = new Date();
+  const hour = now.getHours();
+  let greeting = 'Selamat malam';
+  let GreetingIcon = Moon;
+  let iconClass = 'text-indigo-300';
+  if (hour >= 5 && hour < 11) {
+    greeting = 'Selamat pagi';
+    GreetingIcon = Sunrise;
+    iconClass = 'text-amber-500';
+  } else if (hour >= 11 && hour < 15) {
+    greeting = 'Selamat siang';
+    GreetingIcon = Sun;
+    iconClass = 'text-amber-500';
+  } else if (hour >= 15 && hour < 18) {
+    greeting = 'Selamat sore';
+    GreetingIcon = Sunset;
+    iconClass = 'text-amber-500';
+  }
+  const firstName = (user.user_metadata?.full_name || 'User').split(' ')[0];
+  const dayDateStr = now.toLocaleDateString('id-ID', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -370,12 +409,26 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
           </div>
         </header>
 
-        {/* Floating Notification Panel for Desktop */}
-        <div className="hidden lg:block fixed top-6 right-8 z-50">
+        {/* Notification bell stays fixed/reachable while scrolling; the
+            greeting scrolls away with the page content (below). */}
+        <div className="hidden lg:block fixed top-4 right-8 z-50">
           <NotificationPanel />
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+        <div className="relative flex-1 overflow-y-auto px-4 md:px-5 pb-4 md:pb-8 pt-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          {/* Absolutely positioned (not fixed) so it lines up with the page
+              title's row instead of pushing it down, but still scrolls away
+              with the content since it's anchored to this scrollable
+              container rather than the viewport. */}
+          {!hideGreeting && (
+            <div className="hidden lg:block absolute top-3 right-0 mr-16 text-right leading-tight z-10">
+              <p className="text-lg font-bold text-[#5A305A] flex items-center justify-end gap-1.5">
+                {greeting}, {firstName}
+                <GreetingIcon className={cn('drop-shadow-sm', iconClass)} size={20} />
+              </p>
+              <p className="text-sm font-medium text-[#5A305A]/70">{dayDateStr}</p>
+            </div>
+          )}
           {children}
         </div>
       </main>

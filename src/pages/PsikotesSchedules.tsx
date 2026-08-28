@@ -20,6 +20,7 @@ import {
   Send,
   List,
   MessageCircle,
+  FilterX,
 } from "lucide-react";
 import { cn, formatDate } from "../lib/utils";
 import { useToast } from "../components/ui/use-toast";
@@ -317,7 +318,7 @@ export default function PsikotesSchedules() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
         <div className="space-y-1">
           <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
@@ -327,13 +328,6 @@ export default function PsikotesSchedules() {
             Pantau dan kelola agenda psikotes kandidat.
           </p>
         </div>
-        <button
-          onClick={() => setIsScheduling(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-100 transition-all"
-        >
-          <CalendarIcon size={18} />
-          Jadwalkan Psikotes Baru
-        </button>
       </div>
 
       {/* Filter Bar */}
@@ -373,9 +367,10 @@ export default function PsikotesSchedules() {
           {viewMode === "list" && (
             <button
               onClick={resetFilters}
-              className="px-4 py-2 text-sm font-bold text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm"
+              className="p-2.5 text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm flex items-center justify-center"
+              title="Reset Filter"
             >
-              Reset
+              <FilterX size={20} />
             </button>
           )}
 
@@ -415,6 +410,14 @@ export default function PsikotesSchedules() {
           >
             <RefreshCcw size={20} className={loading ? "animate-spin" : ""} />
           </button>
+
+          <button
+            onClick={() => setIsScheduling(true)}
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-100 transition-all text-sm whitespace-nowrap"
+          >
+            <CalendarIcon size={18} />
+            Jadwalkan Psikotes Baru
+          </button>
         </div>
       </div>
 
@@ -437,7 +440,7 @@ export default function PsikotesSchedules() {
               className={cn(
                 "pb-4 text-sm font-bold transition-all relative",
                 activeTab === "pending"
-                  ? "text-indigo-600"
+                  ? "text-[#5A305A]"
                   : "text-slate-400 hover:text-slate-600",
               )}
             >
@@ -454,7 +457,7 @@ export default function PsikotesSchedules() {
               className={cn(
                 "pb-4 text-sm font-bold transition-all relative",
                 activeTab === "confirmed"
-                  ? "text-indigo-600"
+                  ? "text-[#5A305A]"
                   : "text-slate-400 hover:text-slate-600",
               )}
             >
@@ -481,14 +484,14 @@ export default function PsikotesSchedules() {
                   <div
                     key={schedule.id}
                     onClick={() => setPreviewSchedule(schedule)}
-                    className="group p-6 rounded-2xl border bg-[#4B3658] border-white/10 hover:border-white/20 text-white shadow-lg shadow-slate-900/20 hover:shadow-xl transition-all cursor-pointer relative"
+                    className="group p-6 rounded-2xl border bg-[#5A305A] border-white/10 hover:border-white/20 text-white shadow-lg shadow-slate-900/20 hover:shadow-xl transition-all cursor-pointer relative"
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div
                         className={cn(
                           "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
                           schedule.location_type === "online"
-                            ? "bg-indigo-100 text-indigo-700"
+                            ? "bg-[#FFF5C5] text-[#5A305A]"
                             : "bg-amber-100 text-amber-700",
                         )}
                       >
@@ -644,7 +647,7 @@ export default function PsikotesSchedules() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200">
+                      <tr className="bg-[#5A305A]/5 border-b border-[#5A305A]/20">
                         <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                           Kandidat
                         </th>

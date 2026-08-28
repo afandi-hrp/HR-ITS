@@ -23,6 +23,7 @@ import {
   Download,
   Loader2,
   RotateCcw,
+  FilterX,
 } from "lucide-react";
 import { formatDate, cn, fetchWithRetry } from "../lib/utils";
 import { CandidateAvatar } from "../components/CandidateAvatar";
@@ -528,7 +529,7 @@ export default function Logs() {
   const startIndex = (currentPage - 1) * itemsPerPage;
 
   return (
-    <div className="space-y-8 pb-10">
+    <div className="space-y-4 pb-10">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
         <div className="space-y-1">
           <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
@@ -537,20 +538,6 @@ export default function Logs() {
           <p className="text-sm font-medium text-[#5A305A]/70 max-w-xl">
             Arsip riwayat kandidat yang telah diproses.
           </p>
-        </div>
-        <div className="flex">
-          <button
-            onClick={handlePrepareExport}
-            disabled={exportLoading}
-            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-bold rounded-xl transition-all shadow-sm border border-emerald-200 disabled:opacity-50"
-          >
-            {exportLoading ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : (
-              <Download size={18} />
-            )}
-            <span className="hidden sm:inline">Export Excel</span>
-          </button>
         </div>
       </div>
 
@@ -630,15 +617,28 @@ export default function Logs() {
                 setStatusFilter("all");
                 setCurrentPage(1);
               }}
-              className="px-4 py-2 text-sm font-bold text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm"
+              className="p-2.5 text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm flex items-center justify-center"
+              title="Reset Filter"
             >
-              Reset
+              <FilterX size={20} />
             </button>
             <button
               onClick={fetchLogs}
               className="p-2.5 text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm flex items-center justify-center"
             >
               <RefreshCcw size={20} className={loading ? "animate-spin" : ""} />
+            </button>
+            <button
+              onClick={handlePrepareExport}
+              disabled={exportLoading}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-bold rounded-xl transition-all shadow-sm border border-emerald-200 disabled:opacity-50 text-sm whitespace-nowrap"
+            >
+              {exportLoading ? (
+                <Loader2 size={18} className="animate-spin" />
+              ) : (
+                <Download size={18} />
+              )}
+              <span className="hidden sm:inline">Export Excel</span>
             </button>
           </div>
         </div>
@@ -1313,7 +1313,7 @@ export default function Logs() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse whitespace-nowrap min-w-max">
                     <thead>
-                      <tr className="bg-slate-100 text-slate-700 text-[11px] font-extrabold uppercase tracking-wider">
+                      <tr className="bg-[#5A305A]/5 text-[#5A305A] text-[11px] font-extrabold uppercase tracking-wider">
                         <th className="p-4 py-3 border-b border-slate-200">
                           Nama Kandidat
                         </th>

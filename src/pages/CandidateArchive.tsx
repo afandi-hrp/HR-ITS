@@ -21,6 +21,7 @@ import {
   Database,
   LayoutList,
   LayoutGrid,
+  FilterX,
 } from "lucide-react";
 import { cn, formatDate } from "../lib/utils";
 import { CandidateAvatar } from "../components/CandidateAvatar";
@@ -163,7 +164,7 @@ export default function CandidateArchive() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
         <div className="space-y-1">
           <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
@@ -208,9 +209,10 @@ export default function CandidateArchive() {
               setDateFilter("");
               setCurrentPage(1);
             }}
-            className="px-4 py-2.5 text-sm font-bold text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm"
+            className="p-2.5 text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm flex items-center justify-center"
+            title="Reset Filter"
           >
-            Reset
+            <FilterX size={20} />
           </button>
           <button
             onClick={fetchLogs}

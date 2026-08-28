@@ -411,7 +411,7 @@ const topScrollRef = useRef<HTMLDivElement>(null);
   };
 
   return (
-    <div className="pb-8 pt-2">
+    <div className="pb-8">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
         <div>
           <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">Live Tracking Kandidat</h1>
@@ -746,7 +746,7 @@ const topScrollRef = useRef<HTMLDivElement>(null);
             <div className="flex-1 overflow-auto p-6">
               <div className="overflow-x-auto border border-slate-200 rounded-xl">
                 <table className="w-full text-sm text-left">
-                  <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+                  <thead className="bg-[#5A305A]/5 text-[#5A305A] font-semibold border-b border-[#5A305A]/20">
                     <tr>
                       {previewData.length > 0 && Object.keys(previewData[0]).map((key, idx) => (
                         <th key={idx} className="px-4 py-3 whitespace-nowrap border-r border-slate-200 last:border-0">

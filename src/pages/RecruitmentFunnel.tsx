@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import {
   Loader2,
@@ -10,7 +9,6 @@ import {
   Clock,
   Filter,
   ChevronDown,
-  ChevronLeft,
   X,
   Mail,
   Calendar,
@@ -35,7 +33,6 @@ interface FunnelData {
 }
 
 export default function RecruitmentFunnel() {
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [funnelData, setFunnelData] = useState<FunnelData[]>([]);
   const [positions, setPositions] = useState<string[]>([]);
@@ -137,17 +134,6 @@ export default function RecruitmentFunnel() {
         }
       }
 
-      // Helper to build base query for counting
-      const buildCountQuery = (table: string, select = "*") => {
-        let q = supabase
-          .from(table)
-          .select(select, { count: "exact", head: true });
-        if (selectedPosition !== "all") q = q.eq("position", selectedPosition);
-        if (startDate) q = q.gte("created_at", startDate.toISOString());
-        if (endDate) q = q.lte("created_at", endDate.toISOString());
-        return q;
-      };
-
       // Helper to build base query for fetching data (limited to 50 for the detail view)
       const buildDataQuery = (table: string, select = "*") => {
         let q = supabase.from(table).select(select);
@@ -157,102 +143,137 @@ export default function RecruitmentFunnel() {
         return q;
       };
 
-      // 1. Execute count queries in parallel (Server-Side Aggregation)
-      const [
-        { count: cTotal },
-        { count: lTotal },
-        { count: cRej },
-        { count: lRej },
-        { count: cAcc },
-        { count: lAcc },
-        { count: cPsi },
-        { count: lPsi },
-        { count: cInt },
-        { count: lInt },
-        { count: cHired },
-        { count: lHired },
-      ] = await Promise.all([
-        buildCountQuery("candidates"),
-        buildCountQuery("candidate_logs"),
-        buildCountQuery("candidates").eq("status_screening", "rejected"),
-        buildCountQuery("candidate_logs").eq("status_screening", "rejected"),
-        buildCountQuery("candidates").in("status_screening", [
-          "accepted",
-          "hired",
-        ]),
-        buildCountQuery("candidate_logs").in("status_screening", [
-          "accepted",
-          "hired",
-        ]),
-        buildCountQuery("candidates", "id, psikotes_schedules!inner(id)"),
-        buildCountQuery("candidate_logs").eq(
-          "psikotes_status",
-          "Sudah Psikotes",
-        ),
-        buildCountQuery("candidates", "id, interview_schedules!inner(id)"),
-        buildCountQuery("candidate_logs").eq(
-          "interview_status",
-          "Sudah Interview",
-        ),
-        buildCountQuery("candidates").eq("status_screening", "hired"),
-        buildCountQuery("candidate_logs").eq("status_screening", "hired"),
-      ]);
+      // 1. Each stage's count is computed cumulatively server-side ("reached
+      // this stage or beyond"), guaranteeing every stage is a subset of the
+      // one before it — see the RPC's own comment for why: a candidate can
+      // be scheduled for psikotes without status_screening ever being set
+      // to 'accepted', so counting each stage independently (as this used
+      // to) could put "Tahap Psikotes" *above* "Lolos Screening" and break
+      // the funnel's narrowing shape. "rejected" is included alongside but
+      // isn't part of that cumulative chain — it's an exit, not a
+      // "reached X or beyond" milestone, so it's kept separate here too and
+      // appended after "hired" in the funnel bars rather than woven in.
+      const { data: funnelCounts, error: funnelCountsError } =
+        await supabase.rpc("get_recruitment_funnel_counts", {
+          p_position: selectedPosition !== "all" ? selectedPosition : null,
+          p_start_date: startDate ? startDate.toISOString() : null,
+          p_end_date: endDate ? endDate.toISOString() : null,
+        });
+      if (funnelCountsError) {
+        console.error("Error fetching funnel counts:", funnelCountsError);
+      }
+      const counts = Array.isArray(funnelCounts)
+        ? funnelCounts[0]
+        : funnelCounts;
 
-      const totalApplied = (cTotal || 0) + (lTotal || 0);
-      const totalTidakLolos = (cRej || 0) + (lRej || 0);
-      const totalLolosScreening = (cAcc || 0) + (lAcc || 0);
-      const totalPsikotes = (cPsi || 0) + (lPsi || 0);
-      const totalInterview = (cInt || 0) + (lInt || 0);
-      const totalHired = (cHired || 0) + (lHired || 0);
-      const totalPending = totalApplied - totalHired - totalTidakLolos;
+      const totalApplied = counts?.total_applied || 0;
+      const totalTidakLolos = counts?.rejected || 0;
+      const totalLolosScreening = counts?.passed_screening || 0;
+      const totalPsikotes = counts?.reached_psikotes || 0;
+      const totalInterview = counts?.reached_interview || 0;
+      const totalHired = counts?.hired || 0;
 
-      // 2. Fetch limited data for the detail view (Server-Side Pagination/Limit)
-      // We limit to 50 to avoid crashing the browser if there are 100k records.
-      const [
-        { data: cData },
-        { data: lData },
-        { data: cRejData },
-        { data: lRejData },
-        { data: cAccData },
-        { data: lAccData },
-        { data: cPsiData },
-        { data: lPsiData },
-        { data: cIntData },
-        { data: lIntData },
-        { data: cHiredData },
-        { data: lHiredData },
-      ] = await Promise.all([
-        buildDataQuery("candidates").limit(50),
-        buildDataQuery("candidate_logs").limit(50),
-        buildDataQuery("candidates")
-          .eq("status_screening", "rejected")
-          .limit(50),
-        buildDataQuery("candidate_logs")
-          .eq("status_screening", "rejected")
-          .limit(50),
-        buildDataQuery("candidates")
-          .in("status_screening", ["accepted", "hired"])
-          .limit(50),
-        buildDataQuery("candidate_logs")
-          .in("status_screening", ["accepted", "hired"])
-          .limit(50),
-        buildDataQuery("candidates", "*, psikotes_schedules!inner(id)").limit(
-          50,
+      // "Pending" means no progress at all yet — hasn't passed screening and
+      // has no psikotes/interview schedule of any kind. That's a NOT EXISTS
+      // check against the schedule tables, which the JS client's filter API
+      // can't express, so it's computed by an RPC instead of subtraction
+      // (the old `totalApplied - totalHired - totalTidakLolos` also counted
+      // candidates already mid-pipeline — e.g. scheduled for psikotes — as
+      // "pending", which is what this replaces).
+      const { data: pendingCount, error: pendingError } = await supabase.rpc(
+        "count_pending_candidates",
+        {
+          p_position: selectedPosition !== "all" ? selectedPosition : null,
+          p_start_date: startDate ? startDate.toISOString() : null,
+          p_end_date: endDate ? endDate.toISOString() : null,
+        },
+      );
+      const totalPending = pendingError ? 0 : pendingCount || 0;
+      if (pendingError) {
+        console.error("Error counting pending candidates:", pendingError);
+      }
+
+      // 2. Fetch the detail list for each stage (limited to 50 per stage to
+      // avoid crashing the browser on 100k+ records) using the exact same
+      // cumulative "reached this stage or beyond" definition as the counts
+      // above — this used to be a separate, independent-per-stage query, so
+      // the number on a bar and the candidate list you got after clicking
+      // it could disagree (e.g. "Tahap Psikotes" counted candidates with a
+      // psikotes_schedules row, but the count now also includes anyone who
+      // reached interview/hired without a literal psikotes row).
+      const stageIdLists: Record<
+        string,
+        { id: string; source_table: string }[]
+      > = {
+        total: [],
+        passed_screening: [],
+        reached_psikotes: [],
+        reached_interview: [],
+        hired: [],
+        rejected: [],
+      };
+      const { data: stageCandidateRows, error: stageCandidateRowsError } =
+        await supabase.rpc("get_recruitment_funnel_stage_candidates", {
+          p_position: selectedPosition !== "all" ? selectedPosition : null,
+          p_start_date: startDate ? startDate.toISOString() : null,
+          p_end_date: endDate ? endDate.toISOString() : null,
+          p_limit_per_stage: 50,
+        });
+      if (stageCandidateRowsError) {
+        console.error(
+          "Error fetching funnel stage candidates:",
+          stageCandidateRowsError,
+        );
+      }
+      (stageCandidateRows || []).forEach((row: any) => {
+        if (stageIdLists[row.stage]) {
+          stageIdLists[row.stage].push({
+            id: row.candidate_id,
+            source_table: row.source_table,
+          });
+        }
+      });
+
+      const allCandidateIds = Array.from(
+        new Set(
+          Object.values(stageIdLists)
+            .flat()
+            .filter((r) => r.source_table === "candidates")
+            .map((r) => r.id),
         ),
-        buildDataQuery("candidate_logs")
-          .eq("psikotes_status", "Sudah Psikotes")
-          .limit(50),
-        buildDataQuery("candidates", "*, interview_schedules!inner(id)").limit(
-          50,
+      );
+      const allLogIds = Array.from(
+        new Set(
+          Object.values(stageIdLists)
+            .flat()
+            .filter((r) => r.source_table === "candidate_logs")
+            .map((r) => r.id),
         ),
-        buildDataQuery("candidate_logs")
-          .eq("interview_status", "Sudah Interview")
-          .limit(50),
-        buildDataQuery("candidates").eq("status_screening", "hired").limit(50),
-        buildDataQuery("candidate_logs")
-          .eq("status_screening", "hired")
-          .limit(50),
-      ]);
+      );
+
+      const [{ data: allCandidateRows }, { data: allLogRows }] =
+        await Promise.all([
+          allCandidateIds.length > 0
+            ? supabase.from("candidates").select("*").in("id", allCandidateIds)
+            : Promise.resolve({ data: [] as any[] }),
+          allLogIds.length > 0
+            ? supabase.from("candidate_logs").select("*").in("id", allLogIds)
+            : Promise.resolve({ data: [] as any[] }),
+        ]);
+
+      const candidateRowMap = new Map(
+        (allCandidateRows || []).map((c: any) => [c.id, c]),
+      );
+      const logRowMap = new Map((allLogRows || []).map((l: any) => [l.id, l]));
+
+      const rowsForStage = (stage: string) =>
+        stageIdLists[stage]
+          .map((r) =>
+            r.source_table === "candidates"
+              ? candidateRowMap.get(r.id)
+              : logRowMap.get(r.id),
+          )
+          .filter(Boolean);
 
       const data: FunnelData[] = [
         {
@@ -261,16 +282,7 @@ export default function RecruitmentFunnel() {
           percentage: 100,
           color: "bg-indigo-500",
           icon: Users,
-          candidates: [...(cData || []), ...(lData || [])],
-        },
-        {
-          stage: "Tidak Lolos Screening",
-          count: totalTidakLolos,
-          percentage:
-            totalApplied > 0 ? (totalTidakLolos / totalApplied) * 100 : 0,
-          color: "bg-red-500",
-          icon: XCircle,
-          candidates: [...(cRejData || []), ...(lRejData || [])],
+          candidates: rowsForStage("total"),
         },
         {
           stage: "Lolos Screening",
@@ -279,7 +291,7 @@ export default function RecruitmentFunnel() {
             totalApplied > 0 ? (totalLolosScreening / totalApplied) * 100 : 0,
           color: "bg-blue-500",
           icon: Filter,
-          candidates: [...(cAccData || []), ...(lAccData || [])],
+          candidates: rowsForStage("passed_screening"),
         },
         {
           stage: "Tahap Psikotes",
@@ -288,7 +300,7 @@ export default function RecruitmentFunnel() {
             totalApplied > 0 ? (totalPsikotes / totalApplied) * 100 : 0,
           color: "bg-amber-500",
           icon: TrendingUp,
-          candidates: [...(cPsiData || []), ...(lPsiData || [])],
+          candidates: rowsForStage("reached_psikotes"),
         },
         {
           stage: "Tahap Interview",
@@ -297,7 +309,21 @@ export default function RecruitmentFunnel() {
             totalApplied > 0 ? (totalInterview / totalApplied) * 100 : 0,
           color: "bg-purple-500",
           icon: Users,
-          candidates: [...(cIntData || []), ...(lIntData || [])],
+          candidates: rowsForStage("reached_interview"),
+        },
+        // Placed after "Tahap Interview" but before "Hired" — not because
+        // it's part of that cumulative chain (it's an exit, not a "reached
+        // this stage or beyond" milestone), but because its count sits
+        // between the two visually: putting it after "Hired" instead made
+        // the last bar widen again, breaking the funnel's narrowing look.
+        {
+          stage: "Ditolak",
+          count: totalTidakLolos,
+          percentage:
+            totalApplied > 0 ? (totalTidakLolos / totalApplied) * 100 : 0,
+          color: "bg-red-500",
+          icon: XCircle,
+          candidates: rowsForStage("rejected"),
         },
         {
           stage: "Diterima (Hired)",
@@ -305,7 +331,7 @@ export default function RecruitmentFunnel() {
           percentage: totalApplied > 0 ? (totalHired / totalApplied) * 100 : 0,
           color: "bg-emerald-500",
           icon: CheckCircle2,
-          candidates: [...(cHiredData || []), ...(lHiredData || [])],
+          candidates: rowsForStage("hired"),
         },
       ];
 
@@ -320,14 +346,31 @@ export default function RecruitmentFunnel() {
       // Calculate Monthly Metrics (Past 12 MTHS)
       // Note: True server-side aggregation for this requires an RPC.
       // We will fetch up to 1000 hired logs to estimate this to avoid crashing on 100k rows.
-      const { data: recentHired } = await supabase
-        .from("candidate_logs")
-        .select("id, created_at, archived_at, updated_at, status_screening")
+      // Must go through buildDataQuery like everything else on this page —
+      // it was previously an unfiltered query, so the monthly trend chart
+      // and "Total Waktu (Hired)" efficiency number silently ignored the
+      // position/date filter while every other number on the page respected it.
+      const { data: recentHired } = (await buildDataQuery(
+        "candidate_logs",
+        "id, created_at, archived_at, updated_at, status_screening",
+      )
         .eq("status_screening", "hired")
         .order("created_at", { ascending: false })
-        .limit(1000);
+        .limit(1000)) as {
+        data: {
+          id: string;
+          created_at: string;
+          archived_at: string | null;
+          updated_at: string | null;
+          status_screening: string;
+        }[] | null;
+      };
 
-      // Fetch schedules for efficiency calculation
+      // Fetch schedules for efficiency calculation. These tables don't carry
+      // position/created_at-of-candidate columns themselves, so they can't
+      // be filtered server-side the same way — instead we keep them
+      // unfiltered here and restrict to the filtered candidate set (via
+      // candidateCreationMap, built below) when computing the day counts.
       const [psikotesSchedules, interviewSchedules, activeSources, logSources] =
         await Promise.all([
           supabase
@@ -464,7 +507,11 @@ export default function RecruitmentFunnel() {
       });
 
       // 2. Tahap Psikotes: Time from Schedule Creation to Schedule Date
+      // (restricted to candidates in the current position/date filter — this
+      // and the interview loop below used to run over every schedule in the
+      // system regardless of the filter, unlike every other number here)
       (psikotesSchedules.data || []).forEach((s) => {
+        if (!candidateCreationMap.has(s.candidate_id)) return;
         const diff = Math.ceil(
           Math.abs(
             new Date(s.schedule_date).getTime() -
@@ -478,6 +525,7 @@ export default function RecruitmentFunnel() {
 
       // 3. Tahap Interview: Time from Schedule Creation to Schedule Date
       (interviewSchedules.data || []).forEach((s) => {
+        if (!candidateCreationMap.has(s.candidate_id)) return;
         const diff = Math.ceil(
           Math.abs(
             new Date(s.schedule_date).getTime() -
@@ -884,7 +932,7 @@ export default function RecruitmentFunnel() {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <Loader2 className="w-12 h-12 animate-spin text-indigo-600" />
-        <p className="text-slate-500 font-medium">
+        <p className="text-[#73507B] font-medium">
           Menganalisa data rekrutmen...
         </p>
       </div>
@@ -892,101 +940,94 @@ export default function RecruitmentFunnel() {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-1">
-          <button
-            onClick={() => navigate(-1)}
-            className="text-sm text-slate-600 hover:text-[#5A305A] font-bold flex items-center gap-1.5 mb-2 transition-colors border border-slate-200 bg-white/70 backdrop-blur-md hover:bg-white px-3 py-1.5 rounded-xl w-fit shadow-sm"
+    <div className="space-y-4 animate-in fade-in duration-500">
+      <div className="space-y-1">
+        <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
+          Recruitment Funnel
+        </h1>
+        <p className="text-sm font-medium text-[#5A305A]/70 max-w-xl">
+          Analisa konversi kandidat dari pendaftaran hingga diterima.
+        </p>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row flex-wrap items-center gap-3">
+        <button
+          onClick={handlePreviewPDF}
+          className="w-full sm:w-auto shrink-0 justify-center px-4 py-2.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-red-200 group"
+        >
+          <FileText
+            size={18}
+            className="group-hover:scale-110 transition-transform"
+          />
+          PDF Report
+        </button>
+
+        <div className="relative w-full sm:flex-1">
+          <select
+            value={selectedPosition}
+            onChange={(e) => setSelectedPosition(e.target.value)}
+            className="w-full pl-4 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] transition-all appearance-none text-sm font-medium text-[#5A305A] shadow-sm"
           >
-            <ChevronLeft size={16} /> Kembali
-          </button>
-          <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
-            Recruitment Funnel
-          </h1>
-          <p className="text-sm font-medium text-[#5A305A]/70 max-w-xl">
-            Analisa konversi kandidat dari pendaftaran hingga diterima.
-          </p>
+            <option value="all">Semua Posisi</option>
+            {positions.map((pos) => (
+              <option key={pos} value={pos}>
+                {pos}
+              </option>
+            ))}
+          </select>
+          <ChevronDown
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#73507B] pointer-events-none"
+            size={16}
+          />
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row items-center gap-3">
-          <button
-            onClick={handlePreviewPDF}
-            className="px-4 py-2.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-red-200 group"
+        <div className="relative w-full sm:flex-1">
+          <select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="w-full pl-4 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] transition-all appearance-none text-sm font-medium text-[#5A305A] shadow-sm"
           >
-            <FileText
-              size={18}
-              className="group-hover:scale-110 transition-transform"
-            />
-            PDF Report
-          </button>
-          {(selectedPosition !== "all" || dateFilter !== "all") && (
-            <button
-              onClick={handleResetFilter}
-              className="px-4 py-2.5 text-sm font-medium text-slate-600 bg-white/50 hover:bg-white/70 border border-white/60 rounded-xl transition-all flex items-center gap-2"
-            >
-              <X size={16} />
-              Reset Filter
-            </button>
-          )}
-          <div className="relative">
-            <select
-              value={selectedPosition}
-              onChange={(e) => setSelectedPosition(e.target.value)}
-              className="pl-4 pr-10 py-2.5 bg-white/50 backdrop-blur-md border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all appearance-none text-sm font-medium text-slate-700 shadow-sm min-w-[160px]"
-            >
-              <option value="all">Semua Posisi</option>
-              {positions.map((pos) => (
-                <option key={pos} value={pos}>
-                  {pos}
-                </option>
-              ))}
-            </select>
-            <ChevronDown
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-              size={16}
-            />
-          </div>
-
-          <div className="flex gap-2">
-            <div className="relative">
-              <select
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                className="pl-4 pr-10 py-2.5 bg-white/50 backdrop-blur-md border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all appearance-none text-sm font-medium text-slate-700 shadow-sm min-w-[160px]"
-              >
-                <option value="all">Semua Waktu</option>
-                <option value="7days">7 Hari Terakhir</option>
-                <option value="30days">30 Hari Terakhir</option>
-                <option value="this_month">Bulan Ini</option>
-                <option value="this_year">Tahun Ini</option>
-                <option value="custom">Rentang Waktu</option>
-              </select>
-              <ChevronDown
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-                size={16}
-              />
-            </div>
-            {dateFilter === "custom" && (
-              <div className="flex items-center gap-2 bg-white/50 backdrop-blur-md border border-white/60 rounded-xl px-3 py-1.5 shadow-sm">
-                <input
-                  type="date"
-                  value={customStartDate}
-                  onChange={(e) => setCustomStartDate(e.target.value)}
-                  className="bg-transparent text-sm focus:outline-none text-slate-700"
-                />
-                <span className="text-slate-400">-</span>
-                <input
-                  type="date"
-                  value={customEndDate}
-                  onChange={(e) => setCustomEndDate(e.target.value)}
-                  className="bg-transparent text-sm focus:outline-none text-slate-700"
-                />
-              </div>
-            )}
-          </div>
+            <option value="all">Semua Waktu</option>
+            <option value="7days">7 Hari Terakhir</option>
+            <option value="30days">30 Hari Terakhir</option>
+            <option value="this_month">Bulan Ini</option>
+            <option value="this_year">Tahun Ini</option>
+            <option value="custom">Rentang Waktu</option>
+          </select>
+          <ChevronDown
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#73507B] pointer-events-none"
+            size={16}
+          />
         </div>
+
+        {dateFilter === "custom" && (
+          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
+            <input
+              type="date"
+              value={customStartDate}
+              onChange={(e) => setCustomStartDate(e.target.value)}
+              className="bg-transparent text-sm focus:outline-none text-[#5A305A]"
+            />
+            <span className="text-[#73507B]">-</span>
+            <input
+              type="date"
+              value={customEndDate}
+              onChange={(e) => setCustomEndDate(e.target.value)}
+              className="bg-transparent text-sm focus:outline-none text-[#5A305A]"
+            />
+          </div>
+        )}
+
+        {(selectedPosition !== "all" || dateFilter !== "all") && (
+          <button
+            onClick={handleResetFilter}
+            className="p-2.5 text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm flex items-center justify-center"
+            title="Reset Filter"
+          >
+            <X size={20} />
+          </button>
+        )}
       </div>
 
       {/* Summary Stats */}
@@ -997,7 +1038,7 @@ export default function RecruitmentFunnel() {
               <Users size={24} />
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+              <p className="text-xs font-bold text-[#73507B] uppercase tracking-widest">
                 Total Applied
               </p>
               <p className="text-2xl font-bold text-[#5A305A]">{stats.total}</p>
@@ -1010,7 +1051,7 @@ export default function RecruitmentFunnel() {
               <CheckCircle2 size={24} />
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+              <p className="text-xs font-bold text-[#73507B] uppercase tracking-widest">
                 Diterima (Hired)
               </p>
               <p className="text-2xl font-bold text-emerald-700">
@@ -1025,7 +1066,7 @@ export default function RecruitmentFunnel() {
               <XCircle size={24} />
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+              <p className="text-xs font-bold text-[#73507B] uppercase tracking-widest">
                 Rejected
               </p>
               <p className="text-2xl font-bold text-red-700">
@@ -1040,7 +1081,7 @@ export default function RecruitmentFunnel() {
               <Clock size={24} />
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+              <p className="text-xs font-bold text-[#73507B] uppercase tracking-widest">
                 Pending
               </p>
               <p className="text-2xl font-bold text-amber-600">
@@ -1072,7 +1113,7 @@ export default function RecruitmentFunnel() {
                         <p className="text-sm font-bold text-[#5A305A]">
                           {item.stage}
                         </p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-[#73507B]">
                           {item.count} Kandidat
                         </p>
                       </div>
@@ -1094,7 +1135,7 @@ export default function RecruitmentFunnel() {
                           )}
                         </div>
                         {width <= 15 && (
-                          <span className="absolute z-10 text-slate-700 font-bold text-sm drop-shadow-sm">
+                          <span className="absolute z-10 text-[#5A305A] font-bold text-sm drop-shadow-sm">
                             {item.percentage.toFixed(1)}%
                           </span>
                         )}
@@ -1102,10 +1143,9 @@ export default function RecruitmentFunnel() {
 
                       {/* Drop-off Info */}
                       <div className="w-24 shrink-0">
-                        {index > 0 &&
-                          item.stage !== "Tidak Lolos Screening" && (
+                        {index > 0 && (
                             <div className="flex flex-col items-start">
-                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                              <span className="text-[10px] font-bold text-[#73507B] uppercase tracking-tighter">
                                 Drop-off
                               </span>
                               <span className="text-xs font-bold text-red-500">
@@ -1134,7 +1174,7 @@ export default function RecruitmentFunnel() {
             <h2 className="text-lg font-bold text-[#5A305A]">
               Detail Konversi
             </h2>
-            <p className="text-xs text-slate-600 mt-1">
+            <p className="text-xs text-[#73507B] mt-1">
               Klik pada tahap untuk melihat detail kandidat.
             </p>
           </div>
@@ -1173,7 +1213,7 @@ export default function RecruitmentFunnel() {
                   />
                 </div>
                 <div className="flex justify-between mt-2">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  <span className="text-[10px] font-bold text-[#73507B] uppercase tracking-widest">
                     Conversion Rate
                   </span>
                   <span className="text-xs font-bold text-indigo-600">
@@ -1215,13 +1255,13 @@ export default function RecruitmentFunnel() {
             <div className="flex gap-3">
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded-sm bg-indigo-500"></div>
-                <span className="text-[10px] font-bold text-slate-500 uppercase">
+                <span className="text-[10px] font-bold text-[#73507B] uppercase">
                   Hired
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded-sm bg-emerald-500"></div>
-                <span className="text-[10px] font-bold text-slate-500 uppercase">
+                <span className="text-[10px] font-bold text-[#73507B] uppercase">
                   Days to Hire
                 </span>
               </div>
@@ -1246,7 +1286,7 @@ export default function RecruitmentFunnel() {
 
               return (
                 <div key={index} className="flex items-center gap-3">
-                  <div className="w-16 text-xs font-bold text-slate-600 text-right shrink-0 leading-tight">
+                  <div className="w-16 text-xs font-bold text-[#73507B] text-right shrink-0 leading-tight">
                     {item.label}
                   </div>
                   <div className="flex-1 flex flex-col gap-1.5">
@@ -1289,7 +1329,7 @@ export default function RecruitmentFunnel() {
               Pipeline Efficiency of Hiring
               <button
                 onClick={() => setShowEfficiencyInfo(!showEfficiencyInfo)}
-                className="text-slate-400 hover:text-indigo-600 transition-colors ml-1"
+                className="text-[#73507B] hover:text-indigo-600 transition-colors ml-1"
                 title="Info Perhitungan"
               >
                 <Info size={18} />
@@ -1304,30 +1344,30 @@ export default function RecruitmentFunnel() {
             <div className="mb-8 p-3 bg-indigo-50/50 rounded-xl border border-indigo-100 flex items-start gap-3 relative animate-in fade-in slide-in-from-top-2 duration-300">
               <button
                 onClick={() => setShowEfficiencyInfo(false)}
-                className="absolute top-2 right-2 text-slate-400 hover:text-slate-600 transition-colors"
+                className="absolute top-2 right-2 text-[#73507B] hover:text-[#73507B] transition-colors"
               >
                 <X size={14} />
               </button>
               <Info className="text-indigo-500 shrink-0 mt-0.5" size={16} />
-              <div className="text-xs text-slate-600 leading-relaxed pr-4">
-                <p className="font-bold text-slate-700 mb-1">
+              <div className="text-xs text-[#73507B] leading-relaxed pr-4">
+                <p className="font-bold text-[#5A305A] mb-1">
                   Metode Perhitungan (Rata-rata Hari):
                 </p>
                 <ul className="list-disc list-inside space-y-1">
                   <li>
-                    <span className="font-medium text-slate-700">
+                    <span className="font-medium text-[#5A305A]">
                       Screening Awal:
                     </span>{" "}
                     Dari tanggal melamar hingga jadwal tes/interview dibuat.
                   </li>
                   <li>
-                    <span className="font-medium text-slate-700">
+                    <span className="font-medium text-[#5A305A]">
                       Tahap Psikotes/Interview:
                     </span>{" "}
                     Dari tanggal jadwal dibuat hingga tanggal pelaksanaan.
                   </li>
                   <li>
-                    <span className="font-medium text-slate-700">
+                    <span className="font-medium text-[#5A305A]">
                       Total Waktu (Hired):
                     </span>{" "}
                     Dari tanggal melamar hingga status diubah menjadi Hired.
@@ -1348,7 +1388,7 @@ export default function RecruitmentFunnel() {
               return (
                 <div key={index} className="space-y-2">
                   <div className="flex justify-between items-end">
-                    <span className="text-sm font-bold text-slate-700">
+                    <span className="text-sm font-bold text-[#5A305A]">
                       {item.stage}
                     </span>
                     <span className="text-sm font-bold text-indigo-600">
@@ -1412,7 +1452,7 @@ export default function RecruitmentFunnel() {
                 >
                   <div className="flex items-center gap-3">
                     <div
-                      className="w-24 text-xs font-bold text-slate-600 text-right shrink-0 leading-tight truncate"
+                      className="w-24 text-xs font-bold text-[#73507B] text-right shrink-0 leading-tight truncate"
                       title={item.source}
                     >
                       {item.source}
@@ -1438,7 +1478,7 @@ export default function RecruitmentFunnel() {
                           title={`Masih Proses: ${item.pending}`}
                         />
                       </div>
-                      <span className="text-[10px] font-bold text-slate-600 w-6 text-right">
+                      <span className="text-[10px] font-bold text-[#73507B] w-6 text-right">
                         {item.count}
                       </span>
                     </div>
@@ -1462,7 +1502,7 @@ export default function RecruitmentFunnel() {
               );
             })}
             {sourceDistribution.length === 0 && (
-              <div className="text-center text-slate-500 text-sm py-4">
+              <div className="text-center text-[#73507B] text-sm py-4">
                 Belum ada data sumber lowongan
               </div>
             )}
@@ -1489,7 +1529,7 @@ export default function RecruitmentFunnel() {
                   <h2 className="text-lg font-bold text-[#5A305A]">
                     Preview Laporan Rekrutmen
                   </h2>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-[#73507B]">
                     Tinjau laporan sebelum mengunduh.
                   </p>
                 </div>
@@ -1499,7 +1539,7 @@ export default function RecruitmentFunnel() {
                   if (pdfDataUri) URL.revokeObjectURL(pdfDataUri);
                   setShowPdfPreview(false);
                 }}
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-full transition-all"
+                className="p-2 text-[#73507B] hover:text-[#73507B] hover:bg-slate-50 rounded-full transition-all"
               >
                 <X size={20} />
               </button>
@@ -1525,7 +1565,7 @@ export default function RecruitmentFunnel() {
                   <div className="flex justify-between items-start border-b border-slate-100 pb-6">
                     <div className="space-y-4">
                       <div>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                        <p className="text-[10px] font-bold text-[#73507B] uppercase tracking-widest">
                           Laporan Untuk:
                         </p>
                         <p className="text-lg font-bold text-[#5A305A]">
@@ -1535,10 +1575,10 @@ export default function RecruitmentFunnel() {
                         </p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                        <p className="text-[10px] font-bold text-[#73507B] uppercase tracking-widest">
                           Periode Analisa:
                         </p>
-                        <p className="text-sm font-bold text-slate-700">
+                        <p className="text-sm font-bold text-[#5A305A]">
                           {dateFilter === "all"
                             ? "SEMUA WAKTU"
                             : dateFilter === "custom"
@@ -1548,10 +1588,10 @@ export default function RecruitmentFunnel() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                      <p className="text-[10px] font-bold text-[#73507B] uppercase tracking-widest">
                         Tanggal Cetak:
                       </p>
-                      <p className="text-sm font-bold text-slate-700">
+                      <p className="text-sm font-bold text-[#5A305A]">
                         {new Date().toLocaleDateString("id-ID", {
                           day: "numeric",
                           month: "long",
@@ -1606,7 +1646,7 @@ export default function RecruitmentFunnel() {
                             stat.color,
                           )}
                         />
-                        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                        <p className="text-[8px] font-bold text-[#73507B] uppercase tracking-wider mb-1">
                           {stat.label}
                         </p>
                         <p className={cn("text-xl font-bold", stat.text)}>
@@ -1680,7 +1720,7 @@ export default function RecruitmentFunnel() {
                 </div>
 
                 {/* PDF Footer Mockup */}
-                <div className="p-10 pt-0 flex justify-between items-center text-[10px] text-slate-400 font-medium">
+                <div className="p-10 pt-0 flex justify-between items-center text-[10px] text-[#73507B] font-medium">
                   <p>RMS Waruna Group - Confidential Analytics</p>
                   <p>Halaman 1 dari 2</p>
                 </div>
@@ -1742,7 +1782,7 @@ export default function RecruitmentFunnel() {
                             className={i % 2 === 1 ? "bg-indigo-50/30" : ""}
                           >
                             <td className="p-3 font-medium">{item.source}</td>
-                            <td className="p-3 text-center font-bold text-slate-600">
+                            <td className="p-3 text-center font-bold text-[#73507B]">
                               {item.count}
                             </td>
                             <td className="p-3 text-center font-bold text-emerald-600">
@@ -1757,7 +1797,7 @@ export default function RecruitmentFunnel() {
                           <tr>
                             <td
                               colSpan={4}
-                              className="p-3 text-center text-slate-500"
+                              className="p-3 text-center text-[#73507B]"
                             >
                               Belum ada data sumber lowongan
                             </td>
@@ -1769,7 +1809,7 @@ export default function RecruitmentFunnel() {
                 </div>
 
                 {/* PDF Footer Mockup */}
-                <div className="p-10 pt-0 flex justify-between items-center text-[10px] text-slate-400 font-medium">
+                <div className="p-10 pt-0 flex justify-between items-center text-[10px] text-[#73507B] font-medium">
                   <p>RMS Waruna Group - Confidential Analytics</p>
                   <p>Halaman 2 dari 2</p>
                 </div>
@@ -1821,14 +1861,14 @@ export default function RecruitmentFunnel() {
                   <h2 className="text-xl font-bold text-[#5A305A]">
                     Detail Kandidat: {selectedStage.stage}
                   </h2>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-[#73507B]">
                     Total {selectedStage.count} kandidat pada tahap ini.
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setSelectedStage(null)}
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-white/50 rounded-full transition-all"
+                className="p-2 text-[#73507B] hover:text-[#73507B] hover:bg-white/50 rounded-full transition-all"
               >
                 <X size={24} />
               </button>
@@ -1857,7 +1897,7 @@ export default function RecruitmentFunnel() {
                                   ? "bg-red-100 text-red-700"
                                   : candidate.status_screening === "pending"
                                     ? "bg-amber-100 text-amber-700"
-                                    : "bg-white/60 text-slate-700 border border-white/80",
+                                    : "bg-white/60 text-[#5A305A] border border-white/80",
                           )}
                         >
                           {candidate.status_screening}
@@ -1865,18 +1905,18 @@ export default function RecruitmentFunnel() {
                       </div>
 
                       <div className="space-y-2 mt-3">
-                        <div className="flex items-center gap-2 text-sm text-slate-600">
-                          <Mail size={14} className="text-slate-400" />
+                        <div className="flex items-center gap-2 text-sm text-[#73507B]">
+                          <Mail size={14} className="text-[#73507B]" />
                           <span className="truncate">{candidate.email}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-slate-600">
-                          <MapPin size={14} className="text-slate-400" />
+                        <div className="flex items-center gap-2 text-sm text-[#73507B]">
+                          <MapPin size={14} className="text-[#73507B]" />
                           <span className="font-medium">
                             {candidate.position}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-slate-500">
-                          <Calendar size={14} className="text-slate-400" />
+                        <div className="flex items-center gap-2 text-xs text-[#73507B]">
+                          <Calendar size={14} className="text-[#73507B]" />
                           <span>
                             Applied: {formatDate(candidate.created_at)}
                           </span>
@@ -1886,7 +1926,7 @@ export default function RecruitmentFunnel() {
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+                <div className="flex flex-col items-center justify-center py-20 text-[#73507B]">
                   <Users size={48} className="mb-4 opacity-20" />
                   <p className="text-lg font-medium">
                     Tidak ada kandidat pada tahap ini.
