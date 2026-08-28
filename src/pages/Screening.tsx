@@ -222,6 +222,7 @@ export default function Screening() {
     null,
   );
   const [rejectReason, setRejectReason] = useState("");
+  const [rejectingParty, setRejectingParty] = useState<"Declined" | "Withdrawn">("Declined");
   const [rejectCcEmail, setRejectCcEmail] = useState("");
   const [sendRejectEmail, setSendRejectEmail] = useState(false);
   const [addToBlacklist, setAddToBlacklist] = useState(false);
@@ -467,7 +468,7 @@ export default function Screening() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           candidateId: rejectModalData.id,
-          notes: rejectReason.trim() || "Ditolak pada tahap Screening Awal",
+          notes: `${rejectingParty} (${rejectReason.trim() || "Ditolak pada tahap Screening Awal"})`,
         }),
       });
 
@@ -593,6 +594,7 @@ export default function Screening() {
         setCandidates(candidates.filter((c) => c.id !== rejectModalData.id));
         setRejectModalData(null);
         setRejectReason("");
+        setRejectingParty("Declined");
         setRejectCcEmail("");
         setAddToBlacklist(false);
         setBlacklistReason("");
@@ -1178,30 +1180,70 @@ export default function Screening() {
                    >
                      <div className="space-y-2">
                        <h3 className="text-xl font-bold text-[#5A305A] underline decoration-slate-300 decoration-2 underline-offset-4 group-hover:text-[#5A305A] transition-colors">{position}</h3>
-                       <div className="text-sm text-[#73507B] flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3 sm:gap-4 mt-2">
-                         <span className="flex items-center gap-1.5"><Users size={16} className="text-[#73507B]" /> <span className="font-medium">{total} Total Pelamar</span></span>
-                         
-                         <span className="flex items-center gap-1.5 bg-slate-100 px-2 py-1 rounded-lg"><Search size={14} className="text-indigo-500" /> <span className="font-medium text-indigo-700">{newCount} Baru</span></span>
-                         <span className="flex items-center gap-1.5 bg-emerald-50 px-2 py-1 rounded-lg text-emerald-700 font-medium" title="Lolos screening awal tetapi belum dijadwalkan test/interview"><Star size={14} /> {highFitCount} Lolos Awal</span>
-                         
-                         <div className="flex items-center gap-2 bg-sky-50 px-2 py-1 rounded-lg text-sky-700 font-medium">
-                           <FileText size={14} /> Psikotes: 
-                           <span className="text-xs bg-sky-200 px-1.5 rounded">{jadwalPsikotesCount} Jadwal</span>
-                           <span className="text-xs bg-sky-200 px-1.5 rounded">{selesaiPsikotesCount} Selesai</span>
+                       <div className="text-xs sm:text-sm text-[#73507B] flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-1.5 sm:gap-2 mt-2">
+                         <span className="flex items-center gap-1.5 whitespace-nowrap"><Users size={16} className="text-[#73507B]" /> <span className="font-medium">{total} Total Pelamar</span></span>
+
+                         <span className="flex items-center gap-1.5 bg-slate-100 px-1.5 sm:px-2 py-1 rounded-lg whitespace-nowrap"><Search size={14} className="text-indigo-500" /> <span className="font-medium text-indigo-700">{newCount} Baru</span></span>
+                         <span className="flex items-center gap-1.5 bg-emerald-50 px-1.5 sm:px-2 py-1 rounded-lg text-emerald-700 font-medium whitespace-nowrap" title="Lolos screening awal tetapi belum dijadwalkan test/interview"><Star size={14} /> {highFitCount} Lolos Awal</span>
+
+                         <div className="flex items-center gap-1 bg-sky-50 px-1.5 sm:px-2 py-1 rounded-lg text-sky-700 font-medium whitespace-nowrap">
+                           <FileText size={14} className="shrink-0" /> Psikotes: {jadwalPsikotesCount} Jadwal &middot; {selesaiPsikotesCount} Selesai
                          </div>
-                         
-                         <div className="flex items-center gap-2 bg-amber-50 px-2 py-1 rounded-lg text-amber-700 font-medium">
-                           <Users size={14} /> Interview:
-                           <span className="text-xs bg-amber-200 px-1.5 rounded">{jadwalInterviewCount} Jadwal</span>
-                           <span className="text-xs bg-amber-200 px-1.5 rounded">{selesaiInterviewCount} Selesai</span>
+
+                         <div className="flex items-center gap-1 bg-amber-50 px-1.5 sm:px-2 py-1 rounded-lg text-amber-700 font-medium whitespace-nowrap">
+                           <Users size={14} className="shrink-0" /> Interview: {jadwalInterviewCount} Jadwal &middot; {selesaiInterviewCount} Selesai
                          </div>
 
                          {referenceCheckCount > 0 && (
-                           <span className="flex items-center gap-1.5 bg-fuchsia-50 px-2 py-1 rounded-lg text-fuchsia-700 font-medium">
+                           <span className="flex items-center gap-1.5 bg-fuchsia-50 px-1.5 sm:px-2 py-1 rounded-lg text-fuchsia-700 font-medium whitespace-nowrap">
                              <FileText size={14} /> {referenceCheckCount} Reference Check
                            </span>
                          )}
                        </div>
+
+                       {total > 0 && (
+                         <div className="flex h-2 w-full max-w-md rounded-full overflow-hidden bg-slate-100 mt-1">
+                           {newCount > 0 && (
+                             <div
+                               className="bg-indigo-400"
+                               style={{ width: `${(newCount / total) * 100}%` }}
+                               title={`${newCount} Baru`}
+                             />
+                           )}
+                           {highFitCount > 0 && (
+                             <div
+                               className="bg-emerald-400"
+                               style={{ width: `${(highFitCount / total) * 100}%` }}
+                               title={`${highFitCount} Lolos Awal`}
+                             />
+                           )}
+                           {jadwalPsikotesCount + selesaiPsikotesCount > 0 && (
+                             <div
+                               className="bg-sky-400"
+                               style={{
+                                 width: `${((jadwalPsikotesCount + selesaiPsikotesCount) / total) * 100}%`,
+                               }}
+                               title={`${jadwalPsikotesCount + selesaiPsikotesCount} Psikotes`}
+                             />
+                           )}
+                           {jadwalInterviewCount + selesaiInterviewCount > 0 && (
+                             <div
+                               className="bg-amber-400"
+                               style={{
+                                 width: `${((jadwalInterviewCount + selesaiInterviewCount) / total) * 100}%`,
+                               }}
+                               title={`${jadwalInterviewCount + selesaiInterviewCount} Interview`}
+                             />
+                           )}
+                           {referenceCheckCount > 0 && (
+                             <div
+                               className="bg-fuchsia-400"
+                               style={{ width: `${(referenceCheckCount / total) * 100}%` }}
+                               title={`${referenceCheckCount} Reference Check`}
+                             />
+                           )}
+                         </div>
+                       )}
                      </div>
                      <div className="flex items-center gap-4">
                         <span className="text-sm text-[#73507B] group-hover:text-[#5A305A] font-medium transition-colors hidden sm:block">Lihat kandidat &rarr;</span>
@@ -2048,7 +2090,32 @@ export default function Screening() {
               </p>
               <div className="text-left mt-4">
                 <label className="block text-sm font-semibold text-[#5A305A] mb-2">
-                  Alasan Penolakan (Opsional)
+                  Pihak Penolak (Initiator)
+                </label>
+                <div className="flex items-center gap-6">
+                  {(["Declined", "Withdrawn"] as const).map((party) => (
+                    <label
+                      key={party}
+                      className="flex items-center gap-2 cursor-pointer"
+                    >
+                      <input
+                        type="radio"
+                        name="rejecting_party"
+                        checked={rejectingParty === party}
+                        onChange={() => setRejectingParty(party)}
+                        className="w-4 h-4 text-[#5A305A] border-slate-300 focus:ring-[#5A305A] cursor-pointer"
+                      />
+                      <span className="text-sm font-medium text-[#5A305A]">
+                        {party}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="text-left mt-4">
+                <label className="block text-sm font-semibold text-[#5A305A] mb-2">
+                  Catatan Tambahan (Opsional)
                 </label>
                 <textarea
                   value={rejectReason}
@@ -2156,6 +2223,7 @@ export default function Screening() {
                 onClick={() => {
                   setRejectModalData(null);
                   setRejectReason("");
+                  setRejectingParty("Declined");
                   setRejectCcEmail("");
                   setAddToBlacklist(false);
                   setBlacklistReason("");

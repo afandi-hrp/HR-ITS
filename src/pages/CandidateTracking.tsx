@@ -12,6 +12,8 @@ export default function CandidateTracking() {
   const [candidates, setCandidates] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState(searchParams.get("q") || "");
+  const [positionFilter, setPositionFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
   const [isExporting, setIsExporting] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -48,29 +50,58 @@ const topScrollRef = useRef<HTMLDivElement>(null);
   const [tableWidth, setTableWidth] = useState(3800);
 
   useEffect(() => {
-    const updateWidth = () => {
-      if (tableRef.current) {
-        setTableWidth(tableRef.current.scrollWidth);
-      }
-    };
-    
+    const el = tableRef.current;
+    if (!el) return;
+
+    const updateWidth = () => setTableWidth(el.scrollWidth);
     updateWidth();
-    // Use timeout to ensure DOM has fully painted the new inputs
-    const timeoutId = setTimeout(updateWidth, 50);
-    
-    return () => clearTimeout(timeoutId);
+
+    // ResizeObserver reacts to the table's actual rendered size whenever it
+    // changes (new columns' content, font load, data arriving async, etc.)
+    // instead of guessing a fixed timeout — that guesswork is what let the
+    // top scrollbar's spacer fall short of the real table width.
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(el);
+    return () => observer.disconnect();
   }, [candidates, currentPage, pageSize, searchTerm, editingId]);
 
+  // Guards against the two onScroll handlers re-triggering each other in a
+  // feedback loop (top scroll -> sets bottom -> fires bottom's onScroll ->
+  // sets top -> fires top's onScroll -> ...), which is what made the two
+  // bars visibly lag/drift out of sync during fast scrolling.
+  const isSyncingScrollRef = useRef(false);
+
+  // Sync by ratio, not raw pixel scrollLeft — the top bar's spacer width and
+  // the bottom table's real scrollWidth aren't guaranteed to end up exactly
+  // equal (fonts, async column content, sub-pixel rounding), so a 1:1 pixel
+  // copy left the shorter one maxing out before the taller one actually
+  // reached its own end. Matching the fraction scrolled (0..1) instead means
+  // dragging either bar all the way always drags the other all the way too,
+  // regardless of any small width mismatch between them.
   const handleTopScroll = () => {
-    if (bottomScrollRef.current && topScrollRef.current) {
-      bottomScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
-    }
+    if (isSyncingScrollRef.current) return;
+    const top = topScrollRef.current;
+    const bottom = bottomScrollRef.current;
+    if (!top || !bottom) return;
+    const topMax = top.scrollWidth - top.clientWidth;
+    const bottomMax = bottom.scrollWidth - bottom.clientWidth;
+    if (topMax <= 0) return;
+    isSyncingScrollRef.current = true;
+    bottom.scrollLeft = (top.scrollLeft / topMax) * bottomMax;
+    isSyncingScrollRef.current = false;
   };
 
   const handleBottomScroll = () => {
-    if (topScrollRef.current && bottomScrollRef.current) {
-      topScrollRef.current.scrollLeft = bottomScrollRef.current.scrollLeft;
-    }
+    if (isSyncingScrollRef.current) return;
+    const top = topScrollRef.current;
+    const bottom = bottomScrollRef.current;
+    if (!top || !bottom) return;
+    const topMax = top.scrollWidth - top.clientWidth;
+    const bottomMax = bottom.scrollWidth - bottom.clientWidth;
+    if (bottomMax <= 0) return;
+    isSyncingScrollRef.current = true;
+    top.scrollLeft = (bottom.scrollLeft / bottomMax) * topMax;
+    isSyncingScrollRef.current = false;
   };
 
   const handleEdit = (c: any) => {
@@ -170,16 +201,6 @@ const topScrollRef = useRef<HTMLDivElement>(null);
       setIsLoading(false);
     }
   };
-const filteredCandidates = candidates.filter(
-    (c) =>
-      c.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.position?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.email?.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
-
-  const totalPages = pageSize === Infinity ? 1 : Math.ceil(filteredCandidates.length / pageSize);
-  const paginatedCandidates = pageSize === Infinity ? filteredCandidates : filteredCandidates.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return "";
     try {
@@ -189,7 +210,6 @@ const filteredCandidates = candidates.filter(
     }
   };
 
-
   // Sumber CV: prefer the direct column; fall back to the linked application
   // form's "how did you find this vacancy" answer (external_data.raw_data.job_vacancy_info).
   const getSourceCv = (c: any) => {
@@ -197,6 +217,28 @@ const filteredCandidates = candidates.filter(
     const linked = c.linked_external_id ? externalDataMap[c.linked_external_id] : null;
     return linked?.job_vacancy_info || "";
   };
+
+  const positionOptions = Array.from(
+    new Set(candidates.map((c) => c.position).filter(Boolean)),
+  ).sort();
+  const sourceOptions = Array.from(
+    new Set(candidates.map((c) => getSourceCv(c)).filter(Boolean)),
+  ).sort();
+
+  const filteredCandidates = candidates.filter((c) => {
+    const matchesSearch =
+      c.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.position?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesPosition =
+      positionFilter === "all" || c.position === positionFilter;
+    const matchesSource =
+      sourceFilter === "all" || getSourceCv(c) === sourceFilter;
+    return matchesSearch && matchesPosition && matchesSource;
+  });
+
+  const totalPages = pageSize === Infinity ? 1 : Math.ceil(filteredCandidates.length / pageSize);
+  const paginatedCandidates = pageSize === Infinity ? filteredCandidates : filteredCandidates.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   // Hasil Psikotes: derived from the General Learning Ability sub-score inside
   // ai_psikotes_summary, not from whether a result file was uploaded.
@@ -369,38 +411,73 @@ const filteredCandidates = candidates.filter(
   };
 
   return (
-    <div className="p-8">
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+    <div className="pb-8 pt-2">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
         <div>
-          <h1 className="text-3xl font-bold text-[#5A305A]">Live Tracking Kandidat</h1>
-          <p className="text-slate-500 mt-2">Monitor progress dan status pelamar</p>
+          <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">Live Tracking Kandidat</h1>
+          <p className="text-[#5A305A]/70 mt-1">Monitor progress dan status pelamar</p>
         </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="p-4 border-b border-slate-200 bg-slate-50 flex flex-wrap gap-4 justify-between items-center">
-          <div className="relative w-full max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-            <input
-              type="text"
-              placeholder="Cari kandidat..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-10 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#5A305A] transition-shadow"
-            />
-            {searchTerm && (
-              <button 
-                onClick={() => setSearchTerm("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                <X size={16} />
-              </button>
-            )}
+        <div className="p-4 border-b border-slate-200 bg-slate-50 flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-3 flex-1">
+            <div className="relative w-full sm:w-auto sm:flex-1 sm:max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+              <input
+                type="text"
+                placeholder="Cari kandidat..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-10 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#5A305A] transition-shadow"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+
+            <select
+              value={positionFilter}
+              onChange={(e) => {
+                setPositionFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full sm:w-auto px-4 py-2 rounded-xl border border-slate-200 bg-white text-[#5A305A] focus:outline-none focus:ring-2 focus:ring-[#5A305A] transition-shadow"
+            >
+              <option value="all">Semua Posisi</option>
+              {positionOptions.map((pos) => (
+                <option key={pos} value={pos}>
+                  {pos}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={sourceFilter}
+              onChange={(e) => {
+                setSourceFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full sm:w-auto px-4 py-2 rounded-xl border border-slate-200 bg-white text-[#5A305A] focus:outline-none focus:ring-2 focus:ring-[#5A305A] transition-shadow"
+            >
+              <option value="all">Semua Sumber CV</option>
+              {sourceOptions.map((src) => (
+                <option key={src} value={src}>
+                  {src}
+                </option>
+              ))}
+            </select>
           </div>
+
           <button
             onClick={handleExportExcel}
             disabled={isExporting || isLoading || filteredCandidates.length === 0}
-            className="flex items-center gap-2 bg-[#5A305A] hover:bg-[#3F223F] text-white px-4 py-2 rounded-xl transition-colors disabled:opacity-50 whitespace-nowrap"
+            className="flex items-center justify-center gap-2 bg-[#5A305A] hover:bg-[#3F223F] text-white px-4 py-2 rounded-xl transition-colors disabled:opacity-50 whitespace-nowrap shrink-0"
           >
             {isExporting ? <Loader2 className="animate-spin" size={20} /> : <Download size={20} />}
             Export Excel

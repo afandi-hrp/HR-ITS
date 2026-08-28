@@ -428,10 +428,10 @@ export default function ExternalData() {
   };
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="pb-8 pt-2 space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-[#5A305A] flex items-center gap-3">
+          <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A] flex items-center gap-3">
             <Database className="text-indigo-600" size={32} />
             Data Eksternal
           </h1>
@@ -442,7 +442,7 @@ export default function ExternalData() {
       </div>
 
       {/* Panel Pencarian & Refresh */}
-      <div className="bg-white/60 backdrop-blur-md p-4 rounded-2xl border border-white/60 shadow-xl flex flex-col sm:flex-row gap-4 items-center">
+      <div className="!mt-2 bg-white/60 backdrop-blur-md p-4 rounded-2xl border border-white/60 shadow-xl flex flex-col sm:flex-row gap-4 items-center">
         <div className="relative w-full flex-1">
           <Search
             className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"

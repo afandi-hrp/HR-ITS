@@ -1331,7 +1331,7 @@ export default function CandidateProfile() {
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h1 className="text-3xl font-bold text-[#5A305A]">
+            <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
               Profil Kandidat
             </h1>
             <p className="text-[#5A305A]/70 text-sm mt-1">
@@ -1891,7 +1891,7 @@ export default function CandidateProfile() {
                 </h3>
               </div>
               {isBiodataSummaryExpanded && (
-                <div className="px-6 pb-6 border-t border-slate-100 pt-6 text-sm text-slate-700">
+                <div className="px-6 pb-6 border-t border-slate-100 pt-6 text-sm text-[#5A305A]">
                   <JSONRenderer data={candidate.ai_biodata_summary} />
                 </div>
               )}
@@ -1944,7 +1944,7 @@ export default function CandidateProfile() {
                 </div>
               </div>
               {isPsikotesSummaryExpanded && (
-                <div className="px-6 pb-6 border-t border-slate-100 pt-6 text-sm text-slate-700">
+                <div className="px-6 pb-6 border-t border-slate-100 pt-6 text-sm text-[#5A305A]">
                   <JSONRenderer data={candidate.ai_psikotes_summary} />
                 </div>
               )}

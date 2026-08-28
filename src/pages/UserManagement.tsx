@@ -205,10 +205,10 @@ export default function UserManagement() {
   });
 
   return (
-    <div className="p-8">
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div className="pb-8 pt-2">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
         <div>
-          <h1 className="text-3xl font-bold text-[#5A305A] flex items-center gap-3">
+          <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A] flex items-center gap-3">
             <Users className="w-8 h-8 text-indigo-600" />
             Manajemen Pengguna
           </h1>

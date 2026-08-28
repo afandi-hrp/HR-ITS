@@ -166,10 +166,10 @@ export default function RegistrationTokens() {
   }, [totalPages, currentPage]);
 
   return (
-    <div className="p-8">
-      <div className="flex justify-between items-center mb-8">
+    <div className="pb-8 pt-2">
+      <div className="flex justify-between items-center mb-2">
         <div>
-          <h1 className="text-2xl font-bold text-[#5A305A]">Token Pelamar</h1>
+          <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">Token Pelamar</h1>
           <p className="text-[#5A305A]/70 mt-1">
             Kelola token akses satu kali pakai untuk form pelamar publik.
           </p>

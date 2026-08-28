@@ -88,7 +88,7 @@ function BulletList({ text, dotClassName }: { text: string; dotClassName: string
   return (
     <ul className="space-y-1.5">
       {splitBulletPoints(text).map((item, i) => (
-        <li key={i} className="flex items-start gap-2 text-sm text-slate-600 leading-snug">
+        <li key={i} className="flex items-start gap-2 text-sm text-[#73507B] leading-snug">
           <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${dotClassName}`} />
           <span>{item}</span>
         </li>
@@ -114,21 +114,21 @@ function CategoryInfoButton({ definition }: { definition: NonNullable<ReturnType
           </p>
         )}
         <div>
-          <p className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
+          <p className="flex items-center gap-1.5 text-xs font-bold text-[#5A305A] uppercase tracking-wide mb-1">
             <Sparkles size={13} className="text-indigo-500" />
             Interpretasi
           </p>
-          <p className="text-sm text-slate-600 leading-snug">{definition.interpretasi}</p>
+          <p className="text-sm text-[#73507B] leading-snug">{definition.interpretasi}</p>
         </div>
         <div>
-          <p className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
+          <p className="flex items-center gap-1.5 text-xs font-bold text-[#5A305A] uppercase tracking-wide mb-1">
             <Lightbulb size={13} className="text-emerald-500" />
             Potensi
           </p>
           <BulletList text={definition.potensi} dotClassName="bg-emerald-400" />
         </div>
         <div>
-          <p className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
+          <p className="flex items-center gap-1.5 text-xs font-bold text-[#5A305A] uppercase tracking-wide mb-1">
             <TrendingUp size={13} className="text-amber-500" />
             Area Pengembangan
           </p>
@@ -144,7 +144,7 @@ function CategoryInfoButton({ definition }: { definition: NonNullable<ReturnType
 // used to color Strengths/Weaknesses-style arrays green/red.
 function renderValue(value: any, keyHint?: string): React.ReactNode {
   if (Array.isArray(value)) {
-    if (value.length === 0) return <span className="text-slate-400 italic">Kosong</span>;
+    if (value.length === 0) return <span className="text-[#73507B] italic">Kosong</span>;
     const normalizedKey = (keyHint || '').toLowerCase();
     const isStrengths = /kekuatan|strength/.test(normalizedKey);
     const isWeaknesses = /kelemahan|weakness/.test(normalizedKey);
@@ -194,8 +194,8 @@ function renderValue(value: any, keyHint?: string): React.ReactNode {
             const categoryDefinition = findCategoryDefinition(k, v);
             return (
               <div key={k} className="bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">{getLabel(k)}</p>
-                <p className="text-sm font-semibold text-slate-700 flex items-center flex-wrap">
+                <p className="text-[10px] font-bold text-[#73507B] uppercase tracking-wide mb-0.5">{getLabel(k)}</p>
+                <p className="text-sm font-semibold text-[#5A305A] flex items-center flex-wrap">
                   {renderValue(v)}
                   {categoryDefinition && <CategoryInfoButton definition={categoryDefinition} />}
                 </p>
@@ -211,7 +211,7 @@ function renderValue(value: any, keyHint?: string): React.ReactNode {
           const categoryDefinition = findCategoryDefinition(k, v);
           return (
             <div key={k}>
-              <span className="font-semibold text-slate-700">{getLabel(k)}:</span>{' '}
+              <span className="font-semibold text-[#5A305A]">{getLabel(k)}:</span>{' '}
               {renderValue(v, k)}
               {categoryDefinition && <CategoryInfoButton definition={categoryDefinition} />}
             </div>
@@ -226,7 +226,7 @@ function renderValue(value: any, keyHint?: string): React.ReactNode {
     if (typeof value === 'string' && value.includes('\n')) {
       return <div className="whitespace-pre-wrap">{value}</div>;
     }
-    return <span className="text-slate-600">{String(value)}</span>;
+    return <span className="text-[#73507B]">{String(value)}</span>;
   }
 }
 
@@ -257,7 +257,7 @@ function getVerdictTone(text: string): VerdictTone {
   if (/disarankan|direkomendasikan|recommended|rekomendasi lanjut|\blanjut\b/.test(t)) {
     return { label: 'Disarankan', bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', badge: 'bg-emerald-600', Icon: CheckCircle2 };
   }
-  return { label: 'Rekomendasi', bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-700', badge: 'bg-slate-500', Icon: Sparkles };
+  return { label: 'Rekomendasi', bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-[#5A305A]', badge: 'bg-slate-500', Icon: Sparkles };
 }
 
 function VerdictBanner({
@@ -283,16 +283,16 @@ function VerdictBanner({
           {statusLabel || tone.label}
         </span>
         {scoreLabel && (
-          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-white/70 text-slate-700 border border-slate-200">
+          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-white/70 text-[#5A305A] border border-slate-200">
             {scoreLabel}
           </span>
         )}
       </div>
-      {bodyText && <p className="text-sm text-slate-700 leading-snug">{bodyText}</p>}
+      {bodyText && <p className="text-sm text-[#5A305A] leading-snug">{bodyText}</p>}
       {bodyEntries?.map(([k, v]) => (
         <div key={k}>
           <p className={cn('text-xs font-bold uppercase tracking-wide mb-0.5', tone.text)}>{getLabel(k)}</p>
-          <div className="text-sm text-slate-700 leading-snug">{renderValue(v, k)}</div>
+          <div className="text-sm text-[#5A305A] leading-snug">{renderValue(v, k)}</div>
         </div>
       ))}
     </div>
@@ -336,7 +336,7 @@ function AlternativePositionItem({ alt }: { alt: any }) {
           </span>
         )}
       </div>
-      {alasan && <p className="text-sm text-slate-600 leading-snug">{String(alasan)}</p>}
+      {alasan && <p className="text-sm text-[#73507B] leading-snug">{String(alasan)}</p>}
     </div>
   );
 }
