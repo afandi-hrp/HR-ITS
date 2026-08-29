@@ -91,6 +91,18 @@
 }
 
 @layer utilities {
+  @keyframes login-float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-16px);
+    }
+  }
+  .animate-login-float {
+    animation: login-float 4s ease-in-out infinite;
+  }
+
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
     height: 6px;

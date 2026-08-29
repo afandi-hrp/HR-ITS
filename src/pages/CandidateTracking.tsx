@@ -419,8 +419,7 @@ const topScrollRef = useRef<HTMLDivElement>(null);
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="p-4 border-b border-slate-200 bg-slate-50 flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
+      <div className="bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-sm mb-4 flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
           <div className="flex flex-col sm:flex-row flex-wrap gap-3 flex-1">
             <div className="relative w-full sm:w-auto sm:flex-1 sm:max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
@@ -482,10 +481,10 @@ const topScrollRef = useRef<HTMLDivElement>(null);
             {isExporting ? <Loader2 className="animate-spin" size={20} /> : <Download size={20} />}
             Export Excel
           </button>
-        </div>
+      </div>
 
-        
-        <div 
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div
           className="overflow-x-auto border-b border-slate-200" 
           ref={topScrollRef} 
           onScroll={handleTopScroll}

@@ -130,20 +130,41 @@ export default function Login() {
   const sidebarText = settings?.sidebar_text || "Waruna";
 
   return (
-    <div className="h-screen w-full flex items-center justify-center p-4 sm:p-6 overflow-hidden bg-transparent">
+    <div className="h-screen w-full flex items-center justify-center p-4 sm:p-6 overflow-hidden bg-transparent relative">
+      <div className="w-full max-w-7xl flex items-center justify-center gap-16 xl:gap-28 2xl:gap-36">
       <div
         className={cn(
-          "w-full h-full sm:h-auto sm:max-h-[94vh] max-w-5xl backdrop-blur-2xl bg-white/25 border border-white/70 rounded-3xl shadow-2xl overflow-hidden flex transition-all duration-700 ease-out",
-          !isLoaded ? "opacity-0 scale-95" : "opacity-100 scale-100",
+          "relative w-full sm:w-[320px] shrink-0 backdrop-blur-2xl bg-[#FFF5C5]/90 border border-white/80 rounded-3xl shadow-[0_10px_30px_-8px_rgba(90,48,90,0.35),0_35px_80px_-25px_rgba(90,48,90,0.55)] transition-all duration-700 ease-out",
+          !isLoaded ? "opacity-0 scale-95 translate-y-4" : "opacity-100 scale-100 translate-y-0 animate-login-float",
         )}
       >
-        {/* Left: Login Panel */}
-        <div className="w-full lg:w-[420px] xl:w-[460px] shrink-0 flex flex-col justify-center overflow-y-auto px-6 sm:px-10 py-8 bg-white/40 backdrop-blur-md">
+        {/* soft glow blob to sell the floating effect against the gradient bg */}
+        <div className="hidden sm:block absolute -inset-6 -z-10 bg-white/40 blur-3xl rounded-[3rem] pointer-events-none" />
+        <div className="w-full flex flex-col justify-center max-h-[92vh] overflow-y-auto rounded-3xl px-5 sm:px-7 py-6">
           <div className="w-full max-w-sm mx-auto">
-            <h1 className="text-2xl font-bold text-[#5A305A] mb-1">Log In</h1>
-            <p className="text-sm text-[#5A305A]/60 mb-6">
-              Log in to the WARUNA ATS Dashboard
-            </p>
+            <div className="flex flex-col items-center text-center mb-4">
+              {!settings ? (
+                <div className="h-14 w-14 rounded-3xl bg-[#5A305A]/10 animate-pulse shrink-0" />
+              ) : settings.login_logo_url ? (
+                <img
+                  src={settings.login_logo_url}
+                  alt="Logo"
+                  className="h-14 w-14 object-contain drop-shadow-sm shrink-0"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="h-14 w-14 rounded-3xl bg-[#5A305A] flex items-center justify-center shadow-lg shrink-0">
+                  <span className="text-xl font-bold text-white">
+                    {sidebarText[0]?.toUpperCase()}
+                  </span>
+                </div>
+              )}
+              <h2 className="mt-3 text-lg font-bold text-[#5A305A] leading-tight">
+                ATS <span className="font-light text-[#5A305A]/60">WARUNA</span>
+              </h2>
+            </div>
+
+            <h1 className="text-base font-bold text-[#5A305A] mb-3">Log in</h1>
 
             {error && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-2xl flex items-center gap-3 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
@@ -165,7 +186,7 @@ export default function Login() {
 
             <form onSubmit={handleLogin} className="space-y-3">
               <div className="relative">
-                <div className="absolute z-10 left-1.5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white ring-1 ring-black/5 shadow-[0_4px_14px_rgba(255,157,107,0.45)] flex items-center justify-center shrink-0">
+                <div className="absolute z-10 left-1.5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white ring-1 ring-black/5 shadow-[0_4px_14px_rgba(90,48,90,0.2)] flex items-center justify-center shrink-0">
                   <Mail size={16} className="text-[#5A305A]" />
                 </div>
                 <input
@@ -173,13 +194,13 @@ export default function Login() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full pl-14 pr-4 py-3.5 bg-white/80 backdrop-blur-sm border border-white shadow-[0_4px_20px_rgba(255,157,107,0.2)] rounded-full text-sm text-[#5A305A] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#5A305A]/30 transition-all"
+                  className="block w-full pl-14 pr-4 py-3.5 bg-white/85 border border-white shadow-[0_4px_16px_rgba(90,48,90,0.1)] rounded-full text-sm text-[#5A305A] placeholder-[#5A305A]/40 focus:outline-none focus:ring-2 focus:ring-[#5A305A]/30 transition-all"
                   placeholder="Email"
                 />
               </div>
 
               <div className="relative">
-                <div className="absolute z-10 left-1.5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white ring-1 ring-black/5 shadow-[0_4px_14px_rgba(255,157,107,0.45)] flex items-center justify-center shrink-0">
+                <div className="absolute z-10 left-1.5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white ring-1 ring-black/5 shadow-[0_4px_14px_rgba(90,48,90,0.2)] flex items-center justify-center shrink-0">
                   <Lock size={16} className="text-[#5A305A]" />
                 </div>
                 <input
@@ -187,7 +208,7 @@ export default function Login() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-14 pr-4 py-3.5 bg-white/80 backdrop-blur-sm border border-white shadow-[0_4px_20px_rgba(255,157,107,0.2)] rounded-full text-sm text-[#5A305A] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#5A305A]/30 transition-all"
+                  className="block w-full pl-14 pr-4 py-3.5 bg-white/85 border border-white shadow-[0_4px_16px_rgba(90,48,90,0.1)] rounded-full text-sm text-[#5A305A] placeholder-[#5A305A]/40 focus:outline-none focus:ring-2 focus:ring-[#5A305A]/30 transition-all"
                   placeholder="Password"
                 />
               </div>
@@ -203,20 +224,20 @@ export default function Login() {
                     maxLength={4}
                     value={captchaInput}
                     onChange={(e) => setCaptchaInput(e.target.value)}
-                    className="flex-1 min-w-0 px-4 py-3 bg-white/80 backdrop-blur-sm border border-white shadow-[0_4px_20px_rgba(255,157,107,0.2)] rounded-full text-sm text-[#5A305A] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#5A305A]/30 transition-all font-mono tracking-widest"
-                    placeholder="4 characters"
+                    className="w-20 shrink-0 px-3 py-3 bg-[#FDF3D3] border border-white/80 shadow-[0_4px_16px_rgba(90,48,90,0.08)] rounded-full text-sm text-[#5A305A] placeholder-[#5A305A]/40 focus:outline-none focus:ring-2 focus:ring-[#5A305A]/30 transition-all font-mono tracking-wider"
+                    placeholder="Kode"
                   />
-                  <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur-sm border border-white shadow-[0_4px_20px_rgba(255,157,107,0.2)] p-1.5 rounded-full shrink-0">
+                  <div className="flex items-center gap-1 bg-white/80 backdrop-blur-sm border border-white shadow-[0_4px_16px_rgba(90,48,90,0.08)] p-1.5 rounded-full shrink-0">
                     <canvas
                       ref={canvasRef}
-                      width="130"
+                      width="110"
                       height="36"
                       className="rounded-full bg-slate-50 border border-slate-200"
                     />
                     <button
                       type="button"
                       onClick={generateCaptcha}
-                      className="p-2 text-[#5A305A]/60 hover:text-[#5A305A] hover:bg-white rounded-full transition-colors shrink-0"
+                      className="p-1.5 text-[#5A305A]/60 hover:text-[#5A305A] hover:bg-white rounded-full transition-colors shrink-0"
                       title="Refresh CAPTCHA"
                     >
                       <RefreshCw size={16} />
@@ -246,44 +267,35 @@ export default function Login() {
             </form>
           </div>
         </div>
+      </div>
 
-        {/* Right: Brand Panel (desktop only) */}
-        <div className="hidden lg:flex flex-1 relative bg-gradient-to-br from-[#FFF9E3]/80 via-[#FFDAB9]/80 to-[#FFB08E]/80 backdrop-blur-md items-center justify-center px-10 overflow-hidden">
-          <div
-            className="absolute right-0 top-0 bottom-0 w-2/3 opacity-30 pointer-events-none"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle, rgba(61,44,68,0.25) 1.5px, transparent 1.5px)",
-              backgroundSize: "22px 22px",
-              maskImage: "linear-gradient(to left, black, transparent)",
-              WebkitMaskImage: "linear-gradient(to left, black, transparent)",
-            }}
-          />
-          <div className="relative z-10 flex items-center gap-5 max-w-full">
-            {settings?.login_logo_url ? (
-              <img
-                src={settings.login_logo_url}
-                alt="Logo"
-                className="h-16 w-auto object-contain drop-shadow-sm shrink-0"
-                referrerPolicy="no-referrer"
-              />
-            ) : (
-              <div className="h-16 w-16 rounded-3xl bg-[#5A305A] flex items-center justify-center shadow-xl shrink-0">
-                <span className="text-3xl font-black text-white">
-                  {sidebarText[0]?.toUpperCase()}
-                </span>
-              </div>
-            )}
-            <div className="min-w-0">
-              <h1 className="text-4xl font-black text-[#5A305A] leading-tight whitespace-nowrap">
-                WARUNA GROUP <span className="font-light text-[#5A305A]/60">ATS</span>
-              </h1>
-              <p className="text-base text-[#5A305A]/70 mt-3 font-medium">
-                Applicant Tracking System
-              </p>
+      {/* Desktop wordmark, sits close to the card in the open background */}
+      <div className="hidden lg:flex flex-col items-start select-none pointer-events-none">
+        <div className="flex items-center gap-6 xl:gap-8 mb-5">
+          {!settings ? (
+            <div className="h-24 w-24 xl:h-32 xl:w-32 2xl:h-36 2xl:w-36 rounded-3xl bg-[#5A305A]/10 animate-pulse shrink-0" />
+          ) : settings.login_logo_url ? (
+            <img
+              src={settings.login_logo_url}
+              alt="Logo"
+              className="h-24 w-24 xl:h-32 xl:w-32 2xl:h-36 2xl:w-36 object-contain drop-shadow-sm shrink-0"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="h-24 w-24 xl:h-32 xl:w-32 2xl:h-36 2xl:w-36 rounded-3xl bg-[#5A305A] flex items-center justify-center shadow-xl shrink-0">
+              <span className="text-4xl xl:text-5xl font-bold text-white">
+                {sidebarText[0]?.toUpperCase()}
+              </span>
             </div>
-          </div>
+          )}
+          <h1 className="text-7xl xl:text-8xl 2xl:text-[10rem] font-bold text-[#5A305A] leading-none whitespace-nowrap">
+            ATS <span className="font-light text-[#5A305A]/50">WARUNA</span>
+          </h1>
         </div>
+        <p className="text-xl xl:text-2xl text-[#5A305A]/70 font-medium">
+          Powered by WARUNA Group
+        </p>
+      </div>
       </div>
     </div>
   );

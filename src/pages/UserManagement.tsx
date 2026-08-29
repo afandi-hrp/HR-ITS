@@ -45,6 +45,8 @@ export default function UserManagement() {
   const [departmentFilter, setDepartmentFilter] = useState(
     searchParams.get("department") || "all",
   );
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(20);
 
   // Sync to URL
   useEffect(() => {
@@ -181,12 +183,6 @@ export default function UserManagement() {
     new Set(users.map((u) => u.role).filter(Boolean)),
   ) as string[];
 
-  const roleCounts = users.reduce<Record<string, number>>((acc, u) => {
-    const key = u.role || "Lainnya";
-    acc[key] = (acc[key] || 0) + 1;
-    return acc;
-  }, {});
-
   const filteredUsers = users.filter((user) => {
     const q = searchQuery.toLowerCase();
     const matchesSearch =
@@ -204,6 +200,20 @@ export default function UserManagement() {
     return matchesSearch && matchesRole && matchesDepartment;
   });
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, roleFilter, departmentFilter]);
+
+  const totalPages =
+    pageSize === Infinity ? 1 : Math.ceil(filteredUsers.length / pageSize);
+  const paginatedUsers =
+    pageSize === Infinity
+      ? filteredUsers
+      : filteredUsers.slice(
+          (currentPage - 1) * pageSize,
+          currentPage * pageSize,
+        );
+
   return (
     <div className="pb-8">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
@@ -218,23 +228,7 @@ export default function UserManagement() {
         </div>
       </div>
 
-      {/* Role summary */}
-      <div className="flex flex-wrap items-center gap-2 mb-6">
-        <span className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-[#5A305A]/5 text-[#5A305A]">
-          {users.length} Total Pengguna
-        </span>
-        {Object.entries(roleCounts).map(([role, count]) => (
-          <span
-            key={role}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium ${getRoleBadgeClass(role)}`}
-          >
-            {count} {getRoleLabel(role)}
-          </span>
-        ))}
-      </div>
-
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="p-4 border-b border-slate-200 bg-slate-50 flex flex-wrap items-center gap-3">
+      <div className="bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-sm mb-4 flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[220px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input
@@ -275,8 +269,9 @@ export default function UserManagement() {
               ))}
             </select>
           </div>
-        </div>
+      </div>
 
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -293,7 +288,7 @@ export default function UserManagement() {
                 <th className="px-6 py-4 text-sm font-semibold text-[#5A305A]">
                   Jabatan
                 </th>
-                <th className="px-6 py-4 text-sm font-semibold text-[#5A305A] text-right">
+                <th className="px-6 py-4 text-sm font-semibold text-[#5A305A] text-center whitespace-nowrap">
                   Aksi
                 </th>
               </tr>
@@ -318,7 +313,7 @@ export default function UserManagement() {
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map((user) => (
+                paginatedUsers.map((user) => (
                   <tr
                     key={user.id}
                     className="hover:bg-slate-50 transition-colors"
@@ -371,10 +366,10 @@ export default function UserManagement() {
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-center whitespace-nowrap">
                       <button
                         onClick={() => handleEdit(user)}
-                        className="text-indigo-600 hover:text-indigo-700 font-medium text-sm px-3 py-1.5 hover:bg-indigo-50 rounded-lg transition-colors"
+                        className="inline-flex items-center justify-center bg-[#5A305A] hover:bg-[#3F223F] text-white font-medium text-sm px-4 py-2 rounded-lg transition-colors"
                       >
                         Edit Akses
                       </button>
@@ -385,6 +380,58 @@ export default function UserManagement() {
             </tbody>
           </table>
         </div>
+
+        {!loading && filteredUsers.length > 0 && (
+          <div className="p-4 border-t border-slate-200 bg-white flex flex-wrap items-center justify-between gap-3 rounded-b-2xl">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-slate-500">Tampilkan</span>
+              <select
+                className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#5A305A] text-slate-700 font-medium"
+                value={pageSize === Infinity ? "all" : pageSize}
+                onChange={(e) => {
+                  if (e.target.value === "all") {
+                    setPageSize(Infinity);
+                  } else {
+                    setPageSize(Number(e.target.value));
+                  }
+                  setCurrentPage(1);
+                }}
+              >
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value="all">Semua</option>
+              </select>
+              <span className="text-sm text-slate-500">
+                dari {filteredUsers.length} data
+              </span>
+            </div>
+
+            {pageSize !== Infinity && totalPages > 1 && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 bg-[#5A305A] text-white rounded-lg hover:bg-[#3F223F] disabled:opacity-50 text-sm font-medium transition-colors"
+                >
+                  Sebelumnya
+                </button>
+                <span className="text-sm text-slate-600 px-3 font-medium">
+                  Halaman {currentPage} dari {totalPages}
+                </span>
+                <button
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(totalPages, p + 1))
+                  }
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 bg-[#5A305A] text-white rounded-lg hover:bg-[#3F223F] disabled:opacity-50 text-sm font-medium transition-colors"
+                >
+                  Selanjutnya
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Edit Modal */}
@@ -441,19 +488,21 @@ export default function UserManagement() {
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Divisi / Departemen
                 </label>
-                <input
-                  type="text"
-                  list="departments-list"
+                <select
                   value={editDepartment}
                   onChange={(e) => setEditDepartment(e.target.value)}
-                  placeholder="Contoh: ICT, Finance, Operational"
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-                <datalist id="departments-list">
+                >
+                  <option value="">-- Pilih Divisi --</option>
                   {uniqueDepartments.map((dept, idx) => (
-                    <option key={idx} value={dept} />
+                    <option key={idx} value={dept}>
+                      {dept}
+                    </option>
                   ))}
-                </datalist>
+                  {editDepartment && !uniqueDepartments.includes(editDepartment) && (
+                    <option value={editDepartment}>{editDepartment}</option>
+                  )}
+                </select>
                 <p className="text-xs text-slate-500 mt-1">
                   Penting untuk User Manager agar hanya melihat kandidat
                   divisinya.
