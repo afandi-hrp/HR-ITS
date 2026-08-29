@@ -103,6 +103,67 @@
     animation: login-float 4s ease-in-out infinite;
   }
 
+  /* Login page background: seamless horizontally-scrolling wave layers.
+     Each SVG layer is drawn twice side by side (200% width) and drifts by
+     exactly -50% so the loop point is invisible. */
+  /* A gentle translateY bob is folded into the same keyframes as the
+     horizontal drift (translateX must still land exactly on -50%/0% for the
+     loop to stay seamless) — this is what keeps the scroll from feeling like
+     a mechanically constant slide. */
+  @keyframes wave-drift-left {
+    0%   { transform: translateX(0) translateY(0); }
+    25%  { transform: translateX(-12.5%) translateY(-4px); }
+    50%  { transform: translateX(-25%) translateY(1px); }
+    75%  { transform: translateX(-37.5%) translateY(4px); }
+    100% { transform: translateX(-50%) translateY(0); }
+  }
+  @keyframes wave-drift-right {
+    0%   { transform: translateX(-50%) translateY(0); }
+    25%  { transform: translateX(-37.5%) translateY(4px); }
+    50%  { transform: translateX(-25%) translateY(-1px); }
+    75%  { transform: translateX(-12.5%) translateY(-4px); }
+    100% { transform: translateX(0) translateY(0); }
+  }
+  .animate-wave-back {
+    animation: wave-drift-right 26s linear infinite;
+  }
+  .animate-wave-mid {
+    animation: wave-drift-left 19s linear infinite;
+  }
+  .animate-wave-front {
+    animation: wave-drift-left 13s linear infinite;
+  }
+  @keyframes boat-bob {
+    0%, 100% { transform: translateY(0) rotate(-2deg); }
+    50% { transform: translateY(-6px) rotate(2deg); }
+  }
+  .animate-boat-bob {
+    animation: boat-bob 4.5s ease-in-out infinite;
+  }
+  /* Tanker sails the full width and loops: starts/ends just off-screen (so
+     there's no visible pop) and fades in/out right at those edges for a
+     smooth appear-disappear-reappear cycle. Animates `left` (not transform)
+     because left% is relative to the container's width, which is what lets
+     it travel edge-to-edge regardless of the container's actual size. */
+  @keyframes tanker-sail {
+    0%   { left: -18%; opacity: 0; }
+    6%   { opacity: 1; }
+    94%  { opacity: 1; }
+    100% { left: 112%; opacity: 0; }
+  }
+  .animate-tanker-sail {
+    animation: tanker-sail 38s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-wave-back,
+    .animate-wave-mid,
+    .animate-wave-front,
+    .animate-boat-bob,
+    .animate-tanker-sail {
+      animation: none;
+    }
+  }
+
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
     height: 6px;
