@@ -5115,7 +5115,10 @@ export default function ApplicationForm({
                       <div className="text-center">
                         <p className="text-sm text-[#73507B] mb-4">
                           Medan,{" "}
-                          {new Date().toLocaleDateString("id-ID", {
+                          {(readOnly && initialData?.submitted_at
+                            ? new Date(initialData.submitted_at)
+                            : new Date()
+                          ).toLocaleDateString("id-ID", {
                             day: "numeric",
                             month: "long",
                             year: "numeric",
