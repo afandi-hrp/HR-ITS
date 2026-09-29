@@ -334,6 +334,15 @@ app.use((req: any, res, next) => {
     }
   });
 
+  // Attendance summary stored on the archive row: attended at least once →
+  // "Sudah …"; otherwise only no-shows (no schedule still pending) →
+  // "Tidak Hadir …"; otherwise "Belum …".
+  const archivedAttendance = (schedules: any[] | null | undefined, stage: string) => {
+    if (schedules?.some((s: any) => s.is_confirmed)) return `Sudah ${stage}`;
+    if (schedules?.length && schedules.every((s: any) => s.is_no_show)) return `Tidak Hadir ${stage}`;
+    return `Belum ${stage}`;
+  };
+
   // Feature: Move Candidate to Log
   app.post("/api/candidates/move-to-log", requireAuth, async (req, res) => {
     const { candidateId, notes } = req.body;
@@ -347,7 +356,7 @@ app.use((req: any, res, next) => {
       // 1. Fetch candidate with schedules and assignees
       const { data: candidate, error: fetchError } = await supabaseAdmin
         .from("candidates")
-        .select("*, psikotes_schedules(is_confirmed), interview_schedules(is_confirmed), candidate_assignees(user_id, profiles(full_name))")
+        .select("*, psikotes_schedules(is_confirmed, is_no_show), interview_schedules(is_confirmed, is_no_show), candidate_assignees(user_id, profiles(full_name))")
         .eq("id", candidateId)
         .single();
 
@@ -393,8 +402,8 @@ app.use((req: any, res, next) => {
         career_fit_recommendation: candidate.career_fit_recommendation,
         psikotes_result_url: candidate.psikotes_result_url,
         source_info: candidate.source_info,
-        psikotes_status: psikotes_schedules?.some((s: any) => s.is_confirmed) ? "Sudah Psikotes" : "Belum Psikotes",
-        interview_status: interview_schedules?.some((s: any) => s.is_confirmed) ? "Sudah Interview" : "Belum Interview",
+        psikotes_status: archivedAttendance(psikotes_schedules, "Psikotes"),
+        interview_status: archivedAttendance(interview_schedules, "Interview"),
         notes: notes || "",
         archived_at: new Date().toISOString(),
         created_at: candidate.created_at,
@@ -490,8 +499,28 @@ app.use((req: any, res, next) => {
         ...baseData
       } = logRow;
 
+      // An external_data form may be shared with archived applications of
+      // the same person, but never by two *active* ones. If the person has
+      // since re-applied and that active application now holds this form,
+      // restore without the link rather than creating a second active one.
+      let linkedExternalId = baseData.linked_external_id ?? null;
+      let warning: string | null = null;
+      if (linkedExternalId) {
+        const { data: activeHolder } = await supabaseAdmin
+          .from("candidates")
+          .select("full_name, position")
+          .eq("linked_external_id", linkedExternalId)
+          .limit(1)
+          .maybeSingle();
+        if (activeHolder) {
+          linkedExternalId = null;
+          warning = `Tautan data eksternal tidak ikut dipulihkan karena form tersebut sedang ditautkan ke lamaran aktif ${activeHolder.full_name || "-"} (${activeHolder.position || "-"}).`;
+        }
+      }
+
       const candidateData = {
         ...baseData,
+        linked_external_id: linkedExternalId,
         ai_biodata_summary: safeParseJson(ai_biodata_summary),
         ai_interview_questions: safeParseJson(ai_interview_questions),
         status_screening: newStatus,
@@ -530,7 +559,7 @@ app.use((req: any, res, next) => {
         throw deleteError;
       }
 
-      res.json({ success: true, message: "Kandidat berhasil diaktifkan kembali" });
+      res.json({ success: true, message: "Kandidat berhasil diaktifkan kembali", warning });
     } catch (error: any) {
       console.error("Error restoring candidate from log:", error);
       res.status(500).json({ error: error.message || "Gagal mengaktifkan kembali kandidat" });

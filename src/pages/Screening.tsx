@@ -35,8 +35,19 @@ import {
   CheckCheck,
   ClipboardCheck,
   CalendarClock,
+  UserX,
 } from "lucide-react";
 import { cn, formatDate, fetchWithRetry } from "../lib/utils";
+import {
+  getStageAttendance,
+  isNoShowSchedule,
+  isPendingSchedule,
+} from "../lib/scheduleStatus";
+import NoShowModal, {
+  NoShowBadge,
+  NoShowFollowUp,
+  NoShowTarget,
+} from "../components/NoShowModal";
 import { CandidateAvatar } from "../components/CandidateAvatar";
 import { useToast } from "../components/ui/use-toast";
 import { useAuth } from "../contexts/AuthContext";
@@ -58,10 +69,13 @@ const PIPELINE_STATUS_OPTIONS = [
   "Lolos",
   "Jadwal Psikotes",
   "Psikotes Selesai",
+  "Tidak Hadir Psikotes",
   "Jadwal Interview HC",
   "Interview Selesai HC",
+  "Tidak Hadir Interview HC",
   "Jadwal Interview User",
   "Interview Selesai User",
+  "Tidak Hadir Interview User",
   "Reference Check",
   "Rejected",
   "Hired",
@@ -211,6 +225,11 @@ export default function Screening() {
     label: string;
   } | null>(null);
   const [confirmingSchedule, setConfirmingSchedule] = useState(false);
+  const [noShowData, setNoShowData] = useState<{
+    candidate: Candidate;
+    type: "psikotes" | "interview";
+    target: NoShowTarget;
+  } | null>(null);
   const [logModalData, setLogModalData] = useState<Candidate | null>(null);
   const [logNotes, setLogNotes] = useState("");
   const [movingToLog, setMovingToLog] = useState(false);
@@ -271,7 +290,7 @@ export default function Screening() {
 
     setLoading(true);
     const scheduleColumns =
-      "id, is_confirmed, schedule_date, location_type, location_detail, additional_notes, candidate_id, created_at, updated_at";
+      "id, is_confirmed, is_no_show, no_show_reason, schedule_date, location_type, location_detail, additional_notes, candidate_id, created_at, updated_at";
     let selectQuery =
       `*, psikotes_schedules(${scheduleColumns}), interview_schedules(${scheduleColumns}), candidate_evaluations(evaluation_type), external_data(raw_data), candidate_assignees(user_id, profiles(full_name))`;
 
@@ -403,6 +422,37 @@ export default function Screening() {
     positionFilter,
     profile,
   ]);
+
+  const openNoShowModal = (
+    candidate: Candidate,
+    type: "psikotes" | "interview",
+    schedule: any,
+    label: string,
+  ) => {
+    setNoShowData({
+      candidate,
+      type,
+      target: {
+        candidateName: candidate.full_name,
+        table: type === "psikotes" ? "psikotes_schedules" : "interview_schedules",
+        scheduleId: schedule.id,
+        scheduleDate: schedule.schedule_date,
+        label,
+      },
+    });
+  };
+
+  const handleNoShowSaved = (followUp: NoShowFollowUp) => {
+    if (!noShowData) return;
+    const { candidate, type } = noShowData;
+    setNoShowData(null);
+    fetchCandidates();
+    if (followUp === "reschedule") {
+      setSchedulingData({ candidate, type });
+    } else if (followUp === "reject") {
+      handleUpdateStatus(candidate.id, "rejected");
+    }
+  };
 
   const confirmScheduleDone = async () => {
     if (!confirmScheduleData) return;
@@ -827,20 +877,23 @@ export default function Screening() {
     const userSchedules = interviewSchedules.filter(isUserInterview);
     const hcSchedules = interviewSchedules.filter((s: any) => !isUserInterview(s));
 
-    if (userSchedules.length > 0) {
-      return userSchedules.some((s: any) => s.is_confirmed) ? "Interview Selesai User" : "Jadwal Interview User";
-    }
-    if (hcSchedules.length > 0) {
-      return hcSchedules.some((s: any) => s.is_confirmed) ? "Interview Selesai HC" : "Jadwal Interview HC";
-    }
+    const stageLabel = {
+      done: "Interview Selesai",
+      scheduled: "Jadwal Interview",
+      no_show: "Tidak Hadir Interview",
+    } as const;
+    const userStage = getStageAttendance(userSchedules);
+    if (userStage) return `${stageLabel[userStage]} User`;
+    const hcStage = getStageAttendance(hcSchedules);
+    if (hcStage) return `${stageLabel[hcStage]} HC`;
 
     // If they already have a psikotes status/result, it means psikotes is done
     if (candidate.psikotes_status && candidate.psikotes_status.trim() !== '') return "Psikotes Selesai";
 
-    if (candidate.psikotes_schedules && candidate.psikotes_schedules.length > 0) {
-      if (candidate.psikotes_schedules.some((s: any) => s.is_confirmed)) return "Psikotes Selesai";
-      return "Jadwal Psikotes";
-    }
+    const psikotesStage = getStageAttendance(candidate.psikotes_schedules);
+    if (psikotesStage === "done") return "Psikotes Selesai";
+    if (psikotesStage === "scheduled") return "Jadwal Psikotes";
+    if (psikotesStage === "no_show") return "Tidak Hadir Psikotes";
 
     if (candidate.status_screening === "accepted") return "Lolos"; // Lolos screening awal
 
@@ -889,15 +942,16 @@ export default function Screening() {
     } else if (sortOption === "interview") {
       const statusA = getCandidateDerivedStatus(a);
       const statusB = getCandidateDerivedStatus(b);
-      const interviewStatuses = ["Interview Selesai HC", "Interview Selesai User", "Jadwal Interview HC", "Jadwal Interview User"];
+      const interviewStatuses = ["Interview Selesai HC", "Interview Selesai User", "Jadwal Interview HC", "Jadwal Interview User", "Tidak Hadir Interview HC", "Tidak Hadir Interview User"];
       const isInterviewA = interviewStatuses.includes(statusA) ? 1 : 0;
       const isInterviewB = interviewStatuses.includes(statusB) ? 1 : 0;
       if (isInterviewA !== isInterviewB) return isInterviewB - isInterviewA;
     } else if (sortOption === "psikotes") {
       const statusA = getCandidateDerivedStatus(a);
       const statusB = getCandidateDerivedStatus(b);
-      const isPsikotesA = statusA === "Psikotes Selesai" || statusA === "Jadwal Psikotes" ? 1 : 0;
-      const isPsikotesB = statusB === "Psikotes Selesai" || statusB === "Jadwal Psikotes" ? 1 : 0;
+      const psikotesStatuses = ["Psikotes Selesai", "Jadwal Psikotes", "Tidak Hadir Psikotes"];
+      const isPsikotesA = psikotesStatuses.includes(statusA) ? 1 : 0;
+      const isPsikotesB = psikotesStatuses.includes(statusB) ? 1 : 0;
       if (isPsikotesA !== isPsikotesB) return isPsikotesB - isPsikotesA;
     }
     // Default to "terbaru" — reflects the last profile update, not just
@@ -1137,9 +1191,11 @@ export default function Screening() {
                  
                  const jadwalPsikotesCount = allCands.filter((c: any) => getCandidateDerivedStatus(c) === "Jadwal Psikotes").length;
                  const selesaiPsikotesCount = allCands.filter((c: any) => getCandidateDerivedStatus(c) === "Psikotes Selesai").length;
+                 const tidakHadirPsikotesCount = allCands.filter((c: any) => getCandidateDerivedStatus(c) === "Tidak Hadir Psikotes").length;
                  
                  const jadwalInterviewCount = allCands.filter((c: any) => ["Jadwal Interview HC", "Jadwal Interview User"].includes(getCandidateDerivedStatus(c))).length;
                  const selesaiInterviewCount = allCands.filter((c: any) => ["Interview Selesai HC", "Interview Selesai User"].includes(getCandidateDerivedStatus(c))).length;
+                 const tidakHadirInterviewCount = allCands.filter((c: any) => ["Tidak Hadir Interview HC", "Tidak Hadir Interview User"].includes(getCandidateDerivedStatus(c))).length;
                  const referenceCheckCount = allCands.filter((c: any) => getCandidateDerivedStatus(c) === "Reference Check").length;
                  
                  return (
@@ -1157,11 +1213,11 @@ export default function Screening() {
                          <span className="flex items-center gap-1.5 bg-emerald-50 px-1.5 sm:px-2 py-1 rounded-lg text-emerald-700 font-medium whitespace-nowrap" title="Lolos screening awal tetapi belum dijadwalkan test/interview"><Star size={14} /> {highFitCount} Lolos Awal</span>
 
                          <div className="flex items-center gap-1 bg-sky-50 px-1.5 sm:px-2 py-1 rounded-lg text-sky-700 font-medium whitespace-nowrap">
-                           <FileText size={14} className="shrink-0" /> Psikotes: {jadwalPsikotesCount} Jadwal &middot; {selesaiPsikotesCount} Selesai
+                           <FileText size={14} className="shrink-0" /> Psikotes: {jadwalPsikotesCount} Jadwal &middot; {selesaiPsikotesCount} Selesai{tidakHadirPsikotesCount > 0 && <> &middot; <span className="text-rose-600">{tidakHadirPsikotesCount} Tidak Hadir</span></>}
                          </div>
 
                          <div className="flex items-center gap-1 bg-amber-50 px-1.5 sm:px-2 py-1 rounded-lg text-amber-700 font-medium whitespace-nowrap">
-                           <Users size={14} className="shrink-0" /> Interview: {jadwalInterviewCount} Jadwal &middot; {selesaiInterviewCount} Selesai
+                           <Users size={14} className="shrink-0" /> Interview: {jadwalInterviewCount} Jadwal &middot; {selesaiInterviewCount} Selesai{tidakHadirInterviewCount > 0 && <> &middot; <span className="text-rose-600">{tidakHadirInterviewCount} Tidak Hadir</span></>}
                          </div>
 
                          {referenceCheckCount > 0 && (
@@ -1187,22 +1243,22 @@ export default function Screening() {
                                title={`${highFitCount} Lolos Awal`}
                              />
                            )}
-                           {jadwalPsikotesCount + selesaiPsikotesCount > 0 && (
+                           {jadwalPsikotesCount + selesaiPsikotesCount + tidakHadirPsikotesCount > 0 && (
                              <div
                                className="bg-sky-400"
                                style={{
-                                 width: `${((jadwalPsikotesCount + selesaiPsikotesCount) / total) * 100}%`,
+                                 width: `${((jadwalPsikotesCount + selesaiPsikotesCount + tidakHadirPsikotesCount) / total) * 100}%`,
                                }}
-                               title={`${jadwalPsikotesCount + selesaiPsikotesCount} Psikotes`}
+                               title={`${jadwalPsikotesCount + selesaiPsikotesCount + tidakHadirPsikotesCount} Psikotes`}
                              />
                            )}
-                           {jadwalInterviewCount + selesaiInterviewCount > 0 && (
+                           {jadwalInterviewCount + selesaiInterviewCount + tidakHadirInterviewCount > 0 && (
                              <div
                                className="bg-amber-400"
                                style={{
-                                 width: `${((jadwalInterviewCount + selesaiInterviewCount) / total) * 100}%`,
+                                 width: `${((jadwalInterviewCount + selesaiInterviewCount + tidakHadirInterviewCount) / total) * 100}%`,
                                }}
-                               title={`${jadwalInterviewCount + selesaiInterviewCount} Interview`}
+                               title={`${jadwalInterviewCount + selesaiInterviewCount + tidakHadirInterviewCount} Interview`}
                              />
                            )}
                            {referenceCheckCount > 0 && (
@@ -1382,12 +1438,16 @@ export default function Screening() {
               <div className="flex flex-col gap-6">
 {paginatedCandidates.map((candidate: any) => {
                   const isExpanded = expandedCandidates.includes(candidate.id);
-                  const unconfirmedPsikotes = (candidate.psikotes_schedules || []).filter((s: any) => !s.is_confirmed);
-                  const unconfirmedInterviews = (candidate.interview_schedules || []).filter((s: any) => !s.is_confirmed);
+                  const unconfirmedPsikotes = (candidate.psikotes_schedules || []).filter(isPendingSchedule);
+                  const unconfirmedInterviews = (candidate.interview_schedules || []).filter(isPendingSchedule);
+                  // No-show schedules are over — no reminders/invites for them.
                   const allSchedulesForComms = [
-                    ...(candidate.psikotes_schedules || []).map((s: any) => ({ schedule: s, type: "psikotes" as const })),
-                    ...(candidate.interview_schedules || []).map((s: any) => ({ schedule: s, type: "interview" as const })),
+                    ...(candidate.psikotes_schedules || []).filter((s: any) => !isNoShowSchedule(s)).map((s: any) => ({ schedule: s, type: "psikotes" as const })),
+                    ...(candidate.interview_schedules || []).filter((s: any) => !isNoShowSchedule(s)).map((s: any) => ({ schedule: s, type: "interview" as const })),
                   ];
+                  const psikotesStage = getStageAttendance(candidate.psikotes_schedules);
+                  const interviewStage = getStageAttendance(candidate.interview_schedules);
+                  const doneInterviewCount = (candidate.interview_schedules || []).filter((s: any) => s.is_confirmed).length;
 
                   return (
                     <div
@@ -1481,25 +1541,29 @@ export default function Screening() {
                               )}
                               
                               {/* Psikotes Badge */}
-                              {candidate.psikotes_schedules?.filter((s: any) => s.is_confirmed).length > 0 ? (
+                              {psikotesStage === "done" ? (
                                 <span className="px-2 py-1 bg-sky-50 text-sky-700 rounded-md text-[10px] font-bold uppercase tracking-wider border border-sky-100 flex items-center gap-1">
                                   Selesai Psikotes
                                 </span>
-                              ) : candidate.psikotes_schedules?.length > 0 ? (
+                              ) : psikotesStage === "scheduled" ? (
                                 <span className="px-2 py-1 bg-amber-50 text-amber-700 rounded-md text-[10px] font-bold uppercase tracking-wider border border-amber-100 flex items-center gap-1">
                                   Jadwal Psikotes
                                 </span>
+                              ) : psikotesStage === "no_show" ? (
+                                <NoShowBadge label="Tidak Hadir Psikotes" schedules={candidate.psikotes_schedules} />
                               ) : null}
                               
                               {/* Interview Badge */}
-                              {candidate.interview_schedules?.filter((s: any) => s.is_confirmed).length > 0 ? (
+                              {interviewStage === "done" ? (
                                 <span className="px-2 py-1 bg-sky-50 text-sky-700 rounded-md text-[10px] font-bold uppercase tracking-wider border border-sky-100 flex items-center gap-1">
-                                  Selesai Interview {candidate.interview_schedules.filter((s: any) => s.is_confirmed).length > 1 ? `(${candidate.interview_schedules.filter((s: any) => s.is_confirmed).length})` : ""}
+                                  Selesai Interview {doneInterviewCount > 1 ? `(${doneInterviewCount})` : ""}
                                 </span>
-                              ) : candidate.interview_schedules?.length > 0 ? (
+                              ) : interviewStage === "scheduled" ? (
                                 <span className="px-2 py-1 bg-amber-50 text-amber-700 rounded-md text-[10px] font-bold uppercase tracking-wider border border-amber-100 flex items-center gap-1">
                                   Jadwal Interview
                                 </span>
+                              ) : interviewStage === "no_show" ? (
+                                <NoShowBadge label="Tidak Hadir Interview" schedules={candidate.interview_schedules} />
                               ) : null}
 
                               {candidate.director_status && candidate.director_status !== 'pending' && (
@@ -1615,26 +1679,40 @@ export default function Screening() {
                                     <div className="my-1 border-t border-slate-100" />
                                   )}
                                   {unconfirmedPsikotes.map((s: any) => (
-                                    <button
-                                      key={s.id}
-                                      onClick={() => setConfirmScheduleData({ table: "psikotes_schedules", scheduleId: s.id, label: "Psikotes" })}
-                                      className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-[#5A305A] rounded-lg hover:bg-sky-50 hover:text-sky-700 transition-colors text-left"
-                                    >
-                                      <CheckCheck size={16} /> Konfirmasi Psikotes Selesai
-                                    </button>
+                                    <React.Fragment key={s.id}>
+                                      <button
+                                        onClick={() => setConfirmScheduleData({ table: "psikotes_schedules", scheduleId: s.id, label: "Psikotes" })}
+                                        className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-[#5A305A] rounded-lg hover:bg-sky-50 hover:text-sky-700 transition-colors text-left"
+                                      >
+                                        <CheckCheck size={16} /> Konfirmasi Psikotes Selesai
+                                      </button>
+                                      <button
+                                        onClick={() => openNoShowModal(candidate, "psikotes", s, "Psikotes")}
+                                        className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-rose-600 rounded-lg hover:bg-rose-50 transition-colors text-left"
+                                      >
+                                        <UserX size={16} /> Tandai Tidak Hadir Psikotes
+                                      </button>
+                                    </React.Fragment>
                                   ))}
                                   {unconfirmedInterviews.map((s: any) => (
-                                    <button
-                                      key={s.id}
-                                      onClick={() => setConfirmScheduleData({
-                                        table: "interview_schedules",
-                                        scheduleId: s.id,
-                                        label: `Interview ${isUserInterview(s) ? "User" : "HC"}`,
-                                      })}
-                                      className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-[#5A305A] rounded-lg hover:bg-amber-50 hover:text-amber-700 transition-colors text-left"
-                                    >
-                                      <CheckCheck size={16} /> Konfirmasi Interview {isUserInterview(s) ? "User" : "HC"} Selesai
-                                    </button>
+                                    <React.Fragment key={s.id}>
+                                      <button
+                                        onClick={() => setConfirmScheduleData({
+                                          table: "interview_schedules",
+                                          scheduleId: s.id,
+                                          label: `Interview ${isUserInterview(s) ? "User" : "HC"}`,
+                                        })}
+                                        className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-[#5A305A] rounded-lg hover:bg-amber-50 hover:text-amber-700 transition-colors text-left"
+                                      >
+                                        <CheckCheck size={16} /> Konfirmasi Interview {isUserInterview(s) ? "User" : "HC"} Selesai
+                                      </button>
+                                      <button
+                                        onClick={() => openNoShowModal(candidate, "interview", s, `Interview ${isUserInterview(s) ? "User" : "HC"}`)}
+                                        className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-rose-600 rounded-lg hover:bg-rose-50 transition-colors text-left"
+                                      >
+                                        <UserX size={16} /> Tandai Tidak Hadir Interview {isUserInterview(s) ? "User" : "HC"}
+                                      </button>
+                                    </React.Fragment>
                                   ))}
 
                                   {allSchedulesForComms.length > 0 && (
@@ -1809,6 +1887,12 @@ export default function Screening() {
         message={`Tandai jadwal ${confirmScheduleData?.label || ""} ini sebagai sudah selesai dilaksanakan?`}
         confirmText="Ya, Sudah Selesai"
         loading={confirmingSchedule}
+      />
+
+      <NoShowModal
+        target={noShowData?.target || null}
+        onClose={() => setNoShowData(null)}
+        onSaved={handleNoShowSaved}
       />
 
       {/* Move to Log Modal */}

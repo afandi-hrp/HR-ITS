@@ -32,6 +32,7 @@ import {
   ChevronUp,
   Trash2,
   UserCheck,
+  Eye,
 } from "lucide-react";
 import {
   cn,
@@ -45,6 +46,17 @@ import {
 import { waitForN8nJob } from "../lib/n8n";
 import { resolveDocumentUrl, removeDocumentFile } from "../lib/documentStorage";
 import { CandidateAvatar } from "../components/CandidateAvatar";
+import {
+  ExternalDataHeader,
+  ExternalDataFields,
+  ExternalLinkNotes,
+} from "../components/ExternalDataSummary";
+import { getExternalDataSummary } from "../lib/externalDataSummary";
+import { ScheduleStatusTag } from "../components/NoShowModal";
+import {
+  ExternalDataLink,
+  fetchExternalDataLinks,
+} from "../lib/externalDataLinks";
 import { useToast } from "../components/ui/use-toast";
 import EvaluationModal from "../components/EvaluationModal";
 import ReferenceCheckModal from "../components/ReferenceCheckModal";
@@ -109,6 +121,7 @@ export default function CandidateProfile() {
   const [isEvaluationModalOpen, setIsEvaluationModalOpen] = useState(false);
   const [externalData, setExternalData] = useState<any[]>([]);
   const [linkedData, setLinkedData] = useState<any | null>(null);
+  const [linkedElsewhere, setLinkedElsewhere] = useState<ExternalDataLink[]>([]);
   const [isSearchingExternal, setIsSearchingExternal] = useState(false);
   const [isLinking, setIsLinking] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -511,7 +524,7 @@ export default function CandidateProfile() {
     const { data, error } = await supabase
       .from("candidates")
       .select(
-        "*, psikotes_schedules(id, is_confirmed, schedule_date), interview_schedules(id, is_confirmed, schedule_date, additional_notes), candidate_assignees(user_id, profiles(id, full_name, role, department))",
+        "*, psikotes_schedules(id, is_confirmed, is_no_show, no_show_reason, schedule_date), interview_schedules(id, is_confirmed, is_no_show, no_show_reason, schedule_date, additional_notes), candidate_assignees(user_id, profiles(id, full_name, role, department))",
       )
       .eq("id", candidateId)
       .single();
@@ -682,6 +695,9 @@ export default function CandidateProfile() {
 
         if (data) {
           setLinkedData({ uid_sheet: data.uid_sheet, ...data.raw_data });
+          // Other applications (e.g. an archived earlier one) sharing this form.
+          const links = await fetchExternalDataLinks([data.uid_sheet]);
+          setLinkedElsewhere(links.filter((l) => l.id !== candidateData.id));
           setIsSearchingExternal(false);
           return;
         }
@@ -695,64 +711,65 @@ export default function CandidateProfile() {
       const { data, error } = await supabase.from("external_data").select("*");
 
       if (data) {
-        // Filter out data that is already linked to other candidates
-        const uids = data.map((d) => d.uid_sheet);
+        const matches = data
+          .map((item) => {
+            const raw = item.raw_data;
+            // Which of the candidate's fields this row matched on, shown on
+            // the suggestion card so HR can judge how reliable the match is.
+            const reasons = new Set<"email" | "phone" | "name">();
+            if (!raw) return { item, reasons };
 
-        const [activeRes, logsRes] = await Promise.all([
-          supabase
-            .from("candidates")
-            .select("linked_external_id")
-            .in("linked_external_id", uids)
-            .neq("id", candidateData.id),
-          supabase
-            .from("candidate_logs")
-            .select("linked_external_id")
-            .in("linked_external_id", uids)
-            .neq("id", candidateData.id),
-        ]);
+            Object.entries(raw).forEach(([key, val]) => {
+              if (typeof val !== "string") return;
+              const lowerKey = key.toLowerCase();
+              const strVal = String(val);
 
-        const usedUids = new Set([
-          ...(activeRes.data?.map((d) => d.linked_external_id) || []),
-          ...(logsRes.data?.map((d) => d.linked_external_id) || []),
-        ]);
+              if (
+                lowerKey.includes("email") &&
+                normalizeEmail(strVal) === normEmail
+              )
+                reasons.add("email");
+              if (
+                (lowerKey.includes("phone") ||
+                  lowerKey.includes("telepon") ||
+                  lowerKey.includes("hp") ||
+                  lowerKey.includes("whatsapp")) &&
+                normalizePhone(strVal) === normPhone &&
+                normPhone !== ""
+              )
+                reasons.add("phone");
+              if (
+                (lowerKey.includes("name") || lowerKey.includes("nama")) &&
+                normalizeName(strVal) === normName
+              )
+                reasons.add("name");
+            });
+            return { item, reasons };
+          })
+          .filter(({ reasons }) => reasons.size > 0);
 
-        const availableData = data.filter((d) => !usedUids.has(d.uid_sheet));
-
-        const matches = availableData.filter((item) => {
-          const raw = item.raw_data;
-          if (!raw) return false;
-
-          let match = false;
-          Object.entries(raw).forEach(([key, val]) => {
-            if (typeof val !== "string") return;
-            const lowerKey = key.toLowerCase();
-            const strVal = String(val);
-
-            if (
-              lowerKey.includes("email") &&
-              normalizeEmail(strVal) === normEmail
-            )
-              match = true;
-            if (
-              (lowerKey.includes("phone") ||
-                lowerKey.includes("telepon") ||
-                lowerKey.includes("hp") ||
-                lowerKey.includes("whatsapp")) &&
-              normalizePhone(strVal) === normPhone &&
-              normPhone !== ""
-            )
-              match = true;
-            if (
-              (lowerKey.includes("name") || lowerKey.includes("nama")) &&
-              normalizeName(strVal) === normName
-            )
-              match = true;
-          });
-          return match;
-        });
+        // A form already linked to an *archived* application (e.g. the same
+        // person re-applying for another position) may be linked again; one
+        // still linked to another *active* application may not — that one
+        // has to be archived first.
+        const links = (
+          await fetchExternalDataLinks(matches.map(({ item }) => item.uid_sheet))
+        ).filter((l) => l.id !== candidateData.id);
 
         setExternalData(
-          matches.map((m) => ({ uid_sheet: m.uid_sheet, ...m.raw_data })),
+          matches.map(({ item, reasons }) => {
+            const itemLinks = links.filter(
+              (l) => l.linked_external_id === item.uid_sheet,
+            );
+            return {
+              uid_sheet: item.uid_sheet,
+              ...item.raw_data,
+              _submitted_at: item.created_at,
+              _match_reasons: Array.from(reasons),
+              _archived_links: itemLinks.filter((l) => l.status === "archived"),
+              _active_links: itemLinks.filter((l) => l.status === "active"),
+            };
+          }),
         );
       }
     } catch (err) {
@@ -766,6 +783,20 @@ export default function CandidateProfile() {
     if (!candidate || !id) return;
     setIsLinking(true);
     try {
+      // Re-check at link time: sharing a form is only allowed with archived
+      // applications, never with another active one.
+      const activeHolder = (await fetchExternalDataLinks([uid_sheet])).find(
+        (l) => l.status === "active" && l.id !== id,
+      );
+      if (activeHolder) {
+        toast({
+          title: "Tidak dapat ditautkan",
+          description: `Data ini masih ditautkan ke lamaran aktif ${activeHolder.full_name || "-"} (${activeHolder.position || "-"}). Arsipkan lamaran tersebut terlebih dahulu.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { data: activeData } = await supabase
         .from("candidates")
         .select("id")
@@ -824,6 +855,7 @@ export default function CandidateProfile() {
         description: "Tautan data eksternal dilepas.",
       });
       setLinkedData(null);
+      setLinkedElsewhere([]);
       fetchCandidate(id);
     } catch (err: any) {
       console.error("Error unlinking data:", err);
@@ -2312,6 +2344,12 @@ export default function CandidateProfile() {
                     Data berhasil ditautkan
                   </div>
                 </div>
+                <ExternalLinkNotes
+                  formPosition={getExternalDataSummary(linkedData).position}
+                  candidatePosition={candidate.position}
+                  archivedLinks={linkedElsewhere.filter((l) => l.status === "archived")}
+                  activeLinks={linkedElsewhere.filter((l) => l.status === "active")}
+                />
                 <div className="max-h-[600px] overflow-y-auto custom-scrollbar -mx-2 px-2">
                   <div
                     ref={printRef}
@@ -2344,103 +2382,66 @@ export default function CandidateProfile() {
                   </div>
                 </div>
                 <div className="space-y-3">
-                  {externalData.map((data, idx) => (
-                    <div
-                      key={idx}
-                      className="border border-slate-200 rounded-xl p-4 hover:border-indigo-300 transition-colors"
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-bold bg-slate-100 text-[#73507B] px-2 py-1 rounded-md">
-                          Opsi {idx + 1}
-                        </span>
-                        {!isUserManager && !isArchived && (
-                          <button
-                            onClick={() =>
-                              handleLinkExternalData(data.uid_sheet)
-                            }
-                            disabled={isLinking}
-                            className="px-3 py-1.5 bg-[#5A305A] text-white text-xs font-bold rounded-lg hover:bg-[#3F223F] disabled:opacity-50"
-                          >
-                            Tautkan Data Ini
-                          </button>
-                        )}
-                      </div>
-                      <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-2">
-                        {(() => {
-                          let nama = "-";
-                          let email = "-";
-                          let telepon = "-";
-                          let posisi = "-";
-
-                          Object.entries(data).forEach(([key, val]) => {
-                            if (
-                              typeof val !== "string" &&
-                              typeof val !== "number"
-                            )
-                              return;
-                            const lowerKey = key.toLowerCase();
-                            const strVal = String(val);
-
-                            if (
-                              (lowerKey.includes("nama") ||
-                                lowerKey.includes("name")) &&
-                              nama === "-"
-                            )
-                              nama = strVal;
-                            else if (
-                              (lowerKey.includes("email") ||
-                                lowerKey.includes("e-mail")) &&
-                              email === "-"
-                            )
-                              email = strVal;
-                            else if (
-                              (lowerKey.includes("telepon") ||
-                                lowerKey.includes("phone") ||
-                                lowerKey.includes("hp") ||
-                                lowerKey.includes("whatsapp")) &&
-                              telepon === "-"
-                            )
-                              telepon = strVal;
-                            else if (
-                              (lowerKey.includes("posisi") ||
-                                lowerKey.includes("position") ||
-                                lowerKey.includes("jabatan") ||
-                                lowerKey.includes("melamar")) &&
-                              posisi === "-"
-                            )
-                              posisi = strVal;
-                          });
-
-                          const previewFields = [
-                            { label: "Nama", value: nama },
-                            { label: "Email", value: email },
-                            { label: "Nomor Telepon", value: telepon },
-                            { label: "Posisi yang Dilamar", value: posisi },
-                          ];
-
-                          return previewFields.map((field, i) => (
-                            <div key={i} className="text-sm">
-                              <span className="font-medium text-[#73507B] block text-xs uppercase tracking-wider mb-0.5">
-                                {field.label}
+                  {externalData.map((data, idx) => {
+                    const summary = getExternalDataSummary(data);
+                    const reasons: ("email" | "phone" | "name")[] =
+                      data._match_reasons || [];
+                    const reasonLabels = { email: "Email", phone: "No. HP", name: "Nama" };
+                    const activeLinks: ExternalDataLink[] = data._active_links || [];
+                    const archivedLinks: ExternalDataLink[] = data._archived_links || [];
+                    return (
+                      <div
+                        key={data.uid_sheet || idx}
+                        className="border border-slate-200 rounded-xl p-4 hover:border-indigo-300 transition-colors space-y-4"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                          <ExternalDataHeader row={data} summary={summary}>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-[#73507B]">
+                              Opsi {idx + 1}
+                            </span>
+                            {reasons.length > 0 && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                Cocok berdasarkan:{" "}
+                                {reasons.map((r) => reasonLabels[r]).join(", ")}
                               </span>
-                              <span className="text-[#5A305A] whitespace-pre-wrap">
-                                {field.value}
-                              </span>
-                            </div>
-                          ));
-                        })()}
-                        {Object.keys(data).filter((k) => k !== "uid_sheet")
-                          .length > 4 && (
-                          <div className="text-xs text-indigo-600 font-medium italic mt-2">
-                            +{" "}
-                            {Object.keys(data).filter((k) => k !== "uid_sheet")
-                              .length - 4}{" "}
-                            field lainnya
+                            )}
+                          </ExternalDataHeader>
+                          <div className="flex sm:flex-col gap-2 shrink-0">
+                            <button
+                              onClick={() => setFullScreenData(data)}
+                              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[#5A305A]/5 hover:bg-[#5A305A]/10 text-[#5A305A] text-xs font-bold rounded-lg transition-colors whitespace-nowrap"
+                            >
+                              <Eye size={14} />
+                              Lihat Form Lengkap
+                            </button>
+                            {!isUserManager && !isArchived && (
+                              <button
+                                onClick={() =>
+                                  handleLinkExternalData(data.uid_sheet)
+                                }
+                                disabled={isLinking || activeLinks.length > 0}
+                                title={
+                                  activeLinks.length > 0
+                                    ? "Masih ditautkan ke lamaran aktif lain. Arsipkan lamaran tersebut terlebih dahulu."
+                                    : undefined
+                                }
+                                className="flex-1 px-3 py-1.5 bg-[#5A305A] text-white text-xs font-bold rounded-lg hover:bg-[#3F223F] disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                              >
+                                Tautkan Data Ini
+                              </button>
+                            )}
                           </div>
-                        )}
+                        </div>
+                        <ExternalLinkNotes
+                          formPosition={summary.position}
+                          candidatePosition={candidate.position}
+                          archivedLinks={archivedLinks}
+                          activeLinks={activeLinks}
+                        />
+                        <ExternalDataFields summary={summary} highlight={reasons} />
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ) : (
@@ -2940,15 +2941,7 @@ export default function CandidateProfile() {
                             <Clock size={14} />
                             <span>{formatDate(schedule.schedule_date)}</span>
                           </div>
-                          {schedule.is_confirmed ? (
-                            <span className="flex items-center gap-1 text-emerald-600 font-medium text-xs bg-emerald-50 px-2 py-1 rounded-md">
-                              <CheckCircle size={12} /> Selesai
-                            </span>
-                          ) : (
-                            <span className="text-amber-600 font-medium text-xs bg-amber-50 px-2 py-1 rounded-md">
-                              Menunggu
-                            </span>
-                          )}
+                          <ScheduleStatusTag schedule={schedule} />
                         </div>
                       ))}
                     </div>
@@ -2991,15 +2984,7 @@ export default function CandidateProfile() {
                                 <Clock size={14} />
                                 <span>{formatDate(schedule.schedule_date)}</span>
                               </div>
-                              {schedule.is_confirmed ? (
-                                <span className="flex items-center gap-1 text-emerald-600 font-medium text-xs bg-emerald-50 px-2 py-1 rounded-md">
-                                  <CheckCircle size={12} /> Selesai
-                                </span>
-                              ) : (
-                                <span className="text-amber-600 font-medium text-xs bg-amber-50 px-2 py-1 rounded-md">
-                                  Menunggu
-                                </span>
-                              )}
+                              <ScheduleStatusTag schedule={schedule} />
                             </div>
                           ))}
                         </div>
@@ -3221,16 +3206,47 @@ export default function CandidateProfile() {
       {fullScreenData && (
         <div className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-sm flex flex-col">
           <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 bg-[#5A305A]/80 backdrop-blur-xl border-b border-white/10 shadow-lg shrink-0">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <Database className="text-indigo-300" size={20} />
-              Preview Data Eksternal
-            </h3>
-            <button
-              onClick={() => setFullScreenData(null)}
-              className="text-white/70 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-colors"
-            >
-              <X size={24} />
-            </button>
+            {(() => {
+              const summary = getExternalDataSummary(fullScreenData);
+              return (
+                <div className="flex items-center gap-3 min-w-0">
+                  <Database className="text-indigo-300 shrink-0" size={20} />
+                  <div className="min-w-0">
+                    <h3 className="text-lg font-bold text-white truncate">
+                      {summary.name || "Preview Data Eksternal"}
+                    </h3>
+                    <p className="text-xs text-white/70 truncate">
+                      Form lamaran · Melamar sebagai{" "}
+                      <span className="font-semibold text-white">
+                        {summary.position || "-"}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Opened from the match suggestions (not yet linked): allow
+                  linking straight from the full form view. */}
+              {!linkedData && fullScreenData.uid_sheet && !isUserManager && !isArchived && !fullScreenData._active_links?.length && (
+                <button
+                  onClick={async () => {
+                    await handleLinkExternalData(fullScreenData.uid_sheet);
+                    setFullScreenData(null);
+                  }}
+                  disabled={isLinking}
+                  className="px-4 py-2 bg-white text-[#5A305A] text-sm font-bold rounded-lg hover:bg-white/90 disabled:opacity-50 whitespace-nowrap"
+                >
+                  {isLinking ? "Memproses..." : "Tautkan Data Ini"}
+                </button>
+              )}
+              <button
+                onClick={() => setFullScreenData(null)}
+                className="text-white/70 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
           </div>
           <div className="flex-1 w-full h-full p-3 md:p-5 overflow-hidden">
             <div className="w-full h-full bg-slate-50 rounded-xl overflow-y-auto shadow-2xl p-3 sm:p-4 custom-scrollbar">

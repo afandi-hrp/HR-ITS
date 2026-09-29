@@ -6,6 +6,13 @@ import { Download, Search, Loader2, Edit2, Check, X } from "lucide-react";
 import * as XLSX from "xlsx-js-style";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
+import { getStageAttendance, ScheduleAttendance } from "../lib/scheduleStatus";
+
+const KEHADIRAN_LABEL: Record<ScheduleAttendance, string> = {
+  done: "Hadir",
+  scheduled: "Belum Hadir",
+  no_show: "Tidak Hadir",
+};
 
 export default function CandidateTracking() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -155,8 +162,8 @@ const topScrollRef = useRef<HTMLDivElement>(null);
         .from("candidates")
         .select(`
           *,
-          psikotes_schedules (is_confirmed, schedule_date),
-          interview_schedules (is_confirmed, schedule_date, additional_notes),
+          psikotes_schedules (is_confirmed, is_no_show, schedule_date),
+          interview_schedules (is_confirmed, is_no_show, schedule_date, additional_notes),
           candidate_evaluations (evaluation_type, interviewer_name, total_score, evaluation_data)
         `)
         .order("created_at", { ascending: false });
@@ -295,8 +302,12 @@ const topScrollRef = useRef<HTMLDivElement>(null);
         
         // Try to get dates from active schedules first, or fallback to status if logged
         if (c.psikotes_schedules && c.psikotes_schedules.length > 0) {
-          psikotesDate = formatDate(c.psikotes_schedules[0].schedule_date);
-          kehadiran = c.psikotes_schedules[0].is_confirmed ? "Hadir" : "Belum Hadir";
+          // Latest psikotes (a reschedule after a no-show is a newer row).
+          const latestPsikotes = [...c.psikotes_schedules].sort(
+            (a: any, b: any) => new Date(b.schedule_date).getTime() - new Date(a.schedule_date).getTime(),
+          )[0];
+          psikotesDate = formatDate(latestPsikotes.schedule_date);
+          kehadiran = KEHADIRAN_LABEL[getStageAttendance(c.psikotes_schedules) || "scheduled"];
         }
 
         if (c.interview_schedules && c.interview_schedules.length > 0) {
@@ -563,8 +574,12 @@ const topScrollRef = useRef<HTMLDivElement>(null);
                     let tglInterviewUser = "";
                     
                     if (c.psikotes_schedules && c.psikotes_schedules.length > 0) {
-                      psikotesDate = formatDate(c.psikotes_schedules[0].schedule_date);
-                      kehadiran = c.psikotes_schedules[0].is_confirmed ? "Hadir" : "Belum Hadir";
+                      // Latest psikotes (a reschedule after a no-show is a newer row).
+                      const latestPsikotes = [...c.psikotes_schedules].sort(
+                        (a: any, b: any) => new Date(b.schedule_date).getTime() - new Date(a.schedule_date).getTime(),
+                      )[0];
+                      psikotesDate = formatDate(latestPsikotes.schedule_date);
+                      kehadiran = KEHADIRAN_LABEL[getStageAttendance(c.psikotes_schedules) || "scheduled"];
                     }
 
                     if (c.interview_schedules && c.interview_schedules.length > 0) {

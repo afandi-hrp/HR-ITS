@@ -46,8 +46,8 @@ export interface Candidate {
   background_check_result?: string | null;
   confirmation_status: 'unconfirmed' | 'confirmed';
   confirmation_token: string | null;
-  psikotes_schedules?: { id: string, is_confirmed: boolean, schedule_date: string, location_type?: string, location_detail?: string | null, additional_notes?: string | null, candidate_id?: string, created_at?: string, updated_at?: string }[];
-  interview_schedules?: { id: string, is_confirmed: boolean, schedule_date: string, end_time?: string | null, location_type?: string, location_detail?: string | null, additional_notes?: string | null, candidate_id?: string, created_at?: string, updated_at?: string }[];
+  psikotes_schedules?: { id: string, is_confirmed: boolean, is_no_show?: boolean, no_show_reason?: string | null, schedule_date: string, location_type?: string, location_detail?: string | null, additional_notes?: string | null, candidate_id?: string, created_at?: string, updated_at?: string }[];
+  interview_schedules?: { id: string, is_confirmed: boolean, is_no_show?: boolean, no_show_reason?: string | null, schedule_date: string, end_time?: string | null, location_type?: string, location_detail?: string | null, additional_notes?: string | null, candidate_id?: string, created_at?: string, updated_at?: string }[];
   candidate_evaluations?: { evaluation_type: 'HR' | 'USER' | 'REFERENCE_CHECK' }[];
   psikotes_status?: string;
   interview_status?: string;
@@ -101,6 +101,8 @@ export interface Schedule {
   location_detail: string | null;
   additional_notes: string | null;
   is_confirmed: boolean;
+  is_no_show?: boolean;
+  no_show_reason?: string | null;
   created_at: string;
   updated_at: string;
   candidate?: Candidate;

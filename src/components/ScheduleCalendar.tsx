@@ -121,11 +121,13 @@ export default function ScheduleCalendar({
                     onClick={() => onScheduleClick(schedule)}
                     className={cn(
                       "text-xs p-1.5 rounded-md cursor-pointer truncate border transition-all hover:shadow-sm",
-                      schedule.is_confirmed 
-                        ? "bg-emerald-50 border-emerald-100 text-emerald-700 hover:border-emerald-300" 
-                        : "bg-amber-50 border-amber-100 text-amber-700 hover:border-amber-300"
+                      schedule.is_confirmed
+                        ? "bg-emerald-50 border-emerald-100 text-emerald-700 hover:border-emerald-300"
+                        : schedule.is_no_show
+                          ? "bg-rose-50 border-rose-100 text-rose-700 line-through decoration-rose-300 hover:border-rose-300"
+                          : "bg-amber-50 border-amber-100 text-amber-700 hover:border-amber-300"
                     )}
-                    title={`${schedule.candidate?.full_name} - ${format(new Date(schedule.schedule_date), 'HH:mm')}`}
+                    title={`${schedule.candidate?.full_name} - ${format(new Date(schedule.schedule_date), 'HH:mm')}${schedule.is_no_show ? ' (Tidak Hadir)' : ''}`}
                   >
                     <div className="font-semibold truncate">{schedule.candidate?.full_name}</div>
                     <div className="flex items-center gap-1 opacity-80 mt-0.5">

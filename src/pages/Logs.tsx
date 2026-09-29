@@ -28,6 +28,7 @@ import {
 import { formatDate, cn, fetchWithRetry } from "../lib/utils";
 import { CandidateAvatar } from "../components/CandidateAvatar";
 import { removeDocumentFile } from "../lib/documentStorage";
+import { findExternalIdsStillInUse } from "../lib/externalDataLinks";
 import { useToast } from "../components/ui/use-toast";
 import JSONRenderer from "../components/JSONRenderer";
 import * as XLSX from "xlsx";
@@ -326,13 +327,25 @@ export default function Logs() {
 
       if (fetchError) throw fetchError;
 
+      let externalKept = false;
       if (candidate) {
         // 2. Hapus file fisik dari storage (menangani bucket lama & baru)
         await removeDocumentFile(candidate.resume_url);
         await removeDocumentFile(candidate.psikotes_result_url);
 
-        // 3. Ambil data eksternal jika ada untuk mendapatkan URL file tambahan
+        // Data eksternal yang masih ditautkan ke lamaran lain (mis. lamaran
+        // ulang di posisi lain) tidak boleh ikut dihapus — lihat
+        // lib/externalDataLinks.ts.
         if (candidate.linked_external_id) {
+          const stillInUse = await findExternalIdsStillInUse(
+            [candidate.linked_external_id],
+            [deleteModalData.id],
+          );
+          externalKept = stillInUse.has(candidate.linked_external_id);
+        }
+
+        // 3. Ambil data eksternal jika ada untuk mendapatkan URL file tambahan
+        if (candidate.linked_external_id && !externalKept) {
           const { data: externalData } = await supabase
             .from("external_data")
             .select("raw_data")
@@ -355,7 +368,7 @@ export default function Logs() {
         }
 
         // 4. Hapus data eksternal yang tertaut
-        if (candidate.linked_external_id) {
+        if (candidate.linked_external_id && !externalKept) {
           await supabase
             .from("external_data")
             .delete()
@@ -373,8 +386,9 @@ export default function Logs() {
 
       toast({
         title: "Berhasil",
-        description:
-          "Kandidat beserta file dan data eksternal berhasil dihapus.",
+        description: externalKept
+          ? "Kandidat beserta file berhasil dihapus. Data eksternal tetap disimpan karena masih ditautkan ke lamaran lain."
+          : "Kandidat beserta file dan data eksternal berhasil dihapus.",
       });
       setDeleteModalData(null);
       fetchLogs();
@@ -403,7 +417,9 @@ export default function Logs() {
 
       toast({
         title: "Berhasil",
-        description: `${restoreModalData.full_name} telah diaktifkan kembali ke pipeline aktif.`,
+        description:
+          `${restoreModalData.full_name} telah diaktifkan kembali ke pipeline aktif.` +
+          (result.warning ? ` ${result.warning}` : ""),
       });
       setRestoreModalData(null);
       setSelectedLog(null);
@@ -432,20 +448,29 @@ export default function Logs() {
 
       if (fetchError) throw fetchError;
 
+      let externalKeptCount = 0;
       if (candidates && candidates.length > 0) {
         // 2. Hapus file fisik dari storage (menangani bucket lama & baru), dan
         // kumpulkan ID eksternal yang perlu dihapus
-        const externalIdsToDelete: string[] = [];
         const removalPromises: Promise<void>[] = [];
 
         candidates.forEach((candidate) => {
           removalPromises.push(removeDocumentFile(candidate.resume_url));
           removalPromises.push(removeDocumentFile(candidate.psikotes_result_url));
-
-          if (candidate.linked_external_id) {
-            externalIdsToDelete.push(candidate.linked_external_id);
-          }
         });
+
+        // Data eksternal yang masih ditautkan ke lamaran di luar pilihan
+        // hapus ini tidak ikut dihapus — lihat lib/externalDataLinks.ts.
+        const linkedIds = Array.from(
+          new Set(
+            candidates
+              .map((c) => c.linked_external_id)
+              .filter((uid): uid is string => !!uid),
+          ),
+        );
+        const stillInUse = await findExternalIdsStillInUse(linkedIds, selectedIds);
+        const externalIdsToDelete = linkedIds.filter((uid) => !stillInUse.has(uid));
+        externalKeptCount = linkedIds.length - externalIdsToDelete.length;
 
         // Ambil data eksternal jika ada untuk mendapatkan URL file tambahan
         if (externalIdsToDelete.length > 0) {
@@ -494,7 +519,11 @@ export default function Logs() {
 
       toast({
         title: "Berhasil",
-        description: `${selectedIds.length} kandidat beserta file dan data eksternal berhasil dihapus.`,
+        description:
+          `${selectedIds.length} kandidat beserta file dan data eksternal berhasil dihapus.` +
+          (externalKeptCount > 0
+            ? ` ${externalKeptCount} data eksternal tetap disimpan karena masih ditautkan ke lamaran lain.`
+            : ""),
       });
       setBulkDeleteModalOpen(false);
       setSelectedIds([]);

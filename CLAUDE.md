@@ -19,6 +19,20 @@ Intake has two paths:
 
 Archiving/hiring moves a row from `candidates` to `candidate_logs` (two physically separate tables holding the same shape of data — most queries and RPCs `UNION ALL` across both; keep this in mind whenever touching aggregate counts/stats).
 
+The only live ways into the archive are **Tolak** (reject) and **Hire** on the Screening page (both call `/api/candidates/move-to-log`). Screening also contains a "Pindahkan ke Log" modal (`logModalData`), but nothing opens it — dead UI. The user chose (2026-09-29) to keep using Tolak when a candidate is moved to another position rather than reviving it.
+
+### External data (submitted application forms)
+- `external_data` rows (keyed by `uid_sheet`, form fields in `raw_data`) are linked from the candidate side via `candidates.linked_external_id` / `candidate_logs.linked_external_id` — FK `ON DELETE SET NULL`, no UNIQUE constraint (verified live 2026-09-29).
+- **One form may be shared by several applications of the same person** (e.g. rejected for Finance, re-applies for Purchasing), but **only if every other linked application is archived** — never by two active ones. Enforced in `CandidateProfile.tsx` (suggestions + re-check at link time) and in `restore-from-log` (restores without the link if an active application already holds it).
+- Anything that deletes `external_data` must first call `findExternalIdsStillInUse()` (`src/lib/externalDataLinks.ts`) — deleting a shared row would silently strip the form + documents from the other application via the SET NULL FK. `Logs.tsx` single/bulk delete already does this.
+- Human-readable card summaries (name, position, contact, education, last job) come from `getExternalDataSummary()` (`src/lib/externalDataSummary.ts`), rendered by `components/ExternalDataSummary.tsx` on both the Data Eksternal page and the profile's match suggestions. Never show raw keys like `FULL_NAME` to users.
+
+### Schedule attendance (psikotes / interview)
+- `is_confirmed` = attended/done; `is_no_show` + `no_show_reason` = "Tidak Hadir" (migration `20260929000000`, DB CHECK forbids both true). Anything else = still pending.
+- Use the helpers in `src/lib/scheduleStatus.ts` (`isPendingSchedule`, `isNoShowSchedule`, `getStageAttendance`) instead of testing `is_confirmed` alone — a no-show is *not* pending (no confirm/reminder/email/WA buttons, not "upcoming" on Dashboard) and counts as finished for rescheduling eligibility in `SchedulingModal`.
+- No-show rows are kept (never deleted) so the history survives a reschedule; a reschedule is a new row. Marking UI: `components/NoShowModal.tsx` (Screening menu + the schedule pages' "Tidak Hadir" tab). When confirming attendance on a no-show row, also clear `is_no_show` or the CHECK fails.
+- Funnel RPCs count stage reach by schedule-row existence — a no-show still "reached" the stage (was invited). Intentionally unchanged.
+
 ## Roles (`src/hooks/usePermissions.ts`)
 
 - `HR_ADMIN` — full access.
@@ -40,9 +54,12 @@ src/components/      DashboardLayout (app shell — greeting, sidebar, notificat
                      SchedulingModal, SendEmailModal, SendWAModal, EvaluationModal,
                      ReferenceCheckModal, ScheduleCalendar, BulkUploadModal, ConfirmModal,
                      NotificationPanel, RealtimeNotifications, CandidateAvatar, JSONRenderer,
-                     PdfToImages, components/ui/ (shadcn-style primitives)
+                     PdfToImages, ExternalDataSummary (applicant card header/fields/link notes),
+                     NoShowModal (+ NoShowBadge, ScheduleStatusTag),
+                     components/ui/ (shadcn-style primitives)
 src/lib/             supabase.ts (client), n8n.ts, documentStorage.ts (signed URL resolution),
                      print.ts (PDF/print popup), cvSummaryFormat.tsx, psikotesCategoryReference.ts,
+                     externalDataSummary.ts, externalDataLinks.ts, scheduleStatus.ts,
                      utils.ts (cn, formatDate, etc.)
 src/hooks/           usePermissions.ts
 src/contexts/        AuthContext.tsx
@@ -57,7 +74,7 @@ supabase/migrations/ Tracked schema history — INCOMPLETE, see "Supabase workfl
 
 Core: `candidates`, `candidate_logs` (archived/hired — same shape as `candidates`), `candidate_assignees`, `candidate_evaluations`, `internal_notes`, `blacklisted_candidates`.
 
-Scheduling: `psikotes_schedules`, `interview_schedules`.
+Scheduling: `psikotes_schedules`, `interview_schedules` (both have `is_confirmed`, `is_no_show`, `no_show_reason` — see "Schedule attendance").
 
 Config/content: `profiles` (role, department, job_title), `site_settings`, `open_recruitment`, `email_templates`, `evaluation_templates`, `registration_tokens`, `external_data`.
 
@@ -85,6 +102,7 @@ Other functions/policies may exist in the live DB that were created directly in 
    and `SELECT id, name, public FROM storage.buckets;` / `SELECT pg_get_functiondef(oid) FROM pg_proc WHERE proname = '...';` for untracked functions.
 3. After every code edit: run `npx tsc --noEmit` then `npm run build`, and only report a fix as done once both pass clean.
 4. Explain root cause + fix in clear Indonesian before considering an issue resolved — don't just say "fixed."
+5. The old root-level `supabase_setup.sql` / `supabase_update*.sql` were deleted (2026-09-29): one-off scripts already applied, with pre-hardening insecure policies — never recreate or re-run them. For a fresh environment, dump the live schema instead (`supabase db dump --schema-only`); `supabase/migrations/` has no base-table creation.
 
 ## Design system (established through iterative user feedback — follow by default)
 
@@ -102,3 +120,12 @@ Other functions/policies may exist in the live DB that were created directly in 
 The funnel used to compute each stage's count **independently** (e.g. "Lolos Screening" = `status_screening IN ('accepted','hired')`; "Tahap Psikotes" = has a `psikotes_schedules` row) — but in this app's real workflow HR can schedule psikotes without ever setting `status_screening = 'accepted'`, so stages weren't true nested subsets and the bar chart could visually widen instead of narrow. Fixed by moving all funnel math server-side into the two cumulative RPCs listed above (migrations `20260828000001`/`20260828000002`), plus a separate `count_pending_candidates` RPC redefining "Pending" as zero-progress (`20260828000000`), plus a later `rejected` column added to both funnel RPCs, appended (not woven into the cumulative chain) and placed between "Tahap Interview" and "Diterima (Hired)" in the bar order — putting it last made the chart widen at the end again (`20260828000003`).
 
 **Action needed**: confirm with the user whether all four `20260828*` migration files have actually been run in Supabase Studio — as of the last session this had been communicated but not confirmed executed.
+
+## Unsaved-input protection in modals (2026-09-29)
+
+`AuthContext` replaces `profile` with a brand-new object every time Supabase re-checks the session — i.e. on **every browser tab switch**. Any modal `useEffect` that resets form state and lists `profile`/`userProfile` (or another parent-refreshed object) as a dependency will wipe what the user typed. Pattern to follow (used by `EvaluationModal` and `ReferenceCheckModal`):
+- initialize form state once per open, guarded by a ref keyed on candidate + evaluation id (depend on ids, not objects);
+- debounce-autosave a draft to `localStorage` and restore it on open ("Draft Ditemukan" toast), removing it after a successful save;
+- call `setSessionProtected(isOpen)` from `useAuth()` so a false-alarm session event doesn't bounce the user to Login mid-entry.
+
+Migration `20260929000000_add_schedule_no_show.sql` was run in Studio by the user (confirmed 2026-09-29). **Action needed**: confirm `server.ts` has been restarted/redeployed since then (restore-from-log link guard, no-show-aware archive status).

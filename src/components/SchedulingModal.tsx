@@ -10,6 +10,7 @@ import {
   User
 } from 'lucide-react';
 import { Candidate, Schedule } from '../types';
+import { isPendingSchedule } from '../lib/scheduleStatus';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../components/ui/use-toast';
 import { cn } from '../lib/utils';
@@ -52,17 +53,18 @@ export default function SchedulingModal({ candidate, type, initialData, onClose,
             .from('candidates')
             .select(`
               *,
-              schedules: ${tableName}(id, is_confirmed)
+              schedules: ${tableName}(id, is_confirmed, is_no_show)
             `)
             .eq('status_screening', 'accepted')
             .order('full_name', { ascending: true });
             
           if (!error && data) {
-            // Only show candidates who don't have a schedule of this type yet, OR all their schedules are confirmed
+            // Only show candidates who don't have a schedule of this type yet, OR none of their schedules is still pending
             const filtered = data.filter((c: any) => {
               if (!c.schedules || c.schedules.length === 0) return true;
-              // If they have schedules, allow scheduling again ONLY IF all previous schedules are confirmed
-              return c.schedules.every((s: any) => s.is_confirmed === true);
+              // If they have schedules, allow scheduling again ONLY IF every previous schedule is done
+              // (attended or marked "Tidak Hadir" — the latter is how a no-show gets rescheduled)
+              return !c.schedules.some(isPendingSchedule);
             });
             setCandidates(filtered);
           }

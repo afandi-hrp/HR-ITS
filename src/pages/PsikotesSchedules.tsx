@@ -21,7 +21,10 @@ import {
   List,
   MessageCircle,
   FilterX,
+  UserX,
+  CalendarPlus,
 } from "lucide-react";
+import NoShowModal from "../components/NoShowModal";
 import { cn, formatDate } from "../lib/utils";
 import { useToast } from "../components/ui/use-toast";
 import SchedulingModal from "../components/SchedulingModal";
@@ -62,8 +65,8 @@ export default function PsikotesSchedules() {
   const [debouncedSearch, setDebouncedSearch] = useState(searchParams.get("q") || "");
   const [startDate, setStartDate] = useState(searchParams.get("startDate") || "");
   const [endDate, setEndDate] = useState(searchParams.get("endDate") || "");
-  const [activeTab, setActiveTab] = useState<"pending" | "confirmed">(
-    highlightStatus === "confirmed" ? "confirmed" : (searchParams.get("tab") as "pending" | "confirmed" || "pending"),
+  const [activeTab, setActiveTab] = useState<"pending" | "confirmed" | "no_show">(
+    highlightStatus === "confirmed" ? "confirmed" : (searchParams.get("tab") as "pending" | "confirmed" | "no_show" || "pending"),
   );
   const [previewSchedule, setPreviewSchedule] = useState<Schedule | null>(null);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
@@ -107,6 +110,28 @@ export default function PsikotesSchedules() {
   const { toast } = useToast();
 
   const [isScheduling, setIsScheduling] = useState(false);
+  const [noShowSchedule, setNoShowSchedule] = useState<Schedule | null>(null);
+  const [rescheduleCandidate, setRescheduleCandidate] = useState<Candidate | null>(null);
+
+  const refreshSchedules = () => {
+    if (viewMode === "list") fetchSchedules(false);
+    else fetchCalendarSchedules();
+  };
+
+  // Undo a mistaken "Tidak Hadir" — the schedule goes back to "Menunggu".
+  const undoNoShow = async (schedule: Schedule) => {
+    const { error } = await supabase
+      .from("psikotes_schedules")
+      .update({ is_no_show: false, no_show_reason: null })
+      .eq("id", schedule.id);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Berhasil", description: "Tanda tidak hadir dibatalkan." });
+      setPreviewSchedule(null);
+      refreshSchedules();
+    }
+  };
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     id: string;
@@ -191,7 +216,13 @@ export default function PsikotesSchedules() {
       );
     }
 
-    query = query.eq("is_confirmed", activeTab === "confirmed");
+    if (activeTab === "no_show") {
+      query = query.eq("is_no_show", true);
+    } else {
+      query = query
+        .eq("is_confirmed", activeTab === "confirmed")
+        .eq("is_no_show", false);
+    }
 
     const { data, error, count } = await query
       .order("schedule_date", { ascending: activeTab === "pending" })
@@ -292,7 +323,11 @@ export default function PsikotesSchedules() {
     try {
       const { error } = await supabase
         .from("psikotes_schedules")
-        .update({ is_confirmed: !currentStatus })
+        .update(
+          !currentStatus
+            ? { is_confirmed: true, is_no_show: false, no_show_reason: null }
+            : { is_confirmed: false },
+        )
         .eq("id", id);
 
       if (error) {
@@ -466,6 +501,23 @@ export default function PsikotesSchedules() {
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#5A305A] rounded-t-full" />
               )}
             </button>
+            <button
+              onClick={() => {
+                setActiveTab("no_show");
+                setCurrentPage(1);
+              }}
+              className={cn(
+                "pb-4 text-sm font-bold transition-all relative",
+                activeTab === "no_show"
+                  ? "text-rose-600"
+                  : "text-slate-400 hover:text-slate-600",
+              )}
+            >
+              Tidak Hadir
+              {activeTab === "no_show" && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-rose-600 rounded-t-full" />
+              )}
+            </button>
           </div>
 
           {/* Schedule List (Pending) */}
@@ -551,6 +603,16 @@ export default function PsikotesSchedules() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
+                              setNoShowSchedule(schedule);
+                            }}
+                            className="p-1.5 rounded-lg transition-colors text-white bg-rose-500 hover:bg-rose-600"
+                            title="Tandai Tidak Hadir Psikotes"
+                          >
+                            <UserX size={14} />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setEditingSchedule(schedule);
                             }}
                             className="p-1.5 rounded-lg transition-colors text-white bg-amber-500 hover:bg-amber-600"
@@ -632,15 +694,18 @@ export default function PsikotesSchedules() {
             </div>
           )}
 
-          {/* Confirmed List Table */}
-          {activeTab === "confirmed" && (
+          {/* Confirmed / No-show List Table */}
+          {(activeTab === "confirmed" || activeTab === "no_show") && (
             <div className="space-y-4">
               <div className="flex items-center gap-3 px-2">
                 <h2 className="text-xl font-bold text-[#5A305A]">
-                  Daftar Psikotes Selesai
+                  {activeTab === "no_show" ? "Daftar Psikotes Tidak Hadir" : "Daftar Psikotes Selesai"}
                 </h2>
-                <div className="px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-full uppercase tracking-wider">
-                  {totalItems} Selesai
+                <div className={cn(
+                  "px-3 py-1 text-[10px] font-bold rounded-full uppercase tracking-wider",
+                  activeTab === "no_show" ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700",
+                )}>
+                  {totalItems} {activeTab === "no_show" ? "Tidak Hadir" : "Selesai"}
                 </div>
               </div>
               <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
@@ -704,6 +769,11 @@ export default function PsikotesSchedules() {
                             <span className="text-sm text-slate-600 font-medium">
                               {schedule.candidate?.position}
                             </span>
+                            {schedule.is_no_show && (
+                              <p className="text-xs text-rose-600 mt-0.5">
+                                Alasan: {schedule.no_show_reason || "tanpa keterangan"}
+                              </p>
+                            )}
                           </td>
                           <td className="px-6 py-4">
                             <div className="space-y-0.5">
@@ -740,6 +810,7 @@ export default function PsikotesSchedules() {
                           </td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex items-center justify-end gap-2">
+                              {!schedule.is_no_show && (<>
                               <button
                                 onClick={() => {
                                   if (schedule.candidate) {
@@ -768,13 +839,33 @@ export default function PsikotesSchedules() {
                               >
                                 <MessageCircle size={16} />
                               </button>
-                              <button
-                                onClick={() => handleConfirm(schedule)}
-                                className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
-                                title="Batalkan Konfirmasi"
-                              >
-                                <RefreshCcw size={16} />
-                              </button>
+                              </>)}
+                              {schedule.is_no_show ? (
+                                <>
+                                  <button
+                                    onClick={() => schedule.candidate && setRescheduleCandidate(schedule.candidate)}
+                                    className="p-2 text-slate-400 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-all"
+                                    title="Jadwalkan Ulang"
+                                  >
+                                    <CalendarPlus size={16} />
+                                  </button>
+                                  <button
+                                    onClick={() => undoNoShow(schedule)}
+                                    className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                                    title="Batalkan Tanda Tidak Hadir"
+                                  >
+                                    <RefreshCcw size={16} />
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  onClick={() => handleConfirm(schedule)}
+                                  className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                                  title="Batalkan Konfirmasi"
+                                >
+                                  <RefreshCcw size={16} />
+                                </button>
+                              )}
                               <button
                                 onClick={() => handleDelete(schedule.id)}
                                 className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
@@ -793,7 +884,9 @@ export default function PsikotesSchedules() {
                             colSpan={5}
                             className="px-6 py-12 text-center text-slate-500"
                           >
-                            Tidak ada jadwal yang telah selesai.
+                            {activeTab === "no_show"
+                              ? "Tidak ada kandidat yang tercatat tidak hadir."
+                              : "Tidak ada jadwal yang telah selesai."}
                           </td>
                         </tr>
                       )}
@@ -1068,7 +1161,9 @@ export default function PsikotesSchedules() {
                 <span className="truncate">
                   {previewSchedule.is_confirmed
                     ? "Batalkan Konfirmasi"
-                    : "Konfirmasi Sudah Psikotes"}
+                    : previewSchedule.is_no_show
+                      ? "Ubah Jadi Sudah Hadir"
+                      : "Konfirmasi Sudah Psikotes"}
                 </span>
               </button>
               <button
@@ -1080,6 +1175,41 @@ export default function PsikotesSchedules() {
             </div>
           </div>
         </div>
+      )}
+
+      <NoShowModal
+        target={
+          noShowSchedule
+            ? {
+                candidateName: noShowSchedule.candidate?.full_name || "-",
+                table: "psikotes_schedules",
+                scheduleId: noShowSchedule.id,
+                scheduleDate: noShowSchedule.schedule_date,
+                label: "Psikotes",
+              }
+            : null
+        }
+        followUps={["reschedule", "none"]}
+        onClose={() => setNoShowSchedule(null)}
+        onSaved={(followUp) => {
+          const candidate = noShowSchedule?.candidate;
+          setNoShowSchedule(null);
+          setPreviewSchedule(null);
+          refreshSchedules();
+          if (followUp === "reschedule" && candidate) setRescheduleCandidate(candidate);
+        }}
+      />
+
+      {rescheduleCandidate && (
+        <SchedulingModal
+          candidate={rescheduleCandidate}
+          type="psikotes"
+          onClose={() => setRescheduleCandidate(null)}
+          onSuccess={() => {
+            setRescheduleCandidate(null);
+            refreshSchedules();
+          }}
+        />
       )}
 
       {isScheduling && (

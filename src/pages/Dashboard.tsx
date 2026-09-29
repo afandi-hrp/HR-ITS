@@ -300,6 +300,8 @@ export default function Dashboard() {
               "id, schedule_date, is_confirmed, candidates!inner(id, full_name, position)",
             )
             .gte("schedule_date", nowForQuery.toISOString())
+            // Already marked "Tidak Hadir" (e.g. cancelled ahead) — not upcoming.
+            .eq("is_no_show", false)
             .lte("schedule_date", next24Hours.toISOString()),
           supabase
             .from("interview_schedules")
@@ -307,6 +309,8 @@ export default function Dashboard() {
               "id, schedule_date, is_confirmed, candidates!inner(id, full_name, position)",
             )
             .gte("schedule_date", nowForQuery.toISOString())
+            // Already marked "Tidak Hadir" (e.g. cancelled ahead) — not upcoming.
+            .eq("is_no_show", false)
             .lte("schedule_date", next24Hours.toISOString()),
           buildDataQuery(
             "candidates",

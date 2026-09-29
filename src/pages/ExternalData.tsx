@@ -21,6 +21,15 @@ import { useToast } from "../components/ui/use-toast";
 import { printElement } from "../lib/print";
 import ApplicationForm from "./ApplicationForm";
 import { usePermissions } from "../hooks/usePermissions";
+import { getExternalDataSummary } from "../lib/externalDataSummary";
+import {
+  ExternalDataLink,
+  fetchExternalDataLinks,
+} from "../lib/externalDataLinks";
+import {
+  ExternalDataHeader,
+  ExternalDataFields,
+} from "../components/ExternalDataSummary";
 
 export default function ExternalData() {
   const { hideSalary } = usePermissions();
@@ -79,19 +88,6 @@ export default function ExternalData() {
     }
   };
 
-  const isExcludedKey = (key: string) => {
-    const lowerKey = key.toLowerCase();
-    return [
-      "row_number",
-      "id",
-      "uid_sheet",
-      "created_at",
-      "uid",
-      "timestamp",
-      "change_type",
-    ].includes(lowerKey);
-  };
-
   const hexToRgb = (hex: string): [number, number, number] => {
     const defaultColor: [number, number, number] = [79, 70, 229]; // indigo-600
     if (!hex) return defaultColor;
@@ -142,9 +138,13 @@ export default function ExternalData() {
         const activeUids = (activeRes.data || [])
           .map((d) => d.linked_external_id)
           .filter(Boolean);
+        // A form may be shared by an archived application and a later
+        // active re-application — it counts as active then, so "archived"
+        // means linked to archived applications only.
+        const activeSet = new Set(activeUids);
         const archivedUids = (logsRes.data || [])
           .map((d) => d.linked_external_id)
-          .filter(Boolean);
+          .filter((uid) => uid && !activeSet.has(uid));
 
         if (statusFilter === "hide_archived" && archivedUids.length > 0) {
           query = query.not("uid_sheet", "in", `(${archivedUids.join(",")})`);
@@ -194,37 +194,30 @@ export default function ExternalData() {
       let parsedData = (result || []).map((item) => ({
         uid_sheet: item.uid_sheet,
         ...item.raw_data,
+        _submitted_at: item.created_at,
       }));
 
       // Check linked status
       if (parsedData.length > 0) {
-        const uids = parsedData.map((d) => d.uid_sheet);
-        const [activeRes, logsRes] = await Promise.all([
-          supabase
-            .from("candidates")
-            .select("linked_external_id, full_name")
-            .in("linked_external_id", uids),
-          supabase
-            .from("candidate_logs")
-            .select("linked_external_id, full_name, status_screening")
-            .in("linked_external_id", uids),
-        ]);
-
-        const activeMap = new Map(
-          (activeRes.data || []).map((d) => [d.linked_external_id, d]),
-        );
-        const logsMap = new Map(
-          (logsRes.data || []).map((d) => [d.linked_external_id, d]),
+        const links = await fetchExternalDataLinks(
+          parsedData.map((d) => d.uid_sheet),
         );
 
         parsedData = parsedData.map((item) => {
-          const active = activeMap.get(item.uid_sheet);
-          const log = logsMap.get(item.uid_sheet);
+          const itemLinks = links.filter(
+            (l) => l.linked_external_id === item.uid_sheet,
+          );
+          const activeLinks = itemLinks.filter((l) => l.status === "active");
+          const archivedLinks = itemLinks.filter((l) => l.status === "archived");
           return {
             ...item,
-            _link_status: active ? "active" : log ? "archived" : "available",
-            _linked_to: active?.full_name || log?.full_name || null,
-            _log_status: log?.status_screening || null,
+            _link_status: activeLinks.length
+              ? "active"
+              : archivedLinks.length
+                ? "archived"
+                : "available",
+            _active_links: activeLinks,
+            _archived_links: archivedLinks,
           };
         });
       }
@@ -358,43 +351,6 @@ export default function ExternalData() {
     setPreviewData(row);
   };
 
-  const formatValue = (val: any): string => {
-    if (val === null || val === undefined || val === "") return "-";
-    if (typeof val === "object") {
-      if (Array.isArray(val)) {
-        if (val.length === 0) return "-";
-        // Filter out empty objects
-        const nonEmptyItems = val.filter((item) => {
-          if (typeof item === "object" && item !== null) {
-            return Object.values(item).some((v) => v !== "");
-          }
-          return true;
-        });
-        if (nonEmptyItems.length === 0) return "-";
-
-        return nonEmptyItems
-          .map((item, idx) => {
-            if (typeof item === "object" && item !== null) {
-              return (
-                `[${idx + 1}] ` +
-                Object.entries(item)
-                  .filter(([_, v]) => v !== "")
-                  .map(([k, v]) => `${k}: ${v}`)
-                  .join(", ")
-              );
-            }
-            return String(item);
-          })
-          .join("\n");
-      }
-      // Plain object
-      const entries = Object.entries(val).filter(([_, v]) => v !== "");
-      if (entries.length === 0) return "-";
-      return entries.map(([k, v]) => `${k}: ${v}`).join("\n");
-    }
-    return String(val);
-  };
-
   const handleDownloadPdf = async () => {
     setIsGeneratingPdf(true);
     try {
@@ -518,37 +474,7 @@ export default function ExternalData() {
             <div className="flex flex-col gap-4 relative z-10">
               {paginatedData.map((row, index) => {
                 const rowId = row.uid_sheet || index;
-                // Get entries for preview card
-                const entries = Object.entries(row).filter(
-                  ([key]) => !isExcludedKey(key),
-                );
-
-                // Find a good title field (name, nama, title, judul)
-                let titleEntry = entries.find(([key]) => {
-                  const lowerKey = key.toLowerCase();
-                  return (
-                    lowerKey.includes("nama") ||
-                    lowerKey.includes("name") ||
-                    lowerKey.includes("judul") ||
-                    lowerKey.includes("title") ||
-                    lowerKey === "noreg" ||
-                    lowerKey === "no_reg"
-                  );
-                });
-
-                // If no specific title field found, fallback to the first entry
-                if (!titleEntry) {
-                  titleEntry =
-                    entries.length > 0
-                      ? entries[0]
-                      : ["Data", `Baris ${index + 1}`];
-                }
-
-                // Remove the title entry from the preview list so it's not duplicated
-                const remainingEntries = entries.filter(
-                  ([key]) => key !== titleEntry![0],
-                );
-                const previewEntries = remainingEntries.slice(0, 4);
+                const summary = getExternalDataSummary(row);
 
                 return (
                   <div
@@ -562,58 +488,39 @@ export default function ExternalData() {
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-80 md:hidden"></div>
 
                     {/* Title Section */}
-                    <div className="p-5 flex-1 min-w-0 md:w-1/4 md:flex-none border-b md:border-b-0 md:border-r border-white/50 bg-white/40 flex flex-col justify-center">
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <h3
-                          className="font-bold text-lg text-[#5A305A] truncate group-hover:text-indigo-600 transition-colors w-full"
-                          title={String(titleEntry[1])}
-                        >
-                          {String(titleEntry[1]) || "Tanpa Judul"}
-                        </h3>
-                        <div className="flex gap-2 mt-1">
-                          {row._link_status === "active" && (
-                            <span
-                              className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-800 whitespace-nowrap shrink-0"
-                              title={`Ditautkan ke: ${row._linked_to}`}
-                            >
-                              Ditautkan
-                            </span>
-                          )}
-                          {row._link_status === "archived" && (
-                            <span
-                              className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 whitespace-nowrap shrink-0"
-                              title={`Diarsipkan: ${row._linked_to} (${row._log_status})`}
-                            >
-                              Diarsipkan
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <p className="text-xs text-indigo-600 font-semibold uppercase tracking-wider mt-1.5 flex items-center gap-1.5 truncate">
-                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0"></span>
-                        {titleEntry[0]}
-                      </p>
+                    <div className="p-5 flex-1 min-w-0 md:w-1/3 md:flex-none border-b md:border-b-0 md:border-r border-white/50 bg-white/40 flex flex-col justify-center">
+                      <ExternalDataHeader row={row} summary={summary}>
+                        {(row._active_links || []).map((l: ExternalDataLink) => (
+                          <span
+                            key={`active-${l.id}`}
+                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-100 text-indigo-800 max-w-full truncate"
+                          >
+                            Ditautkan ke: {l.full_name} – {l.position || "-"}
+                          </span>
+                        ))}
+                        {(row._archived_links || []).map((l: ExternalDataLink) => (
+                          <span
+                            key={`archived-${l.id}`}
+                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-600 max-w-full truncate"
+                          >
+                            Diarsipkan: {l.full_name} – {l.position || "-"}
+                            {l.status_screening ? ` (${l.status_screening})` : ""}
+                          </span>
+                        ))}
+                        {row._link_status === "available" && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-amber-100 text-amber-800">
+                            Belum ditautkan ke kandidat
+                          </span>
+                        )}
+                      </ExternalDataHeader>
                     </div>
 
                     {/* Details Section */}
                     <div className="p-5 flex-1 min-w-0 bg-transparent flex flex-col justify-center">
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {previewEntries.map(([key, value]) => (
-                          <div key={key} className="text-sm min-w-0">
-                            <span className="font-medium text-slate-500 block text-[10px] uppercase tracking-wider mb-1 truncate" title={key}>
-                              {key}
-                            </span>
-                            <span className="text-[#5A305A] font-medium line-clamp-1 text-sm" title={formatValue(value)}>
-                              {formatValue(value)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                      {entries.length > 4 && (
-                        <div className="inline-flex self-start items-center justify-center px-2 py-0.5 rounded-full bg-white/60 border border-slate-200 text-[10px] text-slate-500 font-medium mt-3 shadow-sm">
-                          + {entries.length - 4} kolom lainnya
-                        </div>
-                      )}
+                      <ExternalDataFields
+                        summary={summary}
+                        className="lg:grid-cols-3"
+                      />
                     </div>
 
                     {/* Actions Section */}
@@ -798,10 +705,14 @@ export default function ExternalData() {
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-[#5A305A]">
-                    Preview Dokumen PDF
+                    {getExternalDataSummary(previewData).name ||
+                      "Preview Dokumen PDF"}
                   </h2>
                   <p className="text-xs text-slate-500">
-                    Pratinjau laporan sebelum diunduh
+                    Form lamaran · Melamar sebagai{" "}
+                    <span className="font-semibold text-indigo-700">
+                      {getExternalDataSummary(previewData).position || "-"}
+                    </span>
                   </p>
                 </div>
               </div>

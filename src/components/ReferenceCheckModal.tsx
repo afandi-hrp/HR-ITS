@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Loader2, Save } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useToast } from './ui/use-toast';
+import { useAuth } from '../contexts/AuthContext';
 import {
   CandidateEvaluation,
   Profile,
@@ -28,6 +29,9 @@ const emptyData = (schema: ReferenceCheckFormSchema | null): ReferenceCheckData 
   checked_date: new Date().toISOString().slice(0, 10),
 });
 
+const getDraftKey = (candidateId: string, evaluationId?: string) =>
+  `reference_check_draft_${candidateId}_${evaluationId || 'new'}`;
+
 export default function ReferenceCheckModal({
   isOpen,
   onClose,
@@ -38,30 +42,80 @@ export default function ReferenceCheckModal({
   userProfile,
 }: ReferenceCheckModalProps) {
   const { toast } = useToast();
+  const { setSessionProtected } = useAuth();
   const [template, setTemplate] = useState<EvaluationTemplate | null>(null);
   const [interviewerName, setInterviewerName] = useState('');
   const [data, setData] = useState<ReferenceCheckData>(emptyData(null));
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Tracks which draft key has already been reset/restored. AuthContext
+  // replaces `profile` with a brand-new object every time Supabase re-checks
+  // the session (i.e. on every browser tab switch), so without this guard
+  // the reset below re-ran and wiped whatever had been typed so far.
+  const initializedDraftKeyRef = useRef<string | null>(null);
+
+  const evaluationId = existingEvaluation?.id;
 
   useEffect(() => {
     if (isOpen) {
       fetchTemplate();
+    } else {
+      initializedDraftKeyRef.current = null;
     }
   }, [isOpen]);
 
   useEffect(() => {
-    if (isOpen && template) {
-      if (existingEvaluation) {
-        setInterviewerName(existingEvaluation.interviewer_name || '');
-        setData({ ...emptyData(schema), ...(existingEvaluation.evaluation_data as ReferenceCheckData) });
-      } else {
-        setInterviewerName(userProfile?.full_name || '');
-        setData(emptyData(schema));
-      }
+    if (!isOpen || !template) return;
+
+    const draftKey = getDraftKey(candidateId, evaluationId);
+    if (initializedDraftKeyRef.current === draftKey) return;
+    initializedDraftKeyRef.current = draftKey;
+
+    if (existingEvaluation) {
+      setInterviewerName(existingEvaluation.interviewer_name || '');
+      setData({ ...emptyData(schema), ...(existingEvaluation.evaluation_data as ReferenceCheckData) });
+    } else {
+      setInterviewerName(userProfile?.full_name || '');
+      setData(emptyData(schema));
+    }
+
+    // Restore any unsaved in-progress input for this exact reference check,
+    // in case entry was interrupted before "Simpan Reference Check".
+    const draft = localStorage.getItem(draftKey);
+    if (draft) {
+      try {
+        const parsed = JSON.parse(draft);
+        if (parsed.interviewerName) setInterviewerName(parsed.interviewerName);
+        if (parsed.data) setData({ ...emptyData(schema), ...parsed.data });
+        toast({
+          title: 'Draft Ditemukan',
+          description: 'Input reference check yang belum tersimpan berhasil dipulihkan.',
+        });
+      } catch (e) {}
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, template, existingEvaluation, userProfile]);
+  }, [isOpen, template, candidateId, evaluationId]);
+
+  // Debounced autosave of in-progress input, so it survives an interrupted
+  // session/reload before the user clicks "Simpan Reference Check".
+  useEffect(() => {
+    if (!isOpen || !template || initializedDraftKeyRef.current === null) return;
+    const timeout = setTimeout(() => {
+      localStorage.setItem(
+        getDraftKey(candidateId, evaluationId),
+        JSON.stringify({ interviewerName, data })
+      );
+    }, 1000);
+    return () => clearTimeout(timeout);
+  }, [isOpen, template, candidateId, evaluationId, interviewerName, data]);
+
+  // While this modal is open, tell AuthProvider to hold off on reacting to
+  // a session hiccup (e.g. from switching tabs/apps) instead of yanking
+  // the user out mid-entry — see setSessionProtected in AuthContext.tsx.
+  useEffect(() => {
+    setSessionProtected(isOpen);
+    return () => setSessionProtected(false);
+  }, [isOpen, setSessionProtected]);
 
   const fetchTemplate = async () => {
     setLoading(true);
@@ -127,6 +181,7 @@ export default function ReferenceCheckModal({
         toast({ title: 'Berhasil', description: 'Reference check berhasil disimpan' });
       }
 
+      localStorage.removeItem(getDraftKey(candidateId, evaluationId));
       onSuccess();
       onClose();
     } catch (error: any) {
