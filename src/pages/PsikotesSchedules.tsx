@@ -356,7 +356,7 @@ export default function PsikotesSchedules() {
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
         <div className="space-y-1">
-          <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
+          <h1 className="text-2xl font-extrabold tracking-tight text-[#5A305A]">
             Jadwal Psikotes
           </h1>
           <p className="text-sm font-medium text-[#5A305A]/70 max-w-xl">
@@ -366,7 +366,7 @@ export default function PsikotesSchedules() {
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row gap-4">
+      <div className="bg-white/70 backdrop-blur-md p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row gap-4">
         <div className="relative flex-1">
           <Search
             className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -377,12 +377,12 @@ export default function PsikotesSchedules() {
             placeholder="Cari nama kandidat atau posisi..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+            className="w-full pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm h-10"
           />
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
           {viewMode === "list" && (
-            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1">
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 h-10 text-sm">
               <CalendarIcon size={16} className="text-slate-400" />
               <input
                 type="date"
@@ -402,14 +402,14 @@ export default function PsikotesSchedules() {
           {viewMode === "list" && (
             <button
               onClick={resetFilters}
-              className="p-2.5 text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm flex items-center justify-center"
+              className="text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm flex items-center justify-center h-10 text-sm w-10 shrink-0"
               title="Reset Filter"
             >
               <FilterX size={20} />
             </button>
           )}
 
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl ml-2">
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl ml-2 h-10">
             <button
               onClick={() => setViewMode("list")}
               className={cn(
@@ -440,7 +440,7 @@ export default function PsikotesSchedules() {
             onClick={() =>
               viewMode === "list" ? fetchSchedules() : fetchCalendarSchedules()
             }
-            className="p-2.5 text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm flex items-center justify-center"
+            className="text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm flex items-center justify-center h-10 text-sm w-10 shrink-0"
             title="Refresh Data"
           >
             <RefreshCcw size={20} className={loading ? "animate-spin" : ""} />
@@ -448,7 +448,7 @@ export default function PsikotesSchedules() {
 
           <button
             onClick={() => setIsScheduling(true)}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-100 transition-all text-sm whitespace-nowrap"
+            className="flex items-center justify-center gap-2 px-4 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-100 transition-all text-sm whitespace-nowrap h-10"
           >
             <CalendarIcon size={18} />
             Jadwalkan Psikotes Baru

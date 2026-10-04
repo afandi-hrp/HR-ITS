@@ -38,6 +38,44 @@ export function formatDateDMY(date: string | Date | null | undefined): string {
   return `${day}-${month}-${d.getFullYear()}`;
 }
 
+const SHORT_MONTHS_ID = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+
+// DD-MMM-YYYY with Indonesian month abbreviations, e.g. "04-Okt-2026".
+export function formatDateDMMMY(date: string | Date | null | undefined): string {
+  if (!date) return "-";
+  if (typeof date === "string" && /^\d{4}-\d{2}-\d{2}/.test(date)) {
+    const [year, month, day] = date.split("T")[0].split("-");
+    return `${day}-${SHORT_MONTHS_ID[Number(month) - 1]}-${year}`;
+  }
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return typeof date === "string" ? date : "-";
+  return `${String(d.getDate()).padStart(2, "0")}-${SHORT_MONTHS_ID[d.getMonth()]}-${d.getFullYear()}`;
+}
+
+// "baru saja" / "5 menit lalu" / "3 jam lalu" / "kemarin" / "4 hari lalu",
+// falling back to DD-MMM-YYYY beyond 30 days.
+export function formatRelativeTime(date: string | number | Date | null | undefined): string {
+  if (date === null || date === undefined || date === "") return "-";
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return "-";
+  const diffMin = Math.floor((Date.now() - d.getTime()) / 60000);
+  if (diffMin < 1) return "baru saja";
+  if (diffMin < 60) return `${diffMin} menit lalu`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour} jam lalu`;
+  const diffDay = Math.floor(diffHour / 24);
+  if (diffDay === 1) return "kemarin";
+  if (diffDay <= 30) return `${diffDay} hari lalu`;
+  return formatDateDMMMY(d);
+}
+
+// Today's date as YYYY-MM-DD in the user's *local* timezone.
+// (new Date().toISOString() is UTC — in WIB it still returns yesterday's
+// date until 07:00.)
+export function getLocalDateString(d: Date = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export function calculateAge(birthDate: string | Date | null | undefined): number | null {
   if (!birthDate) return null;
   const dob = new Date(birthDate);

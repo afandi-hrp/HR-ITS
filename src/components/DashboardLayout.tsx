@@ -209,7 +209,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
       )}
 
       {/* Sidebar Spacer for Desktop */}
-      <div className="hidden lg:block w-[112px] shrink-0" />
+      <div className="hidden lg:block w-[100px] shrink-0" />
 
       {/* Sidebar */}
       <aside 
@@ -415,13 +415,13 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
           <NotificationPanel />
         </div>
 
-        <div className="relative flex-1 overflow-y-auto px-4 md:px-5 pb-4 md:pb-8 pt-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="relative flex-1 overflow-y-auto px-4 md:px-5 lg:pl-2 lg:pr-3 pb-4 md:pb-8 pt-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {/* Absolutely positioned (not fixed) so it lines up with the page
               title's row instead of pushing it down, but still scrolls away
               with the content since it's anchored to this scrollable
               container rather than the viewport. */}
           {!hideGreeting && (
-            <div className="hidden lg:block absolute top-3 right-0 mr-16 text-right leading-tight z-10">
+            <div className="hidden lg:block absolute top-3 right-0 mr-24 text-right leading-tight z-10">
               <p className="text-lg font-bold text-[#5A305A] flex items-center justify-end gap-1.5">
                 {greeting}, {firstName}
                 <GreetingIcon className={cn('drop-shadow-sm', iconClass)} size={20} />

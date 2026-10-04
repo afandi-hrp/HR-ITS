@@ -167,7 +167,7 @@ export default function CandidateArchive() {
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
         <div className="space-y-1">
-          <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
+          <h1 className="text-2xl font-extrabold tracking-tight text-[#5A305A]">
             Candidate Archive
           </h1>
           <p className="text-sm font-medium text-[#5A305A]/70 max-w-xl">
@@ -177,7 +177,7 @@ export default function CandidateArchive() {
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row gap-4">
+      <div className="bg-white/70 backdrop-blur-md p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row gap-4">
         <div className="flex-1">
           <div className="relative w-full">
             <Search
@@ -189,12 +189,12 @@ export default function CandidateArchive() {
               placeholder="Cari nama atau posisi..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+              className="w-full pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm h-10"
             />
           </div>
         </div>
         <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 w-full sm:w-auto">
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 w-full sm:w-auto h-10 text-sm">
             <CalendarIcon size={16} className="text-slate-400 shrink-0" />
             <input
               type="date"
@@ -209,19 +209,19 @@ export default function CandidateArchive() {
               setDateFilter("");
               setCurrentPage(1);
             }}
-            className="p-2.5 text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm flex items-center justify-center"
+            className="text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm flex items-center justify-center h-10 text-sm w-10 shrink-0"
             title="Reset Filter"
           >
             <FilterX size={20} />
           </button>
           <button
             onClick={fetchLogs}
-            className="p-2.5 text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm flex items-center justify-center"
+            className="text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm flex items-center justify-center h-10 text-sm w-10 shrink-0"
             title="Refresh Data"
           >
             <RefreshCcw size={20} className={loading ? "animate-spin" : ""} />
           </button>
-          <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl p-1 h-[42px]">
+          <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl p-1 h-10">
             <button
               onClick={() => setViewMode("list")}
               className={cn(

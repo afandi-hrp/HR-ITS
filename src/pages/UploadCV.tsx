@@ -17,11 +17,17 @@ import {
   Info,
   ChevronLeft,
   ChevronRight,
+  AlertTriangle,
+  ShieldAlert,
+  ExternalLink,
+  Tag,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useToast } from "../components/ui/use-toast";
-import { cn, fetchWithRetry } from "../lib/utils";
+import { cn, fetchWithRetry, formatDateDMMMY } from "../lib/utils";
 import BulkUploadModal from "../components/BulkUploadModal";
+import ConfirmModal from "../components/ConfirmModal";
 
 interface CVUpload {
   id: string;
@@ -33,7 +39,35 @@ interface CVUpload {
   uploaded_at: string;
   sender_name: string;
   sender_email: string;
+  source_info?: string | null;
+  job_status?: "pending" | "success" | "error" | null;
+  job_message?: string | null;
+  candidate_matches?: CandidateMatch[];
 }
+
+interface CandidateMatch {
+  id: string;
+  position: string | null;
+  status_screening: string | null;
+  archived: boolean;
+}
+
+// The n8n CV-analysis workflow can only process PDFs.
+const MAX_FILE_MB = 15;
+const isPdfFile = (f: File) =>
+  f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
+
+const JOB_STATUS_BADGE: Record<string, { label: string; cls: string; hint: string }> = {
+  pending: { label: "Diproses", cls: "bg-amber-50 text-amber-700 border-amber-200", hint: "CV sedang dianalisa AI" },
+  success: { label: "Selesai", cls: "bg-emerald-50 text-emerald-700 border-emerald-200", hint: "Analisa selesai, kandidat sudah masuk Screening" },
+  error: { label: "Gagal", cls: "bg-rose-50 text-rose-700 border-rose-200", hint: "Proses gagal" },
+};
+
+const formatUploadedAt = (iso: string) => {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "-";
+  return `${formatDateDMMMY(d)} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
 
 export default function UploadCV() {
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
@@ -58,7 +92,46 @@ export default function UploadCV() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
+  const [deleteTarget, setDeleteTarget] = useState<string[] | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  // Existing records for the typed email — informational only, uploading is
+  // never blocked (the same person may apply for another position).
+  const [emailMatches, setEmailMatches] = useState<{
+    candidates: CandidateMatch[];
+    blacklist: { reason: string | null }[];
+  }>({ candidates: [], blacklist: [] });
   const { toast } = useToast();
+
+  useEffect(() => {
+    const email = candidateEmail.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailMatches({ candidates: [], blacklist: [] });
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      // ilike without wildcards = case-insensitive exact match.
+      const pattern = email.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+      const [activeRes, logsRes, blacklistRes] = await Promise.all([
+        supabase.from("candidates").select("id, position, status_screening").ilike("email", pattern),
+        supabase.from("candidate_logs").select("id, position, status_screening").ilike("email", pattern),
+        supabase.from("blacklisted_candidates").select("reason").ilike("email", pattern),
+      ]);
+      if (cancelled) return;
+      setEmailMatches({
+        candidates: [
+          ...(activeRes.data || []).map((c: any) => ({ ...c, archived: false })),
+          ...(logsRes.data || []).map((c: any) => ({ ...c, archived: true })),
+        ],
+        blacklist: blacklistRes.data || [],
+      });
+    }, 500);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [candidateEmail]);
 
   // Default to the first available job source, mirroring how `position` is
   // defaulted, so the field is never silently submitted empty.
@@ -107,45 +180,24 @@ export default function UploadCV() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  // Deletes history rows only (the candidate record and CV file stay).
+  const confirmDelete = async () => {
+    if (!deleteTarget || deleteTarget.length === 0) return;
+    setDeleting(true);
     try {
       const response = await fetchWithRetry("/api/cv-uploads", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: [id] }),
-      });
-      if (!response.ok) throw new Error("Gagal menghapus riwayat");
-
-      toast({ title: "Berhasil", description: "Riwayat berhasil dihapus." });
-      setSelectedUploads((prev) =>
-        prev.filter((selectedId) => selectedId !== id),
-      );
-      fetchUploads();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleBulkDelete = async () => {
-    if (selectedUploads.length === 0) return;
-
-    try {
-      const response = await fetchWithRetry("/api/cv-uploads", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: selectedUploads }),
+        body: JSON.stringify({ ids: deleteTarget }),
       });
       if (!response.ok) throw new Error("Gagal menghapus riwayat");
 
       toast({
         title: "Berhasil",
-        description: `${selectedUploads.length} riwayat berhasil dihapus.`,
+        description: `${deleteTarget.length} riwayat berhasil dihapus.`,
       });
-      setSelectedUploads([]);
+      setSelectedUploads((prev) => prev.filter((id) => !deleteTarget.includes(id)));
+      setDeleteTarget(null);
       fetchUploads();
     } catch (error: any) {
       toast({
@@ -153,6 +205,8 @@ export default function UploadCV() {
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -248,25 +302,20 @@ export default function UploadCV() {
   }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setIsDragging(false);
     if (e.target.files && e.target.files.length > 0) {
       const selectedFiles = Array.from(e.target.files) as File[];
-      const allowedTypes = [
-        "application/pdf",
-        "application/msword",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      ];
+      const isValid = (f: File) => isPdfFile(f) && f.size <= MAX_FILE_MB * 1024 * 1024;
 
-      const validFiles = selectedFiles.filter(
-        (f) => allowedTypes.includes(f.type) && f.size <= 15 * 1024 * 1024,
-      );
-      const invalidFiles = selectedFiles.filter(
-        (f) => !allowedTypes.includes(f.type) || f.size > 15 * 1024 * 1024,
-      );
+      const validFiles = selectedFiles.filter(isValid);
+      const invalidFiles = selectedFiles.filter((f) => !isValid(f));
 
       if (invalidFiles.length > 0) {
         toast({
-          title: "Beberapa File Ditolak",
-          description: "Hanya file PDF/Word di bawah 15MB yang diperbolehkan.",
+          title: `${invalidFiles.length} File Ditolak`,
+          description: invalidFiles
+            .map((f) => `${f.name}: ${!isPdfFile(f) ? "bukan PDF" : `lebih dari ${MAX_FILE_MB}MB`}`)
+            .join("; "),
           variant: "destructive",
         });
       }
@@ -403,11 +452,11 @@ export default function UploadCV() {
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
         <div className="space-y-1">
-          <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
+          <h1 className="text-2xl font-extrabold tracking-tight text-[#5A305A]">
             Upload CV Kandidat
           </h1>
           <p className="text-sm font-medium text-[#5A305A]/70 max-w-xl">
-            Unggah file CV Kandidat.
+            CV dianalisa AI, lalu masuk ke Screening Awal.
           </p>
         </div>
       </div>
@@ -422,7 +471,7 @@ export default function UploadCV() {
             <div className="p-8 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  <label className="text-xs font-bold text-[#73507B] uppercase tracking-widest">
                     Nama Kandidat
                   </label>
                   <input
@@ -431,11 +480,11 @@ export default function UploadCV() {
                     value={candidateName}
                     onChange={(e) => setCandidateName(e.target.value)}
                     placeholder="Masukkan nama lengkap..."
-                    className="w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium"
+                    className="w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] focus:bg-white/80 transition-all text-sm font-medium"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  <label className="text-xs font-bold text-[#73507B] uppercase tracking-widest">
                     Email Kandidat
                   </label>
                   <input
@@ -444,15 +493,63 @@ export default function UploadCV() {
                     value={candidateEmail}
                     onChange={(e) => setCandidateEmail(e.target.value)}
                     placeholder="kandidat@email.com"
-                    className="w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium"
+                    className="w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] focus:bg-white/80 transition-all text-sm font-medium"
                   />
                 </div>
+                {(emailMatches.blacklist.length > 0 || emailMatches.candidates.length > 0) && (
+                  <div className="md:col-span-2 space-y-2">
+                    {emailMatches.blacklist.length > 0 && (
+                      <div className="flex items-start gap-2 bg-rose-50 border border-rose-200 text-rose-800 text-xs p-3 rounded-xl">
+                        <ShieldAlert size={16} className="shrink-0 mt-0.5" />
+                        <span>
+                          <span className="font-bold">Email ini masuk daftar blacklist.</span>
+                          {emailMatches.blacklist[0].reason ? ` Alasan: ${emailMatches.blacklist[0].reason}` : ""}
+                        </span>
+                      </div>
+                    )}
+                    {emailMatches.candidates.length > 0 && (() => {
+                      const samePositionActive = emailMatches.candidates.some(
+                        (c) => !c.archived && position && c.position?.trim().toLowerCase() === position.trim().toLowerCase(),
+                      );
+                      return (
+                        <div
+                          className={cn(
+                            "flex items-start gap-2 text-xs p-3 rounded-xl border",
+                            samePositionActive
+                              ? "bg-amber-50 border-amber-200 text-amber-800"
+                              : "bg-sky-50 border-sky-200 text-sky-800",
+                          )}
+                        >
+                          <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                          <div className="space-y-1">
+                            <p className="font-bold">
+                              {samePositionActive
+                                ? "Kandidat ini sedang aktif melamar posisi yang sama — kemungkinan duplikat."
+                                : "Email ini sudah terdaftar di lamaran lain. Tetap bisa diproses untuk posisi ini."}
+                            </p>
+                            <ul className="space-y-0.5">
+                              {emailMatches.candidates.map((c) => (
+                                <li key={`${c.archived ? "log" : "active"}-${c.id}`}>
+                                  •{" "}
+                                  <Link to={`/candidates/${c.id}`} target="_blank" className="font-semibold underline hover:no-underline">
+                                    {candidateName || "Kandidat"} – {c.position || "-"}
+                                  </Link>{" "}
+                                  ({c.archived ? `Diarsipkan${c.status_screening ? `, ${c.status_screening}` : ""}` : "Aktif"})
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
                 <div className="space-y-2 md:col-span-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  <label className="text-xs font-bold text-[#73507B] uppercase tracking-widest">
                     Posisi Dilamar
                   </label>
                   {loadingPositions ? (
-                    <div className="flex items-center gap-2 text-sm text-slate-500 py-3">
+                    <div className="flex items-center gap-2 text-sm text-[#73507B] py-3">
                       <Loader2 className="animate-spin" size={16} /> Memuat
                       posisi...
                     </div>
@@ -461,7 +558,7 @@ export default function UploadCV() {
                       required
                       value={position}
                       onChange={(e) => setPosition(e.target.value)}
-                      className="block w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium appearance-none"
+                      className="block w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] focus:bg-white/80 transition-all text-sm font-medium appearance-none"
                     >
                       <option value="" disabled>
                         Pilih Posisi
@@ -479,19 +576,19 @@ export default function UploadCV() {
                       value={position}
                       onChange={(e) => setPosition(e.target.value)}
                       placeholder="Contoh: Frontend Developer"
-                      className="w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium"
+                      className="w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] focus:bg-white/80 transition-all text-sm font-medium"
                     />
                   )}
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  <label className="text-xs font-bold text-[#73507B] uppercase tracking-widest">
                     Info Sumber Lowongan
                   </label>
                   <select
                     required
                     value={sourceInfo}
                     onChange={(e) => setSourceInfo(e.target.value)}
-                    className="block w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm font-medium appearance-none"
+                    className="block w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] focus:bg-white/80 transition-all text-sm font-medium appearance-none"
                   >
                     <option value="" disabled>
                       Pilih Sumber Lowongan
@@ -506,22 +603,29 @@ export default function UploadCV() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                  File CV (PDF/DOC)
+                <label className="text-xs font-bold text-[#73507B] uppercase tracking-widest">
+                  File CV (PDF)
                 </label>
                 <div
+                  onDragEnter={() => setIsDragging(true)}
+                  onDragLeave={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragging(false);
+                  }}
+                  onDrop={() => setIsDragging(false)}
                   className={cn(
                     "relative border-2 border-dashed rounded-2xl p-10 transition-all flex flex-col items-center justify-center gap-4",
-                    files.length > 0
-                      ? "border-emerald-300 bg-emerald-50/50"
-                      : "border-white/60 bg-white/40 hover:border-indigo-300 hover:bg-white/60",
+                    isDragging
+                      ? "border-[#5A305A] bg-[#5A305A]/10 scale-[1.01] shadow-lg"
+                      : files.length > 0
+                        ? "border-emerald-300 bg-emerald-50/50"
+                        : "border-white/60 bg-white/40 hover:border-[#5A305A]/40 hover:bg-white/60",
                   )}
                 >
                   <input
                     type="file"
                     multiple
                     onChange={handleFileChange}
-                    accept=".pdf,.doc,.docx"
+                    accept=".pdf,application/pdf"
                     className="absolute inset-0 opacity-0 cursor-pointer z-10"
                   />
 
@@ -551,7 +655,7 @@ export default function UploadCV() {
                               <p className="font-bold text-[#5A305A] text-sm truncate max-w-[200px]">
                                 {file.name}
                               </p>
-                              <p className="text-xs text-slate-500">
+                              <p className="text-xs text-[#73507B]">
                                 {(file.size / 1024 / 1024).toFixed(2)} MB
                               </p>
                             </div>
@@ -562,29 +666,32 @@ export default function UploadCV() {
                               e.stopPropagation();
                               removeFile(index);
                             }}
-                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
+                            className="p-2 text-[#73507B] hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
                           >
                             <X size={16} />
                           </button>
                         </div>
                       ))}
                       <div className="text-center mt-4 pt-4 border-t border-white/40">
-                        <p className="text-sm font-medium text-indigo-600">
-                          Klik atau seret untuk menambah file lain
+                        <p className="text-sm font-medium text-[#5A305A]">
+                          {isDragging ? "Lepaskan file di sini" : "Klik atau seret untuk menambah file lain"}
                         </p>
                       </div>
                     </div>
                   ) : (
                     <>
-                      <div className="w-16 h-16 bg-white/60 text-slate-500 rounded-2xl flex items-center justify-center shadow-sm border border-white/80">
+                      <div className={cn(
+                        "w-16 h-16 rounded-2xl flex items-center justify-center shadow-sm border transition-colors",
+                        isDragging ? "bg-[#5A305A] text-white border-[#5A305A]" : "bg-white/60 text-[#73507B] border-white/80",
+                      )}>
                         <Upload size={32} />
                       </div>
                       <div className="text-center">
                         <p className="font-bold text-[#5A305A]">
-                          Klik atau seret file ke sini
+                          {isDragging ? "Lepaskan file di sini" : "Klik atau seret file ke sini"}
                         </p>
-                        <p className="text-xs text-slate-500">
-                          Bisa pilih banyak file sekaligus (PDF, DOC, DOCX)
+                        <p className="text-xs text-[#73507B]">
+                          Hanya file PDF, maksimal {MAX_FILE_MB}MB per file
                         </p>
                       </div>
                     </>
@@ -596,7 +703,7 @@ export default function UploadCV() {
             <div className="p-8 bg-white/30 border-t border-white/40 space-y-4">
               {loading && uploadProgress.total > 0 && (
                 <div className="space-y-2 mb-4">
-                  <div className="flex justify-between text-xs font-medium text-slate-500">
+                  <div className="flex justify-between text-xs font-medium text-[#73507B]">
                     <span>Mengunggah file...</span>
                     <span>
                       {uploadProgress.current} / {uploadProgress.total}
@@ -621,7 +728,7 @@ export default function UploadCV() {
                   !candidateEmail ||
                   !position
                 }
-                className="w-full py-4 bg-[#5A305A] text-white font-bold rounded-2xl hover:bg-[#3F223F] shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-4 bg-[#5A305A] text-white font-bold rounded-2xl hover:bg-[#3F223F] shadow-lg shadow-[#5A305A]/20 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <Loader2 size={24} className="animate-spin" />
@@ -647,7 +754,7 @@ export default function UploadCV() {
                 <div className="flex items-center gap-2">
                   {selectedUploads.length > 0 && (
                     <button
-                      onClick={handleBulkDelete}
+                      onClick={() => setDeleteTarget(selectedUploads)}
                       className="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl text-sm font-medium transition-all flex items-center gap-2"
                     >
                       <Trash2 size={16} />
@@ -656,7 +763,7 @@ export default function UploadCV() {
                   )}
                   <button
                     onClick={fetchUploads}
-                    className="p-2.5 text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm flex items-center justify-center"
+                    className="p-2.5 text-[#5A305A] bg-white/70 border border-slate-200 hover:bg-white rounded-xl transition-all shadow-sm flex items-center justify-center"
                   >
                     <RefreshCcw
                       size={20}
@@ -674,7 +781,7 @@ export default function UploadCV() {
               </div>
               <div className="relative">
                 <Search
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-[#73507B]"
                   size={18}
                 />
                 <input
@@ -683,7 +790,7 @@ export default function UploadCV() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && fetchUploads()}
-                  className="w-full pl-10 pr-4 py-2.5 bg-white/50 backdrop-blur-md border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all text-sm"
+                  className="w-full pl-10 pr-4 py-2.5 bg-white/50 backdrop-blur-md border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] focus:bg-white/80 transition-all text-sm"
                 />
               </div>
               {uploads.length > 0 && (
@@ -695,9 +802,9 @@ export default function UploadCV() {
                       uploads.length > 0
                     }
                     onChange={toggleSelectAll}
-                    className="w-4 h-4 rounded border-white/60 bg-white/50 text-indigo-600 focus:ring-indigo-500"
+                    className="w-4 h-4 rounded border-white/60 bg-white/50 text-[#5A305A] focus:ring-[#5A305A]"
                   />
-                  <span className="text-xs font-medium text-slate-500">
+                  <span className="text-xs font-medium text-[#73507B]">
                     Pilih Semua
                   </span>
                 </div>
@@ -706,7 +813,7 @@ export default function UploadCV() {
 
             <div className="p-6 space-y-4">
               {fetchingUploads ? (
-                <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
+                <div className="flex flex-col items-center justify-center py-20 text-[#73507B] gap-3">
                   <Loader2 size={32} className="animate-spin" />
                   <p className="text-sm font-medium">Memuat data...</p>
                 </div>
@@ -718,8 +825,8 @@ export default function UploadCV() {
                       className={cn(
                         "p-4 border rounded-2xl transition-all group relative",
                         selectedUploads.includes(upload.id)
-                          ? "bg-indigo-50/80 border-indigo-200"
-                          : "bg-white/40 border-white/60 hover:border-indigo-300 hover:bg-white/60 hover:shadow-xl",
+                          ? "bg-[#5A305A]/5 border-[#5A305A]/30"
+                          : "bg-white/40 border-white/60 hover:border-[#5A305A]/30 hover:bg-white/60 hover:shadow-xl",
                       )}
                     >
                       <div className="flex items-start gap-4">
@@ -728,40 +835,74 @@ export default function UploadCV() {
                             type="checkbox"
                             checked={selectedUploads.includes(upload.id)}
                             onChange={() => toggleSelect(upload.id)}
-                            className="w-4 h-4 rounded border-white/60 bg-white/50 text-indigo-600 focus:ring-indigo-500"
+                            className="w-4 h-4 rounded border-white/60 bg-white/50 text-[#5A305A] focus:ring-[#5A305A]"
                           />
                         </div>
-                        <div className="flex-1 space-y-1">
-                          <h3 className="font-bold text-[#5A305A] group-hover:text-indigo-600 transition-colors">
-                            {upload.candidate_name}
-                          </h3>
-                          <div className="flex items-center gap-2 text-xs text-slate-500">
-                            <Mail size={12} />
-                            <span>{upload.candidate_email}</span>
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="font-bold text-[#5A305A]">
+                              {upload.candidate_name}
+                            </h3>
+                            {upload.job_status && JOB_STATUS_BADGE[upload.job_status] && (
+                              <span
+                                className={cn(
+                                  "px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border",
+                                  JOB_STATUS_BADGE[upload.job_status].cls,
+                                )}
+                                title={upload.job_message || JOB_STATUS_BADGE[upload.job_status].hint}
+                              >
+                                {JOB_STATUS_BADGE[upload.job_status].label}
+                              </span>
+                            )}
                           </div>
-                          <div className="flex items-center gap-2 text-xs text-slate-500">
-                            <FileText size={12} />
-                            <span className="font-medium text-indigo-600">
+                          <div className="flex items-center gap-2 text-xs text-[#73507B] min-w-0">
+                            <Mail size={12} className="shrink-0" />
+                            <span className="truncate">{upload.candidate_email}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-[#73507B]">
+                            <FileText size={12} className="shrink-0" />
+                            <span className="font-semibold text-[#5A305A]">
                               {upload.position}
                             </span>
+                            {upload.source_info && (
+                              <span className="flex items-center gap-1">
+                                <Tag size={11} /> {upload.source_info}
+                              </span>
+                            )}
                           </div>
+                          <div className="flex items-center gap-2 text-xs text-[#73507B] min-w-0">
+                            <File size={12} className="shrink-0" />
+                            <span className="truncate" title={upload.file_name}>{upload.file_name}</span>
+                          </div>
+                          {(() => {
+                            // Prefer the application for this exact position.
+                            const matches = upload.candidate_matches || [];
+                            const match =
+                              matches.find((m) => m.position?.trim().toLowerCase() === upload.position?.trim().toLowerCase()) ||
+                              matches[0];
+                            return match ? (
+                              <Link
+                                to={`/candidates/${match.id}`}
+                                className="inline-flex items-center gap-1 mt-1 text-xs font-bold text-[#5A305A] hover:underline"
+                              >
+                                <ExternalLink size={12} /> Lihat Profil
+                                {match.position && match.position !== upload.position ? ` (${match.position})` : ""}
+                              </Link>
+                            ) : null;
+                          })()}
                         </div>
-                        <div className="text-right space-y-1">
-                          <div className="flex items-center justify-end gap-1 text-[10px] text-slate-400 font-medium uppercase tracking-wider">
-                            <Calendar size={10} />
-                            <span>
-                              {new Date(upload.uploaded_at).toLocaleDateString(
-                                "id-ID",
-                              )}
-                            </span>
+                        <div className="text-right space-y-1 shrink-0">
+                          <div className="flex items-center justify-end gap-1 text-[11px] text-[#73507B] font-medium">
+                            <Calendar size={11} />
+                            <span>{formatUploadedAt(upload.uploaded_at)}</span>
                           </div>
-                          <div className="flex items-center justify-end gap-1 text-[10px] text-slate-400">
-                            <User size={10} />
+                          <div className="flex items-center justify-end gap-1 text-[11px] text-[#73507B]">
+                            <User size={11} />
                             <span>{upload.sender_name}</span>
                           </div>
                           <button
-                            onClick={() => handleDelete(upload.id)}
-                            className="mt-2 p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all inline-flex"
+                            onClick={() => setDeleteTarget([upload.id])}
+                            className="mt-2 p-1.5 text-[#73507B] hover:text-red-600 hover:bg-red-50 rounded-lg transition-all inline-flex"
                             title="Hapus riwayat"
                           >
                             <Trash2 size={14} />
@@ -848,7 +989,7 @@ export default function UploadCV() {
                   )}
                 </>
               ) : (
-                <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
+                <div className="flex flex-col items-center justify-center py-20 text-[#73507B] gap-3">
                   <div className="p-4 bg-white/50 rounded-full border border-white/60 shadow-sm">
                     <Search size={32} />
                   </div>
@@ -861,6 +1002,17 @@ export default function UploadCV() {
           </div>
         </div>
       </div>
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        title="Hapus Riwayat Upload"
+        message={`Hapus ${deleteTarget?.length || 0} riwayat upload? Data kandidat dan file CV yang sudah masuk sistem tidak ikut terhapus.`}
+        confirmText="Ya, Hapus"
+        variant="danger"
+        loading={deleting}
+      />
+
       <BulkUploadModal
         isOpen={isBulkModalOpen}
         onClose={() => setIsBulkModalOpen(false)}

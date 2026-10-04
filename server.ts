@@ -343,6 +343,17 @@ app.use((req: any, res, next) => {
     return `Belum ${stage}`;
   };
 
+  // Rows referencing candidates(id) ON DELETE CASCADE that must survive
+  // archiving — snapshotted into candidate_logs.archived_records by
+  // move-to-log and re-inserted by restore-from-log. Order matters for
+  // restore only in that all of them need the candidate row to exist first.
+  const ARCHIVED_RELATED_TABLES = [
+    "psikotes_schedules",
+    "interview_schedules",
+    "candidate_evaluations",
+    "internal_notes",
+  ] as const;
+
   // Feature: Move Candidate to Log
   app.post("/api/candidates/move-to-log", requireAuth, async (req, res) => {
     const { candidateId, notes } = req.body;
@@ -369,6 +380,21 @@ app.use((req: any, res, next) => {
         id: a.user_id,
         name: a.profiles?.full_name
       })) || [];
+
+      // Snapshot related rows before deleting the candidate — the FKs are
+      // ON DELETE CASCADE, so they'd otherwise be destroyed (see migration
+      // 20261004000001). Abort the archive if any of them can't be read.
+      const archivedRecords: Record<string, any[]> = {};
+      for (const table of ARCHIVED_RELATED_TABLES) {
+        const { data: rows, error: relError } = await supabaseAdmin
+          .from(table)
+          .select("*")
+          .eq("candidate_id", candidateId);
+        if (relError) {
+          throw new Error(`Gagal membaca ${table} sebelum mengarsipkan: ${relError.message}`);
+        }
+        archivedRecords[table] = rows || [];
+      }
 
       // 2. Insert into logs (Remove fields that don't exist in candidate_logs and add statuses)
       const { 
@@ -411,9 +437,18 @@ app.use((req: any, res, next) => {
         assigned_history: history
       };
 
-      const { error: insertError } = await supabaseAdmin
+      let { error: insertError } = await supabaseAdmin
         .from("candidate_logs")
-        .insert([logData]);
+        .insert([{ ...logData, archived_records: archivedRecords }]);
+
+      // archived_records not added yet (migration 20261004000001 not run):
+      // keep archiving working the old way rather than failing.
+      if (insertError && /archived_records/.test(insertError.message || "")) {
+        console.warn("candidate_logs.archived_records missing — archiving without related records. Run migration 20261004000001.");
+        ({ error: insertError } = await supabaseAdmin
+          .from("candidate_logs")
+          .insert([logData]));
+      }
 
       if (insertError) {
         throw insertError;
@@ -496,6 +531,7 @@ app.use((req: any, res, next) => {
         notes,
         ai_biodata_summary,
         ai_interview_questions,
+        archived_records,
         ...baseData
       } = logRow;
 
@@ -545,6 +581,20 @@ app.use((req: any, res, next) => {
 
       if (insertError) {
         throw insertError;
+      }
+
+      // Put back the schedules / evaluations / notes snapshotted at archive
+      // time. If any table fails, undo the whole restore (deleting the
+      // candidate cascades away whatever was already re-inserted) so the
+      // archive row — and its snapshot — is kept intact.
+      for (const table of ARCHIVED_RELATED_TABLES) {
+        const rows = archived_records?.[table];
+        if (!Array.isArray(rows) || rows.length === 0) continue;
+        const { error: relError } = await supabaseAdmin.from(table).insert(rows);
+        if (relError) {
+          await supabaseAdmin.from("candidates").delete().eq("id", logId);
+          throw new Error(`Gagal memulihkan ${table}: ${relError.message}`);
+        }
       }
 
       const { error: deleteError } = await supabaseAdmin
@@ -1084,7 +1134,7 @@ app.use((req: any, res, next) => {
       // Save metadata to Supabase if possible
       try {
         const supabaseAdmin = getSupabaseAdmin();
-        await supabaseAdmin.from('cv_uploads').insert([{
+        const baseRow = {
           candidate_name: candidateName,
           candidate_email: candidateEmail,
           position: candidatePosition,
@@ -1093,7 +1143,18 @@ app.use((req: any, res, next) => {
           uploaded_at: uploadedAt || new Date().toISOString(),
           sender_name: senderName,
           sender_email: senderEmail
+        };
+        // job_id / source_info come from migration 20261004000000; if it
+        // hasn't been run yet, still save the history row without them.
+        const { error: insertError } = await supabaseAdmin.from('cv_uploads').insert([{
+          ...baseRow,
+          job_id: jobId,
+          source_info: sourceInfo || null
         }]);
+        if (insertError) {
+          console.warn("cv_uploads insert with job_id/source_info failed, retrying without:", insertError.message);
+          await supabaseAdmin.from('cv_uploads').insert([baseRow]);
+        }
       } catch (dbError) {
         console.warn("Could not save CV metadata to Supabase (table might not exist):", dbError);
       }
@@ -1351,7 +1412,47 @@ app.use((req: any, res, next) => {
         }
         throw error;
       }
-      res.json({ data: data || [], count: count || 0 });
+
+      const rows = (data || []) as any[];
+
+      // Processing status from the linked n8n job (pending/success/error).
+      const jobIds = rows.map((r) => r.job_id).filter(Boolean);
+      const jobsById: Record<string, any> = {};
+      if (jobIds.length > 0) {
+        const { data: jobs } = await supabaseAdmin
+          .from('n8n_jobs')
+          .select('id, status, message, updated_at')
+          .in('id', jobIds);
+        (jobs || []).forEach((j: any) => { jobsById[j.id] = j; });
+      }
+
+      // Existing candidate records with the same email (active or archived),
+      // so the history can link straight to the profile.
+      const emails = Array.from(new Set(
+        rows.map((r) => (r.candidate_email || '').trim()).filter(Boolean)
+          .flatMap((e) => [e, e.toLowerCase()])
+      ));
+      const matches: any[] = [];
+      if (emails.length > 0) {
+        const [activeRes, logsRes] = await Promise.all([
+          supabaseAdmin.from('candidates').select('id, email, position, status_screening, created_at').in('email', emails),
+          supabaseAdmin.from('candidate_logs').select('id, email, position, status_screening, created_at').in('email', emails),
+        ]);
+        (activeRes.data || []).forEach((c: any) => matches.push({ ...c, archived: false }));
+        (logsRes.data || []).forEach((c: any) => matches.push({ ...c, archived: true }));
+      }
+
+      res.json({
+        data: rows.map((r) => ({
+          ...r,
+          job_status: r.job_id ? jobsById[r.job_id]?.status || null : null,
+          job_message: r.job_id ? jobsById[r.job_id]?.message || null : null,
+          candidate_matches: matches.filter(
+            (m) => (m.email || '').toLowerCase() === (r.candidate_email || '').toLowerCase(),
+          ),
+        })),
+        count: count || 0,
+      });
     } catch (error: any) {
       console.error("Error fetching CV uploads:", error);
       res.status(500).json({ error: error.message || "Internal Server Error" });

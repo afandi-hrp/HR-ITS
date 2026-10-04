@@ -942,7 +942,7 @@ export default function RecruitmentFunnel() {
   return (
     <div className="space-y-4 animate-in fade-in duration-500">
       <div className="space-y-1">
-        <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
+        <h1 className="text-2xl font-extrabold tracking-tight text-[#5A305A]">
           Recruitment Funnel
         </h1>
         <p className="text-sm font-medium text-[#5A305A]/70 max-w-xl">
@@ -951,10 +951,10 @@ export default function RecruitmentFunnel() {
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row flex-wrap items-center gap-3">
+      <div className="bg-white/70 backdrop-blur-md p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row flex-wrap items-center gap-3">
         <button
           onClick={handlePreviewPDF}
-          className="w-full sm:w-auto shrink-0 justify-center px-4 py-2.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-red-200 group"
+          className="w-full sm:w-auto shrink-0 justify-center px-4 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-red-200 group h-10"
         >
           <FileText
             size={18}
@@ -967,7 +967,7 @@ export default function RecruitmentFunnel() {
           <select
             value={selectedPosition}
             onChange={(e) => setSelectedPosition(e.target.value)}
-            className="w-full pl-4 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] transition-all appearance-none text-sm font-medium text-[#5A305A] shadow-sm"
+            className="w-full pl-4 pr-10 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] transition-all appearance-none text-sm font-medium text-[#5A305A] shadow-sm h-10"
           >
             <option value="all">Semua Posisi</option>
             {positions.map((pos) => (
@@ -986,7 +986,7 @@ export default function RecruitmentFunnel() {
           <select
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
-            className="w-full pl-4 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] transition-all appearance-none text-sm font-medium text-[#5A305A] shadow-sm"
+            className="w-full pl-4 pr-10 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] transition-all appearance-none text-sm font-medium text-[#5A305A] shadow-sm h-10"
           >
             <option value="all">Semua Waktu</option>
             <option value="7days">7 Hari Terakhir</option>
@@ -1002,7 +1002,7 @@ export default function RecruitmentFunnel() {
         </div>
 
         {dateFilter === "custom" && (
-          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
+          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 shadow-sm h-10 text-sm">
             <input
               type="date"
               value={customStartDate}
@@ -1022,7 +1022,7 @@ export default function RecruitmentFunnel() {
         {(selectedPosition !== "all" || dateFilter !== "all") && (
           <button
             onClick={handleResetFilter}
-            className="p-2.5 text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm flex items-center justify-center"
+            className="text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm flex items-center justify-center h-10 text-sm w-10 shrink-0"
             title="Reset Filter"
           >
             <X size={20} />

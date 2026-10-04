@@ -561,7 +561,7 @@ export default function Logs() {
     <div className="space-y-4 pb-10">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
         <div className="space-y-1">
-          <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
+          <h1 className="text-2xl font-extrabold tracking-tight text-[#5A305A]">
             Log Kandidat
           </h1>
           <p className="text-sm font-medium text-[#5A305A]/70 max-w-xl">
@@ -570,7 +570,7 @@ export default function Logs() {
         </div>
       </div>
 
-      <div className="bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4">
+      <div className="bg-white/70 backdrop-blur-md p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">
           <Search
             className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -581,11 +581,11 @@ export default function Logs() {
             placeholder="Cari di arsip..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+            className="w-full pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm h-10"
           />
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1">
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 h-10 text-sm">
             <Filter size={16} className="text-slate-400" />
             <select
               value={statusFilter}
@@ -598,7 +598,7 @@ export default function Logs() {
               <option value="hired">Direkrut</option>
             </select>
           </div>
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1">
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 h-10 text-sm">
             <Calendar size={16} className="text-slate-400" />
             <input
               type="date"
@@ -618,7 +618,7 @@ export default function Logs() {
             {isBulkDeleteMode && selectedIds.length > 0 && (
               <button
                 onClick={() => setBulkDeleteModalOpen(true)}
-                className="px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all shadow-sm shadow-red-200 flex items-center gap-2"
+                className="px-4 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all shadow-sm shadow-red-200 flex items-center gap-2 h-10"
               >
                 <Trash2 size={16} />
                 Hapus Terpilih ({selectedIds.length})
@@ -630,7 +630,7 @@ export default function Logs() {
                 if (isBulkDeleteMode) setSelectedIds([]);
               }}
               className={cn(
-                "px-4 py-2 text-sm font-medium rounded-xl transition-all border",
+                "px-4 text-sm font-medium rounded-xl transition-all border h-10",
                 isBulkDeleteMode
                   ? "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
                   : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50",
@@ -646,21 +646,21 @@ export default function Logs() {
                 setStatusFilter("all");
                 setCurrentPage(1);
               }}
-              className="p-2.5 text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm flex items-center justify-center"
+              className="text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm flex items-center justify-center h-10 text-sm w-10 shrink-0"
               title="Reset Filter"
             >
               <FilterX size={20} />
             </button>
             <button
               onClick={fetchLogs}
-              className="p-2.5 text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm flex items-center justify-center"
+              className="text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm flex items-center justify-center h-10 text-sm w-10 shrink-0"
             >
               <RefreshCcw size={20} className={loading ? "animate-spin" : ""} />
             </button>
             <button
               onClick={handlePrepareExport}
               disabled={exportLoading}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-bold rounded-xl transition-all shadow-sm border border-emerald-200 disabled:opacity-50 text-sm whitespace-nowrap"
+              className="flex items-center justify-center gap-2 px-4 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-bold rounded-xl transition-all shadow-sm border border-emerald-200 disabled:opacity-50 text-sm whitespace-nowrap h-10"
             >
               {exportLoading ? (
                 <Loader2 size={18} className="animate-spin" />

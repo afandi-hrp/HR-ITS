@@ -110,12 +110,13 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
   const handleFileChange = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
-      const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-      
-      if (!allowedTypes.includes(file.type) || file.size > 5 * 1024 * 1024) {
+      // PDF only — the n8n CV-analysis workflow can't process Word files.
+      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+
+      if (!isPdf || file.size > 5 * 1024 * 1024) {
         toast({ 
           title: 'File Ditolak', 
-          description: 'Hanya file PDF/Word di bawah 5MB yang diperbolehkan.',
+          description: `${file.name}: ${!isPdf ? 'hanya file PDF yang diperbolehkan' : 'ukuran melebihi 5MB'}.`,
           variant: 'destructive' 
         });
         return;
@@ -335,7 +336,7 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
                     <input
                       type="file"
                       onChange={(e) => handleFileChange(row.id, e)}
-                      accept=".pdf,.doc,.docx"
+                      accept=".pdf,application/pdf"
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     />
                     <button

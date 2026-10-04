@@ -387,8 +387,8 @@ export default function ExternalData() {
     <div className="pb-8 space-y-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A] flex items-center gap-3">
-            <Database className="text-indigo-600" size={32} />
+          <h1 className="text-2xl font-extrabold tracking-tight text-[#5A305A] flex items-center gap-3">
+            <Database className="text-indigo-600" size={24} />
             Data Eksternal
           </h1>
           <p className="text-[#5A305A]/70 mt-1">
@@ -398,7 +398,7 @@ export default function ExternalData() {
       </div>
 
       {/* Panel Pencarian & Refresh */}
-      <div className="bg-white/60 backdrop-blur-md p-4 rounded-2xl border border-white/60 shadow-xl flex flex-col sm:flex-row gap-4 items-center">
+      <div className="bg-white/70 backdrop-blur-md p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-4 items-center">
         <div className="relative w-full flex-1">
           <Search
             className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -412,7 +412,7 @@ export default function ExternalData() {
               setSearchTerm(e.target.value);
               // setCurrentPage(1) dipindah ke useEffect debounce
             }}
-            className="pl-10 pr-4 py-2.5 border border-white/60 bg-white/50 backdrop-blur-md rounded-xl w-full focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-sm"
+            className="pl-10 pr-4 border border-white/60 bg-white/50 backdrop-blur-md rounded-xl w-full focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-sm h-10"
           />
         </div>
 
@@ -423,7 +423,7 @@ export default function ExternalData() {
               setStatusFilter(e.target.value as any);
               setCurrentPage(1);
             }}
-            className="w-full sm:w-auto px-4 py-2.5 border border-white/60 bg-white/50 backdrop-blur-md rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-sm text-[#5A305A] font-medium"
+            className="w-full sm:w-auto px-4 border border-white/60 bg-white/50 backdrop-blur-md rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-sm text-[#5A305A] font-medium h-10"
           >
             <option value="all">Semua Data</option>
             <option value="hide_archived">Sembunyikan Arsip</option>
@@ -437,7 +437,7 @@ export default function ExternalData() {
           <button
             onClick={handleRefresh}
             disabled={isLoading}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-white/50 backdrop-blur-md border border-white/60 text-indigo-700 rounded-xl hover:bg-white/80 hover:shadow-md transition-all shadow-sm disabled:opacity-50 font-medium text-sm"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 bg-white/50 backdrop-blur-md border border-white/60 text-indigo-700 rounded-xl hover:bg-white/80 hover:shadow-md transition-all shadow-sm disabled:opacity-50 font-medium text-sm h-10"
           >
             <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} />
             Refresh Data

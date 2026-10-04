@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import SignatureCanvas from "react-signature-canvas";
-import { cn, getEmbedUrl, getSocialMediaUrl, formatCurrencyId, formatDateDMY, calculateAge, fetchWithRetry } from "../lib/utils";
+import { cn, getEmbedUrl, getSocialMediaUrl, formatCurrencyId, formatDateDMY, formatDateDMMMY, getLocalDateString, calculateAge, fetchWithRetry } from "../lib/utils";
 import { resolveDocumentUrl } from "../lib/documentStorage";
 import { PdfToImages } from "../components/PdfToImages";
 
@@ -101,7 +101,12 @@ export default function ApplicationForm({
   const [otherDocFiles, setOtherDocFiles] = useState<File[]>([]);
   const [payslipFiles, setPayslipFiles] = useState<File[]>([]);
   const [portfolioFiles, setPortfolioFiles] = useState<File[]>([]);
-  const [token, setToken] = useState("");
+  // Prefilled from a "Salin Link" URL (/form-pelamar?token=WRN-...) shared
+  // from the Token Pelamar page; still editable.
+  const [token, setToken] = useState(() => {
+    if (readOnly || initialData || typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("token")?.trim().toUpperCase() || "";
+  });
   const [isOffline, setIsOffline] = useState(
     typeof navigator !== "undefined" ? !navigator.onLine : false,
   );
@@ -230,6 +235,9 @@ export default function ApplicationForm({
                   parsed.driver_license_number;
               }
             }
+            // The remuneration date is the signing date, not user input —
+            // never restore it from a draft saved on an earlier day.
+            merged.remuneration_signature_date = getLocalDateString();
             return merged;
           });
           toast({
@@ -521,7 +529,7 @@ export default function ApplicationForm({
     current_salary: "",
     expected_salary: "",
     remuneration_signature_name: "",
-    remuneration_signature_date: new Date().toISOString().split("T")[0],
+    remuneration_signature_date: getLocalDateString(),
   });
 
   useEffect(() => {
@@ -1422,6 +1430,9 @@ export default function ApplicationForm({
             ].join(", ")
           : formData.job_vacancy_info.join(", "),
         driver_license: formData.driver_license.join(", "),
+        // Stamp the actual submission day (the form may have been left open
+        // overnight since it was loaded).
+        remuneration_signature_date: getLocalDateString(),
         submitted_at: new Date().toISOString(),
       };
 
@@ -5563,16 +5574,12 @@ export default function ApplicationForm({
                       </span>
                       {readOnly ? (
                         <span className="font-medium text-[#5A305A] text-center w-full">
-                          {formatDateDMY(initialData?.remuneration_signature_date)}
+                          {formatDateDMMMY(initialData?.remuneration_signature_date)}
                         </span>
                       ) : (
-                        <input
-                          type="date"
-                          name="remuneration_signature_date"
-                          value={formData.remuneration_signature_date}
-                          readOnly
-                          className="w-full bg-transparent border-none focus:ring-0 text-center font-medium text-[#5A305A] cursor-not-allowed"
-                        />
+                        <span className="font-medium text-[#5A305A] text-center w-full cursor-not-allowed">
+                          {formatDateDMMMY(formData.remuneration_signature_date)}
+                        </span>
                       )}
                     </div>
                   </div>

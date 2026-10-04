@@ -7,6 +7,8 @@ import {
   Search,
   Filter,
   FilterX,
+  ArrowUpDown,
+  Check,
   RefreshCcw,
   Send,
   FolderInput,
@@ -37,12 +39,13 @@ import {
   CalendarClock,
   UserX,
 } from "lucide-react";
-import { cn, formatDate, fetchWithRetry } from "../lib/utils";
+import { cn, formatDate, fetchWithRetry, formatDateDMMMY, getLocalDateString, formatRelativeTime } from "../lib/utils";
 import {
   getStageAttendance,
   isNoShowSchedule,
   isPendingSchedule,
 } from "../lib/scheduleStatus";
+import { getCandidateStage, isUserInterview } from "../lib/candidateStage";
 import NoShowModal, {
   NoShowBadge,
   NoShowFollowUp,
@@ -79,6 +82,32 @@ const PIPELINE_STATUS_OPTIONS = [
   "Reference Check",
   "Rejected",
   "Hired",
+];
+
+// Options for the top "Tahapan" filter: the pipeline stages a candidate can
+// be in while still active. Rejected/Hired aren't offered — those candidates
+// have already moved to candidate_logs, which this list doesn't load.
+const STAGE_FILTER_OPTIONS = PIPELINE_STATUS_OPTIONS.filter(
+  (s) => !["Inbox", "Rejected", "Hired"].includes(s),
+);
+const STAGE_FILTER_LABELS: Record<string, string> = {
+  "Belum Diproses": "Baru (Belum Diproses)",
+  Lolos: "Lolos Awal",
+};
+
+// "Perlu tindakan" thresholds on the position cards.
+const STALE_NEW_DAYS = 7;
+const DAY_MS = 24 * 60 * 60 * 1000;
+// Pseudo-status for the position drill-down: candidates needing HR action.
+const NEEDS_ACTION_FILTER = "Perlu Tindakan";
+const TOOLTIP_NAME_LIMIT = 15;
+
+type PositionSort = "terbaru" | "pelamar" | "tindakan" | "nama";
+const POSITION_SORT_OPTIONS: { value: PositionSort; label: string }[] = [
+  { value: "terbaru", label: "Update terbaru" },
+  { value: "tindakan", label: "Perlu tindakan terbanyak" },
+  { value: "pelamar", label: "Pelamar terbanyak" },
+  { value: "nama", label: "Nama posisi (A–Z)" },
 ];
 
 // Grouping/filtering happens client-side across the whole filtered result set
@@ -127,6 +156,12 @@ export default function Screening() {
     return {};
   });
   const [openPositions, setOpenPositions] = useState<string[]>([]);
+  // Positions whose opening is currently published in Open Recruitment.
+  const [publishedPositions, setPublishedPositions] = useState<Set<string>>(new Set());
+  const [positionSort, setPositionSort] = useState<PositionSort>(() => {
+    const v = searchParams.get("sortPos");
+    return POSITION_SORT_OPTIONS.some((o) => o.value === v) ? (v as PositionSort) : "terbaru";
+  });
   const [startDate, setStartDate] = useState(searchParams.get("startDate") || "");
   const [isStatusExpanded, setIsStatusExpanded] = useState(true);
   const [endDate, setEndDate] = useState(searchParams.get("endDate") || "");
@@ -190,6 +225,9 @@ export default function Screening() {
     
     if (currentPage !== 1) params.set("page", currentPage.toString());
     else params.delete("page");
+
+    if (positionSort !== "terbaru") params.set("sortPos", positionSort);
+    else params.delete("sortPos");
     
     if (selectedPosition) {
       params.set("selectedPosition", selectedPosition);
@@ -208,7 +246,7 @@ export default function Screening() {
     if (currentParams !== newParams) {
       setSearchParams(params, { replace: true });
     }
-  }, [search, statusFilter, positionFilter, startDate, endDate, currentPage, selectedPosition, positionStatusFilters, setSearchParams]);
+  }, [search, statusFilter, positionFilter, startDate, endDate, currentPage, positionSort, selectedPosition, positionStatusFilters, setSearchParams]);
   const [schedulingData, setSchedulingData] = useState<{
     candidate: Candidate;
     type: "psikotes" | "interview";
@@ -319,9 +357,6 @@ export default function Screening() {
     if (endDate) {
       query = query.lte("date", `${endDate}T23:59:59`);
     }
-    if (statusFilter !== "all") {
-      query = query.eq("status_screening", statusFilter);
-    }
     if (positionFilter !== "all") {
       query = query.eq("position", positionFilter);
     }
@@ -395,10 +430,24 @@ export default function Screening() {
         .select("position")
         .eq("is_published", true);
 
+      // Also include positions that still have active candidates but whose
+      // opening is no longer published — they still get a card below.
+      const { data: candidatePositions } = await supabase
+        .from("candidates")
+        .select("position")
+        .limit(SCREENING_FETCH_LIMIT);
+
       if (!error && data) {
-        const positions = Array.from(
+        setPublishedPositions(
           new Set(data.map((d) => d.position).filter(Boolean)),
         );
+        const positions = Array.from(
+          new Set(
+            [...data, ...(candidatePositions || [])]
+              .map((d) => d.position)
+              .filter(Boolean),
+          ),
+        ).sort((a, b) => a.localeCompare(b));
         setOpenPositions(positions);
       }
     } catch (err) {
@@ -418,7 +467,6 @@ export default function Screening() {
     debouncedSearch,
     currentPage,
     itemsPerPage,
-    statusFilter,
     positionFilter,
     profile,
   ]);
@@ -859,50 +907,35 @@ export default function Screening() {
     }
   };
 
-  const isUserInterview = (s: any) => s.additional_notes?.startsWith("[USER]");
+  const getCandidateDerivedStatus = getCandidateStage;
 
-  const getCandidateDerivedStatus = (candidate: any) => {
-    if (candidate.status_screening === "hired") return "Hired";
-    if (candidate.status_screening === "rejected") return "Rejected";
+  const matchesStageFilter = (c: any) =>
+    statusFilter === "all" ||
+    !STAGE_FILTER_OPTIONS.includes(statusFilter) ||
+    getCandidateDerivedStatus(c) === statusFilter;
 
-    if (candidate.candidate_evaluations?.some((e: any) => e.evaluation_type === "REFERENCE_CHECK")) {
-      return "Reference Check";
-    }
-
-    // If they already have an interview status/result (legacy candidates with no schedule rows), interview is done
-    if (candidate.interview_status && candidate.interview_status.trim() !== '') return "Interview Selesai User";
-
-    // Schedule checks come first so we see them in the pipeline correctly
-    const interviewSchedules = candidate.interview_schedules || [];
-    const userSchedules = interviewSchedules.filter(isUserInterview);
-    const hcSchedules = interviewSchedules.filter((s: any) => !isUserInterview(s));
-
-    const stageLabel = {
-      done: "Interview Selesai",
-      scheduled: "Jadwal Interview",
-      no_show: "Tidak Hadir Interview",
-    } as const;
-    const userStage = getStageAttendance(userSchedules);
-    if (userStage) return `${stageLabel[userStage]} User`;
-    const hcStage = getStageAttendance(hcSchedules);
-    if (hcStage) return `${stageLabel[hcStage]} HC`;
-
-    // If they already have a psikotes status/result, it means psikotes is done
-    if (candidate.psikotes_status && candidate.psikotes_status.trim() !== '') return "Psikotes Selesai";
-
-    const psikotesStage = getStageAttendance(candidate.psikotes_schedules);
-    if (psikotesStage === "done") return "Psikotes Selesai";
-    if (psikotesStage === "scheduled") return "Jadwal Psikotes";
-    if (psikotesStage === "no_show") return "Tidak Hadir Psikotes";
-
-    if (candidate.status_screening === "accepted") return "Lolos"; // Lolos screening awal
-
-    // We can also assume "invited" might mean they are waiting for schedule?
-    // We will just default to Belum Diproses for now if they don't have schedules yet
-    return "Belum Diproses";
+  // Why a candidate needs HR action: schedules whose time has passed but are
+  // still neither confirmed attended nor marked no-show, and/or a new
+  // applicant left unprocessed for more than STALE_NEW_DAYS.
+  const getActionReasons = (c: any) => {
+    const nowMs = Date.now();
+    const overdue = [
+      ...(c.psikotes_schedules || []).map((s: any) => ({ s, label: "Psikotes" })),
+      ...(c.interview_schedules || []).map((s: any) => ({ s, label: `Interview ${isUserInterview(s) ? "User" : "HC"}` })),
+    ].filter(({ s }) => isPendingSchedule(s) && new Date(s.end_time || s.schedule_date).getTime() < nowMs);
+    const staleNew =
+      getCandidateDerivedStatus(c) === "Belum Diproses" &&
+      nowMs - new Date(c.created_at || c.date).getTime() > STALE_NEW_DAYS * DAY_MS;
+    return { overdue, staleNew, needsAction: overdue.length > 0 || staleNew };
   };
 
-  const allGroupedCandidates = candidates.reduce(
+  const describeActionReasons = (r: ReturnType<typeof getActionReasons>) =>
+    [
+      ...r.overdue.map(({ s, label }) => `${label} ${formatDateDMMMY(s.schedule_date)} belum dikonfirmasi hadir/tidak hadir`),
+      r.staleNew ? `Pelamar baru > ${STALE_NEW_DAYS} hari belum diproses` : null,
+    ].filter(Boolean).join("\n");
+
+  const allGroupedCandidates = candidates.filter(matchesStageFilter).reduce(
     (acc: Record<string, Candidate[]>, c) => {
       if (!acc[c.position]) acc[c.position] = [];
       acc[c.position].push(c);
@@ -912,11 +945,12 @@ export default function Screening() {
   );
 
   const candidatesForSelectedPosition = selectedPosition
-    ? [...(allGroupedCandidates[selectedPosition] || []), ...archivedForPosition]
+    ? [...(allGroupedCandidates[selectedPosition] || []), ...archivedForPosition.filter(matchesStageFilter)]
     : [];
 
   const filteredCandidatesForPosition = candidatesForSelectedPosition.filter((c) => {
     const selectedStatus = positionStatusFilters[selectedPosition!] || "Inbox";
+    if (selectedStatus === NEEDS_ACTION_FILTER) return getActionReasons(c).needsAction;
     if (selectedStatus === "Inbox" || !PIPELINE_STATUS_OPTIONS.includes(selectedStatus)) return true;
     return getCandidateDerivedStatus(c) === selectedStatus;
   });
@@ -969,10 +1003,61 @@ export default function Screening() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   
   const paginatedCandidates = selectedPosition ? sortedCandidatesForPosition.slice(startIndex, startIndex + itemsPerPage) : [];
+  // Per-position counts for the position cards, the summary tiles and the
+  // position sort — each candidate's derived status is computed once.
+  const getPositionStats = (cands: any[]) => {
+    const derived = cands.map((c) => getCandidateDerivedStatus(c));
+    const count = (statuses: string[]) => derived.filter((st) => statuses.includes(st)).length;
+    const reasons = cands.map((c) => ({ c, r: getActionReasons(c) }));
+    const overdueList = reasons.flatMap(({ c, r }) =>
+      r.overdue.map(({ s, label }) => `- ${c.full_name} — ${label}, ${formatDateDMMMY(s.schedule_date)}`),
+    );
+    const staleList = reasons
+      .filter(({ r }) => r.staleNew)
+      .map(({ c }) => `- ${c.full_name} — melamar ${formatDateDMMMY(c.created_at || c.date)}`);
+    const capList = (lines: string[]) =>
+      lines.length > TOOLTIP_NAME_LIMIT
+        ? [...lines.slice(0, TOOLTIP_NAME_LIMIT), `…dan ${lines.length - TOOLTIP_NAME_LIMIT} lainnya`]
+        : lines;
+    const actionTooltip = [
+      "Klik untuk melihat kandidat yang perlu tindakan.",
+      ...(overdueList.length ? ["", "Jadwal lewat belum dikonfirmasi:", ...capList(overdueList)] : []),
+      ...(staleList.length ? ["", `Pelamar baru > ${STALE_NEW_DAYS} hari belum diproses:`, ...capList(staleList)] : []),
+    ].join("\n");
+    const stats = {
+      total: cands.length,
+      newCount: count(["Belum Diproses"]),
+      highFitCount: count(["Lolos"]),
+      jadwalPsikotes: count(["Jadwal Psikotes"]),
+      selesaiPsikotes: count(["Psikotes Selesai"]),
+      tidakHadirPsikotes: count(["Tidak Hadir Psikotes"]),
+      jadwalInterview: count(["Jadwal Interview HC", "Jadwal Interview User"]),
+      selesaiInterview: count(["Interview Selesai HC", "Interview Selesai User"]),
+      tidakHadirInterview: count(["Tidak Hadir Interview HC", "Tidak Hadir Interview User"]),
+      referenceCheck: count(["Reference Check"]),
+      overdueSchedules: overdueList.length,
+      staleNew: staleList.length,
+      // Number of candidates needing action (used for sorting).
+      needsAction: reasons.filter(({ r }) => r.needsAction).length,
+      actionTooltip,
+      lastUpdate: Math.max(0, ...cands.map((c: any) => new Date(c.updated_at || c.created_at || 0).getTime())),
+    };
+    return stats;
+  };
+
+  const positionStats: Record<string, ReturnType<typeof getPositionStats>> = selectedPosition
+    ? {}
+    : Object.fromEntries(
+        Object.entries(allGroupedCandidates).map(([pos, cands]) => [pos, getPositionStats(cands)]),
+      );
+
   const paginatedPositions = !selectedPosition ? Object.keys(allGroupedCandidates).sort((a, b) => {
-    const maxA = Math.max(...(allGroupedCandidates[a] || []).map(c => new Date(c.updated_at || c.created_at || 0).getTime()));
-    const maxB = Math.max(...(allGroupedCandidates[b] || []).map(c => new Date(c.updated_at || c.created_at || 0).getTime()));
-    return maxB - maxA;
+    const sa = positionStats[a];
+    const sb = positionStats[b];
+    if (positionSort === "nama") return a.localeCompare(b);
+    if (positionSort === "pelamar" && sb.total !== sa.total) return sb.total - sa.total;
+    if (positionSort === "tindakan" && sb.needsAction !== sa.needsAction) return sb.needsAction - sa.needsAction;
+    return sb.lastUpdate - sa.lastUpdate;
   }).slice(startIndex, startIndex + itemsPerPage) : [];
 
   const getManualAssessmentScore = (candidate: Candidate) => {
@@ -1064,7 +1149,7 @@ export default function Screening() {
         <>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
             <div className="space-y-1">
-              <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
+              <h1 className="text-2xl font-extrabold tracking-tight text-[#5A305A]">
                 {isUserManager
                   ? "Kandidat Saya"
                   : isApprovalRole
@@ -1092,12 +1177,12 @@ export default function Screening() {
                     placeholder="Cari nama kandidat atau posisi..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] transition-all text-sm"
+                    className="w-full pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] transition-all text-sm h-10"
                   />
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 max-w-[150px]">
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 w-[200px] h-10 text-sm">
                 <Filter size={16} className="text-[#73507B] shrink-0" />
                 <select
                   value={positionFilter}
@@ -1110,37 +1195,147 @@ export default function Screening() {
                   ))}
                 </select>
               </div>
-              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 max-w-[140px]">
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 w-[220px] h-10 text-sm">
                 <Filter size={16} className="text-[#73507B] shrink-0" />
                 <select
-                  value={statusFilter}
+                  value={STAGE_FILTER_OPTIONS.includes(statusFilter) ? statusFilter : "all"}
                   onChange={(e) => setStatusFilter(e.target.value)}
                   className="bg-transparent text-sm focus:outline-none text-[#5A305A] w-full truncate"
+                  title="Filter berdasarkan tahapan kandidat saat ini"
                 >
-                  <option value="all">Semua Status</option>
-                  <option value="pending">Pending</option>
-                  <option value="invited">Invited</option>
-                  <option value="accepted">Accepted</option>
-                  <option value="rejected">Rejected</option>
-                  <option value="hired">Hired</option>
+                  <option value="all">Semua Tahapan</option>
+                  {STAGE_FILTER_OPTIONS.map((stage) => (
+                    <option key={stage} value={stage}>
+                      {STAGE_FILTER_LABELS[stage] || stage}
+                    </option>
+                  ))}
                 </select>
               </div>
-              <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 shrink-0">
-                <CalendarIcon size={16} className="text-[#73507B] shrink-0" />
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="bg-transparent text-sm focus:outline-none text-[#5A305A] w-[104px]"
+              <Popover>
+                <PopoverTrigger
+                  render={
+                    <button className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 text-sm text-[#5A305A] shrink-0 hover:bg-white transition-colors h-10">
+                      <CalendarIcon size={16} className="text-[#73507B] shrink-0" />
+                      <span className="whitespace-nowrap">
+                        {startDate && endDate
+                          ? `${formatDateDMMMY(startDate)} – ${formatDateDMMMY(endDate)}`
+                          : startDate
+                            ? `Sejak ${formatDateDMMMY(startDate)}`
+                            : endDate
+                              ? `Sampai ${formatDateDMMMY(endDate)}`
+                              : "Semua Tanggal Lamar"}
+                      </span>
+                      <ChevronDown size={14} className="opacity-60" />
+                    </button>
+                  }
                 />
-                <span className="text-[#73507B]">-</span>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="bg-transparent text-sm focus:outline-none text-[#5A305A] w-[104px]"
+                <PopoverContent className="w-72 p-3">
+                  <div className="space-y-3">
+                    <p className="text-xs font-bold text-[#73507B] uppercase tracking-wider">
+                      Tanggal Lamar
+                    </p>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {[
+                        { label: "Hari ini", days: 0 },
+                        { label: "7 hari terakhir", days: 6 },
+                        { label: "30 hari terakhir", days: 29 },
+                        { label: "Bulan ini", days: -1 },
+                      ].map(({ label, days }) => (
+                        <button
+                          key={label}
+                          onClick={() => {
+                            const today = new Date();
+                            const start =
+                              days === -1
+                                ? new Date(today.getFullYear(), today.getMonth(), 1)
+                                : new Date(today.getFullYear(), today.getMonth(), today.getDate() - days);
+                            setStartDate(getLocalDateString(start));
+                            setEndDate(getLocalDateString(today));
+                          }}
+                          className="px-2 py-1.5 text-xs font-medium text-[#5A305A] bg-slate-50 border border-slate-200 rounded-lg hover:bg-[#5A305A]/10 transition-colors"
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="space-y-1">
+                        <span className="block text-[11px] font-medium text-[#73507B]">Dari</span>
+                        <input
+                          type="date"
+                          value={startDate}
+                          max={endDate || undefined}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-[#5A305A] focus:outline-none focus:ring-2 focus:ring-[#5A305A]"
+                        />
+                      </label>
+                      <label className="space-y-1">
+                        <span className="block text-[11px] font-medium text-[#73507B]">Sampai</span>
+                        <input
+                          type="date"
+                          value={endDate}
+                          min={startDate || undefined}
+                          onChange={(e) => setEndDate(e.target.value)}
+                          className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-[#5A305A] focus:outline-none focus:ring-2 focus:ring-[#5A305A]"
+                        />
+                      </label>
+                    </div>
+                    {(startDate || endDate) && (
+                      <button
+                        onClick={() => {
+                          setStartDate("");
+                          setEndDate("");
+                        }}
+                        className="w-full px-2 py-1.5 text-xs font-medium text-rose-600 bg-white border border-rose-200 rounded-lg hover:bg-rose-50 transition-colors"
+                      >
+                        Hapus Filter Tanggal
+                      </button>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <Popover>
+                <PopoverTrigger
+                  render={
+                    <button
+                      className={cn(
+                        "relative bg-white border rounded-xl transition-all shadow-sm flex items-center shrink-0 h-10 text-sm w-10 justify-center",
+                        positionSort !== "terbaru"
+                          ? "text-[#5A305A] border-[#5A305A]/40 bg-[#5A305A]/5"
+                          : "text-[#73507B] border-slate-200 hover:text-[#5A305A] hover:bg-slate-50",
+                      )}
+                      title={`Urutkan posisi: ${POSITION_SORT_OPTIONS.find((o) => o.value === positionSort)?.label}`}
+                    >
+                      <ArrowUpDown size={18} />
+                      {positionSort !== "terbaru" && (
+                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#F58C77] border-2 border-white" />
+                      )}
+                    </button>
+                  }
                 />
-              </div>
+                <PopoverContent className="w-60 p-1.5">
+                  <p className="px-3 pt-1.5 pb-1 text-[11px] font-bold text-[#73507B] uppercase tracking-wider">
+                    Urutkan Posisi
+                  </p>
+                  <div className="flex flex-col gap-0.5">
+                    {POSITION_SORT_OPTIONS.map((o) => (
+                      <button
+                        key={o.value}
+                        onClick={() => { setPositionSort(o.value); setCurrentPage(1); }}
+                        className={cn(
+                          "flex items-center justify-between gap-2 px-3 py-2 text-sm rounded-lg text-left transition-colors",
+                          positionSort === o.value
+                            ? "bg-[#5A305A]/10 text-[#5A305A] font-bold"
+                            : "text-[#5A305A] hover:bg-slate-50",
+                        )}
+                      >
+                        {o.label}
+                        {positionSort === o.value && <Check size={16} className="shrink-0" />}
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
               <button
                 onClick={() => {
                   setSearch("");
@@ -1148,9 +1343,10 @@ export default function Screening() {
                   setPositionFilter("all");
                   setStartDate("");
                   setEndDate("");
+                  setPositionSort("terbaru");
                   setCurrentPage(1);
                 }}
-                className="p-2 text-[#73507B] hover:text-red-600 bg-white border border-slate-200 hover:bg-red-50 hover:border-red-200 rounded-xl transition-all shadow-sm flex items-center gap-2 shrink-0"
+                className="text-[#73507B] hover:text-red-600 bg-white border border-slate-200 hover:bg-red-50 hover:border-red-200 rounded-xl transition-all shadow-sm flex items-center gap-2 shrink-0 h-10 text-sm w-10 justify-center"
                 title="Reset Filter"
               >
                 <FilterX size={18} />
@@ -1158,11 +1354,10 @@ export default function Screening() {
 
               <button
                 onClick={fetchCandidates}
-                className="p-2 text-[#5A305A] bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 rounded-xl transition-all shadow-sm flex items-center gap-2 shrink-0"
+                className="text-[#5A305A] bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 rounded-xl transition-all shadow-sm flex items-center gap-2 shrink-0 h-10 text-sm w-10 justify-center"
                 title="Refresh Data"
               >
                 <RefreshCcw size={18} className={loading ? "animate-spin" : ""} />
-                <span className="font-medium hidden 2xl:inline">Refresh</span>
               </button>
             </div>
             </div>
@@ -1177,103 +1372,128 @@ export default function Screening() {
             </div>
           )}
 
-          <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
              {paginatedPositions.length === 0 && !loading ? (
-                <div className="py-12 text-center bg-white/50 backdrop-blur-sm rounded-2xl border border-dashed border-slate-300">
+                <div className="xl:col-span-2 py-12 text-center bg-white/50 backdrop-blur-sm rounded-2xl border border-dashed border-slate-300">
                   <p className="text-[#73507B] font-medium">Tidak ada lowongan ditemukan.</p>
                 </div>
              ) : (
                paginatedPositions.map(position => {
-                 const allCands = allGroupedCandidates[position] || [];
-                 const total = allCands.length;
-                 const newCount = allCands.filter((c: any) => getCandidateDerivedStatus(c) === "Belum Diproses").length;
-                 const highFitCount = allCands.filter((c: any) => getCandidateDerivedStatus(c) === "Lolos").length;
-                 
-                 const jadwalPsikotesCount = allCands.filter((c: any) => getCandidateDerivedStatus(c) === "Jadwal Psikotes").length;
-                 const selesaiPsikotesCount = allCands.filter((c: any) => getCandidateDerivedStatus(c) === "Psikotes Selesai").length;
-                 const tidakHadirPsikotesCount = allCands.filter((c: any) => getCandidateDerivedStatus(c) === "Tidak Hadir Psikotes").length;
-                 
-                 const jadwalInterviewCount = allCands.filter((c: any) => ["Jadwal Interview HC", "Jadwal Interview User"].includes(getCandidateDerivedStatus(c))).length;
-                 const selesaiInterviewCount = allCands.filter((c: any) => ["Interview Selesai HC", "Interview Selesai User"].includes(getCandidateDerivedStatus(c))).length;
-                 const tidakHadirInterviewCount = allCands.filter((c: any) => ["Tidak Hadir Interview HC", "Tidak Hadir Interview User"].includes(getCandidateDerivedStatus(c))).length;
-                 const referenceCheckCount = allCands.filter((c: any) => getCandidateDerivedStatus(c) === "Reference Check").length;
-                 
+                 const st = positionStats[position];
+                 const psikotesTotal = st.jadwalPsikotes + st.selesaiPsikotes + st.tidakHadirPsikotes;
+                 const interviewTotal = st.jadwalInterview + st.selesaiInterview + st.tidakHadirInterview;
+                 const isPublished = publishedPositions.has(position);
+                 const actionParts = [
+                   st.overdueSchedules > 0 ? `${st.overdueSchedules} jadwal lewat belum dikonfirmasi` : null,
+                   st.staleNew > 0 ? `${st.staleNew} pelamar baru > ${STALE_NEW_DAYS} hari` : null,
+                 ].filter(Boolean);
+                 const dimIfZero = (n: number) => (n === 0 ? "opacity-50 grayscale" : "");
+                 const pct = (n: number) => `${Math.round((n / st.total) * 100)}%`;
+                 // Same colors as the chips above, so the chips double as the legend.
+                 const segments = [
+                   { n: st.newCount, cls: "bg-indigo-400", label: "Baru" },
+                   { n: st.highFitCount, cls: "bg-emerald-400", label: "Lolos Awal" },
+                   { n: st.jadwalPsikotes + st.selesaiPsikotes, cls: "bg-sky-400", label: "Psikotes" },
+                   { n: st.jadwalInterview + st.selesaiInterview, cls: "bg-amber-400", label: "Interview" },
+                   { n: st.referenceCheck, cls: "bg-fuchsia-400", label: "Reference Check" },
+                   { n: st.tidakHadirPsikotes + st.tidakHadirInterview, cls: "bg-rose-400", label: "Tidak Hadir" },
+                 ].filter((seg) => seg.n > 0);
+
                  return (
-                   <div 
+                   <div
                      key={position}
                      onClick={() => { setSelectedPosition(position); setCurrentPage(1); setSearch(""); }}
-                     className="bg-white border border-amber-300 rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-amber-400 transition-all cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4 group"
+                     className="bg-white border border-amber-300 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-amber-400 transition-all cursor-pointer flex flex-col gap-3 group"
                    >
-                     <div className="space-y-2">
-                       <h3 className="text-xl font-bold text-[#5A305A] underline decoration-slate-300 decoration-2 underline-offset-4 group-hover:text-[#5A305A] transition-colors">{position}</h3>
-                       <div className="text-xs sm:text-sm text-[#73507B] flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-1.5 sm:gap-2 mt-2">
-                         <span className="flex items-center gap-1.5 whitespace-nowrap"><Users size={16} className="text-[#73507B]" /> <span className="font-medium">{total} Total Pelamar</span></span>
-
-                         <span className="flex items-center gap-1.5 bg-slate-100 px-1.5 sm:px-2 py-1 rounded-lg whitespace-nowrap"><Search size={14} className="text-indigo-500" /> <span className="font-medium text-indigo-700">{newCount} Baru</span></span>
-                         <span className="flex items-center gap-1.5 bg-emerald-50 px-1.5 sm:px-2 py-1 rounded-lg text-emerald-700 font-medium whitespace-nowrap" title="Lolos screening awal tetapi belum dijadwalkan test/interview"><Star size={14} /> {highFitCount} Lolos Awal</span>
-
-                         <div className="flex items-center gap-1 bg-sky-50 px-1.5 sm:px-2 py-1 rounded-lg text-sky-700 font-medium whitespace-nowrap">
-                           <FileText size={14} className="shrink-0" /> Psikotes: {jadwalPsikotesCount} Jadwal &middot; {selesaiPsikotesCount} Selesai{tidakHadirPsikotesCount > 0 && <> &middot; <span className="text-rose-600">{tidakHadirPsikotesCount} Tidak Hadir</span></>}
-                         </div>
-
-                         <div className="flex items-center gap-1 bg-amber-50 px-1.5 sm:px-2 py-1 rounded-lg text-amber-700 font-medium whitespace-nowrap">
-                           <Users size={14} className="shrink-0" /> Interview: {jadwalInterviewCount} Jadwal &middot; {selesaiInterviewCount} Selesai{tidakHadirInterviewCount > 0 && <> &middot; <span className="text-rose-600">{tidakHadirInterviewCount} Tidak Hadir</span></>}
-                         </div>
-
-                         {referenceCheckCount > 0 && (
-                           <span className="flex items-center gap-1.5 bg-fuchsia-50 px-1.5 sm:px-2 py-1 rounded-lg text-fuchsia-700 font-medium whitespace-nowrap">
-                             <FileText size={14} /> {referenceCheckCount} Reference Check
+                     <div className="flex items-start justify-between gap-3">
+                       <div className="min-w-0">
+                         <div className="flex items-center gap-2 flex-wrap">
+                           <h3 className="text-lg font-bold text-[#5A305A] underline decoration-slate-300 decoration-2 underline-offset-4 truncate" title={position}>{position}</h3>
+                           <span
+                             className={cn(
+                               "px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border whitespace-nowrap",
+                               isPublished ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-100 text-slate-500 border-slate-200",
+                             )}
+                             title={isPublished ? "Lowongan sedang dipublikasikan di Open Recruitment" : "Lowongan tidak sedang dipublikasikan, tapi masih ada pelamar aktif"}
+                           >
+                             {isPublished ? "Lowongan Dibuka" : "Lowongan Ditutup"}
                            </span>
-                         )}
-                       </div>
-
-                       {total > 0 && (
-                         <div className="flex h-2 w-full max-w-md rounded-full overflow-hidden bg-slate-100 mt-1">
-                           {newCount > 0 && (
-                             <div
-                               className="bg-indigo-400"
-                               style={{ width: `${(newCount / total) * 100}%` }}
-                               title={`${newCount} Baru`}
-                             />
-                           )}
-                           {highFitCount > 0 && (
-                             <div
-                               className="bg-emerald-400"
-                               style={{ width: `${(highFitCount / total) * 100}%` }}
-                               title={`${highFitCount} Lolos Awal`}
-                             />
-                           )}
-                           {jadwalPsikotesCount + selesaiPsikotesCount + tidakHadirPsikotesCount > 0 && (
-                             <div
-                               className="bg-sky-400"
-                               style={{
-                                 width: `${((jadwalPsikotesCount + selesaiPsikotesCount + tidakHadirPsikotesCount) / total) * 100}%`,
-                               }}
-                               title={`${jadwalPsikotesCount + selesaiPsikotesCount + tidakHadirPsikotesCount} Psikotes`}
-                             />
-                           )}
-                           {jadwalInterviewCount + selesaiInterviewCount + tidakHadirInterviewCount > 0 && (
-                             <div
-                               className="bg-amber-400"
-                               style={{
-                                 width: `${((jadwalInterviewCount + selesaiInterviewCount + tidakHadirInterviewCount) / total) * 100}%`,
-                               }}
-                               title={`${jadwalInterviewCount + selesaiInterviewCount + tidakHadirInterviewCount} Interview`}
-                             />
-                           )}
-                           {referenceCheckCount > 0 && (
-                             <div
-                               className="bg-fuchsia-400"
-                               style={{ width: `${(referenceCheckCount / total) * 100}%` }}
-                               title={`${referenceCheckCount} Reference Check`}
-                             />
-                           )}
                          </div>
+                         <p className="text-xs text-[#73507B] mt-1.5 flex items-center gap-1.5 flex-wrap">
+                           <Users size={13} className="shrink-0" />
+                           <span className="font-semibold text-[#5A305A]">{st.total} pelamar aktif</span>
+                           <span>&middot;</span>
+                           <span title={st.lastUpdate ? formatDate(new Date(st.lastUpdate)) : undefined}>
+                             Update terakhir {formatRelativeTime(st.lastUpdate || null)}
+                           </span>
+                         </p>
+                       </div>
+                       <span className="hidden sm:flex items-center gap-1.5 shrink-0 px-4 py-2 text-sm font-bold border border-[#5A305A]/20 text-[#5A305A] bg-white rounded-xl shadow-sm whitespace-nowrap transition-all group-hover:bg-[#5A305A] group-hover:text-white group-hover:-translate-y-0.5">
+                         Lihat Kandidat <ChevronRight size={16} />
+                       </span>
+                     </div>
+
+                     {actionParts.length > 0 && (
+                       <button
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           setSelectedPosition(position);
+                           setPositionStatusFilters((prev) => ({ ...prev, [position]: NEEDS_ACTION_FILTER }));
+                           setCurrentPage(1);
+                           setSearch("");
+                         }}
+                         className="flex items-center gap-1.5 self-start bg-rose-50 border border-rose-200 px-2 py-1 rounded-lg text-rose-700 text-xs sm:text-sm font-semibold hover:bg-rose-100 hover:border-rose-300 transition-colors text-left"
+                         title={st.actionTooltip}
+                       >
+                         <AlertTriangle size={14} className="shrink-0" /> Perlu tindakan: {actionParts.join(" · ")}
+                         <ChevronRight size={14} className="shrink-0 opacity-70" />
+                       </button>
+                     )}
+
+                     <div className="text-xs text-[#73507B] flex flex-wrap items-center gap-1.5">
+                       <span
+                         className={cn("flex items-center gap-1.5 bg-indigo-50 px-2 py-1 rounded-lg whitespace-nowrap", dimIfZero(st.newCount))}
+                         title="Pelamar baru yang belum diproses sama sekali (belum diterima/ditolak dan belum dijadwalkan)"
+                       >
+                         <Search size={13} className="text-indigo-500" /> <span className="font-medium text-indigo-700">{st.newCount} Baru</span>
+                       </span>
+                       <span
+                         className={cn("flex items-center gap-1.5 bg-emerald-50 px-2 py-1 rounded-lg text-emerald-700 font-medium whitespace-nowrap", dimIfZero(st.highFitCount))}
+                         title="Lolos screening awal tetapi belum dijadwalkan psikotes/interview"
+                       >
+                         <Star size={13} /> {st.highFitCount} Lolos Awal
+                       </span>
+                       <span
+                         className={cn("flex items-center gap-1 bg-sky-50 px-2 py-1 rounded-lg text-sky-700 font-medium whitespace-nowrap", dimIfZero(psikotesTotal))}
+                         title={"Jadwal = psikotes terjadwal, belum dikonfirmasi\nMenunggu Interview = sudah psikotes, belum dijadwalkan interview\nTidak Hadir = tidak hadir psikotes, belum dijadwalkan ulang"}
+                       >
+                         <FileText size={13} className="shrink-0" /> Psikotes: {st.jadwalPsikotes} Jadwal &middot; {st.selesaiPsikotes} Menunggu Interview{st.tidakHadirPsikotes > 0 && <> &middot; <span className="text-rose-600">{st.tidakHadirPsikotes} Tidak Hadir</span></>}
+                       </span>
+                       <span
+                         className={cn("flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-lg text-amber-700 font-medium whitespace-nowrap", dimIfZero(interviewTotal))}
+                         title={"Jadwal = interview (HC/User) terjadwal, belum dikonfirmasi\nSelesai = sudah interview, belum reference check\nTidak Hadir = tidak hadir interview, belum dijadwalkan ulang"}
+                       >
+                         <Users size={13} className="shrink-0" /> Interview: {st.jadwalInterview} Jadwal &middot; {st.selesaiInterview} Selesai{st.tidakHadirInterview > 0 && <> &middot; <span className="text-rose-600">{st.tidakHadirInterview} Tidak Hadir</span></>}
+                       </span>
+                       {st.referenceCheck > 0 && (
+                         <span className="flex items-center gap-1.5 bg-fuchsia-50 px-2 py-1 rounded-lg text-fuchsia-700 font-medium whitespace-nowrap">
+                           <FileText size={13} /> {st.referenceCheck} Reference Check
+                         </span>
                        )}
                      </div>
-                     <div className="flex items-center gap-4">
-                        <span className="text-sm text-[#73507B] group-hover:text-[#5A305A] font-medium transition-colors hidden sm:block">Lihat kandidat &rarr;</span>
-                     </div>
+
+                     {st.total > 0 && (
+                       <div className="flex h-2 w-full rounded-full overflow-hidden bg-slate-100">
+                         {segments.map((seg) => (
+                           <div
+                             key={seg.label}
+                             className={seg.cls}
+                             style={{ width: pct(seg.n) }}
+                             title={`${seg.label}: ${seg.n} pelamar (${pct(seg.n)})`}
+                           />
+                         ))}
+                       </div>
+                     )}
                    </div>
                  );
                })
@@ -1290,7 +1510,7 @@ export default function Screening() {
               >
                 <ChevronLeft size={16} /> Kembali ke Lowongan
               </button>
-              <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
+              <h1 className="text-2xl font-extrabold tracking-tight text-[#5A305A]">
                 {selectedPosition}
               </h1>
             </div>
@@ -1378,12 +1598,19 @@ export default function Screening() {
                       // so the Rejected/Hired counts reflect real history
                       // instead of always reading 0.
                       const allCandidatesInThisPosition = candidatesForSelectedPosition;
-                      return PIPELINE_STATUS_OPTIONS.map(opt => {
-                        const count = opt === "Inbox" ? allCandidatesInThisPosition.length : allCandidatesInThisPosition.filter((c: any) => getCandidateDerivedStatus(c) === opt).length;
+                      const sidebarOptions = ["Inbox", NEEDS_ACTION_FILTER, ...PIPELINE_STATUS_OPTIONS.filter((o) => o !== "Inbox")];
+                      return sidebarOptions.map(opt => {
+                        const count =
+                          opt === "Inbox"
+                            ? allCandidatesInThisPosition.length
+                            : opt === NEEDS_ACTION_FILTER
+                              ? allCandidatesInThisPosition.filter((c: any) => getActionReasons(c).needsAction).length
+                              : allCandidatesInThisPosition.filter((c: any) => getCandidateDerivedStatus(c) === opt).length;
                         const currentFilter = positionStatusFilters[selectedPosition] || "Inbox";
 
                         let filterLabel = opt;
                         if (opt === "Lolos") filterLabel = "Lolos Awal (Menunggu Jadwal)";
+                        if (opt === NEEDS_ACTION_FILTER && count > 0) filterLabel = `⚠ ${NEEDS_ACTION_FILTER}`;
                         
                         return (
                           <button
@@ -1435,6 +1662,23 @@ export default function Screening() {
               </div>
             </div>
             <div className="flex-1 min-w-0 space-y-6 pb-10">
+              {positionStatusFilters[selectedPosition!] === NEEDS_ACTION_FILTER && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-rose-50 border border-rose-200 text-rose-800 text-sm rounded-xl px-4 py-3">
+                  <span className="flex items-start gap-2">
+                    <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                    Menampilkan kandidat yang perlu tindakan: jadwal yang sudah lewat tapi belum dikonfirmasi hadir/tidak hadir, atau pelamar baru lebih dari {STALE_NEW_DAYS} hari belum diproses.
+                  </span>
+                  <button
+                    onClick={() => {
+                      setPositionStatusFilters((prev) => ({ ...prev, [selectedPosition!]: "Inbox" }));
+                      setCurrentPage(1);
+                    }}
+                    className="shrink-0 px-3 py-1.5 text-xs font-bold text-rose-700 bg-white border border-rose-200 rounded-lg hover:bg-rose-100 transition-colors"
+                  >
+                    Tampilkan Semua Kandidat
+                  </button>
+                </div>
+              )}
               <div className="flex flex-col gap-6">
 {paginatedCandidates.map((candidate: any) => {
                   const isExpanded = expandedCandidates.includes(candidate.id);
@@ -1448,6 +1692,7 @@ export default function Screening() {
                   const psikotesStage = getStageAttendance(candidate.psikotes_schedules);
                   const interviewStage = getStageAttendance(candidate.interview_schedules);
                   const doneInterviewCount = (candidate.interview_schedules || []).filter((s: any) => s.is_confirmed).length;
+                  const actionReasons = getActionReasons(candidate);
 
                   return (
                     <div
@@ -1565,6 +1810,15 @@ export default function Screening() {
                               ) : interviewStage === "no_show" ? (
                                 <NoShowBadge label="Tidak Hadir Interview" schedules={candidate.interview_schedules} />
                               ) : null}
+
+                              {actionReasons.needsAction && (
+                                <span
+                                  className="px-2 py-1 bg-rose-600 text-white rounded-md text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"
+                                  title={describeActionReasons(actionReasons)}
+                                >
+                                  <AlertTriangle size={12} /> Perlu Tindakan
+                                </span>
+                              )}
 
                               {candidate.director_status && candidate.director_status !== 'pending' && (
                                 <span className={cn("px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border",

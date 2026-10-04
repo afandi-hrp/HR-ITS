@@ -445,16 +445,45 @@ export default function CandidateProfile() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, profile?.id]);
 
+  // Archived candidates' schedules / evaluations / notes no longer exist in
+  // their tables (FK cascade on archive) — they're snapshotted into
+  // candidate_logs.archived_records instead (migration 20261004000001).
+  const loadArchivedRecords = async (candidateId: string) => {
+    const { data } = await supabase
+      .from("candidate_logs")
+      .select("archived_records")
+      .eq("id", candidateId)
+      .maybeSingle();
+    return (data as any)?.archived_records || null;
+  };
+
+  // Attach `author` (profile) to archived notes, like the live join does.
+  const withAuthors = async (rows: any[]) => {
+    const ids = Array.from(new Set(rows.map((r) => r.author_id).filter(Boolean)));
+    if (ids.length === 0) return rows;
+    const { data } = await supabase.from("profiles").select("*").in("id", ids);
+    const byId = Object.fromEntries((data || []).map((p: any) => [p.id, p]));
+    return rows.map((r) => ({ ...r, author: byId[r.author_id] || null }));
+  };
+
   const fetchNotes = async (candidateId: string) => {
     setLoadingNotes(true);
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from("internal_notes")
         .select("*, author:profiles(*)")
         .eq("candidate_id", candidateId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
+      if (data && data.length === 0) {
+        const archivedNotes = (await loadArchivedRecords(candidateId))?.internal_notes;
+        if (Array.isArray(archivedNotes) && archivedNotes.length > 0) {
+          data = (await withAuthors(archivedNotes)).sort(
+            (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+          );
+        }
+      }
       if (data) {
         const filteredNotes = data.filter(
           (note) => note.author?.role === profile?.role,
@@ -515,6 +544,22 @@ export default function CandidateProfile() {
       .order("created_at", { ascending: false });
 
     if (!error && data) {
+      if (data.length === 0) {
+        const archivedEvals = (await loadArchivedRecords(candidateId))?.candidate_evaluations;
+        if (Array.isArray(archivedEvals) && archivedEvals.length > 0) {
+          const templateIds = Array.from(new Set(archivedEvals.map((e: any) => e.template_id).filter(Boolean)));
+          const { data: templates } = templateIds.length
+            ? await supabase.from("evaluation_templates").select("*").in("id", templateIds)
+            : { data: [] as any[] };
+          const byId = Object.fromEntries((templates || []).map((t: any) => [t.id, t]));
+          setEvaluations(
+            archivedEvals
+              .map((e: any) => ({ ...e, template: byId[e.template_id] || null }))
+              .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+          );
+          return;
+        }
+      }
       setEvaluations(data);
     }
   };
@@ -549,7 +594,11 @@ export default function CandidateProfile() {
         setLoading(false);
         return;
       }
-      candidateData = logData;
+      candidateData = {
+        ...logData,
+        psikotes_schedules: logData.archived_records?.psikotes_schedules || [],
+        interview_schedules: logData.archived_records?.interview_schedules || [],
+      };
       setIsArchived(true);
     } else {
       setIsArchived(false);
@@ -1363,7 +1412,7 @@ export default function CandidateProfile() {
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
+            <h1 className="text-2xl font-extrabold tracking-tight text-[#5A305A]">
               Profil Kandidat
             </h1>
             <p className="text-[#5A305A]/70 text-sm mt-1">

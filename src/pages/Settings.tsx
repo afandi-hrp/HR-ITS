@@ -522,7 +522,7 @@ export default function Settings() {
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="space-y-1 mb-2">
-        <h1 className="text-4xl font-extrabold tracking-tight text-[#5A305A]">
+        <h1 className="text-2xl font-extrabold tracking-tight text-[#5A305A]">
           Pengaturan Akun
         </h1>
         <p className="text-sm font-medium text-[#5A305A]/70 max-w-xl">
