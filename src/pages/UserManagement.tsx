@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import { Profile } from "../types";
 import {
   Users,
@@ -76,13 +77,8 @@ export default function UserManagement() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .order("full_name");
-
-      if (error) throw error;
-      setUsers(data || []);
+      const { rows } = await api.get<{ rows: any[] }>("/api/profiles");
+      setUsers(rows);
 
       const {
         data: { session },

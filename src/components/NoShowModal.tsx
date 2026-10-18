@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { UserX, X, Loader2, CalendarClock, ThumbsDown, Save, CheckCircle } from "lucide-react";
-import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import { formatDate } from "../lib/utils";
 import { isNoShowSchedule } from "../lib/scheduleStatus";
 import { useToast } from "./ui/use-toast";
@@ -107,15 +107,11 @@ export default function NoShowModal({
   const handleSave = async (followUp: NoShowFollowUp) => {
     setSaving(followUp);
     try {
-      const { error } = await supabase
-        .from(target.table)
-        .update({
-          is_no_show: true,
-          is_confirmed: false,
-          no_show_reason: reason.trim() || null,
-        })
-        .eq("id", target.scheduleId);
-      if (error) throw error;
+      const type = target.table === "psikotes_schedules" ? "psikotes" : "interview";
+      await api.post(`/api/schedules/${type}/${target.scheduleId}/attendance`, {
+        action: "no_show",
+        reason: reason.trim(),
+      });
 
       toast({
         title: "Berhasil",

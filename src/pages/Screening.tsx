@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import { Candidate } from "../types";
 import { formatAsNumberedList, formatLevelAndList } from "../lib/cvSummaryFormat";
 import {
@@ -184,20 +185,14 @@ export default function Screening() {
       return;
     }
     let cancelled = false;
-    supabase
-      .from("candidate_logs")
-      .select("*")
-      .eq("position", selectedPosition)
-      .in("status_screening", ["rejected", "hired"])
-      .order("archived_at", { ascending: false })
-      .limit(500)
-      .then(({ data, error }) => {
+    api
+      .get<{ rows: any[] }>("/api/candidates/archived-for-position", { position: selectedPosition })
+      .then(({ rows }) => {
         if (cancelled) return;
-        if (error) {
-          console.warn("Failed to fetch archived candidates for position:", error);
-          return;
-        }
-        setArchivedForPosition((data || []).map((c: any) => ({ ...c, _isArchived: true })));
+        setArchivedForPosition(rows.map((c: any) => ({ ...c, _isArchived: true })));
+      })
+      .catch((error) => {
+        if (!cancelled) console.warn("Failed to fetch archived candidates for position:", error);
       });
     return () => {
       cancelled = true;
@@ -327,129 +322,45 @@ export default function Screening() {
     if (!profile) return; // Wait for profile to load
 
     setLoading(true);
-    const scheduleColumns =
-      "id, is_confirmed, is_no_show, no_show_reason, schedule_date, location_type, location_detail, additional_notes, candidate_id, created_at, updated_at";
-    let selectQuery =
-      `*, psikotes_schedules(${scheduleColumns}), interview_schedules(${scheduleColumns}), candidate_evaluations(evaluation_type), external_data(raw_data), candidate_assignees(user_id, profiles(full_name))`;
-
-    if (isRestrictedScreeningRole) {
-      selectQuery =
-        `*, psikotes_schedules(${scheduleColumns}), interview_schedules(${scheduleColumns}), candidate_evaluations(evaluation_type), external_data(raw_data), filter_assignees:candidate_assignees!inner(user_id), candidate_assignees(user_id, profiles(full_name))`;
-    }
-
-    let query = supabase
-      .from("candidates")
-      .select(selectQuery, { count: "exact" })
-      .order("updated_at", { ascending: false });
-
-    if (isRestrictedScreeningRole) {
-      query = query.eq("filter_assignees.user_id", profile.id);
-    }
-
-    if (debouncedSearch) {
-      query = query.or(
-        `full_name.ilike.%${debouncedSearch}%,position.ilike.%${debouncedSearch}%`,
-      );
-    }
-    if (startDate) {
-      query = query.gte("date", `${startDate}T00:00:00`);
-    }
-    if (endDate) {
-      query = query.lte("date", `${endDate}T23:59:59`);
-    }
-    if (positionFilter !== "all") {
-      query = query.eq("position", positionFilter);
-    }
-
-    // Apply pagination (Moved to frontend for grouping/filtering)
-    // const from = (currentPage - 1) * itemsPerPage;
-    // const to = from + itemsPerPage - 1;
-    // query = query.range(from, to);
-
-    let { data, count, error } = await query.limit(SCREENING_FETCH_LIMIT);
-    let typedData = data as any[] | null;
-
-    // Handle array case if relationship returns an array
-    if (typedData && !error) {
-      typedData = typedData.map((d) => {
-        if (Array.isArray(d.external_data) && d.external_data.length > 0) {
-          return { ...d, external_data: d.external_data[0] };
-        }
-        return d;
+    try {
+      // Role scoping (non-HR: only assigned candidates), blacklist flags and
+      // salary stripping happen server-side — server/routes/candidates.ts.
+      const { rows, total, truncated } = await api.get<{
+        rows: any[];
+        total: number;
+        truncated: boolean;
+      }>("/api/candidates/screening", {
+        search: debouncedSearch,
+        startDate,
+        endDate,
+        position: positionFilter,
       });
-
-      try {
-        const { data: blacklistData } = await supabase
-          .from("blacklisted_candidates")
-          .select("email, phone, identity_number, reason");
-
-        if (blacklistData && blacklistData.length > 0) {
-          typedData = typedData.map((d) => {
-            const nik = d.external_data?.raw_data?.identity_number;
-            const blacklistedRecord = blacklistData.find(
-              (b) =>
-                (b.email && b.email === d.email) ||
-                (b.phone && b.phone === d.phone) ||
-                (nik && b.identity_number && b.identity_number === nik),
-            );
-            return {
-              ...d,
-              is_blacklisted: !!blacklistedRecord,
-              blacklist_reason: blacklistedRecord?.reason,
-            };
-          });
-        }
-      } catch (err) {
-        console.error("Error fetching blacklist:", err);
-      }
-    }
-
-    if (error) {
+      setCandidates(rows);
+      setTotalItems(total);
+      setIsDataTruncated(truncated);
+      // Expand all groups by default
+      setExpandedGroups(Array.from(new Set(rows.map((c) => c.position))));
+    } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
         variant: "destructive",
       });
-    } else {
-      setCandidates(typedData || []);
-      setTotalItems(count || 0);
-      setIsDataTruncated((typedData?.length || 0) >= SCREENING_FETCH_LIMIT);
-      // Expand all groups by default
-      const positions = Array.from(
-        new Set((typedData || []).map((c) => c.position)),
-      );
-      setExpandedGroups(positions);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const fetchOpenPositions = async () => {
     try {
-      const { data, error } = await supabase
-        .from("open_recruitment")
-        .select("position")
-        .eq("is_published", true);
-
-      // Also include positions that still have active candidates but whose
-      // opening is no longer published — they still get a card below.
-      const { data: candidatePositions } = await supabase
-        .from("candidates")
-        .select("position")
-        .limit(SCREENING_FETCH_LIMIT);
-
-      if (!error && data) {
-        setPublishedPositions(
-          new Set(data.map((d) => d.position).filter(Boolean)),
-        );
-        const positions = Array.from(
-          new Set(
-            [...data, ...(candidatePositions || [])]
-              .map((d) => d.position)
-              .filter(Boolean),
-          ),
-        ).sort((a, b) => a.localeCompare(b));
-        setOpenPositions(positions);
-      }
+      // Published openings + positions that still have active candidates
+      // (whose opening may no longer be published — they still get a card).
+      const { published, positions } = await api.get<{
+        published: string[];
+        positions: string[];
+      }>("/api/candidates/positions");
+      setPublishedPositions(new Set(published));
+      setOpenPositions(positions);
     } catch (err) {
       console.error("Error fetching open positions:", err);
     }
@@ -506,12 +417,10 @@ export default function Screening() {
     if (!confirmScheduleData) return;
     setConfirmingSchedule(true);
     try {
-      const { error } = await supabase
-        .from(confirmScheduleData.table)
-        .update({ is_confirmed: true })
-        .eq("id", confirmScheduleData.scheduleId);
-
-      if (error) throw error;
+      const type = confirmScheduleData.table === "psikotes_schedules" ? "psikotes" : "interview";
+      await api.post(`/api/schedules/${type}/${confirmScheduleData.scheduleId}/attendance`, {
+        action: "confirm",
+      });
 
       toast({
         title: "Berhasil",
@@ -546,15 +455,7 @@ export default function Screening() {
     setRejecting(true);
     try {
       // Set status to rejected first so it's recorded as rejected in the log
-      const { error: updateError } = await supabase
-        .from("candidates")
-        .update({ 
-          status_screening: "rejected",
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", rejectModalData.id);
-
-      if (updateError) throw updateError;
+      await api.post(`/api/candidates/${rejectModalData.id}/status`, { status: "rejected" });
 
       // Then move to log
       const response = await fetchWithRetry("/api/candidates/move-to-log", {
@@ -661,9 +562,8 @@ export default function Screening() {
 
         if (addToBlacklist) {
           try {
-            const { error: blacklistError } = await supabase
-              .from("blacklisted_candidates")
-              .insert({
+            const blacklistError = await api
+              .post("/api/blacklist", {
                 email: rejectModalData.email,
                 phone: rejectModalData.phone,
                 identity_number:
@@ -671,8 +571,9 @@ export default function Screening() {
                 reason:
                   blacklistReason.trim() ||
                   "Ditolak dan di-blacklist pada tahap Screening Awal",
-              });
-            if (blacklistError)
+              })
+              .then(() => null, (err: Error) => err);
+if (blacklistError)
               console.error("Gagal menambahkan ke blacklist:", blacklistError);
             else
               toast({
@@ -718,11 +619,8 @@ export default function Screening() {
         setSelectedRejectTemplate("");
         const fetchTemplates = async () => {
           try {
-            const { data } = await supabase
-              .from("email_templates")
-              .select("*")
-              .order("created_at", { ascending: false });
-            if (data) setRejectEmailTemplates(data);
+            const { rows } = await api.get<{ rows: any[] }>("/api/email-templates", { all: 1 });
+            setRejectEmailTemplates(rows);
           } catch (err) {
             console.warn("Failed to fetch templates:", err);
           }
@@ -754,13 +652,9 @@ export default function Screening() {
 
     setAccepting(true);
     try {
-      const { error } = await supabase
-        .from("candidates")
-        .update({ 
-          status_screening: "accepted",
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", acceptModalData.id);
+      const error = await api
+        .post(`/api/candidates/${acceptModalData.id}/status`, { status: "accepted" })
+        .then(() => null, (err: Error) => err);
 
       if (error) {
         toast({
@@ -787,15 +681,7 @@ export default function Screening() {
     setHiring(true);
     try {
       // Set status to hired first
-      const { error: updateError } = await supabase
-        .from("candidates")
-        .update({ 
-          status_screening: "hired",
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", hireModalData.id);
-
-      if (updateError) throw updateError;
+      await api.post(`/api/candidates/${hireModalData.id}/status`, { status: "hired" });
 
       // Then move to log
       const response = await fetchWithRetry("/api/candidates/move-to-log", {
@@ -875,20 +761,14 @@ export default function Screening() {
     if (!assessmentModalData) return;
     setSavingAssessment(true);
     try {
-      const { error } = await supabase
-        .from("candidates")
-        .update({
-          technical_score: assessmentScores.technical_score,
-          communication_score: assessmentScores.communication_score,
-          problem_solving_score: assessmentScores.problem_solving_score,
-          teamwork_score: assessmentScores.teamwork_score,
-          leadership_score: assessmentScores.leadership_score,
-          adaptability_score: assessmentScores.adaptability_score,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", assessmentModalData.id);
-
-      if (error) throw error;
+      await api.post(`/api/candidates/${assessmentModalData.id}/assessment`, {
+        technical_score: assessmentScores.technical_score,
+        communication_score: assessmentScores.communication_score,
+        problem_solving_score: assessmentScores.problem_solving_score,
+        teamwork_score: assessmentScores.teamwork_score,
+        leadership_score: assessmentScores.leadership_score,
+        adaptability_score: assessmentScores.adaptability_score,
+      });
 
       toast({
         title: "Berhasil",

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import {
   Plus,
   Search,
@@ -47,16 +48,9 @@ export default function OpenRecruitment() {
   const fetchItems = async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from("open_recruitment")
-        .select("*")
-        .order("position", { ascending: true });
-
-      if (search) {
-        query = query.ilike("position", `%${search}%`);
-      }
-
-      const { data, error } = await query;
+      const { data, error } = await api
+        .get<{ rows: any[] }>("/api/open-recruitment", { search })
+        .then((r) => ({ data: r.rows, error: null as any }), (err) => ({ data: null, error: err }));
 
       if (error) {
         // If table doesn't exist, it will throw an error. We handle it gracefully.
@@ -114,30 +108,21 @@ export default function OpenRecruitment() {
 
     try {
       if (editingId) {
-        const { error } = await supabase
-          .from("open_recruitment")
-          .update({
-            position: formData.position,
-            jobdesk: formData.jobdesk,
-            kualifikasi: formData.kualifikasi,
-          })
-          .eq("id", editingId);
-
-        if (error) throw error;
+        await api.patch(`/api/open-recruitment/${editingId}`, {
+          position: formData.position,
+          jobdesk: formData.jobdesk,
+          kualifikasi: formData.kualifikasi,
+        });
         toast({
           title: "Berhasil",
           description: "Data lowongan berhasil diperbarui.",
         });
       } else {
-        const { error } = await supabase.from("open_recruitment").insert([
-          {
-            position: formData.position,
-            jobdesk: formData.jobdesk,
-            kualifikasi: formData.kualifikasi,
-          },
-        ]);
-
-        if (error) throw error;
+        await api.post("/api/open-recruitment", {
+          position: formData.position,
+          jobdesk: formData.jobdesk,
+          kualifikasi: formData.kualifikasi,
+        });
         toast({
           title: "Berhasil",
           description: "Data lowongan berhasil ditambahkan.",
@@ -162,12 +147,7 @@ export default function OpenRecruitment() {
   const handleDelete = async (id: string) => {
     setDeleting(true);
     try {
-      const { error } = await supabase
-        .from("open_recruitment")
-        .delete()
-        .eq("id", id);
-
-      if (error) throw error;
+      await api.delete(`/api/open-recruitment/${id}`);
       toast({
         title: "Berhasil",
         description: "Data lowongan berhasil dihapus.",
@@ -175,10 +155,9 @@ export default function OpenRecruitment() {
       setDeleteConfirmId(null);
 
       // Ambil data terbaru setelah dihapus
-      const { data: newData } = await supabase
-        .from("open_recruitment")
-        .select("*")
-        .order("created_at", { ascending: false });
+      const { rows: newData } = await api.get<{ rows: any[] }>("/api/open-recruitment", {
+        order: "created_at",
+      });
 
       if (newData) {
         setItems(newData);
@@ -225,23 +204,7 @@ export default function OpenRecruitment() {
 
   const togglePublish = async (id: string, currentStatus: boolean) => {
     try {
-      const { error } = await supabase
-        .from("open_recruitment")
-        .update({ is_published: !currentStatus })
-        .eq("id", id);
-
-      if (error) {
-        if (error.code === "42703") {
-          toast({
-            title: "Gagal",
-            description:
-              'Kolom "is_published" belum ada di tabel Anda. Silakan tambahkan kolom tersebut (BOOLEAN DEFAULT true).',
-            variant: "destructive",
-          });
-          return;
-        }
-        throw error;
-      }
+      await api.patch(`/api/open-recruitment/${id}`, { is_published: !currentStatus });
 
       toast({
         title: "Berhasil",

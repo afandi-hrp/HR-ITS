@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Upload, FileText, File, Loader2, Plus, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { api } from '../lib/api';
 import { useToast } from './ui/use-toast';
 import { cn, fetchWithRetry } from '../lib/utils';
 
@@ -37,10 +38,9 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
     const fetchPositions = async () => {
       setLoadingPositions(true);
       try {
-        const { data, error } = await supabase
-          .from('open_recruitment')
-          .select('position')
-          .order('position', { ascending: true });
+        const { data, error } = await api
+          .get<{ rows: { position: string }[] }>('/api/open-recruitment', { fields: 'position' })
+          .then((r) => ({ data: r.rows, error: null as any }), (err) => ({ data: null as { position: string }[] | null, error: err }));
 
         if (error) {
           console.error('Error fetching positions:', error);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import { Candidate } from "../types";
 import {
   Search,
@@ -77,75 +77,30 @@ export default function CandidateArchive() {
 
   const fetchLogs = async () => {
     setLoading(true);
-    const from = (currentPage - 1) * itemsPerPage;
-    const to = from + itemsPerPage - 1;
-
-    let query = supabase
-      .from("candidate_logs")
-      .select("*, external_data(raw_data)", { count: "exact" });
-
-    if (debouncedSearch) {
-      query = query.or(
-        `full_name.ilike.%${debouncedSearch}%,position.ilike.%${debouncedSearch}%`,
+    try {
+      // Same server endpoint as Log Kandidat (HR only); a single-day filter
+      // is a start = end date range.
+      const { rows, total } = await api.get<{ rows: any[]; total: number }>(
+        "/api/logs",
+        {
+          search: debouncedSearch,
+          startDate: dateFilter,
+          endDate: dateFilter,
+          page: currentPage,
+          pageSize: itemsPerPage,
+        },
       );
-    }
-
-    if (dateFilter) {
-      query = query
-        .gte("date", `${dateFilter}T00:00:00`)
-        .lte("date", `${dateFilter}T23:59:59`);
-    }
-
-    let { data, error, count } = await query
-      .order("archived_at", { ascending: false })
-      .range(from, to);
-
-    // Handle array case if relationship returns an array
-    if (data && !error) {
-      data = data.map((d) => {
-        if (Array.isArray(d.external_data) && d.external_data.length > 0) {
-          return { ...d, external_data: d.external_data[0] };
-        }
-        return d;
-      });
-
-      try {
-        const { data: blacklistData } = await supabase
-          .from("blacklisted_candidates")
-          .select("email, phone, identity_number, reason");
-
-        if (blacklistData && blacklistData.length > 0) {
-          data = data.map((d) => {
-            const nik = d.external_data?.raw_data?.identity_number;
-            const blacklistedRecord = blacklistData.find(
-              (b) =>
-                (b.email && b.email === d.email) ||
-                (b.phone && b.phone === d.phone) ||
-                (nik && b.identity_number && b.identity_number === nik),
-            );
-            return {
-              ...d,
-              is_blacklisted: !!blacklistedRecord,
-              blacklist_reason: blacklistedRecord?.reason,
-            };
-          });
-        }
-      } catch (err) {
-        console.error("Error fetching blacklist:", err);
-      }
-    }
-
-    if (error) {
+      setLogs(rows);
+      setTotalItems(total);
+    } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
         variant: "destructive",
       });
-    } else {
-      setLogs(data || []);
-      setTotalItems(count || 0);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {

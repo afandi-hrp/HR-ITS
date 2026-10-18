@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import { useToast } from "../components/ui/use-toast";
 import { cn, formatDateDMMMY } from "../lib/utils";
 import ConfirmModal from "../components/ConfirmModal";
@@ -58,23 +58,12 @@ const STATUS_META: Record<TokenStatus, { label: string; cls: string; icon: typeo
   terpakai: { label: "Sudah Terpakai", cls: "bg-rose-100 text-rose-700", icon: XCircle },
 };
 
-// Unambiguous characters only (no 0/O, 1/I/L) — tokens are often typed by hand.
-const TOKEN_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-const randomPart = (length: number) => {
-  // Cryptographically secure (Math.random() output is predictable).
-  const bytes = crypto.getRandomValues(new Uint8Array(length));
-  return Array.from(bytes, (b) => TOKEN_ALPHABET[b % TOKEN_ALPHABET.length]).join("");
-};
-
 const formatDateTime = (iso: string | null) => {
   if (!iso) return "-";
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "-";
   return `${formatDateDMMMY(d)} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 };
-
-const chunk = <T,>(arr: T[], size: number): T[][] =>
-  Array.from({ length: Math.ceil(arr.length / size) }, (_, i) => arr.slice(i * size, i * size + size));
 
 export default function RegistrationTokens() {
   const { toast } = useToast();
@@ -98,64 +87,16 @@ export default function RegistrationTokens() {
 
   const fetchTokens = async () => {
     try {
-      const { data, error } = await supabase
-        .from("registration_tokens")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setTokens(data || []);
-
-      // Who each token was sent to: Send Email/WA stores the token's id in
-      // the candidate's confirmation_token (kept when archived).
-      const sentIds = (data || []).filter((t) => t.used_at || t.is_used).map((t) => t.id);
-      const map: Record<string, Recipient> = {};
-      for (const ids of chunk(sentIds, 150)) {
-        const [activeRes, logsRes] = await Promise.all([
-          supabase.from("candidates").select("id, full_name, position, confirmation_token").in("confirmation_token", ids),
-          supabase.from("candidate_logs").select("id, full_name, position, confirmation_token").in("confirmation_token", ids),
-        ]);
-        [...(logsRes.data || []), ...(activeRes.data || [])].forEach((c: any) => {
-          map[c.confirmation_token] = { id: c.id, full_name: c.full_name, position: c.position };
-        });
-      }
-      setRecipients(map);
-
-      // Who actually used each token: match external_data.created_at to the
-      // token's used_at (same transaction — see Submission above).
-      const usedTokens = (data || []).filter((t) => t.is_used && t.used_at);
-      const byTime: Record<number, Submission> = {};
-      for (const group of chunk(usedTokens, 100)) {
-        const { data: forms } = await supabase
-          .from("external_data")
-          .select("uid_sheet, created_at, full_name:raw_data->>full_name, position:raw_data->>position")
-          .in("created_at", group.map((t) => t.used_at as string));
-        const uids = (forms || []).map((f: any) => f.uid_sheet);
-        const linked: Record<string, string> = {};
-        if (uids.length > 0) {
-          const [activeRes, logsRes] = await Promise.all([
-            supabase.from("candidates").select("id, linked_external_id").in("linked_external_id", uids),
-            supabase.from("candidate_logs").select("id, linked_external_id").in("linked_external_id", uids),
-          ]);
-          [...(logsRes.data || []), ...(activeRes.data || [])].forEach((c: any) => {
-            linked[c.linked_external_id] = c.id;
-          });
-        }
-        (forms || []).forEach((f: any) => {
-          byTime[new Date(f.created_at).getTime()] = {
-            uid_sheet: f.uid_sheet,
-            full_name: f.full_name,
-            position: f.position,
-            candidateId: linked[f.uid_sheet] || null,
-          };
-        });
-      }
-      const subs: Record<string, Submission> = {};
-      usedTokens.forEach((t) => {
-        const match = byTime[new Date(t.used_at as string).getTime()];
-        if (match) subs[t.id] = match;
-      });
-      setSubmissions(subs);
+      // Tokens + recipient (who it was sent to) + submission (who used it),
+      // resolved server-side (HR only) — see server/routes/registrationTokens.ts.
+      const result = await api.get<{
+        tokens: Token[];
+        recipients: Record<string, Recipient>;
+        submissions: Record<string, Submission>;
+      }>("/api/registration-tokens");
+      setTokens(result.tokens);
+      setRecipients(result.recipients);
+      setSubmissions(result.submissions);
     } catch (error: any) {
       console.error("Error fetching tokens:", error);
       toast({
@@ -171,20 +112,8 @@ export default function RegistrationTokens() {
   const generateToken = async (count: number = 1) => {
     setGenerating(true);
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      const newTokens = Array.from({ length: count }).map(() => ({
-        token: `WRN-${randomPart(8)}-${randomPart(4)}`,
-        created_by: user?.id,
-      }));
-
-      const { error } = await supabase
-        .from("registration_tokens")
-        .insert(newTokens);
-
-      if (error) throw error;
+      // Generated server-side (crypto.randomBytes, same WRN-XXXXXXXX-XXXX format).
+      await api.post("/api/registration-tokens", { count });
 
       toast({
         title: "Berhasil",
@@ -208,13 +137,11 @@ export default function RegistrationTokens() {
     if (!confirmDelete) return;
     setDeleting(true);
     try {
-      const query = supabase.from("registration_tokens").delete();
-      const { error } =
+      await api.delete(
         confirmDelete.type === "used"
-          ? await query.eq("is_used", true)
-          : await query.eq("id", confirmDelete.token.id);
-
-      if (error) throw error;
+          ? "/api/registration-tokens/used"
+          : `/api/registration-tokens/${encodeURIComponent(confirmDelete.token.id)}`,
+      );
 
       toast({
         title: "Berhasil",

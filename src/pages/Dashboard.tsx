@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import {
   Users,
   Briefcase,
@@ -90,15 +90,11 @@ export default function Dashboard() {
       // Note: Supabase JS doesn't have a native SELECT DISTINCT.
       // For 100k+ rows, this should ideally be an RPC call or a separate 'positions' table.
       // We limit to 1000 here to prevent crashing on huge datasets, assuming positions are repetitive.
-      const { data } = await supabase
-        .from("candidates")
-        .select("position")
-        .limit(1000);
-      if (data) {
-        const unique = Array.from(new Set(data.map((d) => d.position)))
-          .filter(Boolean)
-          .sort();
-        setPositions(unique);
+      try {
+        const { positions } = await api.get<{ positions: string[] }>("/api/dashboard/positions");
+        setPositions(positions);
+      } catch (err) {
+        console.error("Error fetching positions:", err);
       }
     };
     fetchPositions();
@@ -119,88 +115,30 @@ export default function Dashboard() {
             startDate = new Date(now.getFullYear(), now.getMonth(), 1);
         }
 
-        // Helper to build base query for counting
-        const buildCountQuery = (table: string, select = "*") => {
-          let q = supabase
-            .from(table)
-            .select(select, { count: "exact", head: true });
-          if (selectedPosition !== "all")
-            q = q.eq("position", selectedPosition);
-          if (startDate) q = q.gte("created_at", startDate.toISOString());
-          if (searchQuery) q = q.ilike("full_name", `%${searchQuery}%`);
-          return q;
-        };
-
-        // Helper to build base query for fetching data
-        const buildDataQuery = (table: string, select = "*") => {
-          let q = supabase.from(table).select(select);
-          if (selectedPosition !== "all")
-            q = q.eq("position", selectedPosition);
-          if (startDate) q = q.gte("created_at", startDate.toISOString());
-          if (searchQuery) q = q.ilike("full_name", `%${searchQuery}%`);
-          return q;
-        };
-
-        // Execute count queries in parallel (Server-Side Aggregation)
-        const nowForQuery = new Date();
-        const next7Days = new Date();
-        next7Days.setDate(nowForQuery.getDate() + 7);
-
-        const [
-          { count: cTotal },
-          { count: lTotal },
-          { count: cHired },
-          { count: lHired },
-          { count: cRej },
-          { count: lRej },
-          { count: cAcc },
-          { count: lAcc },
-          { count: cPsi },
-          { count: lPsi },
-          { count: cInt },
-          { count: lInt },
-          { count: upcomingPsiCount },
-          { count: upcomingIntCount },
-          { count: openRecruitmentCount },
-        ] = await Promise.all([
-          buildCountQuery("candidates"),
-          buildCountQuery("candidate_logs"),
-          buildCountQuery("candidates").eq("status_screening", "hired"),
-          buildCountQuery("candidate_logs").eq("status_screening", "hired"),
-          buildCountQuery("candidates").eq("status_screening", "rejected"),
-          buildCountQuery("candidate_logs").eq("status_screening", "rejected"),
-          buildCountQuery("candidates").in("status_screening", [
-            "accepted",
-            "hired",
-          ]),
-          buildCountQuery("candidate_logs").in("status_screening", [
-            "accepted",
-            "hired",
-          ]),
-          buildCountQuery("candidates", "id, psikotes_schedules!inner(id)"),
-          buildCountQuery("candidate_logs").eq(
-            "psikotes_status",
-            "Sudah Psikotes",
-          ),
-          buildCountQuery("candidates", "id, interview_schedules!inner(id)"),
-          buildCountQuery("candidate_logs").eq(
-            "interview_status",
-            "Sudah Interview",
-          ),
-          supabase
-            .from("psikotes_schedules")
-            .select("*", { count: "exact", head: true })
-            .gte("schedule_date", nowForQuery.toISOString())
-            .lte("schedule_date", next7Days.toISOString()),
-          supabase
-            .from("interview_schedules")
-            .select("*", { count: "exact", head: true })
-            .gte("schedule_date", nowForQuery.toISOString())
-            .lte("schedule_date", next7Days.toISOString()),
-          supabase
-            .from("open_recruitment")
-            .select("*", { count: "exact", head: true }),
-        ]);
+        // All counts + lists come from one server call (HR only), with the
+        // same filters the page used to apply itself — server/routes/analytics.ts.
+        const dash = await api.get<any>("/api/dashboard", {
+          position: selectedPosition,
+          start: startDate ? startDate.toISOString() : undefined,
+          search: searchQuery,
+        });
+        const {
+          cTotal,
+          lTotal,
+          cHired,
+          lHired,
+          cRej,
+          lRej,
+          cAcc,
+          lAcc,
+          cPsi,
+          lPsi,
+          cInt,
+          lInt,
+          upcomingPsi: upcomingPsiCount,
+          upcomingInt: upcomingIntCount,
+          openRecruitment: openRecruitmentCount,
+        } = dash.counts;
 
         const totalApplied = (cTotal || 0) + (lTotal || 0);
         const hired = (cHired || 0) + (lHired || 0);
@@ -256,70 +194,16 @@ export default function Dashboard() {
         // Fetch Recent Activities (Server-Side Limit)
         // We fetch top 10 from each relevant table/query, then merge and sort in JS.
         // This ensures we download max 40 rows instead of 100,000.
-        const next24Hours = new Date();
-        next24Hours.setHours(nowForQuery.getHours() + 24);
-
-        const [
-          { data: recentCands },
-          { data: recentLogs },
-          { data: recentPsi },
-          { data: recentInt },
-          { data: allActiveCandidates },
-          { data: upcomingPsiData },
-          { data: upcomingIntData },
-          { data: newCandidatesData },
-        ] = await Promise.all([
-          buildDataQuery("candidates", "id, full_name, position, created_at")
-            .order("created_at", { ascending: false })
-            .limit(10),
-          buildDataQuery(
-            "candidate_logs",
-            "id, full_name, position, created_at, status_screening",
-          )
-            .order("created_at", { ascending: false })
-            .limit(10),
-          supabase
-            .from("psikotes_schedules")
-            .select("id, created_at, candidates!inner(id, full_name, position)")
-            .order("created_at", { ascending: false })
-            .limit(10),
-          supabase
-            .from("interview_schedules")
-            .select("id, created_at, candidates!inner(id, full_name, position)")
-            .order("created_at", { ascending: false })
-            .limit(10),
-          supabase
-            .from("candidates")
-            .select(
-              "id, full_name, email, position, assessment_score, status_screening, technical_score, communication_score, problem_solving_score, teamwork_score, leadership_score, adaptability_score",
-            )
-            .not("status_screening", "in", '("rejected","hired")'),
-          supabase
-            .from("psikotes_schedules")
-            .select(
-              "id, schedule_date, is_confirmed, candidates!inner(id, full_name, position)",
-            )
-            .gte("schedule_date", nowForQuery.toISOString())
-            // Already marked "Tidak Hadir" (e.g. cancelled ahead) — not upcoming.
-            .eq("is_no_show", false)
-            .lte("schedule_date", next24Hours.toISOString()),
-          supabase
-            .from("interview_schedules")
-            .select(
-              "id, schedule_date, is_confirmed, candidates!inner(id, full_name, position)",
-            )
-            .gte("schedule_date", nowForQuery.toISOString())
-            // Already marked "Tidak Hadir" (e.g. cancelled ahead) — not upcoming.
-            .eq("is_no_show", false)
-            .lte("schedule_date", next24Hours.toISOString()),
-          buildDataQuery(
-            "candidates",
-            "id, full_name, position, created_at, status_screening",
-          )
-            .eq("status_screening", "pending")
-            .order("created_at", { ascending: false })
-            .limit(100),
-        ]);
+        const {
+          recentCands,
+          recentLogs,
+          recentPsi,
+          recentInt,
+          allActiveCandidates,
+          upcomingPsiData,
+          upcomingIntData,
+          newCandidatesData,
+        } = dash;
 
         // Process Top Candidates
         if (allActiveCandidates) {

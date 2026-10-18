@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import { Schedule, Candidate } from "../types";
 import {
   Search,
@@ -119,10 +119,9 @@ export default function InterviewSchedules() {
 
   // Undo a mistaken "Tidak Hadir" — the schedule goes back to "Menunggu".
   const undoNoShow = async (schedule: Schedule) => {
-    const { error } = await supabase
-      .from("interview_schedules")
-      .update({ is_no_show: false, no_show_reason: null })
-      .eq("id", schedule.id);
+    const error = await api
+      .post(`/api/schedules/interview/${schedule.id}/attendance`, { action: "clear_no_show" })
+      .then(() => null, (err: Error) => err);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
@@ -165,31 +164,19 @@ export default function InterviewSchedules() {
     const start = startOfWeek(monthStart, { weekStartsOn: 1 });
     const end = endOfWeek(monthEnd, { weekStartsOn: 1 });
 
-    let query = supabase
-      .from("interview_schedules")
-      .select("*, candidate:candidates!inner(*)")
-      .gte("schedule_date", start.toISOString())
-      .lte("schedule_date", end.toISOString());
-
-    if (debouncedSearch) {
-      query = query.or(
-        `full_name.ilike.%${debouncedSearch}%,position.ilike.%${debouncedSearch}%`,
-        { foreignTable: "candidates" },
-      );
-    }
-
-    const { data, error } = await query.order("schedule_date", {
-      ascending: true,
-    });
-
-    if (error) {
+    try {
+      const { rows } = await api.get<{ rows: Schedule[] }>("/api/schedules/interview/calendar", {
+        start: start.toISOString(),
+        end: end.toISOString(),
+        search: debouncedSearch,
+      });
+      setCalendarSchedules(rows);
+    } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
         variant: "destructive",
       });
-    } else {
-      setCalendarSchedules(data || []);
     }
     setLoading(false);
   };
@@ -199,43 +186,26 @@ export default function InterviewSchedules() {
       setLoading(true);
     }
 
-    const endIndex = startIndex + itemsPerPage - 1;
-
-    let query = supabase
-      .from("interview_schedules")
-      .select("*, candidate:candidates!inner(*)", { count: "exact" });
-
-    if (startDate) query = query.gte("schedule_date", `${startDate}T00:00:00`);
-    if (endDate) query = query.lte("schedule_date", `${endDate}T23:59:59`);
-
-    if (debouncedSearch) {
-      query = query.or(
-        `full_name.ilike.%${debouncedSearch}%,position.ilike.%${debouncedSearch}%`,
-        { foreignTable: "candidates" },
+    try {
+      const { rows, total } = await api.get<{ rows: Schedule[]; total: number }>(
+        "/api/schedules/interview",
+        {
+          tab: activeTab,
+          startDate,
+          endDate,
+          search: debouncedSearch,
+          page: currentPage,
+          pageSize: itemsPerPage,
+        },
       );
-    }
-
-    if (activeTab === "no_show") {
-      query = query.eq("is_no_show", true);
-    } else {
-      query = query
-        .eq("is_confirmed", activeTab === "confirmed")
-        .eq("is_no_show", false);
-    }
-
-    const { data, error, count } = await query
-      .order("schedule_date", { ascending: activeTab === "pending" })
-      .range(startIndex, endIndex);
-
-    if (error) {
+      setSchedules(rows);
+      setTotalItems(total);
+    } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
         variant: "destructive",
       });
-    } else {
-      setSchedules(data || []);
-      setTotalItems(count || 0);
     }
     setLoading(false);
   };
@@ -273,10 +243,9 @@ export default function InterviewSchedules() {
   const executeDelete = async (id: string) => {
     setConfirmModal((prev) => ({ ...prev, loading: true }));
     try {
-      const { error } = await supabase
-        .from("interview_schedules")
-        .delete()
-        .eq("id", id);
+      const error = await api
+        .delete(`/api/schedules/interview/${id}`)
+        .then(() => null, (err: Error) => err);
       if (error)
         toast({
           title: "Error",
@@ -320,14 +289,11 @@ export default function InterviewSchedules() {
   const executeConfirm = async (id: string, currentStatus: boolean) => {
     setConfirmModal((prev) => ({ ...prev, loading: true }));
     try {
-      const { error } = await supabase
-        .from("interview_schedules")
-        .update(
-          !currentStatus
-            ? { is_confirmed: true, is_no_show: false, no_show_reason: null }
-            : { is_confirmed: false },
-        )
-        .eq("id", id);
+      const error = await api
+        .post(`/api/schedules/interview/${id}/attendance`, {
+          action: !currentStatus ? "confirm" : "unconfirm",
+        })
+        .then(() => null, (err: Error) => err);
 
       if (error) {
         toast({

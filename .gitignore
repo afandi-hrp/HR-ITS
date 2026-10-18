@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Supabase SQL (migrations/snapshot) — disimpan lokal saja, tidak di-push
+supabase/

@@ -91,24 +91,8 @@ export function calculateAge(birthDate: string | Date | null | undefined): numbe
   return age >= 0 ? age : null;
 }
 
-export function normalizePhone(phone: string | null | undefined): string {
-  if (!phone) return '';
-  let cleaned = phone.replace(/\D/g, '');
-  if (cleaned.startsWith('62')) {
-    cleaned = '0' + cleaned.substring(2);
-  }
-  return cleaned;
-}
-
-export function normalizeName(name: string | null | undefined): string {
-  if (!name) return '';
-  return name.toLowerCase().replace(/\s+/g, ' ').trim();
-}
-
-export function normalizeEmail(email: string | null | undefined): string {
-  if (!email) return '';
-  return email.toLowerCase().trim();
-}
+// Moved to normalize.ts (dependency-free, shared with server/).
+export { normalizePhone, normalizeName, normalizeEmail } from "./normalize";
 
 export async function fetchWithRetry(url: string, options?: RequestInit, maxRetries = 5) {
   let retries = maxRetries;

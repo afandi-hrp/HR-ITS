@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import { EvaluationTemplate } from "../types";
 import {
   FileText,
@@ -127,17 +128,10 @@ export default function EvaluationTemplates() {
 
   const fetchDepartments = async () => {
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("department")
-        .not("department", "is", null);
-
-      if (!error && data) {
-        const uniqueDepts = Array.from(
-          new Set(data.map((d) => d.department).filter(Boolean)),
-        );
-        setDepartments(uniqueDepts as string[]);
-      }
+      const { departments } = await api.get<{ departments: string[] }>(
+        "/api/profiles/departments",
+      );
+      setDepartments(departments);
     } catch (err) {
       console.error("Error fetching departments:", err);
     }
@@ -145,15 +139,9 @@ export default function EvaluationTemplates() {
 
   const fetchTemplates = async () => {
     setLoading(true);
-    let query = supabase.from("evaluation_templates").select("*");
-
-    if (debouncedSearch) {
-      query = query.ilike("name", `%${debouncedSearch}%`);
-    }
-
-    const { data, error } = await query.order("name", {
-      ascending: true,
-    });
+    const { data, error } = await api
+      .get<{ rows: any[] }>("/api/evaluation-templates", { search: debouncedSearch })
+      .then((r) => ({ data: r.rows, error: null as any }), (err) => ({ data: null, error: err }));
 
     if (error) {
       toast({
@@ -288,12 +276,10 @@ export default function EvaluationTemplates() {
         },
       };
 
-      const { error: rcError } = editingTemplate
-        ? await supabase
-            .from("evaluation_templates")
-            .update(rcPayload)
-            .eq("id", editingTemplate.id)
-        : await supabase.from("evaluation_templates").insert([rcPayload]);
+      const rcError = await (editingTemplate
+        ? api.patch(`/api/evaluation-templates/${editingTemplate.id}`, rcPayload)
+        : api.post("/api/evaluation-templates", rcPayload)
+      ).then(() => null, (err: Error) => err);
 
       if (rcError) {
         toast({
@@ -347,12 +333,10 @@ export default function EvaluationTemplates() {
       },
     };
 
-    const { error } = editingTemplate
-      ? await supabase
-          .from("evaluation_templates")
-          .update(payload)
-          .eq("id", editingTemplate.id)
-      : await supabase.from("evaluation_templates").insert([payload]);
+    const error = await (editingTemplate
+      ? api.patch(`/api/evaluation-templates/${editingTemplate.id}`, payload)
+      : api.post("/api/evaluation-templates", payload)
+    ).then(() => null, (err: Error) => err);
 
     if (error) {
       toast({
@@ -378,10 +362,9 @@ export default function EvaluationTemplates() {
   const executeDelete = async (id: string) => {
     setConfirmModal((prev) => ({ ...prev, loading: true }));
     try {
-      const { error } = await supabase
-        .from("evaluation_templates")
-        .delete()
-        .eq("id", id);
+      const error = await api
+        .delete(`/api/evaluation-templates/${id}`)
+        .then(() => null, (err: Error) => err);
       if (error) {
         toast({
           title: "Error",

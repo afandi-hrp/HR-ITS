@@ -37,14 +37,11 @@ import {
 import {
   cn,
   formatDate,
-  normalizeEmail,
-  normalizeName,
-  normalizePhone,
   fetchWithRetry,
   getEmbedUrl,
 } from "../lib/utils";
 import { waitForN8nJob } from "../lib/n8n";
-import { resolveDocumentUrl, removeDocumentFile } from "../lib/documentStorage";
+import { resolveDocumentUrl } from "../lib/documentStorage";
 import { CandidateAvatar } from "../components/CandidateAvatar";
 import {
   ExternalDataHeader,
@@ -53,10 +50,8 @@ import {
 } from "../components/ExternalDataSummary";
 import { getExternalDataSummary } from "../lib/externalDataSummary";
 import { ScheduleStatusTag } from "../components/NoShowModal";
-import {
-  ExternalDataLink,
-  fetchExternalDataLinks,
-} from "../lib/externalDataLinks";
+import type { ExternalDataLink } from "../lib/externalDataLinks";
+import { api } from "../lib/api";
 import { useToast } from "../components/ui/use-toast";
 import EvaluationModal from "../components/EvaluationModal";
 import ReferenceCheckModal from "../components/ReferenceCheckModal";
@@ -178,35 +173,13 @@ export default function CandidateProfile() {
     if (!candidate || !profile) return;
     setIsUpdatingApproval(true);
     try {
-      const column = isDirector ? 'director_status' : 'finance_status';
-      const dateColumn = isDirector ? 'director_approval_date' : 'finance_approval_date';
-      const now = new Date().toISOString();
-      
-      const { data: activeData } = await supabase
-        .from("candidates")
-        .select("id")
-        .eq("id", candidate.id)
-        .maybeSingle();
-
-      const table = activeData ? "candidates" : "candidate_logs";
-      
-      const updatePayload: any = { 
-        [column]: status, 
-        updated_at: now 
-      };
-      
-      // Update date only when accepting. (You could also update it for rejecting if needed)
-      if (status === 'accepted') {
-         updatePayload[dateColumn] = now;
-      }
-
-      const { error } = await supabase
-        .from(table)
-        .update(updatePayload)
-        .eq("id", candidate.id);
-
-      if (error) throw error;
-      setCandidate({ ...candidate, ...updatePayload });
+      // Server sets director_status/finance_status (+ approval date on
+      // accept) for the caller's own role, on an assigned active candidate.
+      const { update } = await api.post<{ update: Record<string, any> }>(
+        `/api/candidates/${candidate.id}/approval`,
+        { status },
+      );
+      setCandidate({ ...candidate, ...update });
       toast({
         title: "Status Diperbarui",
         description: `Status approval berhasil diubah menjadi ${status}.`,
@@ -445,51 +418,15 @@ export default function CandidateProfile() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, profile?.id]);
 
-  // Archived candidates' schedules / evaluations / notes no longer exist in
-  // their tables (FK cascade on archive) — they're snapshotted into
-  // candidate_logs.archived_records instead (migration 20261004000001).
-  const loadArchivedRecords = async (candidateId: string) => {
-    const { data } = await supabase
-      .from("candidate_logs")
-      .select("archived_records")
-      .eq("id", candidateId)
-      .maybeSingle();
-    return (data as any)?.archived_records || null;
-  };
-
-  // Attach `author` (profile) to archived notes, like the live join does.
-  const withAuthors = async (rows: any[]) => {
-    const ids = Array.from(new Set(rows.map((r) => r.author_id).filter(Boolean)));
-    if (ids.length === 0) return rows;
-    const { data } = await supabase.from("profiles").select("*").in("id", ids);
-    const byId = Object.fromEntries((data || []).map((p: any) => [p.id, p]));
-    return rows.map((r) => ({ ...r, author: byId[r.author_id] || null }));
-  };
-
   const fetchNotes = async (candidateId: string) => {
     setLoadingNotes(true);
     try {
-      let { data, error } = await supabase
-        .from("internal_notes")
-        .select("*, author:profiles(*)")
-        .eq("candidate_id", candidateId)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      if (data && data.length === 0) {
-        const archivedNotes = (await loadArchivedRecords(candidateId))?.internal_notes;
-        if (Array.isArray(archivedNotes) && archivedNotes.length > 0) {
-          data = (await withAuthors(archivedNotes)).sort(
-            (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-          );
-        }
-      }
-      if (data) {
-        const filteredNotes = data.filter(
-          (note) => note.author?.role === profile?.role,
-        );
-        setNotes(filteredNotes);
-      }
+      // Same-role notes only; archived candidates fall back to the snapshot
+      // in candidate_logs.archived_records — both resolved server-side.
+      const { rows } = await api.get<{ rows: any[] }>(
+        `/api/candidates/${candidateId}/notes`,
+      );
+      setNotes(rows);
     } catch (err) {
       console.error("Error fetching notes:", err);
     } finally {
@@ -501,22 +438,9 @@ export default function CandidateProfile() {
     if (!id || !profile || !newNote.trim()) return;
     setIsAddingNote(true);
     try {
-      const { error } = await supabase.from("internal_notes").insert({
-        candidate_id: id,
-        author_id: profile.id,
-        note_text: newNote.trim(),
-      });
-
-      if (error) throw error;
-
-      // Bump the candidate's own updated_at too — notes live in a separate
-      // table, but adding one is still a "touch" on this candidate from
-      // HR's perspective (e.g. surfaces them at the top of Screening's
-      // "Terbaru" sort).
-      await supabase
-        .from("candidates")
-        .update({ updated_at: new Date().toISOString() })
-        .eq("id", id);
+      // The server also bumps the candidate's updated_at (a note is a
+      // "touch" — surfaces them at the top of Screening's "Terbaru" sort).
+      await api.post(`/api/candidates/${id}/notes`, { text: newNote.trim() });
 
       toast({
         title: "Berhasil",
@@ -537,72 +461,40 @@ export default function CandidateProfile() {
   };
 
   const fetchEvaluations = async (candidateId: string) => {
-    const { data, error } = await supabase
-      .from("candidate_evaluations")
-      .select("*, template:evaluation_templates(*)")
-      .eq("candidate_id", candidateId)
-      .order("created_at", { ascending: false });
-
-    if (!error && data) {
-      if (data.length === 0) {
-        const archivedEvals = (await loadArchivedRecords(candidateId))?.candidate_evaluations;
-        if (Array.isArray(archivedEvals) && archivedEvals.length > 0) {
-          const templateIds = Array.from(new Set(archivedEvals.map((e: any) => e.template_id).filter(Boolean)));
-          const { data: templates } = templateIds.length
-            ? await supabase.from("evaluation_templates").select("*").in("id", templateIds)
-            : { data: [] as any[] };
-          const byId = Object.fromEntries((templates || []).map((t: any) => [t.id, t]));
-          setEvaluations(
-            archivedEvals
-              .map((e: any) => ({ ...e, template: byId[e.template_id] || null }))
-              .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
-          );
-          return;
-        }
-      }
-      setEvaluations(data);
+    try {
+      // Live evaluations, or the archive snapshot for archived candidates.
+      const { rows } = await api.get<{ rows: any[] }>(
+        `/api/candidates/${candidateId}/evaluations`,
+      );
+      setEvaluations(rows);
+    } catch (err) {
+      console.error("Error fetching evaluations:", err);
     }
   };
 
   const fetchCandidate = async (candidateId: string) => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("candidates")
-      .select(
-        "*, psikotes_schedules(id, is_confirmed, is_no_show, no_show_reason, schedule_date), interview_schedules(id, is_confirmed, is_no_show, no_show_reason, schedule_date, additional_notes), candidate_assignees(user_id, profiles(id, full_name, role, department))",
-      )
-      .eq("id", candidateId)
-      .single();
-
-    let candidateData = data;
-
-    if (error || !data) {
-      // Try fetching from candidate_logs if not found in active candidates
-      const { data: logData, error: logError } = await supabase
-        .from("candidate_logs")
-        .select("*")
-        .eq("id", candidateId)
-        .single();
-
-      if (logError || !logData) {
-        toast({
-          title: "Error",
-          description: "Gagal memuat profil kandidat",
-          variant: "destructive",
-        });
-        navigate("/screening");
-        setLoading(false);
-        return;
-      }
-      candidateData = {
-        ...logData,
-        psikotes_schedules: logData.archived_records?.psikotes_schedules || [],
-        interview_schedules: logData.archived_records?.interview_schedules || [],
-      };
-      setIsArchived(true);
-    } else {
-      setIsArchived(false);
+    // Active candidate (HR, or a user assigned to it) or — HR only — the
+    // archived one from candidate_logs; checked server-side.
+    let candidateData: any;
+    let archived = false;
+    try {
+      const result = await api.get<{ candidate: any; archived: boolean }>(
+        `/api/candidates/${encodeURIComponent(candidateId)}`,
+      );
+      candidateData = result.candidate;
+      archived = result.archived;
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Gagal memuat profil kandidat",
+        variant: "destructive",
+      });
+      navigate("/screening");
+      setLoading(false);
+      return;
     }
+    setIsArchived(archived);
 
     // Access Control Check
     if (
@@ -623,19 +515,16 @@ export default function CandidateProfile() {
 
     setCandidate(candidateData);
     setEditedCandidate(candidateData);
-    fetchExternalData(candidateData);
+    fetchExternalData(candidateData, archived);
     setLoading(false);
   };
 
   const fetchManagers = async () => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id, full_name, role, department, phone")
-      .in("role", ["USER_MANAGER", "HR_ADMIN", "DIRECTOR", "FINANCE_DIRECTOR"])
-      .order("full_name");
-
-    if (data) {
-      setManagers(data);
+    try {
+      const { rows } = await api.get<{ rows: any[] }>("/api/profiles/assignable");
+      setManagers(rows);
+    } catch (err) {
+      console.error("Error fetching assignable users:", err);
     }
   };
 
@@ -645,31 +534,11 @@ export default function CandidateProfile() {
     try {
       setAssigning(true);
 
-      const { data: activeData } = await supabase
-        .from("candidates")
-        .select("id")
-        .eq("id", id)
-        .maybeSingle();
+      // Replaces the reviewer list server-side (adds first, then removes,
+      // so a failure never leaves the candidate with nobody assigned).
+      await api.put(`/api/candidates/${id}/assignees`, { userIds: selectedManagers });
 
-      const table = activeData ? "candidates" : "candidate_logs";
-
-      // Delete existing assignments
-      await supabase
-        .from("candidate_assignees")
-        .delete()
-        .eq("candidate_id", id);
-
-      // Insert new assignments
       if (selectedManagers.length > 0) {
-        const inserts = selectedManagers.map((userId) => ({
-          candidate_id: id,
-          user_id: userId,
-        }));
-        const { error } = await supabase
-          .from("candidate_assignees")
-          .insert(inserts);
-
-        if (error) throw error;
 
         // Send WhatsApp notification to assigned users
         const { data: { session } } = await supabase.auth.getSession();
@@ -731,96 +600,27 @@ export default function CandidateProfile() {
     }
   };
 
-  const fetchExternalData = async (candidateData: Candidate) => {
+  const fetchExternalData = async (candidateData: Candidate, archived: boolean) => {
     setIsSearchingExternal(true);
     try {
-      // If already linked, fetch that specific one
-      if (candidateData.linked_external_id) {
-        const { data, error } = await supabase
-          .from("external_data")
-          .select("*")
-          .eq("uid_sheet", candidateData.linked_external_id)
-          .single();
+      // Linked form, or match suggestions (by email/phone/name) when none
+      // is linked yet — both resolved server-side with a role check; the
+      // matching used to download every form into the browser.
+      const result = await api.get<{
+        linked: any | null;
+        linkedElsewhere: ExternalDataLink[];
+        suggestions: any[];
+      }>(`/api/external-data/for-candidate/${encodeURIComponent(candidateData.id)}`, {
+        archived: archived ? 1 : undefined,
+      });
 
-        if (data) {
-          setLinkedData({ uid_sheet: data.uid_sheet, ...data.raw_data });
-          // Other applications (e.g. an archived earlier one) sharing this form.
-          const links = await fetchExternalDataLinks([data.uid_sheet]);
-          setLinkedElsewhere(links.filter((l) => l.id !== candidateData.id));
-          setIsSearchingExternal(false);
-          return;
-        }
+      if (result.linked) {
+        setLinkedData(result.linked);
+        // Other applications (e.g. an archived earlier one) sharing this form.
+        setLinkedElsewhere(result.linkedElsewhere);
+        return;
       }
-
-      // Otherwise, auto-suggest
-      const normEmail = normalizeEmail(candidateData.email);
-      const normPhone = normalizePhone(candidateData.phone);
-      const normName = normalizeName(candidateData.full_name);
-
-      const { data, error } = await supabase.from("external_data").select("*");
-
-      if (data) {
-        const matches = data
-          .map((item) => {
-            const raw = item.raw_data;
-            // Which of the candidate's fields this row matched on, shown on
-            // the suggestion card so HR can judge how reliable the match is.
-            const reasons = new Set<"email" | "phone" | "name">();
-            if (!raw) return { item, reasons };
-
-            Object.entries(raw).forEach(([key, val]) => {
-              if (typeof val !== "string") return;
-              const lowerKey = key.toLowerCase();
-              const strVal = String(val);
-
-              if (
-                lowerKey.includes("email") &&
-                normalizeEmail(strVal) === normEmail
-              )
-                reasons.add("email");
-              if (
-                (lowerKey.includes("phone") ||
-                  lowerKey.includes("telepon") ||
-                  lowerKey.includes("hp") ||
-                  lowerKey.includes("whatsapp")) &&
-                normalizePhone(strVal) === normPhone &&
-                normPhone !== ""
-              )
-                reasons.add("phone");
-              if (
-                (lowerKey.includes("name") || lowerKey.includes("nama")) &&
-                normalizeName(strVal) === normName
-              )
-                reasons.add("name");
-            });
-            return { item, reasons };
-          })
-          .filter(({ reasons }) => reasons.size > 0);
-
-        // A form already linked to an *archived* application (e.g. the same
-        // person re-applying for another position) may be linked again; one
-        // still linked to another *active* application may not — that one
-        // has to be archived first.
-        const links = (
-          await fetchExternalDataLinks(matches.map(({ item }) => item.uid_sheet))
-        ).filter((l) => l.id !== candidateData.id);
-
-        setExternalData(
-          matches.map(({ item, reasons }) => {
-            const itemLinks = links.filter(
-              (l) => l.linked_external_id === item.uid_sheet,
-            );
-            return {
-              uid_sheet: item.uid_sheet,
-              ...item.raw_data,
-              _submitted_at: item.created_at,
-              _match_reasons: Array.from(reasons),
-              _archived_links: itemLinks.filter((l) => l.status === "archived"),
-              _active_links: itemLinks.filter((l) => l.status === "active"),
-            };
-          }),
-        );
-      }
+      setExternalData(result.suggestions);
     } catch (err) {
       console.error("Error fetching external data:", err);
     } finally {
@@ -832,34 +632,18 @@ export default function CandidateProfile() {
     if (!candidate || !id) return;
     setIsLinking(true);
     try {
-      // Re-check at link time: sharing a form is only allowed with archived
-      // applications, never with another active one.
-      const activeHolder = (await fetchExternalDataLinks([uid_sheet])).find(
-        (l) => l.status === "active" && l.id !== id,
-      );
-      if (activeHolder) {
+      // The server re-checks that the form isn't held by another ACTIVE
+      // application (sharing is only allowed with archived ones).
+      try {
+        await api.post("/api/external-data/link", { candidateId: id, uid_sheet });
+      } catch (err: any) {
         toast({
           title: "Tidak dapat ditautkan",
-          description: `Data ini masih ditautkan ke lamaran aktif ${activeHolder.full_name || "-"} (${activeHolder.position || "-"}). Arsipkan lamaran tersebut terlebih dahulu.`,
+          description: err.message || "Gagal menautkan data.",
           variant: "destructive",
         });
         return;
       }
-
-      const { data: activeData } = await supabase
-        .from("candidates")
-        .select("id")
-        .eq("id", id)
-        .maybeSingle();
-
-      const table = activeData ? "candidates" : "candidate_logs";
-
-      const { error } = await supabase
-        .from(table)
-        .update({ linked_external_id: uid_sheet, updated_at: new Date().toISOString() })
-        .eq("id", id);
-
-      if (error) throw error;
 
       toast({
         title: "Berhasil",
@@ -884,20 +668,7 @@ export default function CandidateProfile() {
     if (!candidate || !id) return;
     setIsLinking(true);
     try {
-      const { data: activeData } = await supabase
-        .from("candidates")
-        .select("id")
-        .eq("id", id)
-        .maybeSingle();
-
-      const table = activeData ? "candidates" : "candidate_logs";
-
-      const { error } = await supabase
-        .from(table)
-        .update({ linked_external_id: null, updated_at: new Date().toISOString() })
-        .eq("id", id);
-
-      if (error) throw error;
+      await api.post("/api/external-data/unlink", { candidateId: id });
 
       toast({
         title: "Berhasil",
@@ -1135,20 +906,9 @@ export default function CandidateProfile() {
   const handleSaveInterviewQuestions = async () => {
     if (!candidate) return;
     try {
-      const { data: activeData } = await supabase
-        .from("candidates")
-        .select("id")
-        .eq("id", candidate.id)
-        .maybeSingle();
-
-      const table = activeData ? "candidates" : "candidate_logs";
-
-      const { error } = await supabase
-        .from(table)
-        .update({ ai_interview_questions: generatedQuestions, updated_at: new Date().toISOString() })
-        .eq("id", candidate.id);
-
-      if (error) throw error;
+      await api.post(`/api/candidates/${candidate.id}/interview-questions`, {
+        questions: generatedQuestions,
+      });
 
       setCandidate({
         ...candidate,
@@ -1195,47 +955,11 @@ export default function CandidateProfile() {
 
     setIsUploadingPsikotes(true);
     try {
-      // Delete old file if exists to prevent accumulation (handles both the
-      // legacy public bucket and the new private bucket).
-      if (candidate.psikotes_result_url) {
-        try {
-          await removeDocumentFile(candidate.psikotes_result_url);
-        } catch (delErr) {
-          console.error("Failed to delete old file:", delErr);
-        }
-      }
-
-      const fileExt = file.name.split(".").pop();
-      const fileName = `psikotes/${id}_${Date.now()}.${fileExt}`;
-
-      // fileName always includes a fresh timestamp and the previous file is
-      // already deleted above, so this never actually collides — upsert
-      // would force Postgres into an INSERT ... ON CONFLICT DO UPDATE path
-      // that requires satisfying both INSERT and UPDATE RLS policies.
-      const { error: uploadError } = await supabase.storage
-        .from("candidate-documents-private")
-        .upload(fileName, file, {
-          contentType: "application/pdf",
-        });
-
-      if (uploadError) throw uploadError;
-
-      // Stored as a bare storage path (not a public URL) — resolved into a
-      // short-lived signed URL on demand whenever it's actually displayed.
-      const { data: activeData } = await supabase
-        .from("candidates")
-        .select("id")
-        .eq("id", id)
-        .maybeSingle();
-
-      const table = activeData ? "candidates" : "candidate_logs";
-
-      const { error: updateError } = await supabase
-        .from(table)
-        .update({ psikotes_result_url: fileName, updated_at: new Date().toISOString() })
-        .eq("id", id);
-
-      if (updateError) throw updateError;
+      // Server uploads to the private bucket, updates psikotes_result_url
+      // and only then removes the previous file.
+      const form = new FormData();
+      form.append("file", file);
+      await api.upload(`/api/candidates/${id}/psikotes-result`, form);
 
       toast({
         title: "Berhasil",
@@ -1261,28 +985,11 @@ export default function CandidateProfile() {
     setSaving(true);
 
     try {
-      const updateData = {
+      await api.patch(`/api/candidates/${id}`, {
         full_name: editedCandidate.full_name,
         email: editedCandidate.email,
         phone: editedCandidate.phone,
-        updated_at: new Date().toISOString(),
-      };
-
-      // Check if candidate is in active candidates or logs
-      const { data: activeData } = await supabase
-        .from("candidates")
-        .select("id")
-        .eq("id", id)
-        .maybeSingle();
-
-      const table = activeData ? "candidates" : "candidate_logs";
-
-      const { error } = await supabase
-        .from(table)
-        .update(updateData)
-        .eq("id", id);
-
-      if (error) throw error;
+      });
 
       toast({
         title: "Berhasil",

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import { Download, Search, Loader2, Edit2, Check, X, Calendar as CalendarIcon, ChevronDown } from "lucide-react";
 
 import * as XLSX from "xlsx-js-style";
@@ -112,23 +112,24 @@ export default function CandidateTracking() {
 
   const handleSave = async (id: string, isLog: boolean) => {
     try {
-      const table = isLog ? "candidate_logs" : "candidates";
-      
       const payload: any = {};
       Object.keys(editForm).forEach(k => {
         payload[k] = editForm[k] === "" ? null : editForm[k];
       });
 
-      const { error } = await supabase
-        .from(table)
-        .update(payload)
-        .eq("id", id);
-        
-      if (error) throw error;
-      
-      setCandidates(candidates.map(c => c.id === id ? { ...c, ...payload } : c));
+      const { update, skipped } = await api.patch<{ update: any; skipped: string[] }>(
+        `/api/tracking/${id}`,
+        { isLog, fields: payload },
+      );
+
+      setCandidates(candidates.map(c => c.id === id ? { ...c, ...update } : c));
       setEditingId(null);
-      toast({ title: "Berhasil", description: "Data tracking berhasil disimpan." });
+      toast({
+        title: "Berhasil",
+        description: skipped.includes("notes")
+          ? "Data tracking disimpan. Catatan tidak disimpan karena hanya tersedia untuk kandidat yang sudah di Log."
+          : "Data tracking berhasil disimpan.",
+      });
     } catch (err: any) {
       console.error("Error updating candidate:", err);
       toast({ title: "Gagal", description: err?.message || "Gagal mengupdate data.", variant: "destructive" });
@@ -142,28 +143,12 @@ export default function CandidateTracking() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Fetch active candidates
-      const { data: activeData, error: activeError } = await supabase
-        .from("candidates")
-        .select(`
-          *,
-          psikotes_schedules (is_confirmed, is_no_show, schedule_date),
-          interview_schedules (is_confirmed, is_no_show, schedule_date, additional_notes),
-          candidate_evaluations (evaluation_type, interviewer_name, total_score, evaluation_data)
-        `)
-        .order("created_at", { ascending: false });
-
-      if (activeError) throw activeError;
-
-      // Fetch logged candidates
-      const { data: loggedData, error: loggedError } = await supabase
-        .from("candidate_logs")
-        .select(`
-          *
-        `)
-        .order("created_at", { ascending: false });
-
-      if (loggedError) throw loggedError;
+      // Active candidates (with schedules/evaluations) + archived ones, HR
+      // only — server/routes/analytics.ts.
+      const { active: activeData, logged: loggedData } = await api.get<{
+        active: any[];
+        logged: any[];
+      }>("/api/tracking");
 
       const combined = [
         ...(activeData || []).map((d: any) => ({ ...d, _archived: false })),
@@ -185,17 +170,18 @@ export default function CandidateTracking() {
         new Set(combined.map((c) => c.linked_external_id).filter(Boolean)),
       );
       if (linkedIds.length > 0) {
-        const { data: extData, error: extError } = await supabase
-          .from("external_data")
-          .select("uid_sheet, raw_data")
-          .in("uid_sheet", linkedIds);
-
-        if (!extError && extData) {
+        try {
+          const { rows } = await api.post<{ rows: { uid_sheet: string; raw_data: any }[] }>(
+            "/api/external-data/by-uids",
+            { uids: linkedIds },
+          );
           const map: Record<string, any> = {};
-          extData.forEach((row) => {
+          rows.forEach((row) => {
             map[row.uid_sheet] = row.raw_data;
           });
           setExternalDataMap(map);
+        } catch (extError) {
+          console.error("Error fetching linked external data:", extError);
         }
       }
     } catch (err) {

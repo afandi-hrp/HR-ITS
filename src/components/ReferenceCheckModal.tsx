@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Loader2, Save } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { api } from '../lib/api';
 import { useToast } from './ui/use-toast';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -120,13 +121,9 @@ export default function ReferenceCheckModal({
   const fetchTemplate = async () => {
     setLoading(true);
     try {
-      const { data: rows, error } = await supabase
-        .from('evaluation_templates')
-        .select('*')
-        .eq('type', 'REFERENCE_CHECK')
-        .limit(1);
-
-      if (error) throw error;
+      const { rows } = await api.get<{ rows: any[] }>('/api/evaluation-templates', {
+        type: 'REFERENCE_CHECK',
+      });
       setTemplate(rows?.[0] || null);
     } catch (error: any) {
       toast({ title: 'Error', description: 'Gagal memuat template Reference Check', variant: 'destructive' });
@@ -150,34 +147,19 @@ export default function ReferenceCheckModal({
     try {
       const { data: userData } = await supabase.auth.getUser();
 
+      // Saved server-side (reference checks are HR only).
+      const fields = {
+        template_id: template.id,
+        evaluation_type: 'REFERENCE_CHECK',
+        interviewer_name: interviewerName,
+        evaluation_data: data,
+        total_score: 0,
+      };
       if (existingEvaluation) {
-        const { error } = await supabase
-          .from('candidate_evaluations')
-          .update({
-            template_id: template.id,
-            evaluation_type: 'REFERENCE_CHECK',
-            interviewer_name: interviewerName,
-            evaluation_data: data,
-            total_score: 0,
-          })
-          .eq('id', existingEvaluation.id);
-
-        if (error) throw error;
+        await api.patch(`/api/evaluations/${existingEvaluation.id}`, fields);
         toast({ title: 'Berhasil', description: 'Reference check berhasil diperbarui' });
       } else {
-        const { error } = await supabase
-          .from('candidate_evaluations')
-          .insert({
-            candidate_id: candidateId,
-            template_id: template.id,
-            evaluation_type: 'REFERENCE_CHECK',
-            interviewer_name: interviewerName,
-            evaluator_id: userData.user?.id,
-            evaluation_data: data,
-            total_score: 0,
-          });
-
-        if (error) throw error;
+        await api.post('/api/evaluations', { ...fields, candidate_id: candidateId });
         toast({ title: 'Berhasil', description: 'Reference check berhasil disimpan' });
       }
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import {
   Loader2,
   TrendingUp,
@@ -69,38 +70,14 @@ export default function RecruitmentFunnel() {
   // Fetch unique positions once on mount
   useEffect(() => {
     const fetchPositions = async () => {
+      // get_unique_positions RPC, with the candidates + candidate_logs
+      // fallback, resolved server-side (HR only).
       try {
-        // Try to use the RPC for efficient distinct querying
-        const { data: rpcData, error: rpcError } = await supabase.rpc(
-          "get_unique_positions",
-        );
-
-        if (!rpcError && rpcData) {
-          const unique = rpcData
-            .map((d: any) => d.position)
-            .filter(Boolean)
-            .sort();
-          setPositions(unique);
-          return;
-        }
-      } catch (e) {
-        console.warn(
-          "RPC get_unique_positions failed, falling back to manual fetch",
-          e,
-        );
+        const { positions } = await api.get<{ positions: string[] }>("/api/funnel/positions");
+        setPositions(positions);
+      } catch (err) {
+        console.error("Error fetching positions:", err);
       }
-
-      // Fallback if RPC doesn't exist yet
-      const [{ data: cData }, { data: lData }] = await Promise.all([
-        supabase.from("candidates").select("position").limit(10000),
-        supabase.from("candidate_logs").select("position").limit(10000),
-      ]);
-
-      const allPositions = [...(cData || []), ...(lData || [])];
-      const unique = Array.from(new Set(allPositions.map((d) => d.position)))
-        .filter(Boolean)
-        .sort();
-      setPositions(unique);
     };
     fetchPositions();
   }, []);
@@ -134,14 +111,13 @@ export default function RecruitmentFunnel() {
         }
       }
 
-      // Helper to build base query for fetching data (limited to 50 for the detail view)
-      const buildDataQuery = (table: string, select = "*") => {
-        let q = supabase.from(table).select(select);
-        if (selectedPosition !== "all") q = q.eq("position", selectedPosition);
-        if (startDate) q = q.gte("created_at", startDate.toISOString());
-        if (endDate) q = q.lte("created_at", endDate.toISOString());
-        return q;
-      };
+      // Every query of this page runs server-side with these filters (HR
+      // only) — server/routes/analytics.ts. The aggregation below is unchanged.
+      const funnel = await api.get<any>("/api/funnel", {
+        position: selectedPosition,
+        start: startDate ? startDate.toISOString() : undefined,
+        end: endDate ? endDate.toISOString() : undefined,
+      });
 
       // 1. Each stage's count is computed cumulatively server-side ("reached
       // this stage or beyond"), guaranteeing every stage is a subset of the
@@ -153,18 +129,7 @@ export default function RecruitmentFunnel() {
       // isn't part of that cumulative chain — it's an exit, not a
       // "reached X or beyond" milestone, so it's kept separate here too and
       // appended after "hired" in the funnel bars rather than woven in.
-      const { data: funnelCounts, error: funnelCountsError } =
-        await supabase.rpc("get_recruitment_funnel_counts", {
-          p_position: selectedPosition !== "all" ? selectedPosition : null,
-          p_start_date: startDate ? startDate.toISOString() : null,
-          p_end_date: endDate ? endDate.toISOString() : null,
-        });
-      if (funnelCountsError) {
-        console.error("Error fetching funnel counts:", funnelCountsError);
-      }
-      const counts = Array.isArray(funnelCounts)
-        ? funnelCounts[0]
-        : funnelCounts;
+      const counts = funnel.counts;
 
       const totalApplied = counts?.total_applied || 0;
       const totalTidakLolos = counts?.rejected || 0;
@@ -180,18 +145,7 @@ export default function RecruitmentFunnel() {
       // (the old `totalApplied - totalHired - totalTidakLolos` also counted
       // candidates already mid-pipeline — e.g. scheduled for psikotes — as
       // "pending", which is what this replaces).
-      const { data: pendingCount, error: pendingError } = await supabase.rpc(
-        "count_pending_candidates",
-        {
-          p_position: selectedPosition !== "all" ? selectedPosition : null,
-          p_start_date: startDate ? startDate.toISOString() : null,
-          p_end_date: endDate ? endDate.toISOString() : null,
-        },
-      );
-      const totalPending = pendingError ? 0 : pendingCount || 0;
-      if (pendingError) {
-        console.error("Error counting pending candidates:", pendingError);
-      }
+      const totalPending = funnel.pending || 0;
 
       // 2. Fetch the detail list for each stage (limited to 50 per stage to
       // avoid crashing the browser on 100k+ records) using the exact same
@@ -212,20 +166,7 @@ export default function RecruitmentFunnel() {
         hired: [],
         rejected: [],
       };
-      const { data: stageCandidateRows, error: stageCandidateRowsError } =
-        await supabase.rpc("get_recruitment_funnel_stage_candidates", {
-          p_position: selectedPosition !== "all" ? selectedPosition : null,
-          p_start_date: startDate ? startDate.toISOString() : null,
-          p_end_date: endDate ? endDate.toISOString() : null,
-          p_limit_per_stage: 50,
-        });
-      if (stageCandidateRowsError) {
-        console.error(
-          "Error fetching funnel stage candidates:",
-          stageCandidateRowsError,
-        );
-      }
-      (stageCandidateRows || []).forEach((row: any) => {
+      (funnel.stageRows || []).forEach((row: any) => {
         if (stageIdLists[row.stage]) {
           stageIdLists[row.stage].push({
             id: row.candidate_id,
@@ -251,15 +192,8 @@ export default function RecruitmentFunnel() {
         ),
       );
 
-      const [{ data: allCandidateRows }, { data: allLogRows }] =
-        await Promise.all([
-          allCandidateIds.length > 0
-            ? supabase.from("candidates").select("*").in("id", allCandidateIds)
-            : Promise.resolve({ data: [] as any[] }),
-          allLogIds.length > 0
-            ? supabase.from("candidate_logs").select("*").in("id", allLogIds)
-            : Promise.resolve({ data: [] as any[] }),
-        ]);
+      const allCandidateRows: any[] = funnel.candidateRows;
+      const allLogRows: any[] = funnel.logRows;
 
       const candidateRowMap = new Map(
         (allCandidateRows || []).map((c: any) => [c.id, c]),
@@ -350,44 +284,23 @@ export default function RecruitmentFunnel() {
       // it was previously an unfiltered query, so the monthly trend chart
       // and "Total Waktu (Hired)" efficiency number silently ignored the
       // position/date filter while every other number on the page respected it.
-      const { data: recentHired } = (await buildDataQuery(
-        "candidate_logs",
-        "id, created_at, archived_at, updated_at, status_screening",
-      )
-        .eq("status_screening", "hired")
-        .order("created_at", { ascending: false })
-        .limit(1000)) as {
-        data: {
-          id: string;
-          created_at: string;
-          archived_at: string | null;
-          updated_at: string | null;
-          status_screening: string;
-        }[] | null;
-      };
+      const recentHired: {
+        id: string;
+        created_at: string;
+        archived_at: string | null;
+        updated_at: string | null;
+        status_screening: string;
+      }[] = funnel.recentHired;
 
       // Fetch schedules for efficiency calculation. These tables don't carry
       // position/created_at-of-candidate columns themselves, so they can't
       // be filtered server-side the same way — instead we keep them
       // unfiltered here and restrict to the filtered candidate set (via
       // candidateCreationMap, built below) when computing the day counts.
-      const [psikotesSchedules, interviewSchedules, activeSources, logSources] =
-        await Promise.all([
-          supabase
-            .from("psikotes_schedules")
-            .select("candidate_id, created_at, schedule_date"),
-          supabase
-            .from("interview_schedules")
-            .select("candidate_id, created_at, schedule_date"),
-          buildDataQuery(
-            "candidates",
-            "id, created_at, source_info, status_screening",
-          ).limit(10000),
-          buildDataQuery(
-            "candidate_logs",
-            "id, created_at, source_info, status_screening",
-          ).limit(10000),
-        ]);
+      const psikotesSchedules = { data: funnel.psikotesSchedules as any[] };
+      const interviewSchedules = { data: funnel.interviewSchedules as any[] };
+      const activeSources = { data: funnel.activeSources as any[] };
+      const logSources = { data: funnel.logSources as any[] };
 
       // Calculate Source Distribution
       const sourceCounts: Record<

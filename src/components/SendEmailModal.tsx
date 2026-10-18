@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Send, Mail, ChevronDown, Loader2, KeyRound } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { api } from '../lib/api';
 import { Candidate, EmailTemplate, Schedule } from '../types';
 import { useToast } from './ui/use-toast';
 import { cn, formatDate, fetchWithRetry, formatInterviewTimeRange } from '../lib/utils';
@@ -35,51 +36,44 @@ export default function SendEmailModal({ candidate, schedule, type, onClose }: S
 
   useEffect(() => {
     const fetchFullCandidate = async () => {
-      const { data } = await supabase
-        .from('candidates')
-        .select('*, interview_schedules(*), psikotes_schedules(*)')
-        .eq('id', candidate.id)
-        .single();
-        
-      if (data) {
-        setFullCandidate(data as Candidate);
+      try {
+        const { candidate: data } = await api.get<{ candidate: Candidate }>(
+          `/api/candidates/${candidate.id}`,
+          { full: 1 },
+        );
+        if (data) setFullCandidate(data);
+      } catch (err) {
+        console.error('Error fetching candidate:', err);
       }
     };
     fetchFullCandidate();
 
     const fetchTemplates = async () => {
-      const { data, error } = await supabase
-        .from('email_templates')
-        .select('*')
-        .order('name', { ascending: true });
-
-      if (error) {
+      try {
+        const { rows } = await api.get<{ rows: EmailTemplate[] }>('/api/email-templates', { all: 1, order: 'name' });
+        setTemplates(rows);
+      } catch {
         toast({ title: 'Error', description: 'Gagal mengambil template email.', variant: 'destructive' });
-      } else {
-        setTemplates(data || []);
       }
       setFetchingTemplates(false);
     };
 
     const fetchTokens = async () => {
-      // Fetch latest candidate state to see if token is already assigned
-      const { data: cData } = await supabase.from('candidates').select('confirmation_token').eq('id', candidate.id).single();
-      if (cData?.confirmation_token) {
-        setFullCandidate(prev => ({ ...prev, confirmation_token: cData.confirmation_token }));
-      }
-
-      const { data, error } = await supabase
-        .from('registration_tokens')
-        .select('id, token, used_at')
-        .eq('is_used', false)
-        .order('created_at', { ascending: false });
-        
-      if (!error && data) {
-        setTokens(data);
-        if (cData?.confirmation_token) {
-          const assignedDef = data.find(t => t.id === cData.confirmation_token);
-          if (assignedDef) setSelectedToken(assignedDef.id);
+      // Unused tokens + the one already assigned to this candidate (HR only).
+      try {
+        const { tokens: available, assignedTokenId } = await api.get<{
+          tokens: any[];
+          assignedTokenId: string | null;
+        }>('/api/registration-tokens/available', { candidateId: candidate.id });
+        if (assignedTokenId) {
+          setFullCandidate(prev => ({ ...prev, confirmation_token: assignedTokenId }));
         }
+        setTokens(available);
+        if (assignedTokenId && available.some(t => t.id === assignedTokenId)) {
+          setSelectedToken(assignedTokenId);
+        }
+      } catch (err) {
+        console.error('Error fetching registration tokens:', err);
       }
     };
 
@@ -190,16 +184,15 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
         const tokenObj = tokens.find(t => t.id === selectedToken);
         if (tokenObj) {
           tokenValue = tokenObj.token;
-          // Mark token as sent by setting used_at, but keep is_used = false so candidate can still use it
-          await supabase
-            .from('registration_tokens')
-            .update({ used_at: new Date().toISOString() })
-            .eq('id', selectedToken);
-          
-          await supabase
-            .from('candidates')
-            .update({ confirmation_token: selectedToken, updated_at: new Date().toISOString() })
-            .eq('id', candidate.id);
+          // Marks the token as sent (used_at) and assigns it to the
+          // candidate; is_used stays false so the candidate can still use it.
+          try {
+            await api.post(`/api/registration-tokens/${encodeURIComponent(selectedToken)}/mark-sent`, {
+              candidateId: candidate.id,
+            });
+          } catch (err) {
+            console.error('Error marking registration token as sent:', err);
+          }
         }
       }
 

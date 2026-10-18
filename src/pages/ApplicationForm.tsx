@@ -21,6 +21,7 @@ import { v4 as uuidv4 } from "uuid";
 import SignatureCanvas from "react-signature-canvas";
 import { cn, getEmbedUrl, getSocialMediaUrl, formatCurrencyId, formatDateDMY, formatDateDMMMY, getLocalDateString, calculateAge, fetchWithRetry } from "../lib/utils";
 import { resolveDocumentUrl } from "../lib/documentStorage";
+import { validateApplicationForm } from "../lib/applicationFormValidation";
 import { PdfToImages } from "../components/PdfToImages";
 
 interface ApplicationFormProps {
@@ -127,6 +128,12 @@ export default function ApplicationForm({
   const lastRemunerationSignatureData = useRef<ReturnType<
     NonNullable<InstanceType<typeof SignatureCanvas>["toData"]>
   > | null>(null);
+  // Mirrors whether each pad holds strokes, so the "Tanda Tangan Disini"
+  // placeholder re-renders on draw/clear (reading the ref during render
+  // doesn't trigger a re-render on its own).
+  const [hasSignature, setHasSignature] = useState(false);
+  const [hasRemunerationSignature, setHasRemunerationSignature] =
+    useState(false);
 
   useEffect(() => {
     const restoreIfCleared = (
@@ -225,6 +232,12 @@ export default function ApplicationForm({
                 .map((s: string) => s.trim())
                 .filter(Boolean);
             }
+            // A corrupt/old draft (e.g. null) would otherwise crash the
+            // checkbox render on `.includes`.
+            if (!Array.isArray(merged.job_vacancy_info))
+              merged.job_vacancy_info = [];
+            if (!Array.isArray(merged.driver_license))
+              merged.driver_license = [];
             if (typeof parsed.driver_license_numbers !== "object") {
               merged.driver_license_numbers = {};
               if (
@@ -891,436 +904,23 @@ export default function ApplicationForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // VALIDATIONS
-    const errors: string[] = [];
-
-    if (!token.trim()) errors.push("Token pendaftaran wajib diisi.");
-
-    // 1. Upload Dokumen
-    if (!photoFile) errors.push("Pas foto wajib diunggah.");
-    if (!ktpFile) errors.push("Dokumen KTP wajib diunggah.");
-    if (!ijazahFile) errors.push("Dokumen Ijazah wajib diunggah.");
-    if (!transcriptFile) errors.push("Dokumen Transkrip Nilai wajib diunggah.");
-
-    // 2. No. Handphone
-    if (!formData.mobile_phone?.trim())
-      errors.push("No. Handphone wajib diisi.");
-
-    // 3. Tanda Tangan
-    if (!sigCanvas.current || sigCanvas.current.isEmpty()) {
-      errors.push("Tanda tangan deklarasi (Pelamar) wajib diisi.");
-    }
-    if (!hideSalary && payslipFiles.length === 0) {
-      errors.push("Lampiran slip gaji terakhir wajib diunggah.");
-    }
-
-    if (
-      !hideSalary &&
-      (!remunerationSigCanvas.current ||
-        remunerationSigCanvas.current.isEmpty())
-    ) {
-      errors.push("Tanda tangan formulir remunerasi wajib diisi.");
-    }
-
-    // 4. Posisi yang dilamar & Info Lowongan
-    if (!formData.position?.trim())
-      errors.push("Posisi yang dilamar wajib diisi.");
-    if (formData.job_vacancy_info.length === 0)
-      errors.push("Info lowongan kerja wajib diisi (pilih minimal satu).");
-
-    // 4.1 Identitas Personal Wajib
-    if (!formData.full_name?.trim()) errors.push("Nama Lengkap wajib diisi.");
-    if (!formData.sex?.trim()) errors.push("Jenis Kelamin wajib diisi.");
-    if (!formData.place_of_birth?.trim() || !formData.date_of_birth?.trim())
-      errors.push("Tempat dan Tanggal Lahir wajib diisi.");
-    if (!formData.religion?.trim()) errors.push("Agama wajib diisi.");
-    if (!formData.nationality?.trim())
-      errors.push("Kewarganegaraan wajib diisi.");
-    if (!formData.ethnic?.trim()) errors.push("Suku wajib diisi.");
-    if (!formData.hobby?.trim()) errors.push("Hobby wajib diisi.");
-    if (!formData.marital_status?.trim())
-      errors.push("Status Perkawinan wajib diisi.");
-    if (
-      (formData.marital_status === "Menikah" ||
-        formData.marital_status === "Janda/Duda") &&
-      !formData.marital_since_year?.trim()
-    )
-      errors.push(
-        "Tahun pernikahan wajib diisi jika status Menikah atau Janda/Duda.",
-      );
-    if (!formData.identity_number?.trim())
-      errors.push("No. KTP/Passport wajib diisi.");
-    if (!formData.address_ktp?.trim())
-      errors.push("Alamat Sesuai KTP wajib diisi.");
-    if (!formData.current_address?.trim())
-      errors.push("Alamat Saat Ini wajib diisi.");
-    if (!formData.residential_status?.trim())
-      errors.push("Status Tempat Tinggal wajib diisi.");
-    if (!formData.height?.trim() || !formData.weight?.trim())
-      errors.push("Tinggi dan Berat Badan wajib diisi.");
-    if (
-      formData.postal_code_ktp?.trim() &&
-      /^0+$/.test(formData.postal_code_ktp.trim())
-    )
-      errors.push("Kode Pos Alamat KTP tidak valid.");
-    if (
-      formData.postal_code_current?.trim() &&
-      /^0+$/.test(formData.postal_code_current.trim())
-    )
-      errors.push("Kode Pos Alamat Saat Ini tidak valid.");
-
-    let hasValidSocialMedia = false;
-    formData.social_media.forEach((sm, index) => {
-      if (sm.platform?.trim() && sm.account?.trim()) {
-        hasValidSocialMedia = true;
-      }
-      if (sm.platform?.trim() && !sm.account?.trim()) {
-        errors.push(
-          `Nama Akun Sosial Media untuk platform ${sm.platform} wajib diisi.`,
-        );
-      }
-      if (!sm.platform?.trim() && sm.account?.trim()) {
-        errors.push(
-          `Platform Sosial Media untuk akun ${sm.account} wajib dipilih.`,
-        );
-      }
+    // VALIDATIONS — lihat src/lib/applicationFormValidation.ts
+    const errors = validateApplicationForm({
+      formData,
+      token,
+      hideSalary,
+      hasPhoto: !!photoFile,
+      hasKtp: !!ktpFile,
+      hasIjazah: !!ijazahFile,
+      hasTranscript: !!transcriptFile,
+      payslipCount: payslipFiles.length,
+      signature: sigCanvas.current?.isEmpty()
+        ? null
+        : sigCanvas.current?.toData() || null,
+      remunerationSignature: remunerationSigCanvas.current?.isEmpty()
+        ? null
+        : remunerationSigCanvas.current?.toData() || null,
     });
-    if (!hasValidSocialMedia)
-      errors.push("Minimal 1 Sosial Media (Platform dan Akun) wajib diisi.");
-
-    if (formData.driver_license.length > 0) {
-      for (const sim of formData.driver_license) {
-        const simNumber = formData.driver_license_numbers?.[sim]?.trim();
-        if (!simNumber) {
-          errors.push(`Nomor SIM untuk ${sim} wajib diisi.`);
-        } else if (/^0+$/.test(simNumber)) {
-          errors.push(`Nomor SIM untuk ${sim} tidak valid.`);
-        }
-      }
-    }
-
-    // 5. Susunan Anggota Keluarga
-    const ayah = formData.family_members.find((f) =>
-      f.relation.includes("Ayah"),
-    );
-    const ibu = formData.family_members.find((f) => f.relation.includes("Ibu"));
-    if (
-      !ayah?.name?.trim() ||
-      !ayah?.age?.trim() ||
-      !ayah?.education?.trim() ||
-      !ayah?.occupation?.trim() ||
-      !ibu?.name?.trim() ||
-      !ibu?.age?.trim() ||
-      !ibu?.education?.trim() ||
-      !ibu?.occupation?.trim()
-    ) {
-      errors.push(
-        "Susunan Anggota Keluarga: Seluruh kolom pada baris Ayah dan Ibu wajib diisi.",
-      );
-    }
-    formData.family_members.forEach((member, index) => {
-      if (
-        !member.relation.includes("Ayah") &&
-        !member.relation.includes("Ibu")
-      ) {
-        const hasAnyValue =
-          member.name?.trim() ||
-          member.age?.trim() ||
-          member.education?.trim() ||
-          member.occupation?.trim();
-        if (hasAnyValue) {
-          if (
-            !member.name?.trim() ||
-            !member.age?.trim() ||
-            !member.education?.trim() ||
-            !member.occupation?.trim()
-          ) {
-            errors.push(
-              `Susunan Anggota Keluarga: Pada baris ${member.relation}, seluruh kolom harus diisi jika salah satu diisi.`,
-            );
-          }
-        }
-      }
-    });
-    // Susunan Keluarga (Sudah Menikah)
-    formData.married_family_members.forEach((member, index) => {
-      const hasAnyValue =
-        member.name?.trim() ||
-        member.age?.trim() ||
-        member.education?.trim() ||
-        member.occupation?.trim();
-      if (hasAnyValue) {
-        if (
-          !member.name?.trim() ||
-          !member.age?.trim() ||
-          !member.education?.trim() ||
-          !member.occupation?.trim()
-        ) {
-          errors.push(
-            `Susunan Keluarga (Sudah Menikah): Pada baris ${member.relation}, seluruh kolom harus diisi jika salah satu diisi.`,
-          );
-        }
-      }
-    });
-
-    // 6. Pendidikan Formal
-    const formalEdus = formData.formal_education.filter(
-      (e) => e.institution?.trim() !== "",
-    );
-    if (formalEdus.length === 0) {
-      errors.push("Pendidikan Formal wajib diisi minimal 1 (satu) baris.");
-    }
-    formData.formal_education.forEach((edu, index) => {
-      const hasAnyValue =
-        edu.institution?.trim() ||
-        edu.major?.trim() ||
-        edu.grade?.trim() ||
-        edu.period?.trim();
-      if (hasAnyValue) {
-        if (
-          !edu.institution?.trim() ||
-          !edu.major?.trim() ||
-          !edu.grade?.trim() ||
-          !edu.period?.trim()
-        ) {
-          errors.push(
-            `Pendidikan Formal: Pada tingkat ${edu.level}, seluruh kolom harus diisi jika salah satu diisi.`,
-          );
-        }
-      }
-    });
-
-    // Pendidikan Non Formal
-    formData.non_formal_education.forEach((edu, index) => {
-      const hasAnyValue =
-        edu.name?.trim() || edu.institution?.trim() || edu.certificate?.trim();
-      if (hasAnyValue) {
-        if (
-          !edu.name?.trim() ||
-          !edu.institution?.trim() ||
-          !edu.certificate?.trim()
-        ) {
-          errors.push(
-            `Pendidikan Non Formal: Pada baris ke-${index + 1}, seluruh kolom harus diisi jika salah satu diisi.`,
-          );
-        }
-      }
-    });
-
-    // Bahasa Asing / Daerah. Baris English/Hokkien punya nama bahasa yang
-    // selalu terisi (bukan input bebas), jadi "baris ini sedang diisi"
-    // hanya ditentukan dari level kemampuan — supaya baris itu tetap bisa
-    // dikosongkan sepenuhnya kalau kandidat tidak ingin melaporkannya.
-    formData.languages.forEach((lang, index) => {
-      const hasAnyValue =
-        lang.speaking?.trim() || lang.writing?.trim() || lang.reading?.trim();
-      if (hasAnyValue) {
-        if (
-          !lang.language?.trim() ||
-          !lang.speaking?.trim() ||
-          !lang.writing?.trim() ||
-          !lang.reading?.trim()
-        ) {
-          errors.push(
-            `Bahasa Asing / Daerah: Pada baris ke-${index + 1}, seluruh kolom harus diisi jika salah satu diisi.`,
-          );
-        }
-      }
-    });
-
-    // Keterampilan / Keahlian Khusus
-    formData.skills.forEach((skill, index) => {
-      const hasAnyValue = skill.ability?.trim() || skill.level?.trim();
-      if (hasAnyValue) {
-        if (!skill.ability?.trim() || !skill.level?.trim()) {
-          errors.push(
-            `Keterampilan / Keahlian: Pada baris ke-${index + 1}, seluruh kolom (Keterampilan dan Level) harus diisi jika salah satu diisi.`,
-          );
-        }
-      }
-    });
-
-    // 7. Riwayat Pekerjaan: kalau salah satu kolom di baris ini diisi
-    // (termasuk Masa Kerja), seluruh kolom lain di baris itu wajib diisi.
-    // Baris ini boleh dikosongkan seluruhnya kalau memang belum ada satu
-    // pun kolom yang diisi. Sebelumnya cuma Masa Kerja yang jadi pemicu —
-    // itu bug: kandidat yang mengisi nama perusahaan/jobdesc dkk tapi
-    // melewatkan Masa Kerja lolos validasi sama sekali (lihat kasus
-    // Sumardai Saputra, 2026-08-08).
-    formData.work_experience?.forEach((work, index) => {
-      const hasAnyValue =
-        work.company_name?.trim() ||
-        work.period_start ||
-        work.period_end ||
-        work.company_address?.trim() ||
-        work.business_line?.trim() ||
-        work.current_position?.trim() ||
-        work.report_directly?.trim() ||
-        work.total_employees?.trim() ||
-        work.number_of_subordinates?.trim() ||
-        work.job_description?.trim() ||
-        work.reason_for_leaving?.trim();
-
-      if (hasAnyValue) {
-        if (
-          !work.company_name?.trim() ||
-          !work.period_start ||
-          !work.period_end ||
-          !work.company_address?.trim() ||
-          !work.business_line?.trim() ||
-          !work.current_position?.trim() ||
-          !work.report_directly?.trim() ||
-          !work.total_employees?.trim() ||
-          !work.number_of_subordinates?.trim() ||
-          !work.job_description?.trim() ||
-          !work.reason_for_leaving?.trim()
-        ) {
-          errors.push(
-            `Pada RIWAYAT PEKERJAAN ke-${index + 1}, jika salah satu kolom diisi, maka seluruh kolom pada baris tersebut wajib diisi (Masa Kerja hingga Alasan Keluar).`,
-          );
-        }
-      }
-    });
-
-    // 8. Riwayat Pekerjaan point 2-6
-    if (
-      !formData.work_achievements?.trim() ||
-      !formData.work_pressure_response?.trim() ||
-      !formData.job_desc_and_reason?.trim() ||
-      !formData.strategy_to_contribute?.trim() ||
-      !formData.reason_join_waruna?.trim()
-    ) {
-      errors.push(
-        "Pertanyaan essay pada bagian RIWAYAT PEKERJAAN (point 2-6) wajib diisi seluruhnya.",
-      );
-    }
-
-    // 9. Karyawan yang dikenal
-    for (const emp of formData.known_employees) {
-      if (
-        emp.name?.trim() !== "" &&
-        (!emp.position?.trim() || !emp.relation?.trim())
-      ) {
-        errors.push(
-          "Jika mengisi karyawan yang dikenal di Waruna Group, posisi dan hubungan wajib diisi.",
-        );
-        break; // Only show once
-      }
-    }
-
-    // 10. Setidaknya 2 referensi
-    const validRefs = formData.references.filter((r) => r.name?.trim() !== "");
-    if (validRefs.length < 2) {
-      errors.push(
-        "Sebutkan minimal 2 kenalan pada bagian Referensi (selain keluarga) yang dapat dihubungi.",
-      );
-    }
-    formData.references.forEach((ref, index) => {
-      const hasAnyValue =
-        ref.name?.trim() ||
-        ref.phone?.trim() ||
-        ref.occupation?.trim() ||
-        ref.company?.trim() ||
-        ref.relation?.trim();
-      if (hasAnyValue) {
-        if (
-          !ref.name?.trim() ||
-          !ref.phone?.trim() ||
-          !ref.occupation?.trim() ||
-          !ref.company?.trim() ||
-          !ref.relation?.trim()
-        ) {
-          errors.push(
-            `Referensi: Pada baris ke-${index + 1}, seluruh kolom harus diisi jika salah satu diisi.`,
-          );
-        }
-      }
-    });
-
-    // 11. Referensi darurat
-    if (
-      !formData.emergency_contact?.name?.trim() ||
-      !formData.emergency_contact?.phone?.trim() ||
-      !formData.emergency_contact?.relation?.trim() ||
-      !formData.emergency_contact?.address?.trim()
-    ) {
-      errors.push(
-        "Referensi keluarga yang dapat dihubungi saat keadaan darurat wajib diisi nama, nomor, hubungan, dan alamatnya.",
-      );
-    }
-
-    // V. KETERANGAN LAINNYA
-    if (!formData.hospitalized?.trim())
-      errors.push(
-        "Keterangan Lainnya: Pertanyaan 1 (Sakit Berat) wajib diisi.",
-      );
-    if (
-      formData.hospitalized === "Ya" &&
-      !formData.hospitalized_explain?.trim()
-    )
-      errors.push("Keterangan Lainnya: Penjelasan sakit berat wajib diisi.");
-
-    if (!formData.crime_involved?.trim())
-      errors.push(
-        "Keterangan Lainnya: Pertanyaan 2 (Tindak Pidana) wajib diisi.",
-      );
-    if (formData.crime_involved === "Ya" && !formData.crime_explain?.trim())
-      errors.push("Keterangan Lainnya: Penjelasan tindak pidana wajib diisi.");
-
-    if (!formData.worked_in_waruna?.trim())
-      errors.push(
-        "Keterangan Lainnya: Pertanyaan 3 (Bergabung di Waruna) wajib diisi.",
-      );
-    if (
-      formData.worked_in_waruna === "Ya" &&
-      (!formData.waruna_position?.trim() || !formData.waruna_period?.trim())
-    )
-      errors.push(
-        "Keterangan Lainnya: Posisi dan periode saat bergabung di Waruna wajib diisi.",
-      );
-
-    if (!formData.applying_other_company?.trim())
-      errors.push(
-        "Keterangan Lainnya: Pertanyaan 4 (Proses di tempat lain) wajib diisi.",
-      );
-    if (
-      formData.applying_other_company === "Ya" &&
-      !formData.applying_other_explain?.trim()
-    )
-      errors.push(
-        "Keterangan Lainnya: Penjelasan proses seleksi di perusahaan lain wajib diisi.",
-      );
-
-    if (!formData.loyal_factor?.trim())
-      errors.push(
-        "Keterangan Lainnya: Pertanyaan 8 (Faktor loyal) wajib diisi.",
-      );
-    if (!formData.productivity_factor?.trim())
-      errors.push(
-        "Keterangan Lainnya: Pertanyaan 9 (Faktor produktivitas) wajib diisi.",
-      );
-
-    // Validasi Motivasi Bergabung
-    const mp = formData.motivation_priority;
-    if (
-      !mp.work_location?.trim() ||
-      !mp.career_path?.trim() ||
-      !mp.self_actualization?.trim() ||
-      !mp.challenge?.trim() ||
-      !mp.working_environment?.trim() ||
-      !mp.salary_benefit?.trim()
-    ) {
-      errors.push(
-        "Keterangan Lainnya: Pertanyaan 10 (Skala Prioritas Motivasi Bergabung) wajib diisi secara lengkap (semua kotak).",
-      );
-    }
-
-    // 13. Kapan mulai bekerja
-    if (!formData.join_date?.trim()) {
-      errors.push(
-        "Keterangan Lainnya: Tanggal mulai bekerja (kapan Anda dapat mulai bekerja) wajib diisi.",
-      );
-    }
 
     if (errors.length > 0) {
       toast({
@@ -1480,7 +1080,8 @@ export default function ApplicationForm({
       // technical error message; an allowlist of known-safe messages can.
       const isKnownFriendlyMessage =
         errorMessage.includes("Token tidak valid") ||
-        errorMessage.includes("Token sudah digunakan");
+        errorMessage.includes("Token sudah digunakan") ||
+        errorMessage.includes("Formulir belum lengkap");
 
       if (
         errorMessage.includes("Failed to fetch") ||
@@ -1659,7 +1260,16 @@ export default function ApplicationForm({
                         type="text"
                         required
                         value={token}
-                        onChange={(e) => setToken(e.target.value)}
+                        // Tokens are stored uppercase with no spaces and the
+                        // RPC/upload check is an exact match — the CSS
+                        // `uppercase` below only changes how it looks, so a
+                        // lowercase or pasted-with-space token was rejected
+                        // as "Token tidak valid" even though it looked right.
+                        onChange={(e) =>
+                          setToken(
+                            e.target.value.replace(/\s/g, "").toUpperCase(),
+                          )
+                        }
                         placeholder="Contoh: WRN-ABC123XY"
                         className="w-full md:w-1/2 px-4 py-3 bg-white border border-[#5A305A]/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] font-mono text-lg uppercase"
                       />
@@ -5157,6 +4767,7 @@ export default function ApplicationForm({
                                 onEnd={() => {
                                   lastSignatureData.current =
                                     sigCanvas.current?.toData() || null;
+                                  setHasSignature(true);
                                 }}
                                 canvasProps={{
                                   className:
@@ -5168,14 +4779,14 @@ export default function ApplicationForm({
                                 onClick={() => {
                                   sigCanvas.current?.clear();
                                   lastSignatureData.current = null;
+                                  setHasSignature(false);
                                 }}
                                 className="absolute top-2 right-2 p-1.5 bg-slate-100 text-[#73507B] rounded-lg transition-colors hover:bg-red-50 hover:text-red-600 shadow-sm"
                                 title="Hapus Tanda Tangan"
                               >
                                 <Eraser size={16} />
                               </button>
-                              {!sigCanvas.current ||
-                              sigCanvas.current.isEmpty() ? (
+                              {!hasSignature ? (
                                 <div className="absolute inset-0 pointer-events-none flex items-center justify-center text-slate-300 text-sm font-medium">
                                   Tanda Tangan Disini
                                 </div>
@@ -5511,6 +5122,7 @@ export default function ApplicationForm({
                               lastRemunerationSignatureData.current =
                                 remunerationSigCanvas.current?.toData() ||
                                 null;
+                              setHasRemunerationSignature(true);
                             }}
                             canvasProps={{
                               className: "w-full h-40 cursor-crosshair",
@@ -5521,14 +5133,14 @@ export default function ApplicationForm({
                             onClick={() => {
                               remunerationSigCanvas.current?.clear();
                               lastRemunerationSignatureData.current = null;
+                              setHasRemunerationSignature(false);
                             }}
                             className="absolute top-2 right-2 p-1.5 bg-slate-100 text-[#73507B] rounded-lg transition-colors hover:bg-red-50 hover:text-red-600 shadow-sm"
                             title="Hapus Tanda Tangan"
                           >
                             <Eraser size={16} />
                           </button>
-                          {!remunerationSigCanvas.current ||
-                          remunerationSigCanvas.current.isEmpty() ? (
+                          {!hasRemunerationSignature ? (
                             <div className="absolute inset-0 pointer-events-none flex items-center justify-center text-slate-300 text-sm font-medium">
                               Tanda Tangan Disini
                             </div>

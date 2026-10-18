@@ -10,6 +10,14 @@ import { PassThrough } from "stream";
 import crypto from "crypto";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
+import { registerExternalDataRoutes } from "./server/routes/externalData";
+import { registerRegistrationTokenRoutes } from "./server/routes/registrationTokens";
+import { registerLogRoutes } from "./server/routes/logs";
+import { registerDocumentRoutes } from "./server/routes/documents";
+import { registerCandidateRoutes } from "./server/routes/candidates";
+import { registerScheduleRoutes } from "./server/routes/schedules";
+import { registerAnalyticsRoutes } from "./server/routes/analytics";
+import { registerContentRoutes } from "./server/routes/content";
 
 dotenv.config();
 
@@ -355,7 +363,9 @@ app.use((req: any, res, next) => {
   ] as const;
 
   // Feature: Move Candidate to Log
-  app.post("/api/candidates/move-to-log", requireAuth, async (req, res) => {
+  // HR only: Tolak/Hire live in Screening's HR-only action menu. Was
+  // requireAuth alone, so any logged-in user could archive any candidate.
+  app.post("/api/candidates/move-to-log", requireAuth, requireHrAdmin, async (req, res) => {
     const { candidateId, notes } = req.body;
 
     if (!candidateId) {
@@ -1313,40 +1323,8 @@ app.use((req: any, res, next) => {
     }
   });
 
-  // Resolve a storage path into a short-lived signed URL, for either the
-  // private bucket or the legacy public one (once that's also flipped to
-  // private, its documents still need to be viewable through here).
-  // Authenticated-only: every readOnly render path that needs this
-  // (CandidateProfile.tsx, ExternalData.tsx via ApplicationForm.tsx) is
-  // only ever reached from logged-in HR/Director/Finance pages, never from
-  // the public /form-pelamar route.
-  const SIGNABLE_BUCKETS = ['candidate-documents-private', 'candidate-documents'];
-  app.get("/api/documents/signed-url", requireAuth, async (req: any, res) => {
-    const path = req.query?.path;
-    const bucket = req.query?.bucket || 'candidate-documents-private';
-    if (!path || typeof path !== "string") {
-      return res.status(400).json({ error: "Parameter path wajib diisi." });
-    }
-    if (!SIGNABLE_BUCKETS.includes(bucket)) {
-      return res.status(400).json({ error: "Bucket tidak valid." });
-    }
-
-    try {
-      const supabaseAdmin = getSupabaseAdmin();
-      const { data, error } = await supabaseAdmin.storage
-        .from(bucket)
-        .createSignedUrl(path, 600);
-
-      if (error || !data) {
-        return res.status(404).json({ error: "Dokumen tidak ditemukan." });
-      }
-
-      res.json({ url: data.signedUrl });
-    } catch (error: any) {
-      console.error("Error in /api/documents/signed-url:", error);
-      res.status(500).json({ error: "Gagal membuat URL dokumen." });
-    }
-  });
+  // GET /api/documents/signed-url now lives in server/routes/documents.ts
+  // (adds a per-document access check for non-HR roles).
 
   // Delete an object from candidate-documents-private (or, legacy, the old
   // public candidate-documents bucket — e.g. CVs still under cv-candidates/
@@ -1475,6 +1453,17 @@ app.use((req: any, res, next) => {
       res.status(500).json({ error: error.message || "Internal Server Error" });
     }
   });
+
+  // Routes moved out of this file (Fase 1 — browser no longer reads these
+  // tables directly). See server/routes/*.
+  registerExternalDataRoutes(app);
+  registerRegistrationTokenRoutes(app);
+  registerLogRoutes(app);
+  registerDocumentRoutes(app);
+  registerCandidateRoutes(app);
+  registerScheduleRoutes(app);
+  registerAnalyticsRoutes(app);
+  registerContentRoutes(app);
 
   // API 404 handler - Catch all unmatched /api routes
   app.all("/api/*", (req, res) => {

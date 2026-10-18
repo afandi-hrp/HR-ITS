@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Loader2, Save } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { api } from '../lib/api';
 import { useToast } from './ui/use-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { EvaluationTemplate, CandidateEvaluation, Profile } from '../types';
@@ -101,15 +102,9 @@ export default function EvaluationModal({ isOpen, onClose, candidateId, onSucces
   const fetchTemplates = async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from('evaluation_templates')
-        .select('*')
-        .neq('type', 'REFERENCE_CHECK')
-        .order('name');
-
-      const { data, error } = await query;
-
-      if (error) throw error;
+      const { rows: data } = await api.get<{ rows: any[] }>('/api/evaluation-templates', {
+        excludeType: 'REFERENCE_CHECK',
+      });
 
       let filteredTemplates = data || [];
 
@@ -234,35 +229,21 @@ export default function EvaluationModal({ isOpen, onClose, candidateId, onSucces
         }
       });
 
+      // Saved server-side: only the evaluator (or HR) may change an
+      // evaluation, and only for a candidate the user can access.
+      const fields = {
+        template_id: selectedTemplate.id,
+        evaluation_type: selectedTemplate.type,
+        interviewer_name: interviewerName || (userData.user?.email || 'HR'),
+        evaluation_data: evaluationData,
+        total_score: totalScore
+      };
       if (existingEvaluation) {
-        const { error } = await supabase
-          .from('candidate_evaluations')
-          .update({
-            template_id: selectedTemplate.id,
-            evaluation_type: selectedTemplate.type,
-            interviewer_name: interviewerName || (userData.user?.email || 'HR'),
-            evaluation_data: evaluationData,
-            total_score: totalScore
-          })
-          .eq('id', existingEvaluation.id);
-
-        if (error) throw error;
+        await api.patch(`/api/evaluations/${existingEvaluation.id}`, fields);
         localStorage.removeItem(getDraftKey(candidateId, existingEvaluation?.id));
         toast({ title: 'Berhasil', description: 'Hasil evaluasi berhasil diperbarui' });
       } else {
-        const { error } = await supabase
-          .from('candidate_evaluations')
-          .insert({
-            candidate_id: candidateId,
-            template_id: selectedTemplate.id,
-            evaluation_type: selectedTemplate.type,
-            interviewer_name: interviewerName || (userData.user?.email || 'HR'),
-            evaluator_id: userData.user?.id,
-            evaluation_data: evaluationData,
-            total_score: totalScore
-          });
-
-        if (error) throw error;
+        await api.post('/api/evaluations', { ...fields, candidate_id: candidateId });
         localStorage.removeItem(getDraftKey(candidateId, existingEvaluation?.id));
         toast({ title: 'Berhasil', description: 'Hasil evaluasi berhasil disimpan' });
       }

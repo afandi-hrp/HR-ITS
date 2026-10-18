@@ -10,8 +10,7 @@ import {
   User
 } from 'lucide-react';
 import { Candidate, Schedule } from '../types';
-import { isPendingSchedule } from '../lib/scheduleStatus';
-import { supabase } from '../lib/supabase';
+import { api } from '../lib/api';
 import { useToast } from '../components/ui/use-toast';
 import { cn } from '../lib/utils';
 
@@ -46,28 +45,14 @@ export default function SchedulingModal({ candidate, type, initialData, onClose,
     if (!candidate && !initialData) {
       const fetchCandidates = async () => {
         setFetchingCandidates(true);
-        const tableName = type === 'psikotes' ? 'psikotes_schedules' : 'interview_schedules';
-        
-          // Fetch candidates and their schedules for this type to filter out those already scheduled
-          const { data, error } = await supabase
-            .from('candidates')
-            .select(`
-              *,
-              schedules: ${tableName}(id, is_confirmed, is_no_show)
-            `)
-            .eq('status_screening', 'accepted')
-            .order('full_name', { ascending: true });
-            
-          if (!error && data) {
-            // Only show candidates who don't have a schedule of this type yet, OR none of their schedules is still pending
-            const filtered = data.filter((c: any) => {
-              if (!c.schedules || c.schedules.length === 0) return true;
-              // If they have schedules, allow scheduling again ONLY IF every previous schedule is done
-              // (attended or marked "Tidak Hadir" — the latter is how a no-show gets rescheduled)
-              return !c.schedules.some(isPendingSchedule);
-            });
-            setCandidates(filtered);
-          }
+        // Passed screening and no schedule of this type still pending
+        // (attended or "Tidak Hadir" can be rescheduled) — filtered server-side.
+        try {
+          const { rows } = await api.get<{ rows: any[] }>(`/api/schedules/${type}/candidates`);
+          setCandidates(rows);
+        } catch (err) {
+          console.error('Error fetching schedulable candidates:', err);
+        }
         setFetchingCandidates(false);
       };
       fetchCandidates();
@@ -112,37 +97,23 @@ export default function SchedulingModal({ candidate, type, initialData, onClose,
     setLoading(true);
     const scheduleDate = scheduleDateObj.toISOString();
     const endTimeIso = endTimeObj ? endTimeObj.toISOString() : null;
-    const tableName = type === 'psikotes' ? 'psikotes_schedules' : 'interview_schedules';
 
     const finalNotes = type === 'interview' ? `[${interviewType}] ${notes}` : notes;
 
-    let result;
-    if (initialData) {
-      result = await supabase
-        .from(tableName)
-        .update({
-          schedule_date: scheduleDate,
-          ...(type === 'interview' ? { end_time: endTimeIso } : {}),
-          location_type: locationType,
-          location_detail: locationDetail,
-          additional_notes: finalNotes
-        })
-        .eq('id', initialData.id);
-    } else {
-      result = await supabase
-        .from(tableName)
-        .insert([{
-          candidate_id: selectedCandidateId,
-          schedule_date: scheduleDate,
-          ...(type === 'interview' ? { end_time: endTimeIso } : {}),
-          location_type: locationType,
-          location_detail: locationDetail,
-          additional_notes: finalNotes
-        }]);
-    }
+    const fields = {
+      schedule_date: scheduleDate,
+      ...(type === 'interview' ? { end_time: endTimeIso } : {}),
+      location_type: locationType,
+      location_detail: locationDetail,
+      additional_notes: finalNotes
+    };
+    const resultError = await (initialData
+      ? api.patch(`/api/schedules/${type}/${initialData.id}`, fields)
+      : api.post(`/api/schedules/${type}`, { ...fields, candidate_id: selectedCandidateId })
+    ).then(() => null, (err: Error) => err);
 
-    if (result.error) {
-      toast({ title: 'Error', description: result.error.message, variant: 'destructive' });
+    if (resultError) {
+      toast({ title: 'Error', description: resultError.message, variant: 'destructive' });
     } else {
 
       toast({ 

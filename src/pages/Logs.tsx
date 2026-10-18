@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
-import { supabase } from "../lib/supabase";
 import { Candidate } from "../types";
 import {
   Search,
@@ -27,8 +26,7 @@ import {
 } from "lucide-react";
 import { formatDate, cn, fetchWithRetry } from "../lib/utils";
 import { CandidateAvatar } from "../components/CandidateAvatar";
-import { removeDocumentFile } from "../lib/documentStorage";
-import { findExternalIdsStillInUse } from "../lib/externalDataLinks";
+import { api } from "../lib/api";
 import { useToast } from "../components/ui/use-toast";
 import JSONRenderer from "../components/JSONRenderer";
 import * as XLSX from "xlsx";
@@ -124,117 +122,42 @@ export default function Logs() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  const logFilters = () => ({
+    search: debouncedSearch,
+    startDate,
+    endDate,
+    status: statusFilter,
+  });
+
   const fetchLogs = async () => {
     setLoading(true);
-    const from = (currentPage - 1) * itemsPerPage;
-    const to = from + itemsPerPage - 1;
-
-    let query = supabase
-      .from("candidate_logs")
-      .select("*, external_data(raw_data)", { count: "exact" });
-
-    if (debouncedSearch) {
-      query = query.or(
-        `full_name.ilike.%${debouncedSearch}%,position.ilike.%${debouncedSearch}%`,
+    try {
+      // Filtering, pagination and blacklist flags are resolved server-side
+      // (HR only) — see server/routes/logs.ts.
+      const { rows, total } = await api.get<{ rows: any[]; total: number }>(
+        "/api/logs",
+        { ...logFilters(), page: currentPage, pageSize: itemsPerPage },
       );
-    }
-
-    if (startDate) {
-      query = query.gte("date", `${startDate}T00:00:00`);
-    }
-
-    if (endDate) {
-      query = query.lte("date", `${endDate}T23:59:59`);
-    }
-
-    if (statusFilter !== "all") {
-      query = query.eq("status_screening", statusFilter);
-    }
-
-    let { data, error, count } = await query
-      .order("archived_at", { ascending: false })
-      .range(from, to);
-
-    // Handle array case if relationship returns an array
-    if (data && !error) {
-      data = data.map((d) => {
-        if (Array.isArray(d.external_data) && d.external_data.length > 0) {
-          return { ...d, external_data: d.external_data[0] };
-        }
-        return d;
-      });
-
-      try {
-        const { data: blacklistData } = await supabase
-          .from("blacklisted_candidates")
-          .select("email, phone, identity_number, reason");
-
-        if (blacklistData && blacklistData.length > 0) {
-          data = data.map((d) => {
-            const nik = d.external_data?.raw_data?.identity_number;
-            const blacklistedRecord = blacklistData.find(
-              (b) =>
-                (b.email && b.email === d.email) ||
-                (b.phone && b.phone === d.phone) ||
-                (nik && b.identity_number && b.identity_number === nik),
-            );
-            return {
-              ...d,
-              is_blacklisted: !!blacklistedRecord,
-              blacklist_reason: blacklistedRecord?.reason,
-            };
-          });
-        }
-      } catch (err) {
-        console.error("Error fetching blacklist:", err);
-      }
-    }
-
-    if (error) {
+      setLogs(rows);
+      setTotalItems(total);
+    } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
         variant: "destructive",
       });
-    } else {
-      setLogs(data || []);
-      setTotalItems(count || 0);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handlePrepareExport = async () => {
     setExportLoading(true);
     try {
-      let query = supabase
-        .from("candidate_logs")
-        .select("*, external_data(raw_data)");
-
-      if (debouncedSearch) {
-        query = query.or(
-          `full_name.ilike.%${debouncedSearch}%,position.ilike.%${debouncedSearch}%`,
-        );
-      }
-
-      if (startDate) {
-        query = query.gte("date", `${startDate}T00:00:00`);
-      }
-
-      if (endDate) {
-        query = query.lte("date", `${endDate}T23:59:59`);
-      }
-
-      if (statusFilter !== "all") {
-        query = query.eq("status_screening", statusFilter);
-      }
-
-      const { data, error } = await query.order("archived_at", {
-        ascending: false,
-      });
-
-      if (error) {
-        throw error;
-      }
+      const { rows: data } = await api.get<{ rows: any[] }>(
+        "/api/logs/export",
+        logFilters(),
+      );
 
       const formatted = (data || []).map((c) => ({
         "Nama Kandidat": c.full_name || "-",
@@ -318,77 +241,22 @@ export default function Logs() {
     if (!deleteModalData) return;
     setIsDeleting(true);
     try {
-      // 1. Ambil data kandidat untuk mendapatkan URL file dan ID eksternal
-      const { data: candidate, error: fetchError } = await supabase
-        .from("candidate_logs")
-        .select("resume_url, psikotes_result_url, linked_external_id")
-        .eq("id", deleteModalData.id)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      let externalKept = false;
-      if (candidate) {
-        // 2. Hapus file fisik dari storage (menangani bucket lama & baru)
-        await removeDocumentFile(candidate.resume_url);
-        await removeDocumentFile(candidate.psikotes_result_url);
-
-        // Data eksternal yang masih ditautkan ke lamaran lain (mis. lamaran
-        // ulang di posisi lain) tidak boleh ikut dihapus — lihat
-        // lib/externalDataLinks.ts.
-        if (candidate.linked_external_id) {
-          const stillInUse = await findExternalIdsStillInUse(
-            [candidate.linked_external_id],
-            [deleteModalData.id],
-          );
-          externalKept = stillInUse.has(candidate.linked_external_id);
-        }
-
-        // 3. Ambil data eksternal jika ada untuk mendapatkan URL file tambahan
-        if (candidate.linked_external_id && !externalKept) {
-          const { data: externalData } = await supabase
-            .from("external_data")
-            .select("raw_data")
-            .eq("uid_sheet", candidate.linked_external_id)
-            .single();
-
-          if (externalData?.raw_data) {
-            const raw = externalData.raw_data;
-            await Promise.all([
-              removeDocumentFile(raw.photo_url),
-              removeDocumentFile(raw.ktp_url),
-              removeDocumentFile(raw.ijazah_url),
-              removeDocumentFile(raw.transcript_url),
-              removeDocumentFile(raw.other_doc_url),
-              removeDocumentFile(raw.payslip_url),
-              removeDocumentFile(raw.signature_url),
-              removeDocumentFile(raw.remuneration_signature_url),
-            ]);
-          }
-        }
-
-        // 4. Hapus data eksternal yang tertaut
-        if (candidate.linked_external_id && !externalKept) {
-          await supabase
-            .from("external_data")
-            .delete()
-            .eq("uid_sheet", candidate.linked_external_id);
-        }
-      }
-
-      // 5. Hapus baris kandidat dari tabel log
-      const { error } = await supabase
-        .from("candidate_logs")
-        .delete()
-        .eq("id", deleteModalData.id);
-
-      if (error) throw error;
+      // One server call: deletes the log row, its files, and the linked
+      // form — unless another application still uses that form.
+      const result = await api.post<{ externalKept: number; filesFailed: number }>(
+        "/api/logs/delete",
+        { ids: [deleteModalData.id] },
+      );
 
       toast({
         title: "Berhasil",
-        description: externalKept
-          ? "Kandidat beserta file berhasil dihapus. Data eksternal tetap disimpan karena masih ditautkan ke lamaran lain."
-          : "Kandidat beserta file dan data eksternal berhasil dihapus.",
+        description:
+          (result.externalKept > 0
+            ? "Kandidat beserta file berhasil dihapus. Data eksternal tetap disimpan karena masih ditautkan ke lamaran lain."
+            : "Kandidat beserta file dan data eksternal berhasil dihapus.") +
+          (result.filesFailed > 0
+            ? ` ${result.filesFailed} file gagal dihapus dari storage.`
+            : ""),
       });
       setDeleteModalData(null);
       fetchLogs();
@@ -440,89 +308,21 @@ export default function Logs() {
     if (selectedIds.length === 0) return;
     setIsDeleting(true);
     try {
-      // 1. Ambil data kandidat untuk mendapatkan URL file dan ID eksternal
-      const { data: candidates, error: fetchError } = await supabase
-        .from("candidate_logs")
-        .select("resume_url, psikotes_result_url, linked_external_id")
-        .in("id", selectedIds);
-
-      if (fetchError) throw fetchError;
-
-      let externalKeptCount = 0;
-      if (candidates && candidates.length > 0) {
-        // 2. Hapus file fisik dari storage (menangani bucket lama & baru), dan
-        // kumpulkan ID eksternal yang perlu dihapus
-        const removalPromises: Promise<void>[] = [];
-
-        candidates.forEach((candidate) => {
-          removalPromises.push(removeDocumentFile(candidate.resume_url));
-          removalPromises.push(removeDocumentFile(candidate.psikotes_result_url));
-        });
-
-        // Data eksternal yang masih ditautkan ke lamaran di luar pilihan
-        // hapus ini tidak ikut dihapus — lihat lib/externalDataLinks.ts.
-        const linkedIds = Array.from(
-          new Set(
-            candidates
-              .map((c) => c.linked_external_id)
-              .filter((uid): uid is string => !!uid),
-          ),
-        );
-        const stillInUse = await findExternalIdsStillInUse(linkedIds, selectedIds);
-        const externalIdsToDelete = linkedIds.filter((uid) => !stillInUse.has(uid));
-        externalKeptCount = linkedIds.length - externalIdsToDelete.length;
-
-        // Ambil data eksternal jika ada untuk mendapatkan URL file tambahan
-        if (externalIdsToDelete.length > 0) {
-          const { data: externalDataList } = await supabase
-            .from("external_data")
-            .select("raw_data")
-            .in("uid_sheet", externalIdsToDelete);
-
-          if (externalDataList) {
-            externalDataList.forEach((ext) => {
-              if (ext.raw_data) {
-                const raw = ext.raw_data;
-                removalPromises.push(
-                  removeDocumentFile(raw.photo_url),
-                  removeDocumentFile(raw.ktp_url),
-                  removeDocumentFile(raw.ijazah_url),
-                  removeDocumentFile(raw.transcript_url),
-                  removeDocumentFile(raw.other_doc_url),
-                  removeDocumentFile(raw.payslip_url),
-                  removeDocumentFile(raw.signature_url),
-                  removeDocumentFile(raw.remuneration_signature_url),
-                );
-              }
-            });
-          }
-        }
-
-        await Promise.all(removalPromises);
-
-        // 4. Hapus data eksternal yang tertaut
-        if (externalIdsToDelete.length > 0) {
-          await supabase
-            .from("external_data")
-            .delete()
-            .in("uid_sheet", externalIdsToDelete);
-        }
-      }
-
-      // 5. Hapus baris kandidat dari tabel log
-      const { error } = await supabase
-        .from("candidate_logs")
-        .delete()
-        .in("id", selectedIds);
-
-      if (error) throw error;
+      const result = await api.post<{
+        deleted: number;
+        externalKept: number;
+        filesFailed: number;
+      }>("/api/logs/delete", { ids: selectedIds });
 
       toast({
         title: "Berhasil",
         description:
-          `${selectedIds.length} kandidat beserta file dan data eksternal berhasil dihapus.` +
-          (externalKeptCount > 0
-            ? ` ${externalKeptCount} data eksternal tetap disimpan karena masih ditautkan ke lamaran lain.`
+          `${result.deleted} kandidat beserta file dan data eksternal berhasil dihapus.` +
+          (result.externalKept > 0
+            ? ` ${result.externalKept} data eksternal tetap disimpan karena masih ditautkan ke lamaran lain.`
+            : "") +
+          (result.filesFailed > 0
+            ? ` ${result.filesFailed} file gagal dihapus dari storage.`
             : ""),
       });
       setBulkDeleteModalOpen(false);

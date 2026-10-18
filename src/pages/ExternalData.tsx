@@ -22,10 +22,8 @@ import { printElement } from "../lib/print";
 import ApplicationForm from "./ApplicationForm";
 import { usePermissions } from "../hooks/usePermissions";
 import { getExternalDataSummary } from "../lib/externalDataSummary";
-import {
-  ExternalDataLink,
-  fetchExternalDataLinks,
-} from "../lib/externalDataLinks";
+import type { ExternalDataLink } from "../lib/externalDataLinks";
+import { api } from "../lib/api";
 import {
   ExternalDataHeader,
   ExternalDataFields,
@@ -119,110 +117,19 @@ export default function ExternalData() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      let query = supabase
-        .from("external_data")
-        .select("*", { count: "exact" });
-
-      if (statusFilter !== "all") {
-        const [activeRes, logsRes] = await Promise.all([
-          supabase
-            .from("candidates")
-            .select("linked_external_id")
-            .not("linked_external_id", "is", null),
-          supabase
-            .from("candidate_logs")
-            .select("linked_external_id")
-            .not("linked_external_id", "is", null),
-        ]);
-
-        const activeUids = (activeRes.data || [])
-          .map((d) => d.linked_external_id)
-          .filter(Boolean);
-        // A form may be shared by an archived application and a later
-        // active re-application — it counts as active then, so "archived"
-        // means linked to archived applications only.
-        const activeSet = new Set(activeUids);
-        const archivedUids = (logsRes.data || [])
-          .map((d) => d.linked_external_id)
-          .filter((uid) => uid && !activeSet.has(uid));
-
-        if (statusFilter === "hide_archived" && archivedUids.length > 0) {
-          query = query.not("uid_sheet", "in", `(${archivedUids.join(",")})`);
-        } else if (statusFilter === "available") {
-          const allUsed = [...activeUids, ...archivedUids];
-          if (allUsed.length > 0) {
-            query = query.not("uid_sheet", "in", `(${allUsed.join(",")})`);
-          }
-        } else if (statusFilter === "active") {
-          if (activeUids.length > 0) {
-            query = query.in("uid_sheet", activeUids);
-          } else {
-            query = query.in("uid_sheet", ["__EMPTY__"]);
-          }
-        } else if (statusFilter === "archived") {
-          if (archivedUids.length > 0) {
-            query = query.in("uid_sheet", archivedUids);
-          } else {
-            query = query.in("uid_sheet", ["__EMPTY__"]);
-          }
-        }
-      }
-
-      if (debouncedSearchTerm) {
-        // Menggunakan textSearch bawaan Supabase untuk mencari di dalam JSONB.
-        // Catatan: Jika ini error, Anda mungkin perlu membuat kolom text search khusus di Supabase
-        // atau menggunakan fungsi RPC.
-        query = query.textSearch("raw_data", `'${debouncedSearchTerm}'`);
-      }
-
-      // Pagination (Server-Side)
-      const from = (currentPage - 1) * itemsPerPage;
-      const to = from + itemsPerPage - 1;
-      query = query.range(from, to).order("created_at", { ascending: false });
-
-      const { data: result, error, count } = await query;
-
-      if (error) {
-        throw error;
-      }
-
-      if (count !== null) {
-        setTotalItems(count);
-      }
-
-      // Flatten data agar sesuai dengan struktur UI yang sudah ada
-      let parsedData = (result || []).map((item) => ({
-        uid_sheet: item.uid_sheet,
-        ...item.raw_data,
-        _submitted_at: item.created_at,
-      }));
-
-      // Check linked status
-      if (parsedData.length > 0) {
-        const links = await fetchExternalDataLinks(
-          parsedData.map((d) => d.uid_sheet),
-        );
-
-        parsedData = parsedData.map((item) => {
-          const itemLinks = links.filter(
-            (l) => l.linked_external_id === item.uid_sheet,
-          );
-          const activeLinks = itemLinks.filter((l) => l.status === "active");
-          const archivedLinks = itemLinks.filter((l) => l.status === "archived");
-          return {
-            ...item,
-            _link_status: activeLinks.length
-              ? "active"
-              : archivedLinks.length
-                ? "archived"
-                : "available",
-            _active_links: activeLinks,
-            _archived_links: archivedLinks,
-          };
-        });
-      }
-
-      setData(parsedData);
+      // Filtering, full-text search, pagination and link status are all
+      // done server-side (HR only) — see server/routes/externalData.ts.
+      const { rows, total } = await api.get<{ rows: any[]; total: number }>(
+        "/api/external-data",
+        {
+          page: currentPage,
+          pageSize: itemsPerPage,
+          status: statusFilter,
+          search: debouncedSearchTerm,
+        },
+      );
+      setTotalItems(total);
+      setData(rows);
     } catch (err: any) {
       console.error("Fetch error:", err);
       toast({

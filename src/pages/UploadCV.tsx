@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import { useToast } from "../components/ui/use-toast";
 import { cn, fetchWithRetry, formatDateDMMMY } from "../lib/utils";
 import BulkUploadModal from "../components/BulkUploadModal";
@@ -111,21 +112,16 @@ export default function UploadCV() {
     }
     let cancelled = false;
     const timer = setTimeout(async () => {
-      // ilike without wildcards = case-insensitive exact match.
-      const pattern = email.replace(/[\\%_]/g, (ch) => `\\${ch}`);
-      const [activeRes, logsRes, blacklistRes] = await Promise.all([
-        supabase.from("candidates").select("id, position, status_screening").ilike("email", pattern),
-        supabase.from("candidate_logs").select("id, position, status_screening").ilike("email", pattern),
-        supabase.from("blacklisted_candidates").select("reason").ilike("email", pattern),
-      ]);
-      if (cancelled) return;
-      setEmailMatches({
-        candidates: [
-          ...(activeRes.data || []).map((c: any) => ({ ...c, archived: false })),
-          ...(logsRes.data || []).map((c: any) => ({ ...c, archived: true })),
-        ],
-        blacklist: blacklistRes.data || [],
-      });
+      // Exact, case-insensitive match in active + archived + blacklist (HR only).
+      try {
+        const matches = await api.get<{ candidates: CandidateMatch[]; blacklist: { reason: string | null }[] }>(
+          "/api/candidates-by-email",
+          { email },
+        );
+        if (!cancelled) setEmailMatches(matches);
+      } catch (err) {
+        console.error("Error checking existing candidates:", err);
+      }
     }, 500);
     return () => {
       cancelled = true;
@@ -233,11 +229,9 @@ export default function UploadCV() {
   useEffect(() => {
     const fetchPositionsAndSources = async () => {
       try {
-        const { data: positionsData, error: positionsError } = await supabase
-          .from("open_recruitment")
-          .select("position")
-          .or("is_published.eq.true,is_published.is.null")
-          .order("position", { ascending: true });
+        const { data: positionsData, error: positionsError } = await api
+          .get<{ rows: { position: string }[] }>("/api/open-recruitment", { fields: "position", published: 1 })
+          .then((r) => ({ data: r.rows, error: null as any }), (err) => ({ data: null as { position: string }[] | null, error: err }));
 
         if (positionsError) {
           console.error("Error fetching positions:", positionsError);

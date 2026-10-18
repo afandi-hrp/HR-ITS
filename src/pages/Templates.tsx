@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import { EmailTemplate } from "../types";
 import {
   Search,
@@ -81,19 +82,16 @@ export default function Templates() {
     const from = (currentPage - 1) * itemsPerPage;
     const to = from + itemsPerPage - 1;
 
-    let query = supabase
-      .from("email_templates")
-      .select("*", { count: "exact" });
-
-    if (debouncedSearch) {
-      query = query.or(
-        `name.ilike.%${debouncedSearch}%,subject.ilike.%${debouncedSearch}%`,
+    const { data, error, count } = await api
+      .get<{ rows: any[]; total: number }>("/api/email-templates", {
+        search: debouncedSearch,
+        page: currentPage,
+        pageSize: itemsPerPage,
+      })
+      .then(
+        (r) => ({ data: r.rows, error: null as any, count: r.total }),
+        (err) => ({ data: null, error: err, count: 0 }),
       );
-    }
-
-    const { data, error, count } = await query
-      .order("created_at", { ascending: false })
-      .range(from, to);
 
     if (error) {
       toast({
@@ -142,12 +140,10 @@ export default function Templates() {
     }
 
     setSaving(true);
-    const { error } = editingTemplate
-      ? await supabase
-          .from("email_templates")
-          .update(formData)
-          .eq("id", editingTemplate.id)
-      : await supabase.from("email_templates").insert([formData]);
+    const error = await (editingTemplate
+      ? api.patch(`/api/email-templates/${editingTemplate.id}`, formData)
+      : api.post("/api/email-templates", formData)
+    ).then(() => null, (err: Error) => err);
 
     if (error) {
       toast({
@@ -173,10 +169,9 @@ export default function Templates() {
   const executeDelete = async (id: string) => {
     setConfirmModal((prev) => ({ ...prev, loading: true }));
     try {
-      const { error } = await supabase
-        .from("email_templates")
-        .delete()
-        .eq("id", id);
+      const error = await api
+        .delete(`/api/email-templates/${id}`)
+        .then(() => null, (err: Error) => err);
       if (error) {
         toast({
           title: "Error",
