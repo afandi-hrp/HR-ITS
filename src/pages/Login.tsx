@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabase";
-import { Mail, Lock, Loader2, RefreshCw, ArrowRight } from "lucide-react";
+import { Mail, Lock, Loader2, RefreshCw, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { SiteSettings } from "../types";
 import { cn } from "../lib/utils";
 import LoginBackground from "../components/LoginBackground";
@@ -9,6 +9,7 @@ import LoginBackground from "../components/LoginBackground";
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -217,13 +218,26 @@ export default function Login() {
                   <Lock size={16} className="text-[#5A305A]" />
                 </div>
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-14 pr-4 py-3.5 bg-white/85 border border-white shadow-[0_4px_16px_rgba(90,48,90,0.1)] rounded-full text-sm text-[#5A305A] placeholder-[#5A305A]/40 focus:outline-none focus:ring-2 focus:ring-[#5A305A]/30 transition-all"
+                  // [&::-ms-reveal]:hidden hides Edge's own built-in eye so
+                  // there's never two toggles side by side.
+                  className="block w-full pl-14 pr-14 py-3.5 bg-white/85 border border-white shadow-[0_4px_16px_rgba(90,48,90,0.1)] rounded-full text-sm text-[#5A305A] placeholder-[#5A305A]/40 focus:outline-none focus:ring-2 focus:ring-[#5A305A]/30 transition-all [&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
                   placeholder="Password"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                  aria-pressed={showPassword}
+                  title={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                  className="absolute z-10 right-1.5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center text-[#5A305A]/60 hover:text-[#5A305A] hover:bg-[#5A305A]/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#5A305A]/30 transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
 
               <div className="pt-1">

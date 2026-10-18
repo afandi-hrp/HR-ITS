@@ -222,10 +222,12 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
-        <div className="flex items-center justify-between h-16 px-6 border-b border-white/5">
-          <div className={cn("flex items-center gap-3", !showFullSidebar && "lg:justify-center w-full")}>
+        <div className={cn("flex items-center justify-between h-16 px-6 border-b border-white/5", !showFullSidebar && "lg:px-0 lg:justify-center")}>
+          {/* Collapsed: the hidden title (max-w-0) still counted in gap-3 and
+              pushed the logo 6px off-center, so the gap only applies when open. */}
+          <div className={cn("flex items-center", showFullSidebar ? "gap-3" : "gap-3 lg:gap-0 lg:justify-center w-full")}>
             {settings?.sidebar_logo_url && (
-              <img src={settings.sidebar_logo_url} alt="Logo" className="w-12 h-12 object-contain shrink-0" referrerPolicy="no-referrer" />
+              <img src={settings.sidebar_logo_url} alt="Logo" className="w-10 h-10 object-contain shrink-0" referrerPolicy="no-referrer" />
             )}
             <div className={cn(
               "overflow-hidden transition-all duration-300 whitespace-nowrap",
@@ -242,7 +244,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
           </button>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-2 overflow-y-auto relative [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <nav className="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto relative [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {navItems.map((item, index) => {
             if ('items' in item) {
               const isExpanded = expandedGroups[item.title];
@@ -255,7 +257,8 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
                       setExpandedGroups(prev => ({ ...prev, [item.title]: !isExpanded }));
                     }}
                     className={cn(
-                      "w-full flex items-center justify-between px-3 py-3 rounded-2xl transition-all duration-300 group",
+                      "w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-300 group",
+                      !showFullSidebar && "lg:justify-center lg:w-10 lg:h-10 lg:p-0 lg:mx-auto",
                       isActiveGroup && !isExpanded ? "bg-white/10 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"
                     )}
                   >
@@ -321,20 +324,21 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
                 to={`/${item.id}`}
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={cn(
-                  "flex items-center w-full px-3 py-3 rounded-2xl transition-all duration-300 group relative",
-                  currentPath === item.id 
-                    ? "text-[#5A305A] shadow-lg shadow-black/10 translate-x-1" 
-                    : "text-white/60 hover:bg-white/5 hover:text-white hover:translate-x-1"
+                  "flex items-center w-full px-3 py-2.5 rounded-xl transition-all duration-300 group relative",
+                  !showFullSidebar && "lg:w-10 lg:h-10 lg:p-0 lg:mx-auto",
+                  currentPath === item.id
+                    ? cn("text-[#5A305A] shadow-lg shadow-black/10", showFullSidebar && "translate-x-1")
+                    : cn("text-white/60 hover:bg-white/5 hover:text-white", showFullSidebar && "hover:translate-x-1")
                 )}
               >
                 {currentPath === item.id && (
                   <motion.div
                     layoutId="activeNav"
-                    className="absolute inset-0 bg-white rounded-2xl"
+                    className="absolute inset-0 bg-white rounded-xl"
                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
                   />
                 )}
-                <div className="relative z-10 flex items-center w-full">
+                <div className={cn("relative z-10 flex items-center w-full", !showFullSidebar && "lg:justify-center")}>
                   <item.icon className={cn(
                     "w-5 h-5 shrink-0 transition-transform duration-300",
                     currentPath === item.id ? "text-[#5A305A] scale-110" : "text-white/40 group-hover:text-white/60 group-hover:scale-110"
@@ -351,9 +355,9 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
           })}
         </nav>
 
-        <div className="p-4 border-t border-white/5">
-          <div className={cn("flex items-center gap-3 mb-4", !showFullSidebar && "lg:justify-center")}>
-            <div className="w-10 h-10 rounded-full bg-white/10 overflow-hidden shrink-0">
+        <div className="p-3 border-t border-white/5">
+          <div className={cn("flex items-center mb-2 px-1", showFullSidebar ? "gap-3" : "gap-3 lg:gap-0 lg:justify-center lg:px-0")}>
+            <div className="w-9 h-9 rounded-full bg-white/10 overflow-hidden shrink-0">
               {user.user_metadata.avatar_url ? (
                 <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
@@ -373,7 +377,8 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
           <button 
             onClick={handleLogout}
             className={cn(
-              "flex items-center w-full px-3 py-2 rounded-lg text-red-400 hover:bg-red-400/10 transition-colors",
+              "flex items-center w-full px-3 py-2.5 rounded-xl text-red-400 hover:bg-red-400/10 transition-colors",
+              !showFullSidebar && "lg:w-10 lg:h-10 lg:p-0 lg:mx-auto",
               !showFullSidebar && "lg:justify-center"
             )}
           >

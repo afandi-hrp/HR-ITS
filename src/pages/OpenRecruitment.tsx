@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "../lib/supabase";
 import { api } from "../lib/api";
 import {
@@ -15,9 +15,16 @@ import {
   Eye,
   EyeOff,
   FilterX,
+  ArrowUpDown,
+  Check,
 } from "lucide-react";
 import { useToast } from "../components/ui/use-toast";
 import { cn, fetchWithRetry } from "../lib/utils";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "../components/ui/popover";
 
 interface OpenRecruitment {
   id: string;
@@ -28,10 +35,40 @@ interface OpenRecruitment {
   is_published: boolean;
 }
 
+type SortOption = "az" | "za" | "newest" | "oldest" | "published" | "draft";
+
+const SORT_OPTIONS: { value: SortOption; label: string; group: string }[] = [
+  { value: "az", label: "Nama posisi (A–Z)", group: "Alfabet" },
+  { value: "za", label: "Nama posisi (Z–A)", group: "Alfabet" },
+  { value: "newest", label: "Terbaru dibuat", group: "Tanggal dibuat" },
+  { value: "oldest", label: "Terlama dibuat", group: "Tanggal dibuat" },
+  { value: "published", label: "Published dulu", group: "Status publish" },
+  { value: "draft", label: "Draft / Unpublish dulu", group: "Status publish" },
+];
+const DEFAULT_SORT: SortOption = "az";
+const SORT_STORAGE_KEY = "open_recruitment_sort";
+
+// A missing flag (null) counts as published, same as the rest of the app.
+const isPublishedItem = (item: { is_published: boolean | null }) => item.is_published !== false;
+const byName = (a: { position: string }, b: { position: string }) =>
+  (a.position || "").localeCompare(b.position || "", "id", { sensitivity: "base" });
+const byCreated = (a: { created_at: string }, b: { created_at: string }) =>
+  new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+
 export default function OpenRecruitment() {
   const [items, setItems] = useState<OpenRecruitment[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  // Remembered per browser (convenience only — falls back to A–Z).
+  const [sortOption, setSortOption] = useState<SortOption>(() => {
+    try {
+      const saved = localStorage.getItem(SORT_STORAGE_KEY) as SortOption | null;
+      return saved && SORT_OPTIONS.some((o) => o.value === saved) ? saved : DEFAULT_SORT;
+    } catch {
+      return DEFAULT_SORT;
+    }
+  });
+  const [sortOpen, setSortOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -241,6 +278,35 @@ export default function OpenRecruitment() {
     );
   };
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(SORT_STORAGE_KEY, sortOption);
+    } catch {
+      // storage unavailable (private mode) — sorting still works
+    }
+  }, [sortOption]);
+
+  // Sorted client-side: the list is small and every mutation (edit, delete,
+  // publish toggle) updates `items`, so the order always stays consistent.
+  const sortedItems = useMemo(() => {
+    const list = [...items];
+    switch (sortOption) {
+      case "za":
+        return list.sort((a, b) => byName(b, a));
+      case "newest":
+        return list.sort((a, b) => byCreated(b, a) || byName(a, b));
+      case "oldest":
+        return list.sort((a, b) => byCreated(a, b) || byName(a, b));
+      case "published":
+        return list.sort((a, b) => Number(isPublishedItem(b)) - Number(isPublishedItem(a)) || byName(a, b));
+      case "draft":
+        return list.sort((a, b) => Number(isPublishedItem(a)) - Number(isPublishedItem(b)) || byName(a, b));
+      default:
+        return list.sort(byName);
+    }
+  }, [items, sortOption]);
+  const currentSort = SORT_OPTIONS.find((o) => o.value === sortOption) ?? SORT_OPTIONS[0];
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
@@ -269,9 +335,58 @@ export default function OpenRecruitment() {
             className="w-full pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm h-10"
           />
         </div>
+        <Popover open={sortOpen} onOpenChange={setSortOpen}>
+          <PopoverTrigger
+            render={
+              <button
+                className={cn(
+                  "relative flex items-center gap-2 px-3 bg-white border rounded-xl transition-all shadow-sm shrink-0 h-10 text-sm",
+                  sortOption !== DEFAULT_SORT
+                    ? "text-[#5A305A] border-[#5A305A]/40 bg-[#5A305A]/5"
+                    : "text-[#73507B] border-slate-200 hover:text-[#5A305A] hover:bg-slate-50",
+                )}
+                title={`Urutkan: ${currentSort.label}`}
+              >
+                <ArrowUpDown size={18} className="shrink-0" />
+                <span className="hidden sm:inline whitespace-nowrap">{currentSort.label}</span>
+                {sortOption !== DEFAULT_SORT && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#F58C77] border-2 border-white" />
+                )}
+              </button>
+            }
+          />
+          <PopoverContent className="w-64 p-1.5">
+            {Array.from(new Set(SORT_OPTIONS.map((o) => o.group))).map((group) => (
+              <div key={group} className="py-0.5">
+                <p className="px-3 pt-1.5 pb-1 text-[11px] font-bold text-[#73507B] uppercase tracking-wider">
+                  {group}
+                </p>
+                {SORT_OPTIONS.filter((o) => o.group === group).map((o) => (
+                  <button
+                    key={o.value}
+                    onClick={() => {
+                      setSortOption(o.value);
+                      setSortOpen(false);
+                    }}
+                    className={cn(
+                      "w-full flex items-center justify-between gap-2 px-3 py-2 text-sm rounded-lg text-left transition-colors",
+                      sortOption === o.value
+                        ? "bg-[#5A305A]/10 text-[#5A305A] font-bold"
+                        : "text-[#5A305A] hover:bg-slate-50",
+                    )}
+                  >
+                    {o.label}
+                    {sortOption === o.value && <Check size={16} className="shrink-0" />}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </PopoverContent>
+        </Popover>
         <button
           onClick={() => {
             setSearch("");
+            setSortOption(DEFAULT_SORT);
           }}
           className="text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm flex items-center justify-center h-10 text-sm w-10 shrink-0"
           title="Reset Filter"
@@ -328,7 +443,7 @@ export default function OpenRecruitment() {
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          {items.map((item) => {
+          {sortedItems.map((item) => {
             const isExpanded = expandedItems.includes(item.id);
             return (
               <div

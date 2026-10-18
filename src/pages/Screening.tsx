@@ -1267,52 +1267,151 @@ if (blacklistError)
                    st.overdueSchedules > 0 ? `${st.overdueSchedules} jadwal lewat belum dikonfirmasi` : null,
                    st.staleNew > 0 ? `${st.staleNew} pelamar baru > ${STALE_NEW_DAYS} hari` : null,
                  ].filter(Boolean);
-                 const dimIfZero = (n: number) => (n === 0 ? "opacity-50 grayscale" : "");
                  const pct = (n: number) => `${Math.round((n / st.total) * 100)}%`;
-                 // Same colors as the chips above, so the chips double as the legend.
+                 // One column per stage; each dot color is also its segment in the
+                 // bar below, so the stage row doubles as the bar's legend.
+                 const stages = [
+                   {
+                     label: "Baru",
+                     n: st.newCount,
+                     dot: "bg-indigo-400",
+                     bar: "bg-indigo-400",
+                     sub: null as React.ReactNode,
+                     title: "Pelamar baru yang belum diproses sama sekali (belum diterima/ditolak dan belum dijadwalkan)",
+                   },
+                   {
+                     label: "Lolos Awal",
+                     n: st.highFitCount,
+                     dot: "bg-emerald-400",
+                     bar: "bg-emerald-400",
+                     sub: null,
+                     title: "Lolos screening awal tetapi belum dijadwalkan psikotes/interview",
+                   },
+                   {
+                     label: "Psikotes",
+                     n: st.jadwalPsikotes + st.selesaiPsikotes,
+                     dot: "bg-sky-400",
+                     bar: "bg-sky-400",
+                     sub:
+                       psikotesTotal > 0 ? (
+                         <>
+                           {st.jadwalPsikotes} jadwal · {st.selesaiPsikotes} menunggu
+                           {st.tidakHadirPsikotes > 0 && <span className="text-rose-500"> · {st.tidakHadirPsikotes} absen</span>}
+                         </>
+                       ) : null,
+                     title: "Jadwal = psikotes terjadwal, belum dikonfirmasi\nMenunggu = sudah psikotes, belum dijadwalkan interview\nAbsen = tidak hadir psikotes, belum dijadwalkan ulang",
+                   },
+                   {
+                     label: "Interview",
+                     n: st.jadwalInterview + st.selesaiInterview,
+                     dot: "bg-amber-400",
+                     bar: "bg-amber-400",
+                     sub:
+                       interviewTotal > 0 ? (
+                         <>
+                           {st.jadwalInterview} jadwal · {st.selesaiInterview} selesai
+                           {st.tidakHadirInterview > 0 && <span className="text-rose-500"> · {st.tidakHadirInterview} absen</span>}
+                         </>
+                       ) : null,
+                     title: "Jadwal = interview (HC/User) terjadwal, belum dikonfirmasi\nSelesai = sudah interview, belum reference check\nAbsen = tidak hadir interview, belum dijadwalkan ulang",
+                   },
+                   {
+                     label: "Ref. Check",
+                     n: st.referenceCheck,
+                     dot: "bg-fuchsia-400",
+                     bar: "bg-fuchsia-400",
+                     sub: null,
+                     title: "Reference check sudah diisi — menunggu keputusan akhir (approval / hire)",
+                   },
+                 ];
+                 const absent = st.tidakHadirPsikotes + st.tidakHadirInterview;
                  const segments = [
-                   { n: st.newCount, cls: "bg-indigo-400", label: "Baru" },
-                   { n: st.highFitCount, cls: "bg-emerald-400", label: "Lolos Awal" },
-                   { n: st.jadwalPsikotes + st.selesaiPsikotes, cls: "bg-sky-400", label: "Psikotes" },
-                   { n: st.jadwalInterview + st.selesaiInterview, cls: "bg-amber-400", label: "Interview" },
-                   { n: st.referenceCheck, cls: "bg-fuchsia-400", label: "Reference Check" },
-                   { n: st.tidakHadirPsikotes + st.tidakHadirInterview, cls: "bg-rose-400", label: "Tidak Hadir" },
+                   ...stages.map((s) => ({ n: s.n, cls: s.bar, label: s.label })),
+                   { n: absent, cls: "bg-rose-400", label: "Tidak Hadir" },
                  ].filter((seg) => seg.n > 0);
 
                  return (
                    <div
                      key={position}
                      onClick={() => { setSelectedPosition(position); setCurrentPage(1); setSearch(""); }}
-                     className="bg-white border border-amber-300 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-amber-400 transition-all cursor-pointer flex flex-col gap-3 group"
+                     className="group bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-lg hover:border-[#5A305A]/30 hover:-translate-y-0.5 transition-all cursor-pointer flex flex-col overflow-hidden"
                    >
-                     <div className="flex items-start justify-between gap-3">
-                       <div className="min-w-0">
-                         <div className="flex items-center gap-2 flex-wrap">
-                           <h3 className="text-lg font-bold text-[#5A305A] underline decoration-slate-300 decoration-2 underline-offset-4 truncate" title={position}>{position}</h3>
-                           <span
-                             className={cn(
-                               "px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border whitespace-nowrap",
-                               isPublished ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-100 text-slate-500 border-slate-200",
-                             )}
-                             title={isPublished ? "Lowongan sedang dipublikasikan di Open Recruitment" : "Lowongan tidak sedang dipublikasikan, tapi masih ada pelamar aktif"}
-                           >
-                             {isPublished ? "Lowongan Dibuka" : "Lowongan Ditutup"}
-                           </span>
+                     <div className="p-5 flex flex-col gap-4">
+                       {/* Header */}
+                       <div className="flex items-start justify-between gap-3">
+                         <div className="min-w-0">
+                           <h3 className="text-lg font-bold text-[#5A305A] truncate leading-tight" title={position}>
+                             {position}
+                           </h3>
+                           <div className="mt-1.5 flex items-center gap-x-2 gap-y-1 flex-wrap text-xs text-[#73507B]">
+                             <span
+                               className={cn("inline-flex items-center gap-1.5 font-semibold", isPublished ? "text-emerald-700" : "text-slate-500")}
+                               title={isPublished ? "Lowongan sedang dipublikasikan di Open Recruitment" : "Lowongan tidak sedang dipublikasikan, tapi masih ada pelamar aktif"}
+                             >
+                               <span className={cn("w-1.5 h-1.5 rounded-full", isPublished ? "bg-emerald-500" : "bg-slate-400")} />
+                               {isPublished ? "Dibuka" : "Ditutup"}
+                             </span>
+                             <span className="text-slate-300">•</span>
+                             <span className="inline-flex items-center gap-1">
+                               <Users size={12} className="shrink-0" />
+                               <span className="font-semibold text-[#5A305A]">{st.total}</span> pelamar aktif
+                             </span>
+                             <span className="text-slate-300">•</span>
+                             <span title={st.lastUpdate ? formatDate(new Date(st.lastUpdate)) : undefined}>
+                               diperbarui {formatRelativeTime(st.lastUpdate || null)}
+                             </span>
+                           </div>
                          </div>
-                         <p className="text-xs text-[#73507B] mt-1.5 flex items-center gap-1.5 flex-wrap">
-                           <Users size={13} className="shrink-0" />
-                           <span className="font-semibold text-[#5A305A]">{st.total} pelamar aktif</span>
-                           <span>&middot;</span>
-                           <span title={st.lastUpdate ? formatDate(new Date(st.lastUpdate)) : undefined}>
-                             Update terakhir {formatRelativeTime(st.lastUpdate || null)}
-                           </span>
-                         </p>
+                         <span
+                           className="shrink-0 w-9 h-9 rounded-full border border-slate-200 text-[#5A305A] flex items-center justify-center transition-all group-hover:bg-[#5A305A] group-hover:border-[#5A305A] group-hover:text-white"
+                           title="Lihat Kandidat"
+                         >
+                           <ChevronRight size={18} />
+                         </span>
                        </div>
-                       <span className="hidden sm:flex items-center gap-1.5 shrink-0 px-4 py-2 text-sm font-bold border border-[#5A305A]/20 text-[#5A305A] bg-white rounded-xl shadow-sm whitespace-nowrap transition-all group-hover:bg-[#5A305A] group-hover:text-white group-hover:-translate-y-0.5">
-                         Lihat Kandidat <ChevronRight size={16} />
-                       </span>
+
+                       {/* Stages */}
+                       <div className="grid grid-cols-3 sm:grid-cols-5 gap-y-3 rounded-xl bg-slate-50/80 border border-slate-100 py-3">
+                         {stages.map((stage, i) => (
+                           <div
+                             key={stage.label}
+                             title={stage.title}
+                             className={cn(
+                               "px-3 min-w-0",
+                               i > 0 && "sm:border-l sm:border-slate-200/80",
+                               stage.n === 0 && !stage.sub && "opacity-45",
+                             )}
+                           >
+                             <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#73507B] whitespace-nowrap">
+                               <span className={cn("w-2 h-2 rounded-full shrink-0", stage.dot)} />
+                               {stage.label}
+                             </div>
+                             <div className="mt-0.5 text-xl font-extrabold text-[#5A305A] leading-tight tabular-nums">
+                               {stage.n}
+                             </div>
+                             {stage.sub && (
+                               <div className="text-[10.5px] text-[#73507B] leading-snug truncate">{stage.sub}</div>
+                             )}
+                           </div>
+                         ))}
+                       </div>
+
+                       {/* Distribution bar */}
+                       {st.total > 0 && (
+                         <div className="flex h-1.5 w-full rounded-full overflow-hidden bg-slate-100 gap-px">
+                           {segments.map((seg) => (
+                             <div
+                               key={seg.label}
+                               className={seg.cls}
+                               style={{ width: pct(seg.n) }}
+                               title={`${seg.label}: ${seg.n} pelamar (${pct(seg.n)})`}
+                             />
+                           ))}
+                         </div>
+                       )}
                      </div>
 
+                     {/* Needs action (footer strip) */}
                      {actionParts.length > 0 && (
                        <button
                          onClick={(e) => {
@@ -1322,57 +1421,15 @@ if (blacklistError)
                            setCurrentPage(1);
                            setSearch("");
                          }}
-                         className="flex items-center gap-1.5 self-start bg-rose-50 border border-rose-200 px-2 py-1 rounded-lg text-rose-700 text-xs sm:text-sm font-semibold hover:bg-rose-100 hover:border-rose-300 transition-colors text-left"
+                         className="flex items-center gap-2 w-full px-5 py-2.5 bg-rose-50/80 border-t border-rose-100 text-rose-700 text-xs font-semibold hover:bg-rose-100 transition-colors text-left"
                          title={st.actionTooltip}
                        >
-                         <AlertTriangle size={14} className="shrink-0" /> Perlu tindakan: {actionParts.join(" · ")}
-                         <ChevronRight size={14} className="shrink-0 opacity-70" />
-                       </button>
-                     )}
-
-                     <div className="text-xs text-[#73507B] flex flex-wrap items-center gap-1.5">
-                       <span
-                         className={cn("flex items-center gap-1.5 bg-indigo-50 px-2 py-1 rounded-lg whitespace-nowrap", dimIfZero(st.newCount))}
-                         title="Pelamar baru yang belum diproses sama sekali (belum diterima/ditolak dan belum dijadwalkan)"
-                       >
-                         <Search size={13} className="text-indigo-500" /> <span className="font-medium text-indigo-700">{st.newCount} Baru</span>
-                       </span>
-                       <span
-                         className={cn("flex items-center gap-1.5 bg-emerald-50 px-2 py-1 rounded-lg text-emerald-700 font-medium whitespace-nowrap", dimIfZero(st.highFitCount))}
-                         title="Lolos screening awal tetapi belum dijadwalkan psikotes/interview"
-                       >
-                         <Star size={13} /> {st.highFitCount} Lolos Awal
-                       </span>
-                       <span
-                         className={cn("flex items-center gap-1 bg-sky-50 px-2 py-1 rounded-lg text-sky-700 font-medium whitespace-nowrap", dimIfZero(psikotesTotal))}
-                         title={"Jadwal = psikotes terjadwal, belum dikonfirmasi\nMenunggu Interview = sudah psikotes, belum dijadwalkan interview\nTidak Hadir = tidak hadir psikotes, belum dijadwalkan ulang"}
-                       >
-                         <FileText size={13} className="shrink-0" /> Psikotes: {st.jadwalPsikotes} Jadwal &middot; {st.selesaiPsikotes} Menunggu Interview{st.tidakHadirPsikotes > 0 && <> &middot; <span className="text-rose-600">{st.tidakHadirPsikotes} Tidak Hadir</span></>}
-                       </span>
-                       <span
-                         className={cn("flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-lg text-amber-700 font-medium whitespace-nowrap", dimIfZero(interviewTotal))}
-                         title={"Jadwal = interview (HC/User) terjadwal, belum dikonfirmasi\nSelesai = sudah interview, belum reference check\nTidak Hadir = tidak hadir interview, belum dijadwalkan ulang"}
-                       >
-                         <Users size={13} className="shrink-0" /> Interview: {st.jadwalInterview} Jadwal &middot; {st.selesaiInterview} Selesai{st.tidakHadirInterview > 0 && <> &middot; <span className="text-rose-600">{st.tidakHadirInterview} Tidak Hadir</span></>}
-                       </span>
-                       {st.referenceCheck > 0 && (
-                         <span className="flex items-center gap-1.5 bg-fuchsia-50 px-2 py-1 rounded-lg text-fuchsia-700 font-medium whitespace-nowrap">
-                           <FileText size={13} /> {st.referenceCheck} Reference Check
+                         <AlertTriangle size={14} className="shrink-0" />
+                         <span className="flex-1 min-w-0">Perlu tindakan: {actionParts.join(" · ")}</span>
+                         <span className="shrink-0 inline-flex items-center gap-0.5 text-rose-600">
+                           Tinjau <ChevronRight size={14} />
                          </span>
-                       )}
-                     </div>
-
-                     {st.total > 0 && (
-                       <div className="flex h-2 w-full rounded-full overflow-hidden bg-slate-100">
-                         {segments.map((seg) => (
-                           <div
-                             key={seg.label}
-                             className={seg.cls}
-                             style={{ width: pct(seg.n) }}
-                             title={`${seg.label}: ${seg.n} pelamar (${pct(seg.n)})`}
-                           />
-                         ))}
-                       </div>
+                       </button>
                      )}
                    </div>
                  );
