@@ -199,34 +199,28 @@ export default function OpenRecruitment() {
       if (newData) {
         setItems(newData);
 
-        // Auto-sync ke n8n setelah hapus
+        // Auto-sync ke n8n setelah hapus (server mengabaikan jika webhook
+        // Sheets belum diatur di .env; error-nya hanya dicatat di console)
         const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        const webhookUrl = user?.user_metadata?.sheet_webhook_url;
-
-        if (webhookUrl) {
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-          fetchWithRetry("/api/n8n/trigger", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${session?.access_token}`,
+          data: { session },
+        } = await supabase.auth.getSession();
+        fetchWithRetry("/api/n8n/trigger", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({
+            type: "sheet",
+            payload: {
+              event: "sync_open_recruitment",
+              action: "auto_sync_after_delete",
+              deletedId: id,
+              data: newData, // Mengirim full data terbaru
+              timestamp: new Date().toISOString(),
             },
-            body: JSON.stringify({
-              type: "sheet",
-              payload: {
-                event: "sync_open_recruitment",
-                action: "auto_sync_after_delete",
-                deletedId: id,
-                data: newData, // Mengirim full data terbaru
-                timestamp: new Date().toISOString(),
-              },
-            }),
-          }).catch(console.error);
-        }
+          }),
+        }).catch(console.error);
       }
     } catch (error: any) {
       toast({

@@ -36,7 +36,6 @@ export default function ExternalData() {
   const [isLoading, setIsLoading] = useState(false);
   const [previewData, setPreviewData] = useState<any | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
-  const [webhookDeleteUrl, setWebhookDeleteUrl] = useState("");
   const [showConfirmDelete, setShowConfirmDelete] = useState<any | null>(null);
   const [siteSettings, setSiteSettings] = useState<any>(null);
   const componentRef = useRef<HTMLDivElement>(null);
@@ -65,7 +64,6 @@ export default function ExternalData() {
   }, [searchTerm]);
 
   useEffect(() => {
-    loadWebhooks();
     loadSiteSettings();
   }, []);
 
@@ -97,21 +95,6 @@ export default function ExternalData() {
           parseInt(result[3], 16),
         ]
       : defaultColor;
-  };
-
-  const loadWebhooks = async () => {
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        const deleteUrl =
-          user.user_metadata.external_data_delete_webhook_url || "";
-        setWebhookDeleteUrl(deleteUrl);
-      }
-    } catch (err) {
-      console.error(err);
-    }
   };
 
   const fetchData = async () => {
@@ -152,15 +135,6 @@ export default function ExternalData() {
   const paginatedData = data; // Data sudah di-paginate dari server
 
   const handleDelete = async (row: any) => {
-    if (!webhookDeleteUrl) {
-      toast({
-        title: "Peringatan",
-        description: "URL Webhook DELETE belum diatur di Pengaturan.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     const rowIdentifier = row.uid_sheet;
 
     if (!rowIdentifier) {
@@ -230,7 +204,9 @@ export default function ExternalData() {
         // The user will get a notification when it's done.
       } else {
         const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.message || "Gagal menghapus data di n8n");
+        throw new Error(
+          errData.error || errData.message || "Gagal menghapus data di n8n",
+        );
       }
     } catch (err: any) {
       clearTimeout(timeoutId);

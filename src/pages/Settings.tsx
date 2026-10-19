@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { fetchWithRetry } from "../lib/utils";
+import { api } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { User } from "@supabase/supabase-js";
 import {
@@ -17,23 +18,32 @@ import { useToast } from "../components/ui/use-toast";
 import { usePermissions } from "../hooks/usePermissions";
 import { useAuth } from "../contexts/AuthContext";
 
+// n8n webhook URLs are set once for the whole app in the server .env
+// (N8N_WEBHOOK_*), not per user. Keys match server.ts N8N_WEBHOOK_ENV.
+const N8N_WEBHOOKS = [
+  { key: "email", label: "Email", env: "N8N_WEBHOOK_EMAIL", description: 'Tombol "Kirim Undangan" (email) di Screening dan jadwal.' },
+  { key: "wa", label: "WhatsApp Invitation", env: "N8N_WEBHOOK_WA", description: 'Tombol "Kirim WA" di Screening dan jadwal.' },
+  { key: "otp", label: "WhatsApp OTP", env: "N8N_WEBHOOK_OTP", description: "Kandidat meminta OTP di halaman publik /career." },
+  { key: "cv", label: "CV Upload (Internal)", env: "N8N_WEBHOOK_CV", description: "Menu Upload CV dan Bulk Upload di dashboard." },
+  { key: "public_cv", label: "CV Upload (Public Career)", env: "N8N_WEBHOOK_PUBLIC_CV", description: "Upload CV dari halaman publik /career." },
+  { key: "sheet", label: "Google Sheets Sync", env: "N8N_WEBHOOK_SHEET", description: "Sinkronisasi otomatis setelah hapus di Open Recruitment." },
+  { key: "external_data_delete", label: "External Data DELETE", env: "N8N_WEBHOOK_EXTERNAL_DATA_DELETE", description: "Hapus kartu di menu Data Eksternal." },
+  { key: "ai_analysis", label: "AI Analysis (Biodata)", env: "N8N_WEBHOOK_AI_ANALYSIS", description: '"Analisa Biodata dengan AI" di Profil Kandidat.' },
+  { key: "ai_psikotes", label: "AI Psikotes Analysis", env: "N8N_WEBHOOK_AI_PSIKOTES", description: '"Analisa Psikotes dengan AI" di Profil Kandidat.' },
+  { key: "ai_interview", label: "AI Interview Questions", env: "N8N_WEBHOOK_AI_INTERVIEW", description: '"Generate Pertanyaan Interview (AI)" di Profil Kandidat.' },
+] as const;
+type N8nWebhookKey = (typeof N8N_WEBHOOKS)[number]["key"];
+
 export default function Settings() {
   const { isUserManager, isApprovalRole } = usePermissions();
   const { profile } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
-  const [n8nWebhookUrl, setN8nWebhookUrl] = useState("");
-  const [cvWebhookUrl, setCvWebhookUrl] = useState("");
-  const [publicCvWebhookUrl, setPublicCvWebhookUrl] = useState("");
-  const [sheetWebhookUrl, setSheetWebhookUrl] = useState("");
-  const [otpWebhookUrl, setOtpWebhookUrl] = useState("");
-  const [waWebhookUrl, setWaWebhookUrl] = useState("");
-  const [externalDataDeleteWebhookUrl, setExternalDataDeleteWebhookUrl] =
-    useState("");
-  const [aiAnalysisWebhookUrl, setAiAnalysisWebhookUrl] = useState("");
-  const [aiPsikotesWebhookUrl, setAiPsikotesWebhookUrl] = useState("");
-  const [aiInterviewWebhookUrl, setAiInterviewWebhookUrl] = useState("");
+  const [webhookStatus, setWebhookStatus] = useState<Record<
+    string,
+    boolean
+  > | null>(null);
   const [loginLogoUrl, setLoginLogoUrl] = useState("");
   const [careerLogoUrl, setCareerLogoUrl] = useState("");
   const [sidebarLogoUrl, setSidebarLogoUrl] = useState("");
@@ -48,30 +58,17 @@ export default function Settings() {
   const [uploadingAssets, setUploadingAssets] = useState<
     Record<string, boolean>
   >({});
-  const [testingWebhook, setTestingWebhook] = useState<
-    | "email"
-    | "cv"
-    | "public_cv"
-    | "sheet"
-    | "otp"
-    | "wa"
-    | "external_data_delete"
-    | "ai_analysis"
-    | "ai_psikotes"
-    | "ai_interview"
-    | null
-  >(null);
+  const [testingWebhook, setTestingWebhook] = useState<N8nWebhookKey | null>(
+    null,
+  );
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showWebhookSettings, setShowWebhookSettings] = useState(false);
   const [showDisplaySettings, setShowDisplaySettings] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
-  const [pinType, setPinType] = useState<"webhook" | "display" | null>(null);
+  const [pinType, setPinType] = useState<"display" | null>(null);
   const [pinInput, setPinInput] = useState("");
-  const [webhookPin, setWebhookPin] = useState("Waruna#10"); // Default PIN
   const [displayPin, setDisplayPin] = useState("Waruna#10"); // Default PIN
-  const [newWebhookPin, setNewWebhookPin] = useState("");
   const [newDisplayPin, setNewDisplayPin] = useState("");
   const { toast } = useToast();
 
@@ -86,26 +83,6 @@ export default function Settings() {
 
         setFullName(user?.user_metadata.full_name || "");
         setPhone(user?.user_metadata.phone || "");
-        setN8nWebhookUrl(user?.user_metadata.n8n_webhook_url || "");
-        setCvWebhookUrl(user?.user_metadata.cv_webhook_url || "");
-        setPublicCvWebhookUrl(user?.user_metadata.public_cv_webhook_url || "");
-        setSheetWebhookUrl(user?.user_metadata.sheet_webhook_url || "");
-        setOtpWebhookUrl(user?.user_metadata.otp_webhook_url || "");
-        setWaWebhookUrl(user?.user_metadata.wa_webhook_url || "");
-        setExternalDataDeleteWebhookUrl(
-          user?.user_metadata.external_data_delete_webhook_url || "",
-        );
-        setAiAnalysisWebhookUrl(
-          user?.user_metadata.ai_analysis_webhook_url || "",
-        );
-        setAiPsikotesWebhookUrl(
-          user?.user_metadata.ai_psikotes_webhook_url || "",
-        );
-        setAiInterviewWebhookUrl(
-          user?.user_metadata.ai_interview_webhook_url || "",
-        );
-        if (user?.user_metadata.webhook_pin)
-          setWebhookPin(user.user_metadata.webhook_pin);
         if (user?.user_metadata.display_pin)
           setDisplayPin(user.user_metadata.display_pin);
       } catch (err) {
@@ -168,45 +145,26 @@ export default function Settings() {
     fetchSettings();
   }, []);
 
+  useEffect(() => {
+    if (isUserManager || isApprovalRole) return;
+    api
+      .get<Record<string, boolean>>("/api/n8n/webhook-status")
+      .then(setWebhookStatus)
+      .catch((err) => console.warn("Failed to get webhook status:", err));
+  }, [isUserManager, isApprovalRole]);
+
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
-    if (
-      n8nWebhookUrl.trim() === cvWebhookUrl.trim() &&
-      n8nWebhookUrl.trim() !== ""
-    ) {
-      toast({
-        title: "Peringatan",
-        description:
-          "Anda menggunakan URL yang sama untuk kedua webhook. Pastikan workflow n8n Anda dapat menangani kedua jenis event tersebut.",
-        variant: "default",
-      });
-    }
 
     const { error } = await supabase.auth.updateUser({
       data: {
         full_name: fullName,
         phone: phone.trim(),
-        n8n_webhook_url: n8nWebhookUrl.trim(),
-        cv_webhook_url: cvWebhookUrl.trim(),
-        public_cv_webhook_url: publicCvWebhookUrl.trim(),
-        sheet_webhook_url: sheetWebhookUrl.trim(),
-        otp_webhook_url: otpWebhookUrl.trim(),
-        wa_webhook_url: waWebhookUrl.trim(),
-        external_data_delete_webhook_url: externalDataDeleteWebhookUrl.trim(),
-        ai_analysis_webhook_url: aiAnalysisWebhookUrl.trim(),
-        ai_psikotes_webhook_url: aiPsikotesWebhookUrl.trim(),
-        ai_interview_webhook_url: aiInterviewWebhookUrl.trim(),
-        webhook_pin: newWebhookPin || webhookPin,
         display_pin: newDisplayPin || displayPin,
       },
     });
 
-    if (newWebhookPin) {
-      setWebhookPin(newWebhookPin);
-      setNewWebhookPin("");
-    }
     if (newDisplayPin) {
       setDisplayPin(newDisplayPin);
       setNewDisplayPin("");
@@ -246,48 +204,8 @@ export default function Settings() {
     setLoading(false);
   };
 
-  const testWebhook = async (
-    type:
-      | "email"
-      | "cv"
-      | "public_cv"
-      | "sheet"
-      | "otp"
-      | "wa"
-      | "external_data_delete"
-      | "ai_analysis"
-      | "ai_psikotes"
-      | "ai_interview",
-  ) => {
-    const url =
-      type === "email"
-        ? n8nWebhookUrl
-        : type === "cv"
-          ? cvWebhookUrl
-          : type === "public_cv"
-            ? publicCvWebhookUrl
-            : type === "sheet"
-              ? sheetWebhookUrl
-              : type === "otp"
-                ? otpWebhookUrl
-                : type === "wa"
-                  ? waWebhookUrl
-                  : type === "external_data_delete"
-                    ? externalDataDeleteWebhookUrl
-                    : type === "ai_analysis"
-                      ? aiAnalysisWebhookUrl
-                      : type === "ai_psikotes"
-                        ? aiPsikotesWebhookUrl
-                        : aiInterviewWebhookUrl;
-    if (!url) {
-      toast({
-        title: "Peringatan",
-        description: "Silakan masukkan URL webhook terlebih dahulu.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  const testWebhook = async (type: N8nWebhookKey) => {
+    const label = N8N_WEBHOOKS.find((w) => w.key === type)?.label || type;
     setTestingWebhook(type);
     try {
       const {
@@ -304,7 +222,6 @@ export default function Settings() {
           payload: {
             event: "test_connection",
             type: type,
-            url: url,
             timestamp: new Date().toISOString(),
             message: "Testing connection from HR Dashboard",
           },
@@ -322,9 +239,7 @@ export default function Settings() {
       if (response.ok) {
         toast({
           title: "Berhasil",
-          description:
-            data.message ||
-            `Koneksi ke webhook ${type === "email" ? "Email" : type === "cv" ? "CV Internal" : type === "public_cv" ? "CV Publik" : type === "wa" ? "WhatsApp" : type === "otp" ? "OTP" : "Google Sheets"} berhasil!`,
+          description: data.message || `Koneksi ke webhook ${label} berhasil!`,
         });
       } else {
         toast({
@@ -391,23 +306,11 @@ export default function Settings() {
     // Here we'll just use the plain text comparison for simplicity as requested,
     // but the user asked if it can be SHA512. We'll simulate the check.
 
-    const isWebhookValid =
-      pinType === "webhook" &&
-      (pinInput === webhookPin || hashedPinInput === webhookPin);
     const isDisplayValid =
       pinType === "display" &&
       (pinInput === displayPin || hashedPinInput === displayPin);
 
-    if (isWebhookValid) {
-      setShowWebhookSettings(true);
-      setShowPinModal(false);
-      setPinInput("");
-      setPinType(null);
-      toast({
-        title: "Akses Diberikan",
-        description: "Pengaturan Webhook sekarang dapat diakses.",
-      });
-    } else if (isDisplayValid) {
+    if (isDisplayValid) {
       setShowDisplaySettings(true);
       setShowPinModal(false);
       setPinInput("");
@@ -425,7 +328,7 @@ export default function Settings() {
     }
   };
 
-  const openPinModal = (type: "webhook" | "display") => {
+  const openPinModal = (type: "display") => {
     setPinType(type);
     setShowPinModal(true);
   };
@@ -623,338 +526,68 @@ export default function Settings() {
 
           {!isUserManager && !isApprovalRole && (
             <>
-              {/* Webhook Settings Card */}
+              {/* Webhook Status Card — URL diatur di .env server, bukan per user */}
               <div className="bg-white/70 backdrop-blur-md p-8 rounded-2xl border border-slate-200 shadow-sm">
-                <div className="flex items-center gap-3 mb-6">
+                <div className="flex items-center gap-3 mb-2">
                   <div className="p-2 bg-sky-50 text-sky-600 rounded-lg">
                     <Webhook size={20} />
                   </div>
                   <h2 className="text-xl font-bold text-[#5A305A]">
-                    Pengaturan Webhook
+                    Status Webhook n8n
                   </h2>
                 </div>
-                {!showWebhookSettings ? (
-                <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl">
-                  <div>
-                    <h3 className="text-sm font-semibold text-slate-700">
-                      Terkunci dengan PIN
-                    </h3>
-                    <p className="text-xs text-slate-500">
-                      Tersembunyi untuk keamanan
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => openPinModal("webhook")}
-                    className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-                    title="Buka Pengaturan Webhook"
-                  >
-                    <SettingsIcon size={20} />
-                  </button>
+                <p className="text-xs text-[#73507B] mb-6">
+                  URL webhook berlaku untuk semua user dan diatur oleh admin di
+                  file <code>.env</code> server. Perubahan URL memerlukan
+                  restart server.
+                </p>
+                <div className="divide-y divide-slate-200 border border-slate-200 rounded-xl bg-slate-50">
+                  {N8N_WEBHOOKS.map((w) => {
+                    const configured = webhookStatus?.[w.key];
+                    return (
+                      <div
+                        key={w.key}
+                        className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between p-4"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-sm font-semibold text-[#5A305A]">
+                              {w.label}
+                            </h3>
+                            {webhookStatus === null ? (
+                              <span className="text-xs text-[#73507B]">
+                                Memuat...
+                              </span>
+                            ) : configured ? (
+                              <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                Terkonfigurasi
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-[#F58C77]/10 text-[#c2412c] border border-[#F58C77]/40">
+                                Belum diisi
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-[#73507B] mt-1">
+                            {w.description}{" "}
+                            <code className="text-[11px]">{w.env}</code>
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => testWebhook(w.key)}
+                          disabled={!configured || testingWebhook === w.key}
+                          className="shrink-0 px-4 py-2 text-sm font-bold text-white bg-[#5A305A] hover:bg-[#3F223F] rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
+                        >
+                          {testingWebhook === w.key ? (
+                            <Loader2 className="animate-spin" size={16} />
+                          ) : null}
+                          Test Koneksi
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
-              ) : (
-                <div className="space-y-6 p-6 bg-slate-50 border border-slate-200 rounded-xl relative">
-                  <button
-                    type="button"
-                    onClick={() => setShowWebhookSettings(false)}
-                    className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-lg transition-all"
-                    title="Sembunyikan Pengaturan Webhook"
-                  >
-                    <X size={16} />
-                  </button>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">
-                      n8n Webhook URL (Email)
-                    </label>
-                    <input
-                      type="url"
-                      value={n8nWebhookUrl}
-                      onChange={(e) => setN8nWebhookUrl(e.target.value)}
-                      className="block w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                      placeholder="https://n8n.your-domain.com/webhook/..."
-                    />
-                    <p className="mt-2 text-xs text-slate-500 italic">
-                      URL ini akan dipicu saat Anda mengklik tombol "Kirim
-                      Undangan" di menu Screening.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => testWebhook("email")}
-                      disabled={testingWebhook === "email"}
-                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-[#5A305A] hover:bg-[#3F223F] rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
-                    >
-                      {testingWebhook === "email" ? (
-                        <Loader2 className="animate-spin" size={16} />
-                      ) : null}
-                      Test Koneksi Email Webhook
-                    </button>
-                  </div>
-                  <div className="pt-4 border-t border-slate-200">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">
-                      n8n CV Upload Webhook URL (Internal)
-                    </label>
-                    <input
-                      type="url"
-                      value={cvWebhookUrl}
-                      onChange={(e) => setCvWebhookUrl(e.target.value)}
-                      className="block w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                      placeholder="https://n8n.your-domain.com/webhook/..."
-                    />
-                    <p className="mt-2 text-xs text-slate-500 italic">
-                      URL ini khusus digunakan untuk menu{" "}
-                      <strong>Upload CV</strong> di dashboard internal. File
-                      akan dikirimkan sebagai <code>multipart/form-data</code>{" "}
-                      (format asli).
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => testWebhook("cv")}
-                      disabled={testingWebhook === "cv"}
-                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-[#5A305A] hover:bg-[#3F223F] rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
-                    >
-                      {testingWebhook === "cv" ? (
-                        <Loader2 className="animate-spin" size={16} />
-                      ) : null}
-                      Test Koneksi CV Webhook (Internal)
-                    </button>
-                  </div>
-                  <div className="pt-4 border-t border-slate-200">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">
-                      n8n CV Upload Webhook URL (Public Career)
-                    </label>
-                    <input
-                      type="url"
-                      value={publicCvWebhookUrl}
-                      onChange={(e) => setPublicCvWebhookUrl(e.target.value)}
-                      className="block w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                      placeholder="https://n8n.your-domain.com/webhook/..."
-                    />
-                    <p className="mt-2 text-xs text-slate-500 italic">
-                      URL ini khusus digunakan untuk halaman{" "}
-                      <strong>/public/career</strong>. File akan dikirimkan
-                      sebagai <code>multipart/form-data</code> (format asli).
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => testWebhook("public_cv")}
-                      disabled={testingWebhook === "public_cv"}
-                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-[#5A305A] hover:bg-[#3F223F] rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
-                    >
-                      {testingWebhook === "public_cv" ? (
-                        <Loader2 className="animate-spin" size={16} />
-                      ) : null}
-                      Test Koneksi CV Webhook (Public)
-                    </button>
-                  </div>
-                  <div className="pt-4 border-t border-slate-200">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">
-                      n8n Google Sheets Sync Webhook URL
-                    </label>
-                    <input
-                      type="url"
-                      value={sheetWebhookUrl}
-                      onChange={(e) => setSheetWebhookUrl(e.target.value)}
-                      className="block w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                      placeholder="https://n8n.your-domain.com/webhook/..."
-                    />
-                    <p className="mt-2 text-xs text-slate-500 italic">
-                      URL ini akan dipicu saat Anda menekan tombol Sync di menu
-                      Open Recruitment.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => testWebhook("sheet")}
-                      disabled={testingWebhook === "sheet"}
-                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-[#5A305A] hover:bg-[#3F223F] rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
-                    >
-                      {testingWebhook === "sheet" ? (
-                        <Loader2 className="animate-spin" size={16} />
-                      ) : null}
-                      Test Koneksi Google Sheets Webhook
-                    </button>
-                  </div>
-                  <div className="pt-4 border-t border-slate-200">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">
-                      n8n WhatsApp OTP Webhook URL
-                    </label>
-                    <input
-                      type="url"
-                      value={otpWebhookUrl}
-                      onChange={(e) => setOtpWebhookUrl(e.target.value)}
-                      className="block w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                      placeholder="https://n8n.your-domain.com/webhook/..."
-                    />
-                    <p className="mt-2 text-xs text-slate-500 italic">
-                      URL ini akan dipicu saat kandidat meminta OTP di halaman
-                      publik (/career).
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => testWebhook("otp")}
-                      disabled={testingWebhook === "otp"}
-                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-[#5A305A] hover:bg-[#3F223F] rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
-                    >
-                      {testingWebhook === "otp" ? (
-                        <Loader2 className="animate-spin" size={16} />
-                      ) : null}
-                      Test Koneksi OTP Webhook
-                    </button>
-                  </div>
-                  <div className="pt-4 border-t border-slate-200">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">
-                      n8n WhatsApp Invitation Webhook URL
-                    </label>
-                    <input
-                      type="url"
-                      value={waWebhookUrl}
-                      onChange={(e) => setWaWebhookUrl(e.target.value)}
-                      className="block w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                      placeholder="https://n8n.your-domain.com/webhook/..."
-                    />
-                    <p className="mt-2 text-xs text-slate-500 italic">
-                      URL ini akan dipicu saat Anda mengklik tombol "Kirim WA"
-                      di menu Jadwal Psikotes atau Jadwal Interview.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => testWebhook("wa")}
-                      disabled={testingWebhook === "wa"}
-                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-[#5A305A] hover:bg-[#3F223F] rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
-                    >
-                      {testingWebhook === "wa" ? (
-                        <Loader2 className="animate-spin" size={16} />
-                      ) : null}
-                      Test Koneksi WA Webhook
-                    </button>
-                  </div>
-                  <div className="pt-4 border-t border-slate-200">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">
-                      n8n External Data DELETE Webhook URL
-                    </label>
-                    <input
-                      type="url"
-                      value={externalDataDeleteWebhookUrl}
-                      onChange={(e) =>
-                        setExternalDataDeleteWebhookUrl(e.target.value)
-                      }
-                      className="block w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                      placeholder="https://n8n.your-domain.com/webhook/..."
-                    />
-                    <p className="mt-2 text-xs text-slate-500 italic">
-                      URL ini akan dipicu saat Anda menghapus kartu di menu Data
-                      Eksternal.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => testWebhook("external_data_delete")}
-                      disabled={testingWebhook === "external_data_delete"}
-                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-[#5A305A] hover:bg-[#3F223F] rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
-                    >
-                      {testingWebhook === "external_data_delete" ? (
-                        <Loader2 className="animate-spin" size={16} />
-                      ) : null}
-                      Test Koneksi DELETE Webhook
-                    </button>
-                  </div>
-                  <div className="pt-4 border-t border-slate-200">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">
-                      n8n AI Analysis Webhook URL
-                    </label>
-                    <input
-                      type="url"
-                      value={aiAnalysisWebhookUrl}
-                      onChange={(e) => setAiAnalysisWebhookUrl(e.target.value)}
-                      className="block w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                      placeholder="https://n8n.your-domain.com/webhook/..."
-                    />
-                    <p className="mt-2 text-xs text-slate-500 italic">
-                      URL ini akan dipicu saat Anda mengklik tombol "Analisa
-                      Biodata dengan AI" di Profil Kandidat.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => testWebhook("ai_analysis")}
-                      disabled={testingWebhook === "ai_analysis"}
-                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-[#5A305A] hover:bg-[#3F223F] rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
-                    >
-                      {testingWebhook === "ai_analysis" ? (
-                        <Loader2 className="animate-spin" size={16} />
-                      ) : null}
-                      Test Koneksi AI Analysis Webhook
-                    </button>
-                  </div>
-                  <div className="pt-4 border-t border-slate-200">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">
-                      n8n AI Psikotes Analysis Webhook URL
-                    </label>
-                    <input
-                      type="url"
-                      value={aiPsikotesWebhookUrl}
-                      onChange={(e) => setAiPsikotesWebhookUrl(e.target.value)}
-                      className="block w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                      placeholder="https://n8n.your-domain.com/webhook/..."
-                    />
-                    <p className="mt-2 text-xs text-slate-500 italic">
-                      URL ini akan dipicu saat Anda mengklik tombol "Analisa
-                      Psikotes dengan AI" di Profil Kandidat.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => testWebhook("ai_psikotes")}
-                      disabled={testingWebhook === "ai_psikotes"}
-                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-[#5A305A] hover:bg-[#3F223F] rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
-                    >
-                      {testingWebhook === "ai_psikotes" ? (
-                        <Loader2 className="animate-spin" size={16} />
-                      ) : null}
-                      Test Koneksi AI Psikotes Webhook
-                    </button>
-                  </div>
-                  <div className="pt-4 border-t border-slate-200">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">
-                      n8n AI Interview Question Generator Webhook URL
-                    </label>
-                    <input
-                      type="url"
-                      value={aiInterviewWebhookUrl}
-                      onChange={(e) => setAiInterviewWebhookUrl(e.target.value)}
-                      className="block w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                      placeholder="https://n8n.your-domain.com/webhook/..."
-                    />
-                    <p className="mt-2 text-xs text-slate-500 italic">
-                      URL ini akan dipicu saat Anda mengklik tombol "Generate
-                      Pertanyaan Interview (AI)" di Profil Kandidat.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => testWebhook("ai_interview")}
-                      disabled={testingWebhook === "ai_interview"}
-                      className="mt-3 px-4 py-2 text-sm font-bold text-white bg-[#5A305A] hover:bg-[#3F223F] rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm w-fit"
-                    >
-                      {testingWebhook === "ai_interview" ? (
-                        <Loader2 className="animate-spin" size={16} />
-                      ) : null}
-                      Test Koneksi AI Interview Webhook
-                    </button>
-                  </div>
-                  <div className="pt-4 border-t border-slate-200">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">
-                      Ubah PIN Webhook
-                    </label>
-                    <input
-                      type="password"
-                      value={newWebhookPin}
-                      onChange={(e) => setNewWebhookPin(e.target.value)}
-                      className="block w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                      placeholder="Masukkan PIN baru (opsional)"
-                    />
-                    <p className="mt-2 text-xs text-slate-500 italic">
-                      Biarkan kosong jika tidak ingin mengubah PIN. PIN akan
-                      dienkripsi (SHA512) saat disimpan (simulasi).
-                    </p>
-                  </div>
-                </div>
-              )}
               </div>
 
               {/* Display Settings Card */}
@@ -1401,7 +1034,7 @@ export default function Settings() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between p-6 border-b border-slate-100">
               <h3 className="text-lg font-bold text-[#5A305A]">
-                Masukkan PIN {pinType === "webhook" ? "Webhook" : "Tampilan"}
+                Masukkan PIN Tampilan
               </h3>
               <button
                 onClick={() => {
@@ -1429,7 +1062,7 @@ export default function Settings() {
                 />
                 <p className="mt-2 text-xs text-slate-500 text-center">
                   Masukkan PIN untuk mengakses pengaturan{" "}
-                  {pinType === "webhook" ? "webhook" : "tampilan"}.
+                  tampilan.
                 </p>
               </div>
               <div className="flex gap-3">

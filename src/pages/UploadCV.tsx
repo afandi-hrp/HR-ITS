@@ -353,18 +353,6 @@ export default function UploadCV() {
         data: { session },
       } = await supabase.auth.getSession();
       const user = session?.user;
-      const webhookUrl = user?.user_metadata?.cv_webhook_url;
-
-      if (!webhookUrl) {
-        toast({
-          title: "Konfigurasi Diperlukan",
-          description:
-            "Silakan atur n8n CV Upload Webhook URL di menu Pengaturan terlebih dahulu.",
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
 
       let successCount = 0;
       let errorCount = 0;

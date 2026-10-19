@@ -643,6 +643,49 @@ app.use((req: any, res, next) => {
     }
   };
 
+  // n8n webhook URLs live in the server env (one set for the whole app),
+  // not in each user's user_metadata — every user shares the same workflows,
+  // and the URLs never reach the browser.
+  const N8N_WEBHOOK_ENV = {
+    email: 'N8N_WEBHOOK_EMAIL',
+    wa: 'N8N_WEBHOOK_WA',
+    otp: 'N8N_WEBHOOK_OTP',
+    cv: 'N8N_WEBHOOK_CV',
+    public_cv: 'N8N_WEBHOOK_PUBLIC_CV',
+    sheet: 'N8N_WEBHOOK_SHEET',
+    external_data_delete: 'N8N_WEBHOOK_EXTERNAL_DATA_DELETE',
+    ai_analysis: 'N8N_WEBHOOK_AI_ANALYSIS',
+    ai_psikotes: 'N8N_WEBHOOK_AI_PSIKOTES',
+    ai_interview: 'N8N_WEBHOOK_AI_INTERVIEW',
+  } as const;
+  type N8nWebhookKey = keyof typeof N8N_WEBHOOK_ENV;
+  const isN8nWebhookKey = (key: unknown): key is N8nWebhookKey =>
+    typeof key === 'string' && Object.prototype.hasOwnProperty.call(N8N_WEBHOOK_ENV, key);
+  const getN8nWebhookUrl = (key: N8nWebhookKey) => (process.env[N8N_WEBHOOK_ENV[key]] || '').trim();
+
+  // Which webhooks are configured (booleans only, never the URLs) — for the
+  // status list on the Settings page.
+  app.get("/api/n8n/webhook-status", async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: "Unauthorized. Missing or invalid Authorization header." });
+    }
+    try {
+      const supabaseAdmin = getSupabaseAdmin();
+      const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(authHeader.split(' ')[1]);
+      if (authError || !user) {
+        return res.status(401).json({ error: "Unauthorized. Invalid token." });
+      }
+      const status = Object.fromEntries(
+        (Object.keys(N8N_WEBHOOK_ENV) as N8nWebhookKey[]).map((key) => [key, !!getN8nWebhookUrl(key)])
+      );
+      res.json(status);
+    } catch (error: any) {
+      console.error("Error reading webhook status:", error);
+      res.status(500).json({ error: "Gagal membaca status webhook" });
+    }
+  });
+
   // Feature: Trigger n8n Webhook (Proxy to avoid CORS)
   app.post("/api/n8n/trigger", triggerRateLimiter, async (req, res) => {
     const { type, payload } = req.body || {};
@@ -669,11 +712,8 @@ app.use((req: any, res, next) => {
         return res.status(401).json({ error: "Unauthorized. Invalid token." });
       }
 
-      // type "test" accepts an arbitrary caller-supplied payload.url (used
-      // by the Settings page to test a webhook before saving it) — that's
-      // an SSRF-adjacent capability (our server will make a request to
-      // whatever URL is given), so restrict it to HR_ADMIN, the only role
-      // with access to the webhook settings UI that uses it.
+      // type "test" (Settings page "Test Koneksi") can ping any configured
+      // webhook with a dummy payload — HR_ADMIN only.
       if (type === 'test') {
         const { data: profile } = await supabaseAdmin
           .from('profiles')
@@ -685,38 +725,18 @@ app.use((req: any, res, next) => {
         }
       }
 
-      // Fetch webhook URL based on type from user metadata
-      let webhookUrl = '';
-      if (type === 'email') {
-        webhookUrl = user.user_metadata?.n8n_webhook_url;
-      } else if (type === 'wa') {
-        webhookUrl = user.user_metadata?.wa_webhook_url;
-      } else if (type === 'sheet') {
-        webhookUrl = user.user_metadata?.sheet_webhook_url;
-      } else if (type === 'external_data_delete') {
-        webhookUrl = user.user_metadata?.external_data_delete_webhook_url;
-      } else if (type === 'ai_analysis') {
-        webhookUrl = user.user_metadata?.ai_analysis_webhook_url;
-      } else if (type === 'ai_psikotes_analysis') {
-        webhookUrl = user.user_metadata?.ai_psikotes_webhook_url;
-      } else if (type === 'ai_interview') {
-        webhookUrl = user.user_metadata?.ai_interview_webhook_url;
-      } else if (type === 'test') {
-        const testType = payload?.type;
-        webhookUrl = payload?.url; // Use URL from payload if provided
-        
-        if (!webhookUrl) {
-          if (testType === 'email') webhookUrl = user.user_metadata?.n8n_webhook_url;
-          else if (testType === 'cv') webhookUrl = user.user_metadata?.cv_webhook_url;
-          else if (testType === 'public_cv') webhookUrl = user.user_metadata?.public_cv_webhook_url;
-          else if (testType === 'sheet') webhookUrl = user.user_metadata?.sheet_webhook_url;
-          else if (testType === 'otp') webhookUrl = user.user_metadata?.otp_webhook_url;
-          else if (testType === 'wa') webhookUrl = user.user_metadata?.wa_webhook_url;
-        }
+      // Resolve the webhook URL from the server env
+      const webhookKey: unknown =
+        type === 'test' ? payload?.type
+        : type === 'ai_psikotes_analysis' ? 'ai_psikotes'
+        : type;
+      if (!isN8nWebhookKey(webhookKey)) {
+        return res.status(400).json({ error: `Jenis webhook tidak dikenal: ${String(webhookKey)}` });
       }
+      const webhookUrl = getN8nWebhookUrl(webhookKey);
 
       if (!webhookUrl) {
-        return res.status(400).json({ error: `Webhook URL for ${type === 'test' ? payload?.type : type} is not configured in your settings. Please save your settings first.` });
+        return res.status(400).json({ error: `Webhook n8n untuk "${webhookKey}" belum diatur di server (${N8N_WEBHOOK_ENV[webhookKey]} di .env). Hubungi admin.` });
       }
 
       if (isLocalUrl(webhookUrl)) {
@@ -854,18 +874,11 @@ app.use((req: any, res, next) => {
         return res.status(429).json({ error: "Terlalu banyak permintaan OTP. Silakan coba lagi dalam 5 menit." });
       }
 
-      const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
-      
-      if (error || !users || users.length === 0) {
-        return res.status(500).json({ error: "Could not fetch admin settings" });
-      }
-
-      // Find the first user that has otp_webhook_url configured
-      const adminUser = users.find((u: any) => u.user_metadata?.otp_webhook_url) || users[0];
-      const webhookUrl = adminUser?.user_metadata?.otp_webhook_url;
+      const webhookUrl = getN8nWebhookUrl('otp');
 
       if (!webhookUrl) {
-        return res.status(400).json({ error: "OTP Webhook URL is not configured by Admin" });
+        console.error("N8N_WEBHOOK_OTP is not set in the server env");
+        return res.status(500).json({ error: "Layanan OTP belum dikonfigurasi. Silakan hubungi HR." });
       }
 
       if (isLocalUrl(webhookUrl)) {
@@ -1044,14 +1057,7 @@ app.use((req: any, res, next) => {
         }
         
         userId = user.id;
-        webhookUrl = user.user_metadata?.cv_webhook_url;
-        
-        if (!webhookUrl) {
-          // Fallback to first admin if not set for this specific user
-          const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
-          const adminUser = users?.find((u: any) => u.user_metadata?.cv_webhook_url) || users?.[0];
-          webhookUrl = adminUser?.user_metadata?.cv_webhook_url;
-        }
+        webhookUrl = getN8nWebhookUrl('cv');
       } else {
         // Public Upload: Validate uploadToken
         if (!uploadToken) {
@@ -1075,14 +1081,11 @@ app.use((req: any, res, next) => {
           return res.status(401).json({ error: "Upload token expired" });
         }
 
-        // Fetch webhook URL from admin settings
-        const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
-        const adminUser = users?.find((u: any) => u.user_metadata?.public_cv_webhook_url) || users?.[0];
-        webhookUrl = adminUser?.user_metadata?.public_cv_webhook_url;
+        webhookUrl = getN8nWebhookUrl('public_cv');
       }
 
       if (!webhookUrl) {
-        return res.status(400).json({ error: "CV Webhook URL is not configured by Admin" });
+        return res.status(400).json({ error: "Webhook CV n8n belum diatur di server. Hubungi admin." });
       }
 
       if (isLocalUrl(webhookUrl)) {

@@ -163,17 +163,6 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const user = session?.user;
-      const webhookUrl = user?.user_metadata?.cv_webhook_url;
-
-      if (!webhookUrl) {
-        toast({ 
-          title: 'Konfigurasi Diperlukan', 
-          description: 'Silakan atur n8n CV Upload Webhook URL di menu Pengaturan terlebih dahulu.',
-          variant: 'destructive' 
-        });
-        setLoading(false);
-        return;
-      }
 
       let successCount = 0;
       let errorCount = 0;
@@ -182,7 +171,6 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }: BulkUplo
         if (!row.file) continue;
 
         const formData = new FormData();
-        formData.append('webhookUrl', webhookUrl);
         formData.append('candidateName', row.name);
         formData.append('candidateEmail', row.email);
         formData.append('candidatePosition', row.position);

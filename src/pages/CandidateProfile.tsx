@@ -696,21 +696,6 @@ export default function CandidateProfile() {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      const aiWebhookUrl = user?.user_metadata?.ai_analysis_webhook_url;
-      if (!aiWebhookUrl) {
-        toast({
-          title: "Konfigurasi Diperlukan",
-          description:
-            "Silakan atur n8n AI Analysis Webhook URL di menu Pengaturan terlebih dahulu.",
-          variant: "destructive",
-        });
-        setIsAnalyzing(false);
-        return;
-      }
 
       const response = await fetchWithRetry("/api/n8n/trigger", {
         method: "POST",
@@ -732,7 +717,10 @@ export default function CandidateProfile() {
       });
 
       if (!response.ok) {
-        throw new Error(`Gagal memicu analisa AI: ${response.statusText}`);
+        const errData = await response.json().catch(() => null);
+        throw new Error(
+          `Gagal memicu analisa AI: ${errData?.error || response.statusText}`,
+        );
       }
 
       const responseData = await response.json();
@@ -761,21 +749,6 @@ export default function CandidateProfile() {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      const aiPsikotesWebhookUrl = user?.user_metadata?.ai_psikotes_webhook_url;
-      if (!aiPsikotesWebhookUrl) {
-        toast({
-          title: "Konfigurasi Diperlukan",
-          description:
-            "Silakan atur n8n AI Psikotes Analysis Webhook URL di menu Pengaturan terlebih dahulu.",
-          variant: "destructive",
-        });
-        setIsAnalyzingPsikotes(false);
-        return;
-      }
 
       const psikotesUrlForN8n = await resolveDocumentUrl(candidate.psikotes_result_url);
       if (!psikotesUrlForN8n) {
@@ -808,7 +781,10 @@ export default function CandidateProfile() {
       });
 
       if (!response.ok) {
-        throw new Error(`Gagal memicu analisa AI: ${response.statusText}`);
+        const errData = await response.json().catch(() => null);
+        throw new Error(
+          `Gagal memicu analisa AI: ${errData?.error || response.statusText}`,
+        );
       }
 
       const responseData = await response.json();
@@ -837,22 +813,6 @@ export default function CandidateProfile() {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      const aiInterviewWebhookUrl =
-        user?.user_metadata?.ai_interview_webhook_url;
-      if (!aiInterviewWebhookUrl) {
-        toast({
-          title: "Konfigurasi Diperlukan",
-          description:
-            "Silakan atur n8n AI Interview Question Generator Webhook URL di menu Pengaturan terlebih dahulu.",
-          variant: "destructive",
-        });
-        setIsGeneratingInterview(false);
-        return;
-      }
 
       const response = await fetchWithRetry("/api/n8n/trigger", {
         method: "POST",

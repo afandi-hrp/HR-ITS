@@ -167,18 +167,7 @@ Lokasi: ${schedule.location_type} (${schedule.location_detail || '-'})`;
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const { data: { user } } = await supabase.auth.getUser();
-      const webhookUrl = user?.user_metadata?.n8n_webhook_url;
 
-      if (!webhookUrl) {
-        toast({ 
-          title: 'Konfigurasi Diperlukan', 
-          description: 'Silakan atur n8n Webhook URL di menu Pengaturan terlebih dahulu.',
-          variant: 'destructive' 
-        });
-        setLoading(false);
-        return;
-      }
-      
       let tokenValue = null;
       if (selectedToken) {
         const tokenObj = tokens.find(t => t.id === selectedToken);
