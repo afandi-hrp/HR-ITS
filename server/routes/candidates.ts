@@ -6,6 +6,7 @@ import {
   HttpError,
   requireAuth as realRequireAuth,
   requireHrAdmin,
+  requireHrRead,
   requireRole,
   type AuthedRequest,
 } from "../auth";
@@ -13,6 +14,7 @@ import { getSupabaseAdmin } from "../supabase";
 import {
   attachBlacklist,
   canAccessCandidate,
+  canViewAllCandidates,
   getAssignedCandidateIds,
   isHrAdmin,
   sanitizeRawData,
@@ -75,7 +77,7 @@ async function resolveCandidateTable(req: AuthedRequest, id: string) {
     }
     return "candidates" as const;
   }
-  if (!isHrAdmin(req.profile)) throw new HttpError(404, "Kandidat tidak ditemukan.");
+  if (!canViewAllCandidates(req.profile)) throw new HttpError(404, "Kandidat tidak ditemukan.");
   return "candidate_logs" as const;
 }
 
@@ -103,7 +105,7 @@ export function registerCandidateRoutes(app: Express, requireAuth: RequestHandle
         .order("updated_at", { ascending: false });
 
       // Non-HR roles see only candidates assigned to them (same as RLS).
-      if (!isHrAdmin(req.profile)) {
+      if (!canViewAllCandidates(req.profile)) {
         const ids = await getAssignedCandidateIds(admin, req.profile.id);
         if (ids.length === 0) return res.json({ rows: [], total: 0, truncated: false });
         query = query.in("id", ids);
@@ -135,7 +137,7 @@ export function registerCandidateRoutes(app: Express, requireAuth: RequestHandle
       if (error) throw error;
 
       let candQuery = admin.from("candidates").select("position").limit(SCREENING_FETCH_LIMIT);
-      if (!isHrAdmin(req.profile)) {
+      if (!canViewAllCandidates(req.profile)) {
         const ids = await getAssignedCandidateIds(admin, req.profile.id);
         candQuery = candQuery.in("id", ids.length ? ids : ["00000000-0000-0000-0000-000000000000"]);
       }
@@ -154,7 +156,7 @@ export function registerCandidateRoutes(app: Express, requireAuth: RequestHandle
     "/api/candidates/archived-for-position",
     requireAuth,
     handle(async (req, res) => {
-      if (!isHrAdmin(req.profile)) return res.json({ rows: [] });
+      if (!canViewAllCandidates(req.profile)) return res.json({ rows: [] });
       const position = String(req.query.position || "");
       if (!position) return res.json({ rows: [] });
       const { data, error } = await getSupabaseAdmin()
@@ -259,7 +261,7 @@ export function registerCandidateRoutes(app: Express, requireAuth: RequestHandle
         }
         return res.json({ candidate: active, archived: false });
       }
-      if (!isHrAdmin(req.profile)) throw new HttpError(404, "Kandidat tidak ditemukan.");
+      if (!canViewAllCandidates(req.profile)) throw new HttpError(404, "Kandidat tidak ditemukan.");
       const { data: log, error: logError } = await admin.from("candidate_logs").select("*").eq("id", id).maybeSingle();
       if (logError) throw logError;
       if (!log) throw new HttpError(404, "Kandidat tidak ditemukan.");
@@ -394,7 +396,7 @@ export function registerCandidateRoutes(app: Express, requireAuth: RequestHandle
   app.get(
     "/api/profiles/assignable",
     requireAuth,
-    requireHrAdmin,
+    requireHrRead,
     handle(async (_req, res) => {
       const { data, error } = await getSupabaseAdmin()
         .from("profiles")

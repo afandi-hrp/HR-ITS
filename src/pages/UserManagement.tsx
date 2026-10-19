@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { useToast } from "../components/ui/use-toast";
+import { usePermissions } from "../hooks/usePermissions";
 
 const ROLE_META: Record<
   string,
@@ -25,6 +26,7 @@ const ROLE_META: Record<
   USER_MANAGER: { label: "User Manager", badgeClass: "bg-blue-100 text-blue-700" },
   DIRECTOR: { label: "Direktur", badgeClass: "bg-amber-100 text-amber-700" },
   FINANCE_DIRECTOR: { label: "Direktur Finance", badgeClass: "bg-emerald-100 text-emerald-700" },
+  READ_ONLY: { label: "Read Only", badgeClass: "bg-slate-100 text-slate-700" },
 };
 
 function getRoleLabel(role?: string | null) {
@@ -73,6 +75,7 @@ export default function UserManagement() {
   const [editDepartment, setEditDepartment] = useState("");
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+  const { canEdit } = usePermissions();
 
   const fetchUsers = async () => {
     try {
@@ -363,12 +366,16 @@ export default function UserManagement() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-center whitespace-nowrap">
-                      <button
-                        onClick={() => handleEdit(user)}
-                        className="inline-flex items-center justify-center bg-[#5A305A] hover:bg-[#3F223F] text-white font-medium text-sm px-4 py-2 rounded-lg transition-colors"
-                      >
-                        Edit Akses
-                      </button>
+                      {canEdit ? (
+                        <button
+                          onClick={() => handleEdit(user)}
+                          className="inline-flex items-center justify-center bg-[#5A305A] hover:bg-[#3F223F] text-white font-medium text-sm px-4 py-2 rounded-lg transition-colors"
+                        >
+                          Edit Akses
+                        </button>
+                      ) : (
+                        <span className="text-xs text-[#73507B]">-</span>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -477,6 +484,7 @@ export default function UserManagement() {
                   <option value="HR_ADMIN">HR Admin</option>
                   <option value="DIRECTOR">Direktur</option>
                   <option value="FINANCE_DIRECTOR">Direktur Finance</option>
+                  <option value="READ_ONLY">Read Only (Lihat Saja)</option>
                 </select>
               </div>
 

@@ -28,6 +28,7 @@ const OpenRecruitment = lazy(() => import('./pages/OpenRecruitment'));
 const PublicCareer = lazy(() => import('./pages/PublicCareer'));
 const ApplicationForm = lazy(() => import('./pages/ApplicationForm'));
 const ExternalData = lazy(() => import('./pages/ExternalData'));
+const ChangePassword = lazy(() => import('./pages/ChangePassword'));
 
 export default function App() {
   return (
@@ -40,6 +41,9 @@ export default function App() {
 function AppRoutes() {
   const { session, loading } = useAuth();
   const { isRestrictedScreeningRole } = usePermissions();
+  // New accounts must replace the HR-issued password before anything else
+  // (flag set by DB trigger, cleared by /api/account/change-password).
+  const mustChangePassword = session?.user?.app_metadata?.must_change_password === true;
 
   useEffect(() => {
     // Fetch site settings for favicon
@@ -81,6 +85,8 @@ function AppRoutes() {
             <Route path="/*" element={
               !session ? (
                 <Login />
+              ) : mustChangePassword ? (
+                <ChangePassword email={session.user.email} />
               ) : (
                 <DashboardLayout user={session.user}>
                   <Suspense fallback={<PageLoader />}>
@@ -123,7 +129,7 @@ function AppRoutes() {
             } />
           </Routes>
         </Suspense>
-        {session && <RealtimeNotifications />}
+        {session && !mustChangePassword && <RealtimeNotifications />}
         <Toaster />
       </div>
     </BrowserRouter>

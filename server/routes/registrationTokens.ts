@@ -1,6 +1,6 @@
 import type { Express, RequestHandler } from "express";
 import crypto from "crypto";
-import { auditLog, handle, HttpError, requireAuth as realRequireAuth, requireHrAdmin } from "../auth";
+import { auditLog, handle, HttpError, requireAuth as realRequireAuth, requireHrAdmin, requireHrRead } from "../auth";
 import { getSupabaseAdmin } from "../supabase";
 
 // Registration tokens gate /form-pelamar. Previously readable by every
@@ -22,7 +22,7 @@ export function registerRegistrationTokenRoutes(app: Express, requireAuth: Reque
   app.get(
     "/api/registration-tokens",
     requireAuth,
-    requireHrAdmin,
+    requireHrRead,
     handle(async (req, res) => {
       const admin = getSupabaseAdmin();
       const { data: tokens, error } = await admin
@@ -84,7 +84,12 @@ export function registerRegistrationTokenRoutes(app: Express, requireAuth: Reque
         if (match) submissions[t.id] = match;
       });
 
-      res.json({ tokens: tokens || [], recipients, submissions });
+      // An unused token opens the application form — READ_ONLY sees it masked.
+      const visibleTokens =
+        req.profile.role === "READ_ONLY"
+          ? (tokens || []).map((t) => ({ ...t, token: `${String(t.token || "").slice(0, 3)}••••••` }))
+          : tokens || [];
+      res.json({ tokens: visibleTokens, recipients, submissions });
     }),
   );
 

@@ -18,6 +18,7 @@ import {
   X,
   Filter,
 } from "lucide-react";
+import { usePermissions } from "../hooks/usePermissions";
 
 interface Token {
   id: string;
@@ -67,6 +68,7 @@ const formatDateTime = (iso: string | null) => {
 
 export default function RegistrationTokens() {
   const { toast } = useToast();
+  const { canEdit } = usePermissions();
   const [tokens, setTokens] = useState<Token[]>([]);
   const [recipients, setRecipients] = useState<Record<string, Recipient>>({});
   const [submissions, setSubmissions] = useState<Record<string, Submission>>({});
@@ -248,30 +250,36 @@ export default function RegistrationTokens() {
             <option value="terpakai">Terpakai ({counts.terpakai})</option>
           </select>
         </div>
-        <button
-          onClick={() => setConfirmDelete({ type: "used" })}
-          disabled={deleting || counts.terpakai === 0}
-          className="h-10 w-10 shrink-0 flex items-center justify-center bg-white border border-rose-200 text-rose-600 rounded-xl hover:bg-rose-50 transition-colors shadow-sm disabled:opacity-50"
-          title={`Hapus semua token terpakai (${counts.terpakai})`}
-        >
-          <Trash2 size={18} />
-        </button>
-        <button
-          onClick={() => generateToken(10)}
-          disabled={generating}
-          className="h-10 px-3.5 shrink-0 bg-[#5A305A]/10 text-[#5A305A] text-sm rounded-xl hover:bg-[#5A305A]/20 transition-colors flex items-center gap-1.5 disabled:opacity-70 font-medium whitespace-nowrap"
-        >
-          {generating ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-          Buat 10
-        </button>
-        <button
-          onClick={() => generateToken(1)}
-          disabled={generating}
-          className="h-10 px-3.5 shrink-0 bg-[#5A305A] text-white text-sm rounded-xl hover:bg-[#3F223F] transition-colors flex items-center gap-1.5 disabled:opacity-70 font-medium whitespace-nowrap"
-        >
-          {generating ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-          Buat 1 Token
-        </button>
+        {canEdit && (
+          <button
+            onClick={() => setConfirmDelete({ type: "used" })}
+            disabled={deleting || counts.terpakai === 0}
+            className="h-10 w-10 shrink-0 flex items-center justify-center bg-white border border-rose-200 text-rose-600 rounded-xl hover:bg-rose-50 transition-colors shadow-sm disabled:opacity-50"
+            title={`Hapus semua token terpakai (${counts.terpakai})`}
+          >
+            <Trash2 size={18} />
+          </button>
+        )}
+        {canEdit && (
+          <button
+            onClick={() => generateToken(10)}
+            disabled={generating}
+            className="h-10 px-3.5 shrink-0 bg-[#5A305A]/10 text-[#5A305A] text-sm rounded-xl hover:bg-[#5A305A]/20 transition-colors flex items-center gap-1.5 disabled:opacity-70 font-medium whitespace-nowrap"
+          >
+            {generating ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+            Buat 10
+          </button>
+        )}
+        {canEdit && (
+          <button
+            onClick={() => generateToken(1)}
+            disabled={generating}
+            className="h-10 px-3.5 shrink-0 bg-[#5A305A] text-white text-sm rounded-xl hover:bg-[#3F223F] transition-colors flex items-center gap-1.5 disabled:opacity-70 font-medium whitespace-nowrap"
+          >
+            {generating ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+            Buat 1 Token
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -372,14 +380,16 @@ export default function RegistrationTokens() {
                         )}
                       </td>
                       <td className="px-3 py-3 text-right whitespace-nowrap">
-                        <button
-                          onClick={() => copyToClipboard(token.token, "Token")}
-                          className="p-2 text-[#73507B] hover:text-[#5A305A] hover:bg-[#5A305A]/10 rounded-lg transition-colors"
-                          title="Salin Token"
-                        >
-                          <Copy size={18} />
-                        </button>
-                        {status !== "terpakai" && (
+                        {canEdit && (
+                          <button
+                            onClick={() => copyToClipboard(token.token, "Token")}
+                            className="p-2 text-[#73507B] hover:text-[#5A305A] hover:bg-[#5A305A]/10 rounded-lg transition-colors"
+                            title="Salin Token"
+                          >
+                            <Copy size={18} />
+                          </button>
+                        )}
+                        {canEdit && status !== "terpakai" && (
                           <button
                             onClick={() =>
                               copyToClipboard(
@@ -393,13 +403,15 @@ export default function RegistrationTokens() {
                             <Link2 size={18} />
                           </button>
                         )}
-                        <button
-                          onClick={() => setConfirmDelete({ type: "single", token })}
-                          className="p-2 text-[#73507B] hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                          title="Hapus Token"
-                        >
-                          <Trash2 size={18} />
-                        </button>
+                        {canEdit && (
+                          <button
+                            onClick={() => setConfirmDelete({ type: "single", token })}
+                            className="p-2 text-[#73507B] hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                            title="Hapus Token"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );

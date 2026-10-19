@@ -303,7 +303,7 @@ export default function Screening() {
   const [totalItems, setTotalItems] = useState(0);
   const [isDataTruncated, setIsDataTruncated] = useState(false);
   const { profile } = useAuth();
-  const { isUserManager, isApprovalRole, isRestrictedScreeningRole } = usePermissions();
+  const { isUserManager, isApprovalRole, isRestrictedScreeningRole, canEdit } = usePermissions();
 
   const isFirstRender = React.useRef(true);
   useEffect(() => {
@@ -1804,7 +1804,7 @@ if (blacklistError)
                                 Diarsipkan
                               </div>
                             )}
-                            {!isRestrictedScreeningRole && !candidate._isArchived && (
+                            {canEdit && !isRestrictedScreeningRole && !candidate._isArchived && (
                               <Popover>
                                 <PopoverTrigger
                                   render={
@@ -1840,7 +1840,7 @@ if (blacklistError)
                               </Popover>
                             )}
 
-                            {!isRestrictedScreeningRole && !candidate._isArchived && (
+                            {canEdit && !isRestrictedScreeningRole && !candidate._isArchived && (
                             <Popover>
                               <PopoverTrigger
                                 render={

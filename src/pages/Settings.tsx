@@ -35,7 +35,7 @@ const N8N_WEBHOOKS = [
 type N8nWebhookKey = (typeof N8N_WEBHOOKS)[number]["key"];
 
 export default function Settings() {
-  const { isUserManager, isApprovalRole } = usePermissions();
+  const { isUserManager, isApprovalRole, canEdit } = usePermissions();
   const { profile } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [fullName, setFullName] = useState("");
@@ -146,12 +146,12 @@ export default function Settings() {
   }, []);
 
   useEffect(() => {
-    if (isUserManager || isApprovalRole) return;
+    if (isUserManager || isApprovalRole || !canEdit) return;
     api
       .get<Record<string, boolean>>("/api/n8n/webhook-status")
       .then(setWebhookStatus)
       .catch((err) => console.warn("Failed to get webhook status:", err));
-  }, [isUserManager, isApprovalRole]);
+  }, [isUserManager, isApprovalRole, canEdit]);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -174,20 +174,24 @@ export default function Settings() {
       await supabase.from("profiles").update({ full_name: fullName, phone: phone.trim() }).eq("id", user.id);
     }
 
-    const { error: settingsError } = await supabase
-      .from("site_settings")
-      .upsert({
-        id: 1,
-        login_logo_url: loginLogoUrl.trim(),
-        career_logo_url: careerLogoUrl.trim(),
-        sidebar_logo_url: sidebarLogoUrl.trim(),
-        sidebar_text: sidebarText.trim(),
-        login_animation_url: loginAnimationUrl.trim(),
-        favicon_url: faviconUrl.trim(),
-        job_sources: jobSources,
-        career_job_sources: careerJobSources,
-        updated_at: new Date().toISOString(),
-      });
+    // Display settings are only editable (and only shown) for HR — RLS
+    // rejects the upsert for READ_ONLY, which used to fail the whole save.
+    const { error: settingsError } = !canEdit
+      ? { error: null }
+      : await supabase
+          .from("site_settings")
+          .upsert({
+            id: 1,
+            login_logo_url: loginLogoUrl.trim(),
+            career_logo_url: careerLogoUrl.trim(),
+            sidebar_logo_url: sidebarLogoUrl.trim(),
+            sidebar_text: sidebarText.trim(),
+            login_animation_url: loginAnimationUrl.trim(),
+            favicon_url: faviconUrl.trim(),
+            job_sources: jobSources,
+            career_job_sources: careerJobSources,
+            updated_at: new Date().toISOString(),
+          });
 
     if (error || settingsError) {
       toast({
@@ -524,7 +528,7 @@ export default function Settings() {
             </div>
           </div>
 
-          {!isUserManager && !isApprovalRole && (
+          {canEdit && !isUserManager && !isApprovalRole && (
             <>
               {/* Webhook Status Card — URL diatur di .env server, bukan per user */}
               <div className="bg-white/70 backdrop-blur-md p-8 rounded-2xl border border-slate-200 shadow-sm">

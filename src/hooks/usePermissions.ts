@@ -15,6 +15,9 @@ export function usePermissions() {
   const isFinanceDirector = role === 'FINANCE_DIRECTOR';
   const isApprovalRole = isDirector || isFinanceDirector;
   const isRestrictedScreeningRole = isUserManager || isApprovalRole;
+  // Sees every page and candidate like HR Admin (minus salary) but can't
+  // change anything — the server refuses every write (server/auth.ts).
+  const isReadOnly = role === 'READ_ONLY';
 
   return {
     role,
@@ -24,16 +27,19 @@ export function usePermissions() {
     isFinanceDirector,
     isApprovalRole,
     isRestrictedScreeningRole,
+    isReadOnly,
+    // Hide every create/edit/delete/send/upload control when false.
+    canEdit: !isReadOnly,
     // Reference-check evaluations are visible to HR Admin (who fills them)
     // and to Director/Finance Director (who review them, read-only).
-    canSeeReferenceCheck: isHrAdmin || isApprovalRole,
+    canSeeReferenceCheck: isHrAdmin || isApprovalRole || isReadOnly,
     // AI/n8n-webhook analysis actions are HR-operational, hidden from
     // User Manager and from Director/Finance Director (approval-only roles).
-    canRunAiAnalysis: !isUserManager && !isApprovalRole,
+    canRunAiAnalysis: !isUserManager && !isApprovalRole && !isReadOnly,
     // Assigning/unassigning reviewers is HR Admin only.
     canAssignReviewers: isHrAdmin,
     canApproveAsDirector: isDirector,
     canApproveAsFinanceDirector: isFinanceDirector,
-    hideSalary: isUserManager,
+    hideSalary: isUserManager || isReadOnly,
   };
 }

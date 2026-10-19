@@ -1,7 +1,8 @@
 import type { Express, RequestHandler } from "express";
-import { auditLog, handle, HttpError, requireAuth as realRequireAuth, requireHrAdmin } from "../auth";
+import { auditLog, handle, HttpError, requireAuth as realRequireAuth, requireHrAdmin, requireHrRead } from "../auth";
 import { getSupabaseAdmin } from "../supabase";
-import { attachBlacklist, findExternalIdsStillInUse } from "../access";
+import { attachBlacklist, findExternalIdsStillInUse, sanitizeRawData } from "../access";
+import type { AuthProfile } from "../auth";
 import { collectStorageRefs, FORM_DOCUMENT_FIELDS } from "../../src/lib/documentPaths";
 
 // Log Kandidat / Arsip Kandidat (candidate_logs) — HR only, same as the
@@ -30,11 +31,13 @@ function buildLogsQuery(admin: ReturnType<typeof getSupabaseAdmin>, q: any, with
   return query.order("archived_at", { ascending: false });
 }
 
-// The embed may come back as an array (one-to-many shape).
-const flattenEmbed = (rows: any[]) =>
-  rows.map((d) =>
-    Array.isArray(d.external_data) ? { ...d, external_data: d.external_data[0] ?? null } : d,
-  );
+// The embed may come back as an array (one-to-many shape). Salary fields are
+// stripped for READ_ONLY (sanitizeRawData).
+const flattenEmbed = (rows: any[], profile: AuthProfile) =>
+  rows.map((d) => {
+    const ext = Array.isArray(d.external_data) ? d.external_data[0] ?? null : d.external_data;
+    return { ...d, external_data: ext?.raw_data ? { ...ext, raw_data: sanitizeRawData(ext.raw_data, profile) } : ext };
+  });
 
 // `requireAuth` is injectable only so scripts/test-backend-routes.ts can run
 // the routes with a fixed profile; server.ts always passes the real one.
@@ -43,7 +46,7 @@ export function registerLogRoutes(app: Express, requireAuth: RequestHandler = re
   app.get(
     "/api/logs",
     requireAuth,
-    requireHrAdmin,
+    requireHrRead,
     handle(async (req, res) => {
       const admin = getSupabaseAdmin();
       const page = toInt(req.query.page, 1, 100000);
@@ -51,7 +54,7 @@ export function registerLogRoutes(app: Express, requireAuth: RequestHandler = re
       const from = (page - 1) * pageSize;
       const { data, error, count } = await buildLogsQuery(admin, req.query, true).range(from, from + pageSize - 1);
       if (error) throw error;
-      const rows = await attachBlacklist(admin, flattenEmbed(data || []));
+      const rows = await attachBlacklist(admin, flattenEmbed(data || [], req.profile));
       res.json({ rows, total: count ?? 0 });
     }),
   );
@@ -60,7 +63,7 @@ export function registerLogRoutes(app: Express, requireAuth: RequestHandler = re
   app.get(
     "/api/logs/export",
     requireAuth,
-    requireHrAdmin,
+    requireHrRead,
     handle(async (req, res) => {
       const admin = getSupabaseAdmin();
       const { data, error } = await buildLogsQuery(admin, req.query, false);

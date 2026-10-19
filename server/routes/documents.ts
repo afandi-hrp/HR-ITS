@@ -7,6 +7,7 @@ import {
   FORM_DOCUMENT_FIELDS,
   LEGACY_BUCKET,
   PRIVATE_BUCKET,
+  SALARY_FORM_FIELDS,
 } from "../../src/lib/documentPaths";
 
 const SIGNABLE_BUCKETS = [PRIVATE_BUCKET, LEGACY_BUCKET];
@@ -58,6 +59,21 @@ async function getAllowedObjectKeys(profile: AuthProfile): Promise<Set<string>> 
   return keys;
 }
 
+// Storage keys of remuneration documents in any form (hidden from READ_ONLY).
+let salaryCache: { expires: number; keys: Set<string> } | null = null;
+async function getSalaryObjectKeys(): Promise<Set<string>> {
+  if (salaryCache && salaryCache.expires > Date.now()) return salaryCache.keys;
+  const fields = SALARY_FORM_FIELDS.filter((f) => (FORM_DOCUMENT_FIELDS as readonly string[]).includes(f));
+  const { data, error } = await getSupabaseAdmin()
+    .from("external_data")
+    .select(fields.map((f) => `${f}:raw_data->>${f}`).join(", "));
+  if (error) throw error;
+  const values = (data || []).flatMap((row: any) => fields.map((f) => row[f]));
+  const keys = new Set(collectStorageRefs(values).map((r) => `${r.bucket}/${r.path}`));
+  salaryCache = { expires: Date.now() + CACHE_TTL_MS, keys };
+  return keys;
+}
+
 // `requireAuth` is injectable only so scripts/test-backend-routes.ts can run
 // the routes with a fixed profile; server.ts always passes the real one.
 export function registerDocumentRoutes(app: Express, requireAuth: RequestHandler = realRequireAuth) {
@@ -72,7 +88,14 @@ export function registerDocumentRoutes(app: Express, requireAuth: RequestHandler
       if (!path || typeof path !== "string") throw new HttpError(400, "Parameter path wajib diisi.");
       if (!SIGNABLE_BUCKETS.includes(bucket)) throw new HttpError(400, "Bucket tidak valid.");
 
-      if (!isHrAdmin(req.profile)) {
+      if (req.profile.role === "READ_ONLY") {
+        // Every document except remuneration files (payslip, signature).
+        const salaryKeys = await getSalaryObjectKeys();
+        if (salaryKeys.has(`${bucket}/${path}`)) {
+          auditLog(req, "documents.denied", { bucket, path });
+          throw new HttpError(403, "Anda tidak memiliki akses ke dokumen ini.");
+        }
+      } else if (!isHrAdmin(req.profile)) {
         const allowed = await getAllowedObjectKeys(req.profile);
         if (!allowed.has(`${bucket}/${path}`)) {
           auditLog(req, "documents.denied", { bucket, path });

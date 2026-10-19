@@ -146,6 +146,7 @@ export default function CandidateProfile() {
     canSeeReferenceCheck,
     canRunAiAnalysis,
     hideSalary,
+    canEdit,
   } = usePermissions();
   const [fullScreenPdf, setFullScreenPdf] = useState<string | null>(null);
   const [fullScreenData, setFullScreenData] = useState<any | null>(null);
@@ -1112,7 +1113,7 @@ export default function CandidateProfile() {
             </>
           ) : (
             <>
-              {!isUserManager && !isArchived && (
+              {canEdit && !isUserManager && !isArchived && (
                 <>
                   <button
                     onClick={() => setIsApprovalModalOpen(true)}
@@ -1816,7 +1817,7 @@ export default function CandidateProfile() {
                             </div>
                           </div>
                         ))}
-                        {!isUserManager && !isArchived && (
+                        {canEdit && !isUserManager && !isArchived && (
                           <div className="flex justify-end mt-4">
                             <button
                               onClick={(e) => {
@@ -1858,7 +1859,7 @@ export default function CandidateProfile() {
                 <FileText className="text-indigo-500" size={20} />
                 Hasil Psikotes Eksternal
               </h3>
-              {!isUserManager && !isArchived && (
+              {canEdit && !isUserManager && !isArchived && (
                 <div>
                   <label className="cursor-pointer px-4 py-2 bg-[#5A305A]/10 text-[#5A305A] hover:bg-[#5A305A]/20 rounded-xl transition-colors flex items-center gap-2 text-sm font-medium">
                     {isUploadingPsikotes ? (
@@ -1985,7 +1986,7 @@ export default function CandidateProfile() {
                   <div className="relative download-menu-container">
                     <button
                       onClick={() =>
-                        !isUserManager
+                        !hideSalary
                           ? setShowDownloadMenu(!showDownloadMenu)
                           : handlePrint("form-only")
                       }
@@ -2001,7 +2002,7 @@ export default function CandidateProfile() {
                         <>
                           <Download size={16} />
                           Unduh PDF
-                          {!isUserManager && (
+                          {!hideSalary && (
                             <svg
                               className={`w-4 h-4 ml-1 transition-transform ${showDownloadMenu ? "rotate-180" : ""}`}
                               fill="none"
@@ -2020,7 +2021,7 @@ export default function CandidateProfile() {
                       )}
                     </button>
                     {showDownloadMenu &&
-                      !isUserManager &&
+                      !hideSalary &&
                       !isPrinting && (
                         <div className="absolute top-full right-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden z-50">
                           <button
@@ -2039,7 +2040,7 @@ export default function CandidateProfile() {
                       )}
                   </div>
 
-                  {!isUserManager && !isArchived && (
+                  {canEdit && !isUserManager && !isArchived && (
                     <button
                       onClick={handleUnlinkExternalData}
                       disabled={isLinking}
@@ -2130,7 +2131,7 @@ export default function CandidateProfile() {
                               <Eye size={14} />
                               Lihat Form Lengkap
                             </button>
-                            {!isUserManager && !isArchived && (
+                            {canEdit && !isUserManager && !isArchived && (
                               <button
                                 onClick={() =>
                                   handleLinkExternalData(data.uid_sheet)
@@ -2185,7 +2186,7 @@ export default function CandidateProfile() {
 
             <div className="space-y-4">
               {/* Note input area */}
-              {!isArchived && (
+              {canEdit && !isArchived && (
                 <div className="flex gap-3">
                   <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
                     <User size={20} className="text-indigo-600" />
@@ -2274,7 +2275,8 @@ export default function CandidateProfile() {
                 <FileText className="text-indigo-500" size={20} />
                 Hasil Interview
               </h3>
-              {["accepted", "hired"].includes(candidate.status_screening) &&
+              {canEdit &&
+                ["accepted", "hired"].includes(candidate.status_screening) &&
                 !isArchived && (
                   <button
                     onClick={() => {
@@ -2944,7 +2946,7 @@ export default function CandidateProfile() {
             <div className="flex items-center gap-2 shrink-0">
               {/* Opened from the match suggestions (not yet linked): allow
                   linking straight from the full form view. */}
-              {!linkedData && fullScreenData.uid_sheet && !isUserManager && !isArchived && !fullScreenData._active_links?.length && (
+              {!linkedData && fullScreenData.uid_sheet && canEdit && !isUserManager && !isArchived && !fullScreenData._active_links?.length && (
                 <button
                   onClick={async () => {
                     await handleLinkExternalData(fullScreenData.uid_sheet);

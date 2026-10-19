@@ -2,7 +2,7 @@ export interface Profile {
   id: string;
   full_name: string | null;
   avatar_url: string | null;
-  role?: 'HR_ADMIN' | 'USER_MANAGER' | 'DIRECTOR' | 'FINANCE_DIRECTOR' | string;
+  role?: 'HR_ADMIN' | 'USER_MANAGER' | 'DIRECTOR' | 'FINANCE_DIRECTOR' | 'READ_ONLY' | string;
   department?: string | null;
   job_title?: string | null;
   phone?: string | null;

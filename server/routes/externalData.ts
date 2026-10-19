@@ -1,8 +1,9 @@
 import type { Express, RequestHandler } from "express";
-import { auditLog, handle, HttpError, requireAuth as realRequireAuth, requireHrAdmin } from "../auth";
+import { auditLog, handle, HttpError, requireAuth as realRequireAuth, requireHrRead } from "../auth";
 import { getSupabaseAdmin } from "../supabase";
 import {
   canAccessCandidate,
+  canViewAllCandidates,
   fetchExternalDataLinks,
   getAccessibleExternalUids,
   isHrAdmin,
@@ -27,7 +28,7 @@ export function registerExternalDataRoutes(app: Express, requireAuth: RequestHan
   app.get(
     "/api/external-data",
     requireAuth,
-    requireHrAdmin,
+    requireHrRead,
     handle(async (req, res) => {
       const admin = getSupabaseAdmin();
       const page = toInt(req.query.page, 1, 100000);
@@ -102,11 +103,12 @@ export function registerExternalDataRoutes(app: Express, requireAuth: RequestHan
     }),
   );
 
-  // Raw forms by uid (Live Tracking's "Sumber CV" fallback). HR only.
+  // Raw forms by uid (Live Tracking's "Sumber CV" fallback). HR + READ_ONLY
+  // (read-only POST, allow-listed in requireAuth; salary stripped).
   app.post(
     "/api/external-data/by-uids",
     requireAuth,
-    requireHrAdmin,
+    requireHrRead,
     handle(async (req, res) => {
       const uids: string[] = Array.isArray(req.body?.uids)
         ? req.body.uids.filter((u: unknown) => typeof u === "string")
@@ -120,7 +122,7 @@ export function registerExternalDataRoutes(app: Express, requireAuth: RequestHan
           .select("uid_sheet, raw_data")
           .in("uid_sheet", uids.slice(i, i + 200));
         if (error) throw error;
-        rows.push(...(data || []));
+        rows.push(...(data || []).map((r) => ({ ...r, raw_data: sanitizeRawData(r.raw_data, req.profile) })));
       }
       res.json({ rows });
     }),
@@ -153,7 +155,7 @@ export function registerExternalDataRoutes(app: Express, requireAuth: RequestHan
       const admin = getSupabaseAdmin();
 
       // Archived applications (candidate_logs) are HR-only, same as RLS.
-      if (archived ? !isHrAdmin(req.profile) : !(await canAccessCandidate(admin, req.profile, candidateId))) {
+      if (archived ? !canViewAllCandidates(req.profile) : !(await canAccessCandidate(admin, req.profile, candidateId))) {
         throw new HttpError(403, "Anda tidak memiliki akses ke kandidat ini.");
       }
 

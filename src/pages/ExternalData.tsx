@@ -30,7 +30,7 @@ import {
 } from "../components/ExternalDataSummary";
 
 export default function ExternalData() {
-  const { hideSalary } = usePermissions();
+  const { hideSalary, canEdit } = usePermissions();
   const [data, setData] = useState<any[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -415,24 +415,26 @@ export default function ExternalData() {
                         <FileText size={14} />
                         Preview
                       </button>
-                      <button
-                        onClick={() => setShowConfirmDelete(row)}
-                        disabled={
-                          row._link_status === "active" ||
-                          row._link_status === "archived"
-                        }
-                        className="w-full flex items-center justify-center gap-2 px-3 py-2 text-slate-500 hover:text-red-600 hover:bg-red-50/50 bg-transparent rounded-xl transition-all border border-transparent hover:border-red-200/50 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-semibold"
-                        title={
-                          row._link_status === "active"
-                            ? "Tidak dapat menghapus data yang sedang ditautkan ke kandidat aktif"
-                            : row._link_status === "archived"
-                              ? "Tidak dapat menghapus data yang sudah diarsipkan"
-                              : "Hapus Data"
-                        }
-                      >
-                        <Trash2 size={14} />
-                        Hapus
-                      </button>
+                      {canEdit && (
+                        <button
+                          onClick={() => setShowConfirmDelete(row)}
+                          disabled={
+                            row._link_status === "active" ||
+                            row._link_status === "archived"
+                          }
+                          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-slate-500 hover:text-red-600 hover:bg-red-50/50 bg-transparent rounded-xl transition-all border border-transparent hover:border-red-200/50 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-semibold"
+                          title={
+                            row._link_status === "active"
+                              ? "Tidak dapat menghapus data yang sedang ditautkan ke kandidat aktif"
+                              : row._link_status === "archived"
+                                ? "Tidak dapat menghapus data yang sudah diarsipkan"
+                                : "Hapus Data"
+                          }
+                        >
+                          <Trash2 size={14} />
+                          Hapus
+                        </button>
+                      )}
                     </div>
                   </div>
                 );

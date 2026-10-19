@@ -1,5 +1,5 @@
 import type { Express, RequestHandler } from "express";
-import { auditLog, handle, HttpError, requireAuth as realRequireAuth, requireHrAdmin } from "../auth";
+import { auditLog, handle, HttpError, requireAuth as realRequireAuth, requireHrAdmin, requireHrRead } from "../auth";
 import { getSupabaseAdmin } from "../supabase";
 
 // HR content: job openings, email templates, evaluation templates, user
@@ -103,7 +103,7 @@ export function registerContentRoutes(app: Express, requireAuth: RequestHandler 
   app.get(
     "/api/open-recruitment",
     requireAuth,
-    requireHrAdmin,
+    requireHrRead,
     handle(async (req, res) => {
       const order = req.query.order === "created_at" ? "created_at" : "position";
       let query = getSupabaseAdmin()
@@ -133,7 +133,7 @@ export function registerContentRoutes(app: Express, requireAuth: RequestHandler 
   app.get(
     "/api/email-templates",
     requireAuth,
-    requireHrAdmin,
+    requireHrRead,
     handle(async (req, res) => {
       let query = getSupabaseAdmin().from("email_templates").select("*", { count: "exact" });
       const search = cleanSearch(req.query.search);
@@ -200,7 +200,7 @@ export function registerContentRoutes(app: Express, requireAuth: RequestHandler 
   app.get(
     "/api/profiles",
     requireAuth,
-    requireHrAdmin,
+    requireHrRead,
     handle(async (_req, res) => {
       const { data, error } = await getSupabaseAdmin().from("profiles").select("*").order("full_name");
       if (error) throw error;
@@ -211,7 +211,7 @@ export function registerContentRoutes(app: Express, requireAuth: RequestHandler 
   app.get(
     "/api/profiles/departments",
     requireAuth,
-    requireHrAdmin,
+    requireHrRead,
     handle(async (_req, res) => {
       const { data, error } = await getSupabaseAdmin()
         .from("profiles")
@@ -227,7 +227,7 @@ export function registerContentRoutes(app: Express, requireAuth: RequestHandler 
   app.get(
     "/api/candidates-by-email",
     requireAuth,
-    requireHrAdmin,
+    requireHrRead,
     handle(async (req, res) => {
       const email = String(req.query.email || "").trim();
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.json({ candidates: [], blacklist: [] });

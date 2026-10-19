@@ -20,6 +20,7 @@ import {
 import { useToast } from "../components/ui/use-toast";
 import ConfirmModal from "../components/ConfirmModal";
 import { cn } from "../lib/utils";
+import { usePermissions } from "../hooks/usePermissions";
 
 interface ScaleItem {
   score: number;
@@ -118,6 +119,7 @@ export default function EvaluationTemplates() {
     loading?: boolean;
   }>({ isOpen: false, id: "", loading: false });
   const { toast } = useToast();
+  const { canEdit } = usePermissions();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -521,13 +523,15 @@ export default function EvaluationTemplates() {
         >
           <RefreshCcw size={20} className={loading ? "animate-spin" : ""} />
         </button>
-        <button
-          onClick={() => handleOpenModal()}
-          className="flex items-center justify-center gap-2 px-4 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-100 transition-all text-sm whitespace-nowrap h-10"
-        >
-          <Plus size={18} />
-          Tambah Template
-        </button>
+        {canEdit && (
+          <button
+            onClick={() => handleOpenModal()}
+            className="flex items-center justify-center gap-2 px-4 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-100 transition-all text-sm whitespace-nowrap h-10"
+          >
+            <Plus size={18} />
+            Tambah Template
+          </button>
+        )}
       </div>
 
       <div className="flex flex-col gap-3">
@@ -572,16 +576,18 @@ export default function EvaluationTemplates() {
               >
                 {template.type}
               </span>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDelete(template.id);
-                }}
-                className="p-2 text-[#73507B] hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                title="Hapus Template"
-              >
-                <Trash2 size={18} />
-              </button>
+              {canEdit && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(template.id);
+                  }}
+                  className="p-2 text-[#73507B] hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                  title="Hapus Template"
+                >
+                  <Trash2 size={18} />
+                </button>
+              )}
             </div>
           </div>
         ))}
@@ -1185,18 +1191,20 @@ export default function EvaluationTemplates() {
               >
                 Batal
               </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex-[2] py-3 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
-              >
-                {saving ? (
-                  <Loader2 size={20} className="animate-spin" />
-                ) : (
-                  <Save size={20} />
-                )}
-                {saving ? "Menyimpan..." : "Simpan Template"}
-              </button>
+              {canEdit && (
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="flex-[2] py-3 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+                >
+                  {saving ? (
+                    <Loader2 size={20} className="animate-spin" />
+                  ) : (
+                    <Save size={20} />
+                  )}
+                  {saving ? "Menyimpan..." : "Simpan Template"}
+                </button>
+              )}
             </div>
           </div>
         </div>

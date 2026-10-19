@@ -1,5 +1,5 @@
 import type { Express, RequestHandler } from "express";
-import { auditLog, handle, HttpError, requireAuth as realRequireAuth, requireHrAdmin } from "../auth";
+import { auditLog, handle, HttpError, requireAuth as realRequireAuth, requireHrAdmin, requireHrRead } from "../auth";
 import { getSupabaseAdmin } from "../supabase";
 import { isPendingSchedule } from "../../src/lib/scheduleStatus";
 
@@ -47,7 +47,7 @@ export function registerScheduleRoutes(app: Express, requireAuth: RequestHandler
   app.get(
     "/api/schedules/:type",
     requireAuth,
-    requireHrAdmin,
+    requireHrRead,
     handle(async (req, res) => {
       const table = tableFor(req.params.type);
       const tab = String(req.query.tab || "pending");
@@ -78,7 +78,7 @@ export function registerScheduleRoutes(app: Express, requireAuth: RequestHandler
   app.get(
     "/api/schedules/:type/calendar",
     requireAuth,
-    requireHrAdmin,
+    requireHrRead,
     handle(async (req, res) => {
       const table = tableFor(req.params.type);
       if (!isIso(req.query.start) || !isIso(req.query.end)) throw new HttpError(400, "Rentang tanggal tidak valid.");
@@ -102,7 +102,7 @@ export function registerScheduleRoutes(app: Express, requireAuth: RequestHandler
   app.get(
     "/api/schedules/:type/candidates",
     requireAuth,
-    requireHrAdmin,
+    requireHrRead,
     handle(async (req, res) => {
       const table = tableFor(req.params.type);
       const { data, error } = await getSupabaseAdmin()

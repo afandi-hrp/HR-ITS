@@ -39,7 +39,7 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children, user }: DashboardLayoutProps) {
 
-  const { isUserManager, isApprovalRole } = usePermissions();
+  const { isUserManager, isApprovalRole, isReadOnly } = usePermissions();
   const [isHovered, setIsHovered] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const showFullSidebar = isMobileMenuOpen || isHovered;
@@ -432,6 +432,11 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
                 <GreetingIcon className={cn('drop-shadow-sm', iconClass)} size={20} />
               </p>
               <p className="text-sm font-medium text-[#5A305A]/70">{dayDateStr}</p>
+            </div>
+          )}
+          {isReadOnly && (
+            <div className="mb-4 px-4 py-2 rounded-xl bg-[#FFF5C5] border border-[#F58C77]/40 text-sm font-medium text-[#5A305A]">
+              Mode Lihat Saja — akun Anda (Read Only) hanya dapat melihat data, tidak dapat mengubah, menghapus, atau mengirim apa pun.
             </div>
           )}
           {children}

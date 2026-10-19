@@ -11,6 +11,7 @@ import { getCandidateStage, isUserInterview } from "../lib/candidateStage";
 import { formatDateDMY, formatDateDMMMY, getLocalDateString } from "../lib/utils";
 import { useToast } from "../components/ui/use-toast";
 import { Popover, PopoverTrigger, PopoverContent } from "../components/ui/popover";
+import { usePermissions } from "../hooks/usePermissions";
 
 type StatusFilter = "all" | "aktif" | "hired" | "rejected" | "arsip";
 const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
@@ -60,6 +61,7 @@ export default function CandidateTracking() {
   const [startDate, setStartDate] = useState(searchParams.get("startDate") || "");
   const [endDate, setEndDate] = useState(searchParams.get("endDate") || "");
   const { toast } = useToast();
+  const { canEdit } = usePermissions();
   const [isExporting, setIsExporting] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -693,9 +695,9 @@ export default function CandidateTracking() {
                                 <button onClick={() => handleSave(c.id, !!c._archived)} className="p-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200" title="Simpan"><Check size={16}/></button>
                                 <button onClick={() => setEditingId(null)} className="p-1 bg-slate-100 text-slate-700 rounded hover:bg-slate-200" title="Batal"><X size={16}/></button>
                               </div>
-                            ) : (
+                            ) : canEdit ? (
                               <button onClick={() => handleEdit(c)} className="p-1 shrink-0 bg-[#5A305A]/5 text-[#5A305A] rounded hover:bg-[#5A305A]/15" title="Edit data tracking"><Edit2 size={16}/></button>
-                            )}
+                            ) : null}
                           </div>
                         </td>
                         <td className="px-3 py-2 border-r border-slate-100 whitespace-nowrap">

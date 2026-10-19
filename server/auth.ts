@@ -2,7 +2,12 @@ import type { NextFunction, Request, Response } from "express";
 import type { User } from "@supabase/supabase-js";
 import { getSupabaseAdmin } from "./supabase";
 
-export type Role = "HR_ADMIN" | "USER_MANAGER" | "DIRECTOR" | "FINANCE_DIRECTOR";
+export type Role = "HR_ADMIN" | "USER_MANAGER" | "DIRECTOR" | "FINANCE_DIRECTOR" | "READ_ONLY";
+
+// READ_ONLY sees what HR_ADMIN sees (minus salary) but may not change
+// anything: every non-GET request through requireAuth is refused, except
+// these POSTs that only read.
+const READ_ONLY_POST_ALLOWLIST = new Set(["/api/external-data/by-uids", "/api/external-data/links"]);
 
 export interface AuthProfile {
   id: string;
@@ -31,6 +36,11 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     if (error || !user) {
       return res.status(401).json({ error: "Sesi login tidak valid. Silakan login ulang." });
     }
+    // New account that hasn't replaced its HR-issued password yet — only
+    // POST /api/account/change-password is allowed (server/routes/account.ts).
+    if (user.app_metadata?.must_change_password === true) {
+      return res.status(403).json({ error: "Anda wajib mengganti password terlebih dahulu." });
+    }
     const { data: profile } = await admin
       .from("profiles")
       .select("id, role, department, full_name")
@@ -45,6 +55,14 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       department: profile?.department ?? null,
       full_name: profile?.full_name ?? null,
     };
+    if (
+      authed.profile.role === "READ_ONLY" &&
+      req.method !== "GET" &&
+      req.method !== "HEAD" &&
+      !(req.method === "POST" && READ_ONLY_POST_ALLOWLIST.has(req.path))
+    ) {
+      return res.status(403).json({ error: "Akun Read Only hanya dapat melihat data, tidak dapat mengubahnya." });
+    }
     next();
   } catch (err) {
     console.error("requireAuth error:", err);
@@ -64,6 +82,8 @@ export const requireRole =
   };
 
 export const requireHrAdmin = requireRole("HR_ADMIN");
+// HR-only pages' read endpoints (GET); READ_ONLY may view them too.
+export const requireHrRead = requireRole("HR_ADMIN", "READ_ONLY");
 
 // Minimal audit trail for access to personal data (KTP, salary, ...):
 // one structured line per request in the server log.

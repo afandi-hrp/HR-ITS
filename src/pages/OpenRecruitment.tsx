@@ -25,6 +25,7 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "../components/ui/popover";
+import { usePermissions } from "../hooks/usePermissions";
 
 interface OpenRecruitment {
   id: string;
@@ -81,6 +82,7 @@ export default function OpenRecruitment() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const { toast } = useToast();
+  const { canEdit } = usePermissions();
 
   const fetchItems = async () => {
     setLoading(true);
@@ -394,17 +396,19 @@ export default function OpenRecruitment() {
         >
           <RefreshCcw size={20} className={loading ? "animate-spin" : ""} />
         </button>
-        <button
-          onClick={() => {
-            setEditingId(null);
-            setFormData({ position: "", jobdesk: "", kualifikasi: "" });
-            setIsModalOpen(true);
-          }}
-          className="flex items-center justify-center gap-2 px-4 bg-[#5A305A] text-white hover:bg-[#3F223F] font-bold rounded-xl transition-all shadow-md shadow-indigo-200 text-sm whitespace-nowrap h-10"
-        >
-          <Plus size={18} />
-          Tambah Lowongan
-        </button>
+        {canEdit && (
+          <button
+            onClick={() => {
+              setEditingId(null);
+              setFormData({ position: "", jobdesk: "", kualifikasi: "" });
+              setIsModalOpen(true);
+            }}
+            className="flex items-center justify-center gap-2 px-4 bg-[#5A305A] text-white hover:bg-[#3F223F] font-bold rounded-xl transition-all shadow-md shadow-indigo-200 text-sm whitespace-nowrap h-10"
+          >
+            <Plus size={18} />
+            Tambah Lowongan
+          </button>
+        )}
       </div>
 
       {/* Data Grid */}
@@ -423,17 +427,19 @@ export default function OpenRecruitment() {
           <p className="text-slate-500 mb-6">
             Tambahkan lowongan pekerjaan baru untuk mulai merekrut.
           </p>
-          <button
-            onClick={() => {
-              setEditingId(null);
-              setFormData({ position: "", jobdesk: "", kualifikasi: "" });
-              setIsModalOpen(true);
-            }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 font-bold rounded-xl hover:bg-indigo-100 transition-all"
-          >
-            <Plus size={18} />
-            Tambah Lowongan
-          </button>
+          {canEdit && (
+            <button
+              onClick={() => {
+                setEditingId(null);
+                setFormData({ position: "", jobdesk: "", kualifikasi: "" });
+                setIsModalOpen(true);
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 font-bold rounded-xl hover:bg-indigo-100 transition-all"
+            >
+              <Plus size={18} />
+              Tambah Lowongan
+            </button>
+          )}
         </div>
       ) : (
         <div className="flex flex-col gap-4">
@@ -480,42 +486,48 @@ export default function OpenRecruitment() {
                       className="flex items-center gap-2"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <button
-                        onClick={() =>
-                          togglePublish(item.id, item.is_published !== false)
-                        }
-                        className={cn(
-                          "flex items-center justify-center p-2 rounded-lg transition-colors border",
-                          item.is_published === false
-                            ? "text-emerald-600 border-emerald-200 hover:bg-emerald-50 bg-emerald-50/50"
-                            : "text-amber-500 border-amber-200 hover:bg-amber-50",
-                        )}
-                        title={
-                          item.is_published === false
-                            ? "Publish Lowongan"
-                            : "Unpublish Lowongan"
-                        }
-                      >
-                        {item.is_published === false ? (
-                          <Eye size={18} />
-                        ) : (
-                          <EyeOff size={18} />
-                        )}
-                      </button>
-                      <button
-                        onClick={() => handleEdit(item)}
-                        className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                        title="Edit"
-                      >
-                        <Edit2 size={18} />
-                      </button>
-                      <button
-                        onClick={() => setDeleteConfirmId(item.id)}
-                        className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Hapus"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+                      {canEdit && (
+                        <button
+                          onClick={() =>
+                            togglePublish(item.id, item.is_published !== false)
+                          }
+                          className={cn(
+                            "flex items-center justify-center p-2 rounded-lg transition-colors border",
+                            item.is_published === false
+                              ? "text-emerald-600 border-emerald-200 hover:bg-emerald-50 bg-emerald-50/50"
+                              : "text-amber-500 border-amber-200 hover:bg-amber-50",
+                          )}
+                          title={
+                            item.is_published === false
+                              ? "Publish Lowongan"
+                              : "Unpublish Lowongan"
+                          }
+                        >
+                          {item.is_published === false ? (
+                            <Eye size={18} />
+                          ) : (
+                            <EyeOff size={18} />
+                          )}
+                        </button>
+                      )}
+                      {canEdit && (
+                        <button
+                          onClick={() => handleEdit(item)}
+                          className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                          title="Edit"
+                        >
+                          <Edit2 size={18} />
+                        </button>
+                      )}
+                      {canEdit && (
+                        <button
+                          onClick={() => setDeleteConfirmId(item.id)}
+                          className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Hapus"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      )}
                     </div>
                     <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
                       <ChevronDown

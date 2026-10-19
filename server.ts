@@ -18,6 +18,7 @@ import { registerCandidateRoutes } from "./server/routes/candidates";
 import { registerScheduleRoutes } from "./server/routes/schedules";
 import { registerAnalyticsRoutes } from "./server/routes/analytics";
 import { registerContentRoutes } from "./server/routes/content";
+import { registerAccountRoutes } from "./server/routes/account";
 
 dotenv.config();
 
@@ -237,6 +238,34 @@ app.use((req: any, res, next) => {
     }
   };
 
+  // GET-only variant: READ_ONLY may view HR pages too (server/auth.ts).
+  const requireHrRead = async (req: any, res: any, next: any) => {
+    try {
+      const { data: profile } = await getSupabaseAdmin()
+        .from('profiles')
+        .select('role')
+        .eq('id', req.user.id)
+        .single();
+      if (profile?.role !== 'HR_ADMIN' && profile?.role !== 'READ_ONLY') {
+        return res.status(403).json({ error: "Forbidden: HR Admin only." });
+      }
+      next();
+    } catch (error) {
+      return res.status(403).json({ error: "Forbidden." });
+    }
+  };
+
+  // READ_ONLY accounts may not trigger anything (email, WA, AI, uploads).
+  const isReadOnlyUser = async (userId: string) => {
+    const { data: profile } = await getSupabaseAdmin()
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+    return profile?.role === 'READ_ONLY';
+  };
+  const READ_ONLY_ERROR = "Akun Read Only hanya dapat melihat data, tidak dapat mengubahnya.";
+
   // API Routes
   app.get("/api/health", (req, res) => {
     res.json({ 
@@ -321,7 +350,7 @@ app.use((req: any, res, next) => {
         .eq('id', user.id)
         .single();
 
-      if (profile?.role !== 'HR_ADMIN') {
+      if (profile?.role !== 'HR_ADMIN' && profile?.role !== 'READ_ONLY') {
         return res.status(403).json({ error: "Forbidden: Only HR Admin can list users" });
       }
 
@@ -711,6 +740,9 @@ app.use((req: any, res, next) => {
       if (authError || !user) {
         return res.status(401).json({ error: "Unauthorized. Invalid token." });
       }
+      if (await isReadOnlyUser(user.id)) {
+        return res.status(403).json({ error: READ_ONLY_ERROR });
+      }
 
       // type "test" (Settings page "Test Koneksi") can ping any configured
       // webhook with a dummy payload — HR_ADMIN only.
@@ -1055,7 +1087,10 @@ app.use((req: any, res, next) => {
         if (error || !user) {
           return res.status(401).json({ error: "Unauthorized" });
         }
-        
+        if (await isReadOnlyUser(user.id)) {
+          return res.status(403).json({ error: READ_ONLY_ERROR });
+        }
+
         userId = user.id;
         webhookUrl = getN8nWebhookUrl('cv');
       } else {
@@ -1369,7 +1404,7 @@ app.use((req: any, res, next) => {
   });
 
   // Feature: Fetch CV Uploads
-  app.get("/api/cv-uploads", requireAuth, requireHrAdmin, async (req, res) => {
+  app.get("/api/cv-uploads", requireAuth, requireHrRead, async (req, res) => {
     const { search, page = '1', limit = '10' } = req.query;
     try {
       const supabaseAdmin = getSupabaseAdmin();
@@ -1467,6 +1502,7 @@ app.use((req: any, res, next) => {
   registerScheduleRoutes(app);
   registerAnalyticsRoutes(app);
   registerContentRoutes(app);
+  registerAccountRoutes(app);
 
   // API 404 handler - Catch all unmatched /api routes
   app.all("/api/*", (req, res) => {

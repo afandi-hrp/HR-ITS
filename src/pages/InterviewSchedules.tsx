@@ -33,6 +33,7 @@ import SendWAModal from "../components/SendWAModal";
 import ScheduleCalendar from "../components/ScheduleCalendar";
 import ConfirmModal from "../components/ConfirmModal";
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek } from "date-fns";
+import { usePermissions } from "../hooks/usePermissions";
 
 export default function InterviewSchedules() {
   const location = useLocation();
@@ -107,6 +108,7 @@ export default function InterviewSchedules() {
     }
   }, [search, startDate, endDate, activeTab, currentPage, setSearchParams, searchParams, highlightStatus]);
   const { toast } = useToast();
+  const { canEdit } = usePermissions();
 
   const [isScheduling, setIsScheduling] = useState(false);
   const [noShowSchedule, setNoShowSchedule] = useState<Schedule | null>(null);
@@ -411,13 +413,15 @@ export default function InterviewSchedules() {
             <RefreshCcw size={20} className={loading ? "animate-spin" : ""} />
           </button>
 
-          <button
-            onClick={() => setIsScheduling(true)}
-            className="flex items-center justify-center gap-2 px-4 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-100 transition-all text-sm whitespace-nowrap h-10"
-          >
-            <CalendarIcon size={18} />
-            Jadwalkan Interview Baru
-          </button>
+          {canEdit && (
+            <button
+              onClick={() => setIsScheduling(true)}
+              className="flex items-center justify-center gap-2 px-4 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-100 transition-all text-sm whitespace-nowrap h-10"
+            >
+              <CalendarIcon size={18} />
+              Jadwalkan Interview Baru
+            </button>
+          )}
         </div>
       </div>
 
@@ -516,85 +520,87 @@ export default function InterviewSchedules() {
                         {schedule.location_type}
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="flex gap-1">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (schedule.candidate) {
-                                setEmailModalData({
-                                  candidate: schedule.candidate,
-                                  schedule,
-                                });
+                        {canEdit && (
+                          <div className="flex gap-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (schedule.candidate) {
+                                  setEmailModalData({
+                                    candidate: schedule.candidate,
+                                    schedule,
+                                  });
+                                }
+                              }}
+                              className="p-1.5 rounded-lg transition-colors text-white bg-[#5A305A] hover:bg-[#3F223F]"
+                              title="Kirim Undangan Email"
+                            >
+                              <Send size={14} />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (schedule.candidate) {
+                                  setWaModalData({
+                                    candidate: schedule.candidate,
+                                    schedule,
+                                  });
+                                }
+                              }}
+                              className="p-1.5 rounded-lg transition-colors text-white bg-emerald-600 hover:bg-emerald-700"
+                              title="Kirim Undangan WA"
+                            >
+                              <MessageCircle size={14} />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleConfirm(schedule);
+                              }}
+                              className={cn(
+                                "p-1.5 rounded-lg transition-colors text-white",
+                                schedule.is_confirmed
+                                  ? "bg-slate-500 hover:bg-slate-600"
+                                  : "bg-cyan-600 hover:bg-cyan-700",
+                              )}
+                              title={
+                                schedule.is_confirmed
+                                  ? "Batalkan Konfirmasi"
+                                  : "Konfirmasi Sudah Interview"
                               }
-                            }}
-                            className="p-1.5 rounded-lg transition-colors text-white bg-[#5A305A] hover:bg-[#3F223F]"
-                            title="Kirim Undangan Email"
-                          >
-                            <Send size={14} />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (schedule.candidate) {
-                                setWaModalData({
-                                  candidate: schedule.candidate,
-                                  schedule,
-                                });
-                              }
-                            }}
-                            className="p-1.5 rounded-lg transition-colors text-white bg-emerald-600 hover:bg-emerald-700"
-                            title="Kirim Undangan WA"
-                          >
-                            <MessageCircle size={14} />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleConfirm(schedule);
-                            }}
-                            className={cn(
-                              "p-1.5 rounded-lg transition-colors text-white",
-                              schedule.is_confirmed
-                                ? "bg-slate-500 hover:bg-slate-600"
-                                : "bg-cyan-600 hover:bg-cyan-700",
-                            )}
-                            title={
-                              schedule.is_confirmed
-                                ? "Batalkan Konfirmasi"
-                                : "Konfirmasi Sudah Interview"
-                            }
-                          >
-                            <CheckCircle2 size={14} />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setNoShowSchedule(schedule);
-                            }}
-                            className="p-1.5 rounded-lg transition-colors text-white bg-rose-500 hover:bg-rose-600"
-                            title="Tandai Tidak Hadir Interview"
-                          >
-                            <UserX size={14} />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingSchedule(schedule);
-                            }}
-                            className="p-1.5 rounded-lg transition-colors text-white bg-amber-500 hover:bg-amber-600"
-                          >
-                            <Edit2 size={14} />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(schedule.id);
-                            }}
-                            className="p-1.5 rounded-lg transition-colors text-white bg-rose-600 hover:bg-rose-700"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
+                            >
+                              <CheckCircle2 size={14} />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setNoShowSchedule(schedule);
+                              }}
+                              className="p-1.5 rounded-lg transition-colors text-white bg-rose-500 hover:bg-rose-600"
+                              title="Tandai Tidak Hadir Interview"
+                            >
+                              <UserX size={14} />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingSchedule(schedule);
+                              }}
+                              className="p-1.5 rounded-lg transition-colors text-white bg-amber-500 hover:bg-amber-600"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(schedule.id);
+                              }}
+                              className="p-1.5 rounded-lg transition-colors text-white bg-rose-600 hover:bg-rose-700"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -775,71 +781,73 @@ export default function InterviewSchedules() {
                             </div>
                           </td>
                           <td className="px-6 py-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              {!schedule.is_no_show && (<>
-                              <button
-                                onClick={() => {
-                                  if (schedule.candidate) {
-                                    setEmailModalData({
-                                      candidate: schedule.candidate,
-                                      schedule,
-                                    });
-                                  }
-                                }}
-                                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-                                title="Kirim Undangan Email"
-                              >
-                                <Send size={16} />
-                              </button>
-                              <button
-                                onClick={() => {
-                                  if (schedule.candidate) {
-                                    setWaModalData({
-                                      candidate: schedule.candidate,
-                                      schedule,
-                                    });
-                                  }
-                                }}
-                                className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
-                                title="Kirim Undangan WA"
-                              >
-                                <MessageCircle size={16} />
-                              </button>
-                              </>)}
-                              {schedule.is_no_show ? (
-                                <>
+                            {canEdit && (
+                              <div className="flex items-center justify-end gap-2">
+                                {!schedule.is_no_show && (<>
+                                <button
+                                  onClick={() => {
+                                    if (schedule.candidate) {
+                                      setEmailModalData({
+                                        candidate: schedule.candidate,
+                                        schedule,
+                                      });
+                                    }
+                                  }}
+                                  className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                  title="Kirim Undangan Email"
+                                >
+                                  <Send size={16} />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    if (schedule.candidate) {
+                                      setWaModalData({
+                                        candidate: schedule.candidate,
+                                        schedule,
+                                      });
+                                    }
+                                  }}
+                                  className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                                  title="Kirim Undangan WA"
+                                >
+                                  <MessageCircle size={16} />
+                                </button>
+                                </>)}
+                                {schedule.is_no_show ? (
+                                  <>
+                                    <button
+                                      onClick={() => schedule.candidate && setRescheduleCandidate(schedule.candidate)}
+                                      className="p-2 text-slate-400 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-all"
+                                      title="Jadwalkan Ulang"
+                                    >
+                                      <CalendarPlus size={16} />
+                                    </button>
+                                    <button
+                                      onClick={() => undoNoShow(schedule)}
+                                      className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                                      title="Batalkan Tanda Tidak Hadir"
+                                    >
+                                      <RefreshCcw size={16} />
+                                    </button>
+                                  </>
+                                ) : (
                                   <button
-                                    onClick={() => schedule.candidate && setRescheduleCandidate(schedule.candidate)}
-                                    className="p-2 text-slate-400 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-all"
-                                    title="Jadwalkan Ulang"
-                                  >
-                                    <CalendarPlus size={16} />
-                                  </button>
-                                  <button
-                                    onClick={() => undoNoShow(schedule)}
+                                    onClick={() => handleConfirm(schedule)}
                                     className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
-                                    title="Batalkan Tanda Tidak Hadir"
+                                    title="Batalkan Konfirmasi"
                                   >
                                     <RefreshCcw size={16} />
                                   </button>
-                                </>
-                              ) : (
+                                )}
                                 <button
-                                  onClick={() => handleConfirm(schedule)}
-                                  className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
-                                  title="Batalkan Konfirmasi"
+                                  onClick={() => handleDelete(schedule.id)}
+                                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                  title="Hapus"
                                 >
-                                  <RefreshCcw size={16} />
+                                  <Trash2 size={16} />
                                 </button>
-                              )}
-                              <button
-                                onClick={() => handleDelete(schedule.id)}
-                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                title="Hapus"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -1086,52 +1094,58 @@ export default function InterviewSchedules() {
               </div>
             </div>
             <div className="p-4 sm:p-6 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row gap-2 shrink-0">
-              <button
-                onClick={() => {
-                  if (previewSchedule.candidate) {
-                    setEmailModalData({
-                      candidate: previewSchedule.candidate,
-                      schedule: previewSchedule,
-                    });
-                  }
-                }}
-                className="flex-1 py-2 text-sm bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
-              >
-                <Send size={16} />
-                Kirim Email
-              </button>
-              <button
-                onClick={() => {
-                  if (previewSchedule.candidate) {
-                    setWaModalData({
-                      candidate: previewSchedule.candidate,
-                      schedule: previewSchedule,
-                    });
-                  }
-                }}
-                className="flex-1 py-2 text-sm bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
-              >
-                <MessageCircle size={16} />
-                Kirim WA
-              </button>
-              <button
-                onClick={() => handleConfirm(previewSchedule)}
-                className={cn(
-                  "flex-1 py-2 text-sm rounded-xl font-bold transition-all flex items-center justify-center gap-2",
-                  previewSchedule.is_confirmed
-                    ? "bg-slate-200 text-slate-600 hover:bg-slate-300"
-                    : "bg-[#F58C77] text-white hover:bg-[#E8765F] shadow-lg shadow-[#F58C77]/30",
-                )}
-              >
-                <CheckCircle2 size={16} />
-                <span className="truncate">
-                  {previewSchedule.is_confirmed
-                    ? "Batalkan Konfirmasi"
-                    : previewSchedule.is_no_show
-                      ? "Ubah Jadi Sudah Hadir"
-                      : "Konfirmasi Sudah Interview"}
-                </span>
-              </button>
+              {canEdit && (
+                <button
+                  onClick={() => {
+                    if (previewSchedule.candidate) {
+                      setEmailModalData({
+                        candidate: previewSchedule.candidate,
+                        schedule: previewSchedule,
+                      });
+                    }
+                  }}
+                  className="flex-1 py-2 text-sm bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
+                >
+                  <Send size={16} />
+                  Kirim Email
+                </button>
+              )}
+              {canEdit && (
+                <button
+                  onClick={() => {
+                    if (previewSchedule.candidate) {
+                      setWaModalData({
+                        candidate: previewSchedule.candidate,
+                        schedule: previewSchedule,
+                      });
+                    }
+                  }}
+                  className="flex-1 py-2 text-sm bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
+                >
+                  <MessageCircle size={16} />
+                  Kirim WA
+                </button>
+              )}
+              {canEdit && (
+                <button
+                  onClick={() => handleConfirm(previewSchedule)}
+                  className={cn(
+                    "flex-1 py-2 text-sm rounded-xl font-bold transition-all flex items-center justify-center gap-2",
+                    previewSchedule.is_confirmed
+                      ? "bg-slate-200 text-slate-600 hover:bg-slate-300"
+                      : "bg-[#F58C77] text-white hover:bg-[#E8765F] shadow-lg shadow-[#F58C77]/30",
+                  )}
+                >
+                  <CheckCircle2 size={16} />
+                  <span className="truncate">
+                    {previewSchedule.is_confirmed
+                      ? "Batalkan Konfirmasi"
+                      : previewSchedule.is_no_show
+                        ? "Ubah Jadi Sudah Hadir"
+                        : "Konfirmasi Sudah Interview"}
+                  </span>
+                </button>
+              )}
               <button
                 onClick={() => setPreviewSchedule(null)}
                 className="px-6 py-2 text-sm bg-[#FFF5C5] text-[#5A305A] font-bold rounded-xl hover:bg-[#FFEC94] transition-all whitespace-nowrap"

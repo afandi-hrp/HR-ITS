@@ -1,5 +1,5 @@
 import type { Express, RequestHandler } from "express";
-import { auditLog, handle, HttpError, requireAuth as realRequireAuth, requireHrAdmin } from "../auth";
+import { auditLog, handle, HttpError, requireAuth as realRequireAuth, requireHrAdmin, requireHrRead } from "../auth";
 import { getSupabaseAdmin } from "../supabase";
 
 // HR analytics pages (Dashboard, Recruitment Funnel, Live Tracking) — Fase 3.
@@ -27,7 +27,7 @@ export function registerAnalyticsRoutes(app: Express, requireAuth: RequestHandle
   app.get(
     "/api/dashboard/positions",
     requireAuth,
-    requireHrAdmin,
+    requireHrRead,
     handle(async (_req, res) => {
       const { data } = await getSupabaseAdmin().from("candidates").select("position").limit(1000);
       res.json({ positions: uniqueSorted(data || []) });
@@ -38,7 +38,7 @@ export function registerAnalyticsRoutes(app: Express, requireAuth: RequestHandle
   app.get(
     "/api/dashboard",
     requireAuth,
-    requireHrAdmin,
+    requireHrRead,
     handle(async (req, res) => {
       const admin = getSupabaseAdmin();
       const pos = position(req.query.position);
@@ -147,7 +147,7 @@ export function registerAnalyticsRoutes(app: Express, requireAuth: RequestHandle
   app.get(
     "/api/funnel/positions",
     requireAuth,
-    requireHrAdmin,
+    requireHrRead,
     handle(async (_req, res) => {
       const admin = getSupabaseAdmin();
       const { data: rpcData, error } = await admin.rpc("get_unique_positions");
@@ -164,7 +164,7 @@ export function registerAnalyticsRoutes(app: Express, requireAuth: RequestHandle
   app.get(
     "/api/funnel",
     requireAuth,
-    requireHrAdmin,
+    requireHrRead,
     handle(async (req, res) => {
       const admin = getSupabaseAdmin();
       const pos = position(req.query.position);
@@ -229,7 +229,7 @@ export function registerAnalyticsRoutes(app: Express, requireAuth: RequestHandle
   app.get(
     "/api/tracking",
     requireAuth,
-    requireHrAdmin,
+    requireHrRead,
     handle(async (_req, res) => {
       const admin = getSupabaseAdmin();
       const [active, logged] = await Promise.all([

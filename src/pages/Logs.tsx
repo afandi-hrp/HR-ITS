@@ -30,6 +30,7 @@ import { api } from "../lib/api";
 import { useToast } from "../components/ui/use-toast";
 import JSONRenderer from "../components/JSONRenderer";
 import * as XLSX from "xlsx";
+import { usePermissions } from "../hooks/usePermissions";
 
 export default function Logs() {
   const location = useLocation();
@@ -108,6 +109,7 @@ export default function Logs() {
   const [exportLoading, setExportLoading] = useState(false);
 
   const { toast } = useToast();
+  const { canEdit } = usePermissions();
 
   const isFirstRender = React.useRef(true);
   useEffect(() => {
@@ -424,20 +426,22 @@ export default function Logs() {
                 Hapus Terpilih ({selectedIds.length})
               </button>
             )}
-            <button
-              onClick={() => {
-                setIsBulkDeleteMode(!isBulkDeleteMode);
-                if (isBulkDeleteMode) setSelectedIds([]);
-              }}
-              className={cn(
-                "px-4 text-sm font-medium rounded-xl transition-all border h-10",
-                isBulkDeleteMode
-                  ? "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
-                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50",
-              )}
-            >
-              {isBulkDeleteMode ? "Batal Hapus Masal" : "Hapus Masal"}
-            </button>
+            {canEdit && (
+              <button
+                onClick={() => {
+                  setIsBulkDeleteMode(!isBulkDeleteMode);
+                  if (isBulkDeleteMode) setSelectedIds([]);
+                }}
+                className={cn(
+                  "px-4 text-sm font-medium rounded-xl transition-all border h-10",
+                  isBulkDeleteMode
+                    ? "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50",
+                )}
+              >
+                {isBulkDeleteMode ? "Batal Hapus Masal" : "Hapus Masal"}
+              </button>
+            )}
             <button
               onClick={() => {
                 setSearch("");
@@ -513,7 +517,7 @@ export default function Logs() {
                 </button>
               )}
 
-              {!isBulkDeleteMode && (
+              {!isBulkDeleteMode && canEdit && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -1047,16 +1051,18 @@ export default function Logs() {
             </div>
 
             <div className="p-6 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row justify-end gap-3">
-              <button
-                onClick={() => {
-                  setRestoreStatus("pending");
-                  setRestoreModalData(selectedLog);
-                }}
-                className="px-6 py-2.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold rounded-xl hover:bg-emerald-100 transition-all flex items-center justify-center gap-2"
-              >
-                <RotateCcw size={16} />
-                Aktifkan Kembali
-              </button>
+              {canEdit && (
+                <button
+                  onClick={() => {
+                    setRestoreStatus("pending");
+                    setRestoreModalData(selectedLog);
+                  }}
+                  className="px-6 py-2.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold rounded-xl hover:bg-emerald-100 transition-all flex items-center justify-center gap-2"
+                >
+                  <RotateCcw size={16} />
+                  Aktifkan Kembali
+                </button>
+              )}
               <button
                 onClick={() => setSelectedLog(null)}
                 className="px-8 py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all"

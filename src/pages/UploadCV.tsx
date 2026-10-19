@@ -29,6 +29,7 @@ import { useToast } from "../components/ui/use-toast";
 import { cn, fetchWithRetry, formatDateDMMMY } from "../lib/utils";
 import BulkUploadModal from "../components/BulkUploadModal";
 import ConfirmModal from "../components/ConfirmModal";
+import { usePermissions } from "../hooks/usePermissions";
 
 interface CVUpload {
   id: string;
@@ -103,6 +104,7 @@ export default function UploadCV() {
     blacklist: { reason: string | null }[];
   }>({ candidates: [], blacklist: [] });
   const { toast } = useToast();
+  const { canEdit } = usePermissions();
 
   useEffect(() => {
     const email = candidateEmail.trim();
@@ -446,283 +448,291 @@ export default function UploadCV() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Upload Form */}
         <div className="space-y-6">
-          <form
-            onSubmit={handleUpload}
-            className="bg-white/40 backdrop-blur-xl rounded-3xl border border-white/60 shadow-2xl overflow-hidden"
-          >
-            <div className="p-8 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-[#73507B] uppercase tracking-widest">
-                    Nama Kandidat
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={candidateName}
-                    onChange={(e) => setCandidateName(e.target.value)}
-                    placeholder="Masukkan nama lengkap..."
-                    className="w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] focus:bg-white/80 transition-all text-sm font-medium"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-[#73507B] uppercase tracking-widest">
-                    Email Kandidat
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={candidateEmail}
-                    onChange={(e) => setCandidateEmail(e.target.value)}
-                    placeholder="kandidat@email.com"
-                    className="w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] focus:bg-white/80 transition-all text-sm font-medium"
-                  />
-                </div>
-                {(emailMatches.blacklist.length > 0 || emailMatches.candidates.length > 0) && (
-                  <div className="md:col-span-2 space-y-2">
-                    {emailMatches.blacklist.length > 0 && (
-                      <div className="flex items-start gap-2 bg-rose-50 border border-rose-200 text-rose-800 text-xs p-3 rounded-xl">
-                        <ShieldAlert size={16} className="shrink-0 mt-0.5" />
-                        <span>
-                          <span className="font-bold">Email ini masuk daftar blacklist.</span>
-                          {emailMatches.blacklist[0].reason ? ` Alasan: ${emailMatches.blacklist[0].reason}` : ""}
-                        </span>
-                      </div>
-                    )}
-                    {emailMatches.candidates.length > 0 && (() => {
-                      const samePositionActive = emailMatches.candidates.some(
-                        (c) => !c.archived && position && c.position?.trim().toLowerCase() === position.trim().toLowerCase(),
-                      );
-                      return (
-                        <div
-                          className={cn(
-                            "flex items-start gap-2 text-xs p-3 rounded-xl border",
-                            samePositionActive
-                              ? "bg-amber-50 border-amber-200 text-amber-800"
-                              : "bg-sky-50 border-sky-200 text-sky-800",
-                          )}
-                        >
-                          <AlertTriangle size={16} className="shrink-0 mt-0.5" />
-                          <div className="space-y-1">
-                            <p className="font-bold">
-                              {samePositionActive
-                                ? "Kandidat ini sedang aktif melamar posisi yang sama — kemungkinan duplikat."
-                                : "Email ini sudah terdaftar di lamaran lain. Tetap bisa diproses untuk posisi ini."}
-                            </p>
-                            <ul className="space-y-0.5">
-                              {emailMatches.candidates.map((c) => (
-                                <li key={`${c.archived ? "log" : "active"}-${c.id}`}>
-                                  •{" "}
-                                  <Link to={`/candidates/${c.id}`} target="_blank" className="font-semibold underline hover:no-underline">
-                                    {candidateName || "Kandidat"} – {c.position || "-"}
-                                  </Link>{" "}
-                                  ({c.archived ? `Diarsipkan${c.status_screening ? `, ${c.status_screening}` : ""}` : "Aktif"})
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
-                <div className="space-y-2 md:col-span-2">
-                  <label className="text-xs font-bold text-[#73507B] uppercase tracking-widest">
-                    Posisi Dilamar
-                  </label>
-                  {loadingPositions ? (
-                    <div className="flex items-center gap-2 text-sm text-[#73507B] py-3">
-                      <Loader2 className="animate-spin" size={16} /> Memuat
-                      posisi...
-                    </div>
-                  ) : availablePositions.length > 0 ? (
-                    <select
-                      required
-                      value={position}
-                      onChange={(e) => setPosition(e.target.value)}
-                      className="block w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] focus:bg-white/80 transition-all text-sm font-medium appearance-none"
-                    >
-                      <option value="" disabled>
-                        Pilih Posisi
-                      </option>
-                      {availablePositions.map((pos, idx) => (
-                        <option key={idx} value={pos}>
-                          {pos}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
+          {canEdit && (
+            <form
+              onSubmit={handleUpload}
+              className="bg-white/40 backdrop-blur-xl rounded-3xl border border-white/60 shadow-2xl overflow-hidden"
+            >
+              <div className="p-8 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-[#73507B] uppercase tracking-widest">
+                      Nama Kandidat
+                    </label>
                     <input
                       type="text"
                       required
-                      value={position}
-                      onChange={(e) => setPosition(e.target.value)}
-                      placeholder="Contoh: Frontend Developer"
+                      value={candidateName}
+                      onChange={(e) => setCandidateName(e.target.value)}
+                      placeholder="Masukkan nama lengkap..."
                       className="w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] focus:bg-white/80 transition-all text-sm font-medium"
                     />
-                  )}
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <label className="text-xs font-bold text-[#73507B] uppercase tracking-widest">
-                    Info Sumber Lowongan
-                  </label>
-                  <select
-                    required
-                    value={sourceInfo}
-                    onChange={(e) => setSourceInfo(e.target.value)}
-                    className="block w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] focus:bg-white/80 transition-all text-sm font-medium appearance-none"
-                  >
-                    <option value="" disabled>
-                      Pilih Sumber Lowongan
-                    </option>
-                    {availableJobSources.map((source, idx) => (
-                      <option key={idx} value={source}>
-                        {source}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-[#73507B] uppercase tracking-widest">
-                  File CV (PDF)
-                </label>
-                <div
-                  onDragEnter={() => setIsDragging(true)}
-                  onDragLeave={(e) => {
-                    if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragging(false);
-                  }}
-                  onDrop={() => setIsDragging(false)}
-                  className={cn(
-                    "relative border-2 border-dashed rounded-2xl p-10 transition-all flex flex-col items-center justify-center gap-4",
-                    isDragging
-                      ? "border-[#5A305A] bg-[#5A305A]/10 scale-[1.01] shadow-lg"
-                      : files.length > 0
-                        ? "border-emerald-300 bg-emerald-50/50"
-                        : "border-white/60 bg-white/40 hover:border-[#5A305A]/40 hover:bg-white/60",
-                  )}
-                >
-                  <input
-                    type="file"
-                    multiple
-                    onChange={handleFileChange}
-                    accept=".pdf,application/pdf"
-                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                  />
-
-                  {files.length > 0 ? (
-                    <div className="w-full space-y-3 z-20">
-                      {files.map((file, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between bg-white/50 p-3 rounded-xl border border-white/60 shadow-sm relative z-20"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={cn(
-                                "w-10 h-10 rounded-lg flex items-center justify-center",
-                                file.type === "application/pdf"
-                                  ? "bg-red-100 text-red-600"
-                                  : "bg-blue-100 text-blue-600",
-                              )}
-                            >
-                              {file.type === "application/pdf" ? (
-                                <FileText size={20} />
-                              ) : (
-                                <File size={20} />
-                              )}
-                            </div>
-                            <div>
-                              <p className="font-bold text-[#5A305A] text-sm truncate max-w-[200px]">
-                                {file.name}
-                              </p>
-                              <p className="text-xs text-[#73507B]">
-                                {(file.size / 1024 / 1024).toFixed(2)} MB
-                              </p>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              removeFile(index);
-                            }}
-                            className="p-2 text-[#73507B] hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
-                          >
-                            <X size={16} />
-                          </button>
-                        </div>
-                      ))}
-                      <div className="text-center mt-4 pt-4 border-t border-white/40">
-                        <p className="text-sm font-medium text-[#5A305A]">
-                          {isDragging ? "Lepaskan file di sini" : "Klik atau seret untuk menambah file lain"}
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className={cn(
-                        "w-16 h-16 rounded-2xl flex items-center justify-center shadow-sm border transition-colors",
-                        isDragging ? "bg-[#5A305A] text-white border-[#5A305A]" : "bg-white/60 text-[#73507B] border-white/80",
-                      )}>
-                        <Upload size={32} />
-                      </div>
-                      <div className="text-center">
-                        <p className="font-bold text-[#5A305A]">
-                          {isDragging ? "Lepaskan file di sini" : "Klik atau seret file ke sini"}
-                        </p>
-                        <p className="text-xs text-[#73507B]">
-                          Hanya file PDF, maksimal {MAX_FILE_MB}MB per file
-                        </p>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="p-8 bg-white/30 border-t border-white/40 space-y-4">
-              {loading && uploadProgress.total > 0 && (
-                <div className="space-y-2 mb-4">
-                  <div className="flex justify-between text-xs font-medium text-[#73507B]">
-                    <span>Mengunggah file...</span>
-                    <span>
-                      {uploadProgress.current} / {uploadProgress.total}
-                    </span>
                   </div>
-                  <div className="w-full bg-slate-200/50 rounded-full h-2 overflow-hidden">
-                    <div
-                      className="bg-[#5A305A] h-full rounded-full transition-all duration-300"
-                      style={{
-                        width: `${(uploadProgress.current / uploadProgress.total) * 100}%`,
-                      }}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-[#73507B] uppercase tracking-widest">
+                      Email Kandidat
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={candidateEmail}
+                      onChange={(e) => setCandidateEmail(e.target.value)}
+                      placeholder="kandidat@email.com"
+                      className="w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] focus:bg-white/80 transition-all text-sm font-medium"
                     />
                   </div>
+                  {(emailMatches.blacklist.length > 0 || emailMatches.candidates.length > 0) && (
+                    <div className="md:col-span-2 space-y-2">
+                      {emailMatches.blacklist.length > 0 && (
+                        <div className="flex items-start gap-2 bg-rose-50 border border-rose-200 text-rose-800 text-xs p-3 rounded-xl">
+                          <ShieldAlert size={16} className="shrink-0 mt-0.5" />
+                          <span>
+                            <span className="font-bold">Email ini masuk daftar blacklist.</span>
+                            {emailMatches.blacklist[0].reason ? ` Alasan: ${emailMatches.blacklist[0].reason}` : ""}
+                          </span>
+                        </div>
+                      )}
+                      {emailMatches.candidates.length > 0 && (() => {
+                        const samePositionActive = emailMatches.candidates.some(
+                          (c) => !c.archived && position && c.position?.trim().toLowerCase() === position.trim().toLowerCase(),
+                        );
+                        return (
+                          <div
+                            className={cn(
+                              "flex items-start gap-2 text-xs p-3 rounded-xl border",
+                              samePositionActive
+                                ? "bg-amber-50 border-amber-200 text-amber-800"
+                                : "bg-sky-50 border-sky-200 text-sky-800",
+                            )}
+                          >
+                            <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                            <div className="space-y-1">
+                              <p className="font-bold">
+                                {samePositionActive
+                                  ? "Kandidat ini sedang aktif melamar posisi yang sama — kemungkinan duplikat."
+                                  : "Email ini sudah terdaftar di lamaran lain. Tetap bisa diproses untuk posisi ini."}
+                              </p>
+                              <ul className="space-y-0.5">
+                                {emailMatches.candidates.map((c) => (
+                                  <li key={`${c.archived ? "log" : "active"}-${c.id}`}>
+                                    •{" "}
+                                    <Link to={`/candidates/${c.id}`} target="_blank" className="font-semibold underline hover:no-underline">
+                                      {candidateName || "Kandidat"} – {c.position || "-"}
+                                    </Link>{" "}
+                                    ({c.archived ? `Diarsipkan${c.status_screening ? `, ${c.status_screening}` : ""}` : "Aktif"})
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-xs font-bold text-[#73507B] uppercase tracking-widest">
+                      Posisi Dilamar
+                    </label>
+                    {loadingPositions ? (
+                      <div className="flex items-center gap-2 text-sm text-[#73507B] py-3">
+                        <Loader2 className="animate-spin" size={16} /> Memuat
+                        posisi...
+                      </div>
+                    ) : availablePositions.length > 0 ? (
+                      <select
+                        required
+                        value={position}
+                        onChange={(e) => setPosition(e.target.value)}
+                        className="block w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] focus:bg-white/80 transition-all text-sm font-medium appearance-none"
+                      >
+                        <option value="" disabled>
+                          Pilih Posisi
+                        </option>
+                        {availablePositions.map((pos, idx) => (
+                          <option key={idx} value={pos}>
+                            {pos}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        required
+                        value={position}
+                        onChange={(e) => setPosition(e.target.value)}
+                        placeholder="Contoh: Frontend Developer"
+                        className="w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] focus:bg-white/80 transition-all text-sm font-medium"
+                      />
+                    )}
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-xs font-bold text-[#73507B] uppercase tracking-widest">
+                      Info Sumber Lowongan
+                    </label>
+                    <select
+                      required
+                      value={sourceInfo}
+                      onChange={(e) => setSourceInfo(e.target.value)}
+                      className="block w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] focus:bg-white/80 transition-all text-sm font-medium appearance-none"
+                    >
+                      <option value="" disabled>
+                        Pilih Sumber Lowongan
+                      </option>
+                      {availableJobSources.map((source, idx) => (
+                        <option key={idx} value={source}>
+                          {source}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              )}
-              <button
-                type="submit"
-                disabled={
-                  loading ||
-                  files.length === 0 ||
-                  !candidateName ||
-                  !candidateEmail ||
-                  !position
-                }
-                className="w-full py-4 bg-[#5A305A] text-white font-bold rounded-2xl hover:bg-[#3F223F] shadow-lg shadow-[#5A305A]/20 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <Loader2 size={24} className="animate-spin" />
-                ) : (
-                  <CheckCircle2 size={24} />
+  
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-[#73507B] uppercase tracking-widest">
+                    File CV (PDF)
+                  </label>
+                  <div
+                    onDragEnter={() => setIsDragging(true)}
+                    onDragLeave={(e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragging(false);
+                    }}
+                    onDrop={() => setIsDragging(false)}
+                    className={cn(
+                      "relative border-2 border-dashed rounded-2xl p-10 transition-all flex flex-col items-center justify-center gap-4",
+                      isDragging
+                        ? "border-[#5A305A] bg-[#5A305A]/10 scale-[1.01] shadow-lg"
+                        : files.length > 0
+                          ? "border-emerald-300 bg-emerald-50/50"
+                          : "border-white/60 bg-white/40 hover:border-[#5A305A]/40 hover:bg-white/60",
+                    )}
+                  >
+                    <input
+                      type="file"
+                      multiple
+                      onChange={handleFileChange}
+                      accept=".pdf,application/pdf"
+                      className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                    />
+  
+                    {files.length > 0 ? (
+                      <div className="w-full space-y-3 z-20">
+                        {files.map((file, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between bg-white/50 p-3 rounded-xl border border-white/60 shadow-sm relative z-20"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={cn(
+                                  "w-10 h-10 rounded-lg flex items-center justify-center",
+                                  file.type === "application/pdf"
+                                    ? "bg-red-100 text-red-600"
+                                    : "bg-blue-100 text-blue-600",
+                                )}
+                              >
+                                {file.type === "application/pdf" ? (
+                                  <FileText size={20} />
+                                ) : (
+                                  <File size={20} />
+                                )}
+                              </div>
+                              <div>
+                                <p className="font-bold text-[#5A305A] text-sm truncate max-w-[200px]">
+                                  {file.name}
+                                </p>
+                                <p className="text-xs text-[#73507B]">
+                                  {(file.size / 1024 / 1024).toFixed(2)} MB
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeFile(index);
+                              }}
+                              className="p-2 text-[#73507B] hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ))}
+                        <div className="text-center mt-4 pt-4 border-t border-white/40">
+                          <p className="text-sm font-medium text-[#5A305A]">
+                            {isDragging ? "Lepaskan file di sini" : "Klik atau seret untuk menambah file lain"}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className={cn(
+                          "w-16 h-16 rounded-2xl flex items-center justify-center shadow-sm border transition-colors",
+                          isDragging ? "bg-[#5A305A] text-white border-[#5A305A]" : "bg-white/60 text-[#73507B] border-white/80",
+                        )}>
+                          <Upload size={32} />
+                        </div>
+                        <div className="text-center">
+                          <p className="font-bold text-[#5A305A]">
+                            {isDragging ? "Lepaskan file di sini" : "Klik atau seret file ke sini"}
+                          </p>
+                          <p className="text-xs text-[#73507B]">
+                            Hanya file PDF, maksimal {MAX_FILE_MB}MB per file
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+  
+              <div className="p-8 bg-white/30 border-t border-white/40 space-y-4">
+                {loading && uploadProgress.total > 0 && (
+                  <div className="space-y-2 mb-4">
+                    <div className="flex justify-between text-xs font-medium text-[#73507B]">
+                      <span>Mengunggah file...</span>
+                      <span>
+                        {uploadProgress.current} / {uploadProgress.total}
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-200/50 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-[#5A305A] h-full rounded-full transition-all duration-300"
+                        style={{
+                          width: `${(uploadProgress.current / uploadProgress.total) * 100}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
                 )}
-                {loading
-                  ? `Mengirim ${uploadProgress.current}/${uploadProgress.total} CV...`
-                  : `Kirim ${files.length > 0 ? files.length : ""} CV`}
-              </button>
+                <button
+                  type="submit"
+                  disabled={
+                    loading ||
+                    files.length === 0 ||
+                    !candidateName ||
+                    !candidateEmail ||
+                    !position
+                  }
+                  className="w-full py-4 bg-[#5A305A] text-white font-bold rounded-2xl hover:bg-[#3F223F] shadow-lg shadow-[#5A305A]/20 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? (
+                    <Loader2 size={24} className="animate-spin" />
+                  ) : (
+                    <CheckCircle2 size={24} />
+                  )}
+                  {loading
+                    ? `Mengirim ${uploadProgress.current}/${uploadProgress.total} CV...`
+                    : `Kirim ${files.length > 0 ? files.length : ""} CV`}
+                </button>
+              </div>
+            </form>
+          )}
+          {!canEdit && (
+            <div className="bg-white/40 backdrop-blur-xl rounded-3xl border border-white/60 shadow-2xl p-8 text-sm text-[#73507B]">
+              Akun Read Only tidak dapat mengunggah CV. Riwayat upload tetap
+              bisa dilihat di sebelah.
             </div>
-          </form>
+          )}
         </div>
 
         {/* History / Search */}
@@ -734,7 +744,7 @@ export default function UploadCV() {
                   Riwayat Upload
                 </h2>
                 <div className="flex items-center gap-2">
-                  {selectedUploads.length > 0 && (
+                  {selectedUploads.length > 0 && canEdit && (
                     <button
                       onClick={() => setDeleteTarget(selectedUploads)}
                       className="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl text-sm font-medium transition-all flex items-center gap-2"
@@ -752,13 +762,15 @@ export default function UploadCV() {
                       className={fetchingUploads ? "animate-spin" : ""}
                     />
                   </button>
-                  <button
-                    onClick={() => setIsBulkModalOpen(true)}
-                    className="flex items-center justify-center gap-2 px-4 py-2 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] transition-all shadow-sm text-sm whitespace-nowrap"
-                  >
-                    <Plus size={18} />
-                    Upload Massal
-                  </button>
+                  {canEdit && (
+                    <button
+                      onClick={() => setIsBulkModalOpen(true)}
+                      className="flex items-center justify-center gap-2 px-4 py-2 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] transition-all shadow-sm text-sm whitespace-nowrap"
+                    >
+                      <Plus size={18} />
+                      Upload Massal
+                    </button>
+                  )}
                 </div>
               </div>
               <div className="relative">
@@ -882,13 +894,15 @@ export default function UploadCV() {
                             <User size={11} />
                             <span>{upload.sender_name}</span>
                           </div>
-                          <button
-                            onClick={() => setDeleteTarget([upload.id])}
-                            className="mt-2 p-1.5 text-[#73507B] hover:text-red-600 hover:bg-red-50 rounded-lg transition-all inline-flex"
-                            title="Hapus riwayat"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          {canEdit && (
+                            <button
+                              onClick={() => setDeleteTarget([upload.id])}
+                              className="mt-2 p-1.5 text-[#73507B] hover:text-red-600 hover:bg-red-50 rounded-lg transition-all inline-flex"
+                              title="Hapus riwayat"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>

@@ -10,8 +10,13 @@ import { SALARY_FORM_FIELDS } from "../src/lib/documentPaths";
 //   USER_MANAGER  -> additionally never sees remuneration data
 //                    (usePermissions.hideSalary), enforced here instead of
 //                    only being hidden in the UI.
+//   READ_ONLY     -> sees every candidate like HR_ADMIN, but no
+//                    remuneration data; writes are refused in requireAuth.
 
 export const isHrAdmin = (profile: AuthProfile) => profile.role === "HR_ADMIN";
+// Read visibility of every candidate / form / archive row.
+export const canViewAllCandidates = (profile: AuthProfile) =>
+  profile.role === "HR_ADMIN" || profile.role === "READ_ONLY";
 
 export async function getAssignedCandidateIds(
   admin: SupabaseClient,
@@ -30,7 +35,7 @@ export async function canAccessCandidate(
   profile: AuthProfile,
   candidateId: string,
 ): Promise<boolean> {
-  if (isHrAdmin(profile)) return true;
+  if (canViewAllCandidates(profile)) return true;
   const { data, error } = await admin
     .from("candidate_assignees")
     .select("candidate_id")
@@ -47,7 +52,7 @@ export async function getAccessibleExternalUids(
   admin: SupabaseClient,
   profile: AuthProfile,
 ): Promise<"all" | Set<string>> {
-  if (isHrAdmin(profile)) return "all";
+  if (canViewAllCandidates(profile)) return "all";
   const ids = await getAssignedCandidateIds(admin, profile.id);
   if (ids.length === 0) return new Set();
   const { data, error } = await admin
@@ -60,7 +65,7 @@ export async function getAccessibleExternalUids(
 }
 
 export function canSeeSalary(profile: AuthProfile) {
-  return profile.role !== "USER_MANAGER";
+  return profile.role !== "USER_MANAGER" && profile.role !== "READ_ONLY";
 }
 
 // Removes remuneration fields from a form for roles that may not see them.
