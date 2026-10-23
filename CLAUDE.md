@@ -43,13 +43,13 @@ The only live ways into the archive are **Tolak** (reject) and **Hire** on the S
 - `DIRECTOR` / `FINANCE_DIRECTOR` — approval-only roles, restricted nav.
 - `READ_ONLY` (2026-10-19) — full nav and every candidate like HR Admin, but no salary (`hideSalary`, server `canSeeSalary`, payslip/remuneration files refused in `/api/documents/signed-url`) and no writes: `server/auth.ts` `requireAuth` refuses every non-GET except `READ_ONLY_POST_ALLOWLIST`; HR pages' GET routes use `requireHrRead`; read visibility uses `canViewAllCandidates` (`server/access.ts`), writes still `isHrAdmin`/`requireHrAdmin`. UI hides write controls via `usePermissions().canEdit` — **any new create/edit/delete/send button must be gated with `canEdit`**. Registration token values are masked for READ_ONLY. Internal notes stay same-role, so READ_ONLY sees none.
 - `null`/unset role — **not** nav-restricted at the UI level (only `USER_MANAGER`/`DIRECTOR`/`FINANCE_DIRECTOR` are matched by `isRestrictedScreeningRole`), even though DB writes still require `role = 'HR_ADMIN'` server-side. New accounts get `role: null` until an HR_ADMIN assigns one via Manajemen Pengguna — `profiles.role` has **no default** (fixed 2026-08-06, see RLS audit below).
-- **Known gap**: several pages (Dashboard, PsikotesSchedules, InterviewSchedules, CandidateTracking, CandidateArchive, Logs, Templates, RegistrationTokens) have no in-page role checks — access control there is routing/menu-level only (`src/App.tsx`), not enforced per-page or server-side beyond RLS.
+- **Known gap**: several pages (Dashboard, PsikotesSchedules, InterviewSchedules, CandidateTracking, Logs, Templates, RegistrationTokens) have no in-page role checks — access control there is routing/menu-level only (`src/App.tsx`), not enforced per-page or server-side beyond RLS.
 
 ## Directory map
 
 ```
-src/pages/          One file per route (19 pages) — Dashboard, Screening, CandidateProfile,
-                     CandidateTracking, CandidateArchive, RecruitmentFunnel, Logs,
+src/pages/          One file per route (18 pages) — Dashboard, Screening, CandidateProfile,
+                     CandidateTracking, RecruitmentFunnel, Logs,
                      PsikotesSchedules, InterviewSchedules, RegistrationTokens,
                      UserManagement, ExternalData, UploadCV, Templates,
                      EvaluationTemplates, OpenRecruitment, ApplicationForm (public),

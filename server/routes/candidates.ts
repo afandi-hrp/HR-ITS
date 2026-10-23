@@ -182,6 +182,18 @@ export function registerCandidateRoutes(app: Express, requireAuth: RequestHandle
         throw new HttpError(400, "Status tidak valid.");
       }
       await requireActiveCandidate(req.params.id);
+      if (status === "accepted") {
+        // Re-accepting would only bump updated_at (candidate jumps to the top).
+        const { data: current, error: curErr } = await getSupabaseAdmin()
+          .from("candidates")
+          .select("status_screening")
+          .eq("id", req.params.id)
+          .maybeSingle();
+        if (curErr) throw curErr;
+        if (current?.status_screening === "accepted") {
+          throw new HttpError(409, "Kandidat sudah diterima (Lolos Screening).");
+        }
+      }
       const { error } = await getSupabaseAdmin()
         .from("candidates")
         .update({ status_screening: status, updated_at: nowIso() })

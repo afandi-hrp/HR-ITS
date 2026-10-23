@@ -11,7 +11,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
-  Archive,
   Upload,
   BarChart3,
   CalendarDays,
@@ -153,7 +152,6 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
       items: [
         { id: 'external-data', label: 'Data Eksternal', icon: Database },
         { id: 'tracking', label: 'Live Tracking', icon: BarChart3 },
-        { id: 'archive', label: 'Candidate Archive', icon: Archive },
         { id: 'logs', label: 'Log Kandidat', icon: ClipboardList },
       ]
     },

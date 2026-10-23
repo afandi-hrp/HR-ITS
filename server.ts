@@ -93,10 +93,47 @@ const uploadDocument = multer({
     if (allowedMimeTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error("Invalid file type. Only images, PDF, Word, and PowerPoint documents are allowed."));
+      const err: any = new Error("Format file tidak didukung. Gunakan PDF, JPG, PNG, Word, atau PowerPoint sesuai ketentuan masing-masing kolom.");
+      err.status = 400;
+      cb(err);
     }
   }
 });
+
+// Per-field limits of the application form (mirrors ApplicationForm.tsx,
+// section VI + payslip). The size is also enforced per file client-side; the
+// server repeats the size/type checks so a direct request can't skip them.
+const MIME_BY_EXT: Record<string, string> = {
+  pdf: 'application/pdf',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  doc: 'application/msword',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ppt: 'application/vnd.ms-powerpoint',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+};
+const IMAGE_OR_PDF = ['pdf', 'jpg', 'jpeg', 'png'];
+const DOCUMENT_RULES: Record<string, { maxBytes: number; exts: string[]; maxFiles: number; label: string }> = {
+  photo: { maxBytes: 3 * 1024 * 1024, exts: ['jpg', 'jpeg', 'png'], maxFiles: 1, label: 'Foto' },
+  ktp: { maxBytes: 3 * 1024 * 1024, exts: IMAGE_OR_PDF, maxFiles: 1, label: 'KTP' },
+  ijazah: { maxBytes: 3 * 1024 * 1024, exts: IMAGE_OR_PDF, maxFiles: 1, label: 'Ijazah' },
+  transcript: { maxBytes: 3 * 1024 * 1024, exts: IMAGE_OR_PDF, maxFiles: 1, label: 'Transkrip Nilai' },
+  other: { maxBytes: 3 * 1024 * 1024, exts: [...IMAGE_OR_PDF, 'doc', 'docx'], maxFiles: 3, label: 'Dokumen Lainnya' },
+  payslip: { maxBytes: 3 * 1024 * 1024, exts: [...IMAGE_OR_PDF, 'doc', 'docx'], maxFiles: 2, label: 'Slip Gaji' },
+  portfolio: { maxBytes: 5 * 1024 * 1024, exts: ['pdf', 'ppt', 'pptx'], maxFiles: 2, label: 'Bahan Presentasi / Portofolio' },
+};
+// The browser re-uploads every file when a failed submit is retried, so the
+// per-field file count can't be an exact cap — allow this many attempts per
+// allowed file before refusing (blocks bulk abuse, not retries).
+const UPLOAD_RETRY_FACTOR = 5;
+const UPLOAD_COUNT_TTL_MS = 24 * 60 * 60 * 1000;
+const uploadCounts = new Map<string, { counts: Record<string, number>; ts: number }>();
+function pruneUploadCounts() {
+  if (uploadCounts.size < 2000) return;
+  const cutoff = Date.now() - UPLOAD_COUNT_TTL_MS;
+  for (const [k, v] of uploadCounts) if (v.ts < cutoff) uploadCounts.delete(k);
+}
 const app = express();
 app.set('trust proxy', 1);
 
@@ -1295,33 +1332,28 @@ app.use((req: any, res, next) => {
       return res.status(400).json({ error: "File is required" });
     }
 
-    const allowedDocTypes = ['photo', 'ktp', 'ijazah', 'transcript', 'payslip', 'other', 'portfolio'];
-    if (!docType || !allowedDocTypes.includes(docType)) {
-      return res.status(400).json({ error: "Invalid document type" });
+    const rule = typeof docType === 'string' && Object.prototype.hasOwnProperty.call(DOCUMENT_RULES, docType)
+      ? DOCUMENT_RULES[docType]
+      : null;
+    if (!rule) {
+      return res.status(400).json({ error: "Jenis dokumen tidak valid." });
     }
 
     if (!token) {
       return res.status(401).json({ error: "Token pendaftaran wajib diisi sebelum mengunggah dokumen." });
     }
 
-    // The shared multer instance allows up to 5MB (the portfolio field's
-    // ceiling) — everything else stays capped at 3MB server-side too, not
-    // just via the client-side check in ApplicationForm.tsx.
-    const maxSizeByDocType: Record<string, number> = { portfolio: 5 * 1024 * 1024 };
-    const maxSize = maxSizeByDocType[docType] ?? 3 * 1024 * 1024;
-    if (file.size > maxSize) {
-      return res.status(413).json({ error: `Ukuran file untuk ${docType} maksimal ${Math.round(maxSize / (1024 * 1024))}MB.` });
+    if (file.size > rule.maxBytes) {
+      return res.status(413).json({ error: `Ukuran file untuk ${rule.label} maksimal ${Math.round(rule.maxBytes / (1024 * 1024))}MB.` });
     }
 
-    if (docType === 'portfolio') {
-      const allowedPortfolioMimeTypes = [
-        'application/pdf',
-        'application/vnd.ms-powerpoint',
-        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-      ];
-      if (!allowedPortfolioMimeTypes.includes(file.mimetype)) {
-        return res.status(400).json({ error: "Bahan Presentasi / Portofolio harus berformat PDF, PPT, atau PPTX." });
-      }
+    // Extension must be one this field accepts, and the declared MIME type
+    // must match that extension (multer's fileFilter already limited the MIME
+    // types globally; this makes it per field).
+    const ext = (file.originalname.split('.').pop() || '').toLowerCase();
+    if (!rule.exts.includes(ext) || file.mimetype !== MIME_BY_EXT[ext]) {
+      const formats = rule.exts.map((e) => e.toUpperCase()).join(', ');
+      return res.status(400).json({ error: `${rule.label} harus berformat ${formats}.` });
     }
 
     try {
@@ -1338,7 +1370,12 @@ app.use((req: any, res, next) => {
         return res.status(401).json({ error: "Token pendaftaran tidak valid atau sudah digunakan." });
       }
 
-      const fileExt = (file.originalname.split('.').pop() || 'bin').toLowerCase();
+      const entry = uploadCounts.get(token) || { counts: {}, ts: Date.now() };
+      if ((entry.counts[docType] || 0) >= rule.maxFiles * UPLOAD_RETRY_FACTOR) {
+        return res.status(429).json({ error: `Jumlah unggahan untuk ${rule.label} sudah melebihi batas (maksimal ${rule.maxFiles} file). Silakan hubungi HR jika mengalami kendala.` });
+      }
+
+      const fileExt = ext;
       const filePath = `candidates/${docType}-${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
 
       // Private bucket: no public URL is generated here. The frontend gets
@@ -1353,6 +1390,11 @@ app.use((req: any, res, next) => {
         console.error("Error uploading document to storage:", uploadError);
         return res.status(500).json({ error: `Gagal mengunggah ${docType}: ${uploadError.message}` });
       }
+
+      pruneUploadCounts();
+      entry.counts[docType] = (entry.counts[docType] || 0) + 1;
+      entry.ts = Date.now();
+      uploadCounts.set(token, entry);
 
       res.json({ url: filePath });
     } catch (error: any) {

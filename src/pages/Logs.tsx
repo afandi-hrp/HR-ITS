@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { useLocation, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { Candidate } from "../types";
 import {
+  GraduationCap,
+  ChevronRight,
+  LayoutGrid,
+  LayoutList,
+  Lightbulb,
+  AlertTriangle,
+  ExternalLink,
   Search,
   Filter,
   RefreshCcw,
@@ -31,6 +38,27 @@ import { useToast } from "../components/ui/use-toast";
 import JSONRenderer from "../components/JSONRenderer";
 import * as XLSX from "xlsx";
 import { usePermissions } from "../hooks/usePermissions";
+
+// Accent + badge per archived outcome (candidate_logs.status_screening).
+const STATUS_META: Record<string, { label: string; bar: string; badge: string; Icon: any }> = {
+  hired: { label: "Direkrut", bar: "bg-indigo-500", badge: "bg-indigo-50 text-indigo-700 border-indigo-200", Icon: Briefcase },
+  accepted: { label: "Diterima", bar: "bg-emerald-500", badge: "bg-emerald-50 text-emerald-700 border-emerald-200", Icon: Star },
+  rejected: { label: "Ditolak", bar: "bg-rose-500", badge: "bg-rose-50 text-rose-700 border-rose-200", Icon: X },
+};
+const getStatusMeta = (status?: string | null) =>
+  STATUS_META[status === "Tidak Lolos" ? "rejected" : status || ""] || null;
+
+// Same average the detail modal always showed: six assessment aspects / 6.
+const getAssessmentAverage = (c: any) =>
+  Math.round(
+    ((c.technical_score || 0) +
+      (c.communication_score || 0) +
+      (c.problem_solving_score || 0) +
+      (c.teamwork_score || 0) +
+      (c.leadership_score || 0) +
+      (c.adaptability_score || 0)) /
+      6,
+  );
 
 export default function Logs() {
   const location = useLocation();
@@ -110,6 +138,45 @@ export default function Logs() {
 
   const { toast } = useToast();
   const { canEdit } = usePermissions();
+
+  const [viewMode, setViewMode] = useState<"card" | "list">("card");
+
+  const renderStatusBadge = (log: any) => {
+    const meta = getStatusMeta(log.status_screening);
+    if (!meta) return null;
+    return (
+      <span
+        className={cn(
+          "inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border",
+          meta.badge,
+        )}
+      >
+        <meta.Icon size={12} /> {meta.label}
+      </span>
+    );
+  };
+
+  // psikotes_status / interview_status are stored text from move-to-log
+  // ("Sudah …", "Tidak Hadir …", "Belum …"); shown as-is.
+  const renderProcessChips = (log: any) =>
+    [
+      { value: log.psikotes_status || "Belum Psikotes", done: "Sudah Psikotes" },
+      { value: log.interview_status || "Belum Interview", done: "Sudah Interview" },
+    ].map(({ value, done }) => (
+      <span
+        key={done}
+        className={cn(
+          "inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border",
+          value === done
+            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+            : value.startsWith("Tidak Hadir")
+              ? "bg-amber-50 text-amber-700 border-amber-200"
+              : "bg-slate-50 text-[#73507B] border-slate-200",
+        )}
+      >
+        {value}
+      </span>
+    ));
 
   const isFirstRender = React.useRef(true);
   useEffect(() => {
@@ -461,6 +528,28 @@ export default function Logs() {
             >
               <RefreshCcw size={20} className={loading ? "animate-spin" : ""} />
             </button>
+            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl p-1 h-10">
+              {(
+                [
+                  { mode: "card", title: "Tampilan Kartu", Icon: LayoutGrid },
+                  { mode: "list", title: "Tampilan Daftar", Icon: LayoutList },
+                ] as const
+              ).map(({ mode, title, Icon }) => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  className={cn(
+                    "p-1.5 rounded-lg transition-all h-full flex items-center justify-center",
+                    viewMode === mode
+                      ? "bg-white text-[#5A305A] shadow-sm"
+                      : "text-[#73507B] hover:text-[#5A305A]",
+                  )}
+                  title={title}
+                >
+                  <Icon size={18} />
+                </button>
+              ))}
+            </div>
             <button
               onClick={handlePrepareExport}
               disabled={exportLoading}
@@ -477,167 +566,326 @@ export default function Logs() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {logs.map((log) => (
-          <div
-            key={log.id}
-            id={`log-${log.id}`}
-            className={cn(
-              "bg-white/70 backdrop-blur-md rounded-2xl border shadow-sm overflow-hidden transition-all cursor-pointer hover:-translate-y-1 hover:shadow-md flex flex-col",
-              selectedIds.includes(log.id)
-                ? "border-indigo-500 ring-2 ring-indigo-200"
-                : "border-slate-200",
-              blinkingId === log.id
-                ? "animate-pulse ring-2 ring-indigo-500 ring-inset"
-                : "",
-            )}
-            onClick={() => {
-              if (isBulkDeleteMode) {
-                toggleSelection(log.id);
-              } else {
-                setSelectedLog(log);
-              }
-            }}
-          >
-            {/* Card Header (Portrait Style) */}
-            <div className="relative pt-6 pb-4 px-6 flex flex-col items-center text-center border-b border-slate-100 bg-gradient-to-b from-slate-50 to-white">
-              {isBulkDeleteMode && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleSelection(log.id);
-                  }}
-                  className="absolute top-4 left-4 text-slate-400 hover:text-indigo-600 transition-colors"
-                >
-                  {selectedIds.includes(log.id) ? (
-                    <CheckSquare size={24} className="text-indigo-600" />
-                  ) : (
-                    <Square size={24} />
-                  )}
-                </button>
-              )}
-
-              {!isBulkDeleteMode && canEdit && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDeleteModalData(log);
-                  }}
-                  className="absolute top-4 right-4 p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  title="Hapus Kandidat"
-                >
-                  <Trash2 size={18} />
-                </button>
-              )}
-
-              <div className="w-20 h-20 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-3xl font-bold mb-4 shadow-inner overflow-hidden">
-                <CandidateAvatar
-                  source={log.external_data?.raw_data || log.source_info}
-                  alt={log.full_name}
-                  className="w-full h-full object-cover"
-                  fallback={log.full_name?.[0] || "?"}
-                />
-              </div>
-              <div className="flex flex-col items-center gap-1 mt-1">
-                <h3 className="text-lg font-bold text-[#5A305A] line-clamp-1">
-                  {log.full_name}
-                </h3>
-                {log.is_blacklisted && (
-                  <span
-                    className="px-2 py-0.5 bg-black text-white text-[10px] font-bold rounded"
-                    title={
-                      log.blacklist_reason ||
-                      "Kandidat berada dalam daftar blacklist"
-                    }
-                  >
-                    BLACKLIST
-                  </span>
+      {viewMode === "card" ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+          {logs.map((log) => {
+            const meta = getStatusMeta(log.status_screening);
+            const isSelected = selectedIds.includes(log.id);
+            return (
+              <div
+                key={log.id}
+                id={`log-${log.id}`}
+                className={cn(
+                  "group relative bg-white rounded-2xl border shadow-sm overflow-hidden transition-all cursor-pointer hover:-translate-y-1 hover:shadow-lg flex flex-col",
+                  isSelected
+                    ? "border-[#5A305A] ring-2 ring-[#5A305A]/20"
+                    : "border-slate-200 hover:border-[#5A305A]/30",
+                  blinkingId === log.id
+                    ? "animate-pulse ring-2 ring-indigo-500 ring-inset"
+                    : "",
                 )}
-              </div>
-              <p className="text-sm text-slate-500 mt-1 line-clamp-1">
-                {log.position}
-              </p>
-            </div>
+                onClick={() => {
+                  if (isBulkDeleteMode) toggleSelection(log.id);
+                  else setSelectedLog(log);
+                }}
+              >
+                <div className={cn("h-1.5 w-full", meta?.bar || "bg-slate-300")} />
 
-            {/* Card Body */}
-            <div className="p-6 flex-1 flex flex-col gap-4">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-500 flex items-center gap-1">
-                  <Calendar size={14} /> Arsip
-                </span>
-                <span className="font-medium text-slate-700">
-                  {log.archived_at
-                    ? formatDate(log.archived_at)
-                    : formatDate(log.created_at)}
-                </span>
-              </div>
+                {/* Header */}
+                <div className="p-5 pb-4 flex items-start gap-3">
+                  {isBulkDeleteMode && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleSelection(log.id);
+                      }}
+                      className="text-[#73507B] hover:text-[#5A305A] transition-colors shrink-0 mt-1"
+                    >
+                      {isSelected ? (
+                        <CheckSquare size={22} className="text-[#5A305A]" />
+                      ) : (
+                        <Square size={22} />
+                      )}
+                    </button>
+                  )}
+                  <div className="w-14 h-14 rounded-2xl bg-[#5A305A]/10 flex items-center justify-center text-[#5A305A] text-xl font-bold overflow-hidden shrink-0 border border-[#5A305A]/10">
+                    <CandidateAvatar
+                      source={log.external_data?.raw_data || log.source_info}
+                      alt={log.full_name}
+                      className="w-full h-full object-cover"
+                      fallback={log.full_name?.[0] || "?"}
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-bold text-[#5A305A] truncate">
+                        {log.full_name}
+                      </h3>
+                      {log.is_blacklisted && (
+                        <span
+                          className="px-1.5 py-0.5 bg-black text-white text-[10px] font-bold rounded shrink-0"
+                          title={log.blacklist_reason || "Kandidat berada dalam daftar blacklist"}
+                        >
+                          BLACKLIST
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm font-medium text-[#73507B] truncate">
+                      {log.position}
+                    </p>
+                    <div className="mt-2">{renderStatusBadge(log)}</div>
+                  </div>
+                </div>
 
-              <div className="space-y-2">
-                <div className="flex flex-wrap gap-2">
-                  {log.status_screening === "hired" && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-800">
-                      <Briefcase size={12} /> Direkrut
-                    </span>
+                {/* Contact */}
+                <div className="px-5 space-y-1.5">
+                  <div className="flex items-center gap-2 text-xs text-[#73507B] min-w-0">
+                    <Mail size={13} className="shrink-0" />
+                    <span className="truncate">{log.email || "-"}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-[#73507B] min-w-0">
+                    <Phone size={13} className="shrink-0" />
+                    <span className="truncate">{log.phone || "-"}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-[#73507B] min-w-0">
+                    <GraduationCap size={13} className="shrink-0" />
+                    <span className="truncate">{log.education || "-"}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-[#73507B] min-w-0">
+                    <Briefcase size={13} className="shrink-0" />
+                    <span className="truncate">{log.work_experience || "-"}</span>
+                  </div>
+                </div>
+
+                {/* Process + dates */}
+                <div className="px-5 pt-4 space-y-3">
+                  <div className="flex flex-wrap gap-1.5">
+                    {renderProcessChips(log)}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    <div className="bg-slate-50 rounded-lg px-2.5 py-1.5 border border-slate-100">
+                      <p className="font-bold text-[#73507B]/70 uppercase tracking-wider text-[9px]">
+                        Melamar
+                      </p>
+                      <p className="font-semibold text-[#5A305A]">{formatDate(log.date)}</p>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg px-2.5 py-1.5 border border-slate-100">
+                      <p className="font-bold text-[#73507B]/70 uppercase tracking-wider text-[9px]">
+                        Diarsipkan
+                      </p>
+                      <p className="font-semibold text-[#5A305A]">
+                        {formatDate(log.archived_at || log.created_at)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Insight snippets */}
+                <div className="px-5 pt-3 space-y-2">
+                  {log.notes && (
+                    <div className="rounded-xl bg-[#FFF5C5]/60 border border-[#F58C77]/30 px-3 py-2">
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-[#73507B]/80">
+                        Catatan
+                      </p>
+                      <p className="text-xs text-[#5A305A] line-clamp-2 italic">
+                        {log.notes}
+                      </p>
+                    </div>
                   )}
-                  {log.status_screening === "accepted" && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800">
-                      <Star size={12} /> Diterima
-                    </span>
-                  )}
-                  {log.status_screening === "rejected" && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-800">
-                      <X size={12} /> Ditolak
-                    </span>
+                  {log.strengths && (
+                    <div className="rounded-xl bg-[#5A305A]/5 border border-[#5A305A]/10 px-3 py-2">
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-[#73507B]/80 flex items-center gap-1">
+                        <Star size={10} /> Kekuatan
+                      </p>
+                      <p className="text-xs text-[#5A305A] line-clamp-2">{log.strengths}</p>
+                    </div>
                   )}
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                  <span
-                    className={cn(
-                      "inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider",
-                      log.psikotes_status === "Sudah Psikotes"
-                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                        : "bg-slate-50 text-slate-600 border border-slate-200",
+                {/* Footer */}
+                <div className="mt-auto pt-4">
+                  <div className="px-5 py-3 bg-[#5A305A]/5 border-t border-[#5A305A]/10 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className="bg-white border border-[#5A305A]/15 rounded-lg px-2.5 py-1 text-center">
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-[#73507B]/70">
+                          Skor CV
+                        </p>
+                        <p className="text-sm font-black text-[#5A305A] leading-tight">
+                          {log.assessment_score || 0}
+                        </p>
+                      </div>
+                      <div className="bg-white border border-[#5A305A]/15 rounded-lg px-2.5 py-1 text-center">
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-[#73507B]/70">
+                          Asesmen
+                        </p>
+                        <p className="text-sm font-black text-[#5A305A] leading-tight">
+                          {getAssessmentAverage(log)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!isBulkDeleteMode && canEdit && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteModalData(log);
+                          }}
+                          className="p-2 text-[#73507B] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Hapus Kandidat"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-[#5A305A] flex items-center gap-1 group-hover:gap-2 transition-all">
+                        Detail <ChevronRight size={14} />
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {logs.map((log) => {
+            const meta = getStatusMeta(log.status_screening);
+            const isSelected = selectedIds.includes(log.id);
+            return (
+              <div
+                key={log.id}
+                id={`log-${log.id}`}
+                className={cn(
+                  "group relative bg-white rounded-2xl border shadow-sm overflow-hidden transition-all cursor-pointer hover:shadow-md flex",
+                  isSelected
+                    ? "border-[#5A305A] ring-2 ring-[#5A305A]/20"
+                    : "border-slate-200 hover:border-[#5A305A]/30",
+                  blinkingId === log.id
+                    ? "animate-pulse ring-2 ring-indigo-500 ring-inset"
+                    : "",
+                )}
+                onClick={() => {
+                  if (isBulkDeleteMode) toggleSelection(log.id);
+                  else setSelectedLog(log);
+                }}
+              >
+                <div className={cn("w-1.5 shrink-0", meta?.bar || "bg-slate-300")} />
+                <div className="flex-1 min-w-0 p-4 flex flex-col lg:flex-row lg:items-center gap-4">
+                  <div className="flex items-center gap-3 lg:w-[30%] min-w-0">
+                    {isBulkDeleteMode && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSelection(log.id);
+                        }}
+                        className="text-[#73507B] hover:text-[#5A305A] transition-colors shrink-0"
+                      >
+                        {isSelected ? (
+                          <CheckSquare size={22} className="text-[#5A305A]" />
+                        ) : (
+                          <Square size={22} />
+                        )}
+                      </button>
                     )}
-                  >
-                    {log.psikotes_status || "Belum Psikotes"}
-                  </span>
-                  <span
-                    className={cn(
-                      "inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider",
-                      log.interview_status === "Sudah Interview"
-                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                        : "bg-slate-50 text-slate-600 border border-slate-200",
+                    <div className="w-12 h-12 rounded-xl bg-[#5A305A]/10 flex items-center justify-center text-[#5A305A] font-bold overflow-hidden shrink-0 border border-[#5A305A]/10">
+                      <CandidateAvatar
+                        source={log.external_data?.raw_data || log.source_info}
+                        alt={log.full_name}
+                        className="w-full h-full object-cover"
+                        fallback={log.full_name?.[0] || "?"}
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-bold text-[#5A305A] truncate">
+                          {log.full_name}
+                        </h3>
+                        {log.is_blacklisted && (
+                          <span
+                            className="px-1.5 py-0.5 bg-black text-white text-[10px] font-bold rounded shrink-0"
+                            title={log.blacklist_reason || "Kandidat berada dalam daftar blacklist"}
+                          >
+                            BLACKLIST
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm font-medium text-[#73507B] truncate">
+                        {log.position}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="lg:w-[28%] min-w-0 space-y-1 text-xs text-[#73507B]">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Mail size={13} className="shrink-0" />
+                      <span className="truncate">{log.email || "-"}</span>
+                    </div>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Phone size={13} className="shrink-0" />
+                      <span className="truncate">{log.phone || "-"}</span>
+                    </div>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <GraduationCap size={13} className="shrink-0" />
+                      <span className="truncate">{log.education || "-"}</span>
+                    </div>
+                  </div>
+
+                  <div className="lg:flex-1 min-w-0 space-y-2">
+                    <div className="flex flex-wrap gap-1.5">
+                      {renderStatusBadge(log)}
+                      {renderProcessChips(log)}
+                    </div>
+                    <p className="text-[11px] text-[#73507B]">
+                      Melamar {formatDate(log.date)} · Diarsipkan{" "}
+                      {formatDate(log.archived_at || log.created_at)}
+                    </p>
+                    {log.notes && (
+                      <p className="text-xs text-[#5A305A] italic line-clamp-1">
+                        "{log.notes}"
+                      </p>
                     )}
-                  >
-                    {log.interview_status || "Belum Interview"}
-                  </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="bg-[#5A305A]/5 border border-[#5A305A]/15 rounded-lg px-2.5 py-1 text-center">
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-[#73507B]/70">
+                        Skor CV
+                      </p>
+                      <p className="text-sm font-black text-[#5A305A] leading-tight">
+                        {log.assessment_score || 0}
+                      </p>
+                    </div>
+                    <div className="bg-[#5A305A]/5 border border-[#5A305A]/15 rounded-lg px-2.5 py-1 text-center">
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-[#73507B]/70">
+                        Asesmen
+                      </p>
+                      <p className="text-sm font-black text-[#5A305A] leading-tight">
+                        {getAssessmentAverage(log)}
+                      </p>
+                    </div>
+                    {!isBulkDeleteMode && canEdit && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteModalData(log);
+                        }}
+                        className="p-2 text-[#73507B] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Hapus Kandidat"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                    <ChevronRight
+                      size={18}
+                      className="text-[#73507B] group-hover:text-[#5A305A] transition-colors"
+                    />
+                  </div>
                 </div>
               </div>
-
-              {log.notes && (
-                <div className="mt-auto pt-4 border-t border-slate-100">
-                  <p className="text-xs text-slate-500 line-clamp-2 italic">
-                    "{log.notes}"
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Card Footer */}
-            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex flex-col gap-2 mt-auto">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  Skor Screening
-                </span>
-                <span className="text-lg font-black text-indigo-600">
-                  {log.assessment_score || 0}
-                </span>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {logs.length === 0 && !loading && (
         <div className="bg-white/70 backdrop-blur-md rounded-2xl border border-slate-200 shadow-sm text-center py-20">
@@ -888,22 +1136,13 @@ export default function Logs() {
                     <h3 className="text-2xl font-bold text-[#5A305A]">
                       {selectedLog.full_name}
                     </h3>
-                    {selectedLog.status_screening === "hired" && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-800">
-                        <Briefcase size={10} />
-                        Direkrut
-                      </span>
-                    )}
-                    {selectedLog.status_screening === "accepted" && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800">
-                        <Star size={10} />
-                        Diterima
-                      </span>
-                    )}
-                    {selectedLog.status_screening === "rejected" && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-800">
-                        <X size={10} />
-                        Ditolak
+                    {renderStatusBadge(selectedLog)}
+                    {selectedLog.is_blacklisted && (
+                      <span
+                        className="px-2 py-0.5 bg-black text-white text-[10px] font-bold rounded"
+                        title={selectedLog.blacklist_reason || "Kandidat berada dalam daftar blacklist"}
+                      >
+                        BLACKLIST
                       </span>
                     )}
                   </div>
@@ -917,7 +1156,15 @@ export default function Logs() {
                     </div>
                     <div className="flex items-center gap-2 text-sm text-slate-600">
                       <Phone size={16} className="text-slate-400" />
-                      {selectedLog.phone}
+                      {selectedLog.phone || "-"}
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                      <GraduationCap size={16} className="text-slate-400" />
+                      {selectedLog.education || "-"}
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                      <Briefcase size={16} className="text-slate-400" />
+                      {selectedLog.work_experience || "-"}
                     </div>
                     {selectedLog.source_info && (
                       <div className="flex items-start gap-2 text-sm text-slate-600">
@@ -991,15 +1238,7 @@ export default function Logs() {
                         Skor Asesmen
                       </span>
                       <span className="text-lg font-bold text-indigo-600">
-                        {Math.round(
-                          ((selectedLog.technical_score || 0) +
-                            (selectedLog.communication_score || 0) +
-                            (selectedLog.problem_solving_score || 0) +
-                            (selectedLog.teamwork_score || 0) +
-                            (selectedLog.leadership_score || 0) +
-                            (selectedLog.adaptability_score || 0)) /
-                            6,
-                        )}
+                        {getAssessmentAverage(selectedLog)}
                       </span>
                     </div>
                   </div>
@@ -1048,9 +1287,64 @@ export default function Logs() {
                   </div>
                 </div>
               )}
+
+              {(selectedLog.strengths ||
+                selectedLog.risk_factors ||
+                selectedLog.potential_factors ||
+                selectedLog.assessment_reason) && (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                    Analisis Kandidat
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {[
+                      { label: "Kekuatan", value: selectedLog.strengths, Icon: Star, cls: "bg-indigo-50 border-indigo-100 text-indigo-700" },
+                      { label: "Faktor Risiko", value: selectedLog.risk_factors, Icon: AlertTriangle, cls: "bg-amber-50 border-amber-100 text-amber-700" },
+                      { label: "Potensi", value: selectedLog.potential_factors, Icon: Lightbulb, cls: "bg-emerald-50 border-emerald-100 text-emerald-700" },
+                    ].map(({ label, value, Icon, cls }) => (
+                      <div key={label} className={cn("p-3 rounded-xl border", cls)}>
+                        <p className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                          <Icon size={12} /> {label}
+                        </p>
+                        <p className="text-sm text-slate-700 leading-relaxed">{value || "-"}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {selectedLog.assessment_reason && (
+                    <p className="text-sm text-slate-500 italic leading-relaxed">
+                      Alasan skor: "{selectedLog.assessment_reason}"
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {[
+                { label: "Ringkasan AI (Berdasarkan Biodata)", data: selectedLog.ai_biodata_summary },
+                { label: "Ringkasan AI (Berdasarkan Psikotes)", data: selectedLog.ai_psikotes_summary },
+              ].map(
+                ({ label, data }) =>
+                  data && (
+                    <div key={label} className="space-y-3">
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        <Sparkles size={14} className="text-indigo-500" />
+                        {label}
+                      </h4>
+                      <div className="text-sm text-indigo-900/80 bg-gradient-to-br from-indigo-50 to-purple-50 p-4 rounded-xl border border-indigo-100">
+                        <JSONRenderer data={data} />
+                      </div>
+                    </div>
+                  ),
+              )}
             </div>
 
             <div className="p-6 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row justify-end gap-3">
+              <Link
+                to={`/candidates/${selectedLog.id}`}
+                className="px-6 py-2.5 bg-white border border-[#5A305A]/20 text-[#5A305A] font-bold rounded-xl hover:bg-[#5A305A]/5 transition-all flex items-center justify-center gap-2"
+              >
+                <ExternalLink size={16} />
+                Buka Profil Lengkap
+              </Link>
               {canEdit && (
                 <button
                   onClick={() => {

@@ -471,7 +471,7 @@ export default function Screening() {
       if (response.ok) {
         toast({
           title: "Berhasil",
-          description: `Kandidat ${rejectModalData.full_name} telah ditolak dan dipindahkan ke Candidate Archive.`,
+          description: `Kandidat ${rejectModalData.full_name} telah ditolak dan dipindahkan ke Log Kandidat.`,
         });
 
         if (sendRejectEmail && selectedRejectTemplate) {
@@ -697,7 +697,7 @@ if (blacklistError)
       if (response.ok) {
         toast({
           title: "Berhasil",
-          description: `Kandidat ${hireModalData.full_name} telah direkrut dan dipindahkan ke Candidate Archive.`,
+          description: `Kandidat ${hireModalData.full_name} telah direkrut dan dipindahkan ke Log Kandidat.`,
         });
         setCandidates(candidates.filter((c) => c.id !== hireModalData.id));
         setHireModalData(null);
@@ -831,7 +831,9 @@ if (blacklistError)
   const filteredCandidatesForPosition = candidatesForSelectedPosition.filter((c) => {
     const selectedStatus = positionStatusFilters[selectedPosition!] || "Inbox";
     if (selectedStatus === NEEDS_ACTION_FILTER) return getActionReasons(c).needsAction;
-    if (selectedStatus === "Inbox" || !PIPELINE_STATUS_OPTIONS.includes(selectedStatus)) return true;
+    // Inbox = active candidates only; archived (rejected/hired) ones show
+    // under their own Rejected/Hired filters.
+    if (selectedStatus === "Inbox" || !PIPELINE_STATUS_OPTIONS.includes(selectedStatus)) return !c._isArchived;
     return getCandidateDerivedStatus(c) === selectedStatus;
   });
 
@@ -1539,7 +1541,7 @@ if (blacklistError)
                       return sidebarOptions.map(opt => {
                         const count =
                           opt === "Inbox"
-                            ? allCandidatesInThisPosition.length
+                            ? allCandidatesInThisPosition.filter((c: any) => !c._isArchived).length
                             : opt === NEEDS_ACTION_FILTER
                               ? allCandidatesInThisPosition.filter((c: any) => getActionReasons(c).needsAction).length
                               : allCandidatesInThisPosition.filter((c: any) => getCandidateDerivedStatus(c) === opt).length;
@@ -1817,12 +1819,14 @@ if (blacklistError)
                                 />
                                 <PopoverContent className="w-56 p-1.5">
                                   <div className="flex flex-col gap-0.5">
-                                    <button
-                                      onClick={() => handleUpdateStatus(candidate.id, "accepted")}
-                                      className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-[#5A305A] rounded-lg hover:bg-[#5A305A]/10 hover:text-[#5A305A] transition-colors text-left"
-                                    >
-                                      <ThumbsUp size={16} /> Terima Kandidat
-                                    </button>
+                                    {candidate.status_screening !== "accepted" && (
+                                      <button
+                                        onClick={() => handleUpdateStatus(candidate.id, "accepted")}
+                                        className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-[#5A305A] rounded-lg hover:bg-[#5A305A]/10 hover:text-[#5A305A] transition-colors text-left"
+                                      >
+                                        <ThumbsUp size={16} /> Terima Kandidat
+                                      </button>
+                                    )}
                                     <button
                                       onClick={() => handleUpdateStatus(candidate.id, "hired")}
                                       className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-[#5A305A] rounded-lg hover:bg-[#5A305A]/10 hover:text-[#5A305A] transition-colors text-left"
@@ -2331,7 +2335,7 @@ if (blacklistError)
                 <span className="font-bold text-[#5A305A]">
                   {rejectModalData.full_name}
                 </span>
-                ? Kandidat ini akan dipindahkan ke Candidate Archive.
+                ? Kandidat ini akan dipindahkan ke Log Kandidat.
               </p>
               <div className="text-left mt-4">
                 <label className="block text-sm font-semibold text-[#5A305A] mb-2">

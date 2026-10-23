@@ -1,5 +1,5 @@
 import React, { useEffect, Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import { supabase } from './lib/supabase';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { usePermissions } from './hooks/usePermissions';
@@ -20,7 +20,6 @@ const UserManagement = lazy(() => import('./pages/UserManagement'));
 const RegistrationTokens = lazy(() => import('./pages/RegistrationTokens'));
 const PsikotesSchedules = lazy(() => import('./pages/PsikotesSchedules'));
 const InterviewSchedules = lazy(() => import('./pages/InterviewSchedules'));
-const CandidateArchive = lazy(() => import('./pages/CandidateArchive'));
 const CandidateTracking = lazy(() => import('./pages/CandidateTracking'));
 const CandidateProfile = lazy(() => import('./pages/CandidateProfile'));
 const UploadCV = lazy(() => import('./pages/UploadCV'));
@@ -29,6 +28,22 @@ const PublicCareer = lazy(() => import('./pages/PublicCareer'));
 const ApplicationForm = lazy(() => import('./pages/ApplicationForm'));
 const ExternalData = lazy(() => import('./pages/ExternalData'));
 const ChangePassword = lazy(() => import('./pages/ChangePassword'));
+
+// Candidate Archive was merged into Log Kandidat; keep old /archive links
+// (its single-day `date` filter becomes a one-day range) working.
+function ArchiveRedirect() {
+  const [searchParams] = useSearchParams();
+  const params = new URLSearchParams();
+  const q = searchParams.get('q');
+  const date = searchParams.get('date');
+  if (q) params.set('q', q);
+  if (date) {
+    params.set('startDate', date);
+    params.set('endDate', date);
+  }
+  const qs = params.toString();
+  return <Navigate to={qs ? `/logs?${qs}` : '/logs'} replace />;
+}
 
 export default function App() {
   return (
@@ -111,7 +126,7 @@ function AppRoutes() {
                           <Route path="/interview" element={<InterviewSchedules />} />
                           <Route path="/tracking" element={<CandidateTracking />} />
                           <Route path="/logs" element={<Logs />} />
-                          <Route path="/archive" element={<CandidateArchive />} />
+                          <Route path="/archive" element={<ArchiveRedirect />} />
                           <Route path="/upload-cv" element={<UploadCV />} />
                           <Route path="/templates" element={<Templates />} />
                           <Route path="/evaluation-templates" element={<EvaluationTemplates />} />
