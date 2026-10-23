@@ -423,10 +423,10 @@ export default function CandidateTracking() {
         </div>
       </div>
 
-      <div className="bg-white/70 backdrop-blur-md p-3 rounded-2xl border border-slate-200 shadow-sm mb-4 flex flex-col lg:flex-row gap-2 lg:items-center">
-          <div className="flex flex-col sm:flex-row flex-wrap lg:flex-nowrap gap-2 flex-1 min-w-0">
+      <div className="bg-white/70 backdrop-blur-md p-2 rounded-2xl border border-slate-200 shadow-sm mb-4 flex flex-col lg:flex-row gap-1.5 lg:items-center">
+          <div className="flex flex-col sm:flex-row flex-wrap lg:flex-nowrap gap-1.5 flex-1 min-w-0">
             <div className="relative w-full sm:w-auto sm:flex-1 min-w-[160px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               <input
                 type="text"
                 placeholder="Cari kandidat..."
@@ -435,7 +435,7 @@ export default function CandidateTracking() {
                   setSearchTerm(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="w-full pl-10 pr-10 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#5A305A] transition-shadow h-10 text-sm"
+                className="w-full pl-10 pr-10 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#5A305A] transition-shadow h-9 text-sm"
               />
               {searchTerm && (
                 <button
@@ -453,7 +453,7 @@ export default function CandidateTracking() {
                 setPositionFilter(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full sm:w-auto lg:w-[150px] px-3 rounded-xl border border-slate-200 bg-white text-[#5A305A] focus:outline-none focus:ring-2 focus:ring-[#5A305A] transition-shadow h-10 text-sm truncate"
+              className="w-full sm:w-auto lg:w-[150px] px-3 rounded-xl border border-slate-200 bg-white text-[#5A305A] focus:outline-none focus:ring-2 focus:ring-[#5A305A] transition-shadow h-9 text-sm truncate"
             >
               <option value="all">Semua Posisi</option>
               {positionOptions.map((pos) => (
@@ -469,7 +469,7 @@ export default function CandidateTracking() {
                 setSourceFilter(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full sm:w-auto lg:w-[150px] px-3 rounded-xl border border-slate-200 bg-white text-[#5A305A] focus:outline-none focus:ring-2 focus:ring-[#5A305A] transition-shadow h-10 text-sm truncate"
+              className="w-full sm:w-auto lg:w-[150px] px-3 rounded-xl border border-slate-200 bg-white text-[#5A305A] focus:outline-none focus:ring-2 focus:ring-[#5A305A] transition-shadow h-9 text-sm truncate"
             >
               <option value="all">Semua Sumber CV</option>
               {sourceOptions.map((src) => (
@@ -485,7 +485,7 @@ export default function CandidateTracking() {
                 setStatusFilter(e.target.value as StatusFilter);
                 setCurrentPage(1);
               }}
-              className="w-full sm:w-auto lg:w-[150px] px-3 rounded-xl border border-slate-200 bg-white text-[#5A305A] focus:outline-none focus:ring-2 focus:ring-[#5A305A] transition-shadow h-10 text-sm truncate"
+              className="w-full sm:w-auto lg:w-[150px] px-3 rounded-xl border border-slate-200 bg-white text-[#5A305A] focus:outline-none focus:ring-2 focus:ring-[#5A305A] transition-shadow h-9 text-sm truncate"
             >
               {STATUS_FILTER_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -495,8 +495,8 @@ export default function CandidateTracking() {
             <Popover>
               <PopoverTrigger
                 render={
-                  <button className="w-full sm:w-auto shrink-0 flex items-center justify-between gap-2 px-3 rounded-xl border border-slate-200 bg-white text-[#5A305A] hover:bg-slate-50 transition-colors h-10 text-sm">
-                    <span className="flex items-center gap-2 whitespace-nowrap">
+                  <button className="w-full sm:w-auto shrink-0 flex items-center justify-between gap-1.5 px-3 rounded-xl border border-slate-200 bg-white text-[#5A305A] hover:bg-slate-50 transition-colors h-9 text-sm">
+                    <span className="flex items-center gap-1.5 whitespace-nowrap">
                       <CalendarIcon size={16} className="text-[#73507B]" />
                       {startDate && endDate
                         ? `${formatDateDMMMY(startDate)} – ${formatDateDMMMY(endDate)}`
@@ -544,7 +544,7 @@ export default function CandidateTracking() {
                       </button>
                     ))}
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-1.5">
                     <label className="space-y-1">
                       <span className="block text-[11px] font-medium text-[#73507B]">Dari</span>
                       <input
@@ -582,9 +582,9 @@ export default function CandidateTracking() {
           <button
             onClick={handleExportExcel}
             disabled={isExporting || isLoading || filteredCandidates.length === 0}
-            className="flex items-center justify-center gap-2 bg-[#5A305A] hover:bg-[#3F223F] text-white px-4 rounded-xl transition-colors disabled:opacity-50 whitespace-nowrap shrink-0 h-10 text-sm"
+            className="flex items-center justify-center gap-1.5 bg-[#5A305A] hover:bg-[#3F223F] text-white px-3 rounded-xl transition-colors disabled:opacity-50 whitespace-nowrap shrink-0 h-9 text-sm"
           >
-            {isExporting ? <Loader2 className="animate-spin" size={18} /> : <Download size={18} />}
+            {isExporting ? <Loader2 className="animate-spin" size={16} /> : <Download size={16} />}
             Export ({filteredCandidates.length})
           </button>
       </div>

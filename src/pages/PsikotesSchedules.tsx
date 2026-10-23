@@ -334,23 +334,23 @@ export default function PsikotesSchedules() {
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white/70 backdrop-blur-md p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row gap-4">
+      <div className="bg-white/70 backdrop-blur-md p-2 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row gap-3">
         <div className="relative flex-1">
           <Search
             className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            size={18}
+            size={16}
           />
           <input
             type="text"
             placeholder="Cari nama kandidat atau posisi..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm h-10"
+            className="w-full pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm h-9"
           />
         </div>
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex flex-col sm:flex-row gap-1.5">
           {viewMode === "list" && (
-            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 h-10 text-sm">
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 h-9 text-sm">
               <CalendarIcon size={16} className="text-slate-400" />
               <input
                 type="date"
@@ -370,18 +370,18 @@ export default function PsikotesSchedules() {
           {viewMode === "list" && (
             <button
               onClick={resetFilters}
-              className="text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm flex items-center justify-center h-10 text-sm w-10 shrink-0"
+              className="text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm flex items-center justify-center h-9 text-sm w-9 shrink-0"
               title="Reset Filter"
             >
-              <FilterX size={20} />
+              <FilterX size={16} />
             </button>
           )}
 
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl ml-2 h-10">
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl ml-2 h-9">
             <button
               onClick={() => setViewMode("list")}
               className={cn(
-                "p-2 rounded-lg transition-all flex items-center gap-2 text-sm font-medium",
+                "p-2 rounded-lg transition-all flex items-center gap-1.5 text-sm font-medium",
                 viewMode === "list"
                   ? "bg-white text-indigo-600 shadow-sm"
                   : "text-slate-500 hover:text-slate-700",
@@ -393,7 +393,7 @@ export default function PsikotesSchedules() {
             <button
               onClick={() => setViewMode("calendar")}
               className={cn(
-                "p-2 rounded-lg transition-all flex items-center gap-2 text-sm font-medium",
+                "p-2 rounded-lg transition-all flex items-center gap-1.5 text-sm font-medium",
                 viewMode === "calendar"
                   ? "bg-white text-indigo-600 shadow-sm"
                   : "text-slate-500 hover:text-slate-700",
@@ -408,18 +408,18 @@ export default function PsikotesSchedules() {
             onClick={() =>
               viewMode === "list" ? fetchSchedules() : fetchCalendarSchedules()
             }
-            className="text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm flex items-center justify-center h-10 text-sm w-10 shrink-0"
+            className="text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm flex items-center justify-center h-9 text-sm w-9 shrink-0"
             title="Refresh Data"
           >
-            <RefreshCcw size={20} className={loading ? "animate-spin" : ""} />
+            <RefreshCcw size={16} className={loading ? "animate-spin" : ""} />
           </button>
 
           {canEdit && (
             <button
               onClick={() => setIsScheduling(true)}
-              className="flex items-center justify-center gap-2 px-4 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-100 transition-all text-sm whitespace-nowrap h-10"
+              className="flex items-center justify-center gap-1.5 px-3 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-100 transition-all text-sm whitespace-nowrap h-9"
             >
-              <CalendarIcon size={18} />
+              <CalendarIcon size={16} />
               Jadwalkan Psikotes Baru
             </button>
           )}

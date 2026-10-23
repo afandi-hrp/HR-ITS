@@ -439,22 +439,22 @@ export default function Logs() {
         </div>
       </div>
 
-      <div className="bg-white/70 backdrop-blur-md p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4">
+      <div className="bg-white/70 backdrop-blur-md p-2 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-3">
         <div className="relative flex-1">
           <Search
             className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            size={18}
+            size={16}
           />
           <input
             type="text"
             placeholder="Cari di arsip..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm h-10"
+            className="w-full pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm h-9"
           />
         </div>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 h-10 text-sm">
+        <div className="flex flex-col sm:flex-row gap-1.5">
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 h-9 text-sm">
             <Filter size={16} className="text-slate-400" />
             <select
               value={statusFilter}
@@ -467,7 +467,7 @@ export default function Logs() {
               <option value="hired">Direkrut</option>
             </select>
           </div>
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 h-10 text-sm">
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 h-9 text-sm">
             <Calendar size={16} className="text-slate-400" />
             <input
               type="date"
@@ -483,11 +483,11 @@ export default function Logs() {
               className="bg-transparent text-sm focus:outline-none"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-1.5">
             {isBulkDeleteMode && selectedIds.length > 0 && (
               <button
                 onClick={() => setBulkDeleteModalOpen(true)}
-                className="px-4 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all shadow-sm shadow-red-200 flex items-center gap-2 h-10"
+                className="px-3 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all shadow-sm shadow-red-200 flex items-center gap-1.5 h-9"
               >
                 <Trash2 size={16} />
                 Hapus Terpilih ({selectedIds.length})
@@ -500,7 +500,7 @@ export default function Logs() {
                   if (isBulkDeleteMode) setSelectedIds([]);
                 }}
                 className={cn(
-                  "px-4 text-sm font-medium rounded-xl transition-all border h-10",
+                  "px-3 text-sm font-medium rounded-xl transition-all border h-9",
                   isBulkDeleteMode
                     ? "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
                     : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50",
@@ -517,18 +517,18 @@ export default function Logs() {
                 setStatusFilter("all");
                 setCurrentPage(1);
               }}
-              className="text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm flex items-center justify-center h-10 text-sm w-10 shrink-0"
+              className="text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm flex items-center justify-center h-9 text-sm w-9 shrink-0"
               title="Reset Filter"
             >
-              <FilterX size={20} />
+              <FilterX size={16} />
             </button>
             <button
               onClick={fetchLogs}
-              className="text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm flex items-center justify-center h-10 text-sm w-10 shrink-0"
+              className="text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm flex items-center justify-center h-9 text-sm w-9 shrink-0"
             >
-              <RefreshCcw size={20} className={loading ? "animate-spin" : ""} />
+              <RefreshCcw size={16} className={loading ? "animate-spin" : ""} />
             </button>
-            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl p-1 h-10">
+            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl p-1 h-9">
               {(
                 [
                   { mode: "card", title: "Tampilan Kartu", Icon: LayoutGrid },
@@ -546,19 +546,19 @@ export default function Logs() {
                   )}
                   title={title}
                 >
-                  <Icon size={18} />
+                  <Icon size={16} />
                 </button>
               ))}
             </div>
             <button
               onClick={handlePrepareExport}
               disabled={exportLoading}
-              className="flex items-center justify-center gap-2 px-4 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-bold rounded-xl transition-all shadow-sm border border-emerald-200 disabled:opacity-50 text-sm whitespace-nowrap h-10"
+              className="flex items-center justify-center gap-1.5 px-3 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-bold rounded-xl transition-all shadow-sm border border-emerald-200 disabled:opacity-50 text-sm whitespace-nowrap h-9"
             >
               {exportLoading ? (
-                <Loader2 size={18} className="animate-spin" />
+                <Loader2 size={16} className="animate-spin" />
               ) : (
-                <Download size={18} />
+                <Download size={16} />
               )}
               <span className="hidden sm:inline">Export Excel</span>
             </button>
@@ -567,7 +567,7 @@ export default function Logs() {
       </div>
 
       {viewMode === "card" ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(340px,1fr))] gap-5">
           {logs.map((log) => {
             const meta = getStatusMeta(log.status_screening);
             const isSelected = selectedIds.includes(log.id);

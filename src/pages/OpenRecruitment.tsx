@@ -317,18 +317,18 @@ export default function OpenRecruitment() {
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white/70 backdrop-blur-md p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap gap-4">
+      <div className="bg-white/70 backdrop-blur-md p-2 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search
             className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            size={18}
+            size={16}
           />
           <input
             type="text"
             placeholder="Cari posisi..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm h-10"
+            className="w-full pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm h-9"
           />
         </div>
         <Popover open={sortOpen} onOpenChange={setSortOpen}>
@@ -336,14 +336,14 @@ export default function OpenRecruitment() {
             render={
               <button
                 className={cn(
-                  "relative flex items-center gap-2 px-3 bg-white border rounded-xl transition-all shadow-sm shrink-0 h-10 text-sm",
+                  "relative flex items-center gap-1.5 px-3 bg-white border rounded-xl transition-all shadow-sm shrink-0 h-9 text-sm",
                   sortOption !== DEFAULT_SORT
                     ? "text-[#5A305A] border-[#5A305A]/40 bg-[#5A305A]/5"
                     : "text-[#73507B] border-slate-200 hover:text-[#5A305A] hover:bg-slate-50",
                 )}
                 title={`Urutkan: ${currentSort.label}`}
               >
-                <ArrowUpDown size={18} className="shrink-0" />
+                <ArrowUpDown size={16} className="shrink-0" />
                 <span className="hidden sm:inline whitespace-nowrap">{currentSort.label}</span>
                 {sortOption !== DEFAULT_SORT && (
                   <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#F58C77] border-2 border-white" />
@@ -365,7 +365,7 @@ export default function OpenRecruitment() {
                       setSortOpen(false);
                     }}
                     className={cn(
-                      "w-full flex items-center justify-between gap-2 px-3 py-2 text-sm rounded-lg text-left transition-colors",
+                      "w-full flex items-center justify-between gap-1.5 px-3 py-2 text-sm rounded-lg text-left transition-colors",
                       sortOption === o.value
                         ? "bg-[#5A305A]/10 text-[#5A305A] font-bold"
                         : "text-[#5A305A] hover:bg-slate-50",
@@ -384,17 +384,17 @@ export default function OpenRecruitment() {
             setSearch("");
             setSortOption(DEFAULT_SORT);
           }}
-          className="text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm flex items-center justify-center h-10 text-sm w-10 shrink-0"
+          className="text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 hover:border-rose-200 rounded-xl transition-all shadow-sm flex items-center justify-center h-9 text-sm w-9 shrink-0"
           title="Reset Filter"
         >
-          <FilterX size={20} />
+          <FilterX size={16} />
         </button>
         <button
           onClick={fetchItems}
-          className="text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm flex items-center justify-center h-10 text-sm w-10 shrink-0"
+          className="text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm flex items-center justify-center h-9 text-sm w-9 shrink-0"
           title="Refresh Data"
         >
-          <RefreshCcw size={20} className={loading ? "animate-spin" : ""} />
+          <RefreshCcw size={16} className={loading ? "animate-spin" : ""} />
         </button>
         {canEdit && (
           <button
@@ -403,9 +403,9 @@ export default function OpenRecruitment() {
               setFormData({ position: "", jobdesk: "", kualifikasi: "" });
               setIsModalOpen(true);
             }}
-            className="flex items-center justify-center gap-2 px-4 bg-[#5A305A] text-white hover:bg-[#3F223F] font-bold rounded-xl transition-all shadow-md shadow-indigo-200 text-sm whitespace-nowrap h-10"
+            className="flex items-center justify-center gap-1.5 px-3 bg-[#5A305A] text-white hover:bg-[#3F223F] font-bold rounded-xl transition-all shadow-md shadow-indigo-200 text-sm whitespace-nowrap h-9"
           >
-            <Plus size={18} />
+            <Plus size={16} />
             Tambah Lowongan
           </button>
         )}

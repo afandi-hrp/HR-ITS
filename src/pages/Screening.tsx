@@ -1049,22 +1049,22 @@ if (blacklistError)
           </div>
 
           {/* Filter Bar */}
-          <div className="bg-white/70 backdrop-blur-md p-3 rounded-2xl border border-slate-200 shadow-sm mb-6">
-            <div className="flex flex-wrap items-center gap-2">
+          <div className="bg-white/70 backdrop-blur-md p-2 rounded-2xl border border-slate-200 shadow-sm mb-3">
+            <div className="flex flex-wrap items-center gap-1.5">
               <div className="flex-1 min-w-[120px]">
                 <div className="relative w-full">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#73507B]" size={18} />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#73507B]" size={16} />
                   <input
                     type="text"
                     placeholder="Cari nama kandidat atau posisi..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] transition-all text-sm h-10"
+                    className="w-full pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5A305A] transition-all text-sm h-9"
                   />
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 w-[200px] h-10 text-sm">
+              <div className="flex flex-wrap items-center gap-1.5">
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2 w-[180px] h-9 text-sm">
                 <Filter size={16} className="text-[#73507B] shrink-0" />
                 <select
                   value={positionFilter}
@@ -1077,7 +1077,7 @@ if (blacklistError)
                   ))}
                 </select>
               </div>
-              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 w-[220px] h-10 text-sm">
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2 w-[200px] h-9 text-sm">
                 <Filter size={16} className="text-[#73507B] shrink-0" />
                 <select
                   value={STAGE_FILTER_OPTIONS.includes(statusFilter) ? statusFilter : "all"}
@@ -1096,7 +1096,7 @@ if (blacklistError)
               <Popover>
                 <PopoverTrigger
                   render={
-                    <button className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 text-sm text-[#5A305A] shrink-0 hover:bg-white transition-colors h-10">
+                    <button className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 text-sm text-[#5A305A] shrink-0 hover:bg-white transition-colors h-9">
                       <CalendarIcon size={16} className="text-[#73507B] shrink-0" />
                       <span className="whitespace-nowrap">
                         {startDate && endDate
@@ -1140,7 +1140,7 @@ if (blacklistError)
                         </button>
                       ))}
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-1.5">
                       <label className="space-y-1">
                         <span className="block text-[11px] font-medium text-[#73507B]">Dari</span>
                         <input
@@ -1181,14 +1181,14 @@ if (blacklistError)
                   render={
                     <button
                       className={cn(
-                        "relative bg-white border rounded-xl transition-all shadow-sm flex items-center shrink-0 h-10 text-sm w-10 justify-center",
+                        "relative bg-white border rounded-xl transition-all shadow-sm flex items-center shrink-0 h-9 text-sm w-9 justify-center",
                         positionSort !== "terbaru"
                           ? "text-[#5A305A] border-[#5A305A]/40 bg-[#5A305A]/5"
                           : "text-[#73507B] border-slate-200 hover:text-[#5A305A] hover:bg-slate-50",
                       )}
                       title={`Urutkan posisi: ${POSITION_SORT_OPTIONS.find((o) => o.value === positionSort)?.label}`}
                     >
-                      <ArrowUpDown size={18} />
+                      <ArrowUpDown size={16} />
                       {positionSort !== "terbaru" && (
                         <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#F58C77] border-2 border-white" />
                       )}
@@ -1205,7 +1205,7 @@ if (blacklistError)
                         key={o.value}
                         onClick={() => { setPositionSort(o.value); setCurrentPage(1); }}
                         className={cn(
-                          "flex items-center justify-between gap-2 px-3 py-2 text-sm rounded-lg text-left transition-colors",
+                          "flex items-center justify-between gap-1.5 px-3 py-2 text-sm rounded-lg text-left transition-colors",
                           positionSort === o.value
                             ? "bg-[#5A305A]/10 text-[#5A305A] font-bold"
                             : "text-[#5A305A] hover:bg-slate-50",
@@ -1228,25 +1228,25 @@ if (blacklistError)
                   setPositionSort("terbaru");
                   setCurrentPage(1);
                 }}
-                className="text-[#73507B] hover:text-red-600 bg-white border border-slate-200 hover:bg-red-50 hover:border-red-200 rounded-xl transition-all shadow-sm flex items-center gap-2 shrink-0 h-10 text-sm w-10 justify-center"
+                className="text-[#73507B] hover:text-red-600 bg-white border border-slate-200 hover:bg-red-50 hover:border-red-200 rounded-xl transition-all shadow-sm flex items-center gap-1.5 shrink-0 h-9 text-sm w-9 justify-center"
                 title="Reset Filter"
               >
-                <FilterX size={18} />
+                <FilterX size={16} />
               </button>
 
               <button
                 onClick={fetchCandidates}
-                className="text-[#5A305A] bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 rounded-xl transition-all shadow-sm flex items-center gap-2 shrink-0 h-10 text-sm w-10 justify-center"
+                className="text-[#5A305A] bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 rounded-xl transition-all shadow-sm flex items-center gap-1.5 shrink-0 h-9 text-sm w-9 justify-center"
                 title="Refresh Data"
               >
-                <RefreshCcw size={18} className={loading ? "animate-spin" : ""} />
+                <RefreshCcw size={16} className={loading ? "animate-spin" : ""} />
               </button>
             </div>
             </div>
           </div>
 
           {isDataTruncated && (
-            <div className="flex items-center gap-2.5 bg-amber-50 border border-amber-200 text-amber-800 text-sm font-medium rounded-xl px-4 py-3 mb-6">
+            <div className="flex items-center gap-2.5 bg-amber-50 border border-amber-200 text-amber-800 text-sm font-medium rounded-xl px-4 py-3 mb-3">
               <AlertTriangle size={18} className="shrink-0" />
               <span>
                 Menampilkan {SCREENING_FETCH_LIMIT.toLocaleString("id-ID")} kandidat pertama dari hasil filter saat ini — mungkin ada data yang belum ditampilkan. Persempit rentang tanggal atau posisi untuk melihat semuanya.
@@ -1254,9 +1254,9 @@ if (blacklistError)
             </div>
           )}
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(460px,1fr))] gap-4">
              {paginatedPositions.length === 0 && !loading ? (
-                <div className="xl:col-span-2 py-12 text-center bg-white/50 backdrop-blur-sm rounded-2xl border border-dashed border-slate-300">
+                <div className="col-span-full py-12 text-center bg-white/50 backdrop-blur-sm rounded-2xl border border-dashed border-slate-300">
                   <p className="text-[#73507B] font-medium">Tidak ada lowongan ditemukan.</p>
                 </div>
              ) : (
@@ -1278,6 +1278,7 @@ if (blacklistError)
                      n: st.newCount,
                      dot: "bg-indigo-400",
                      bar: "bg-indigo-400",
+                     tint: "bg-indigo-50/70 border-indigo-100",
                      sub: null as React.ReactNode,
                      title: "Pelamar baru yang belum diproses sama sekali (belum diterima/ditolak dan belum dijadwalkan)",
                    },
@@ -1286,6 +1287,7 @@ if (blacklistError)
                      n: st.highFitCount,
                      dot: "bg-emerald-400",
                      bar: "bg-emerald-400",
+                     tint: "bg-emerald-50/70 border-emerald-100",
                      sub: null,
                      title: "Lolos screening awal tetapi belum dijadwalkan psikotes/interview",
                    },
@@ -1294,6 +1296,7 @@ if (blacklistError)
                      n: st.jadwalPsikotes + st.selesaiPsikotes,
                      dot: "bg-sky-400",
                      bar: "bg-sky-400",
+                     tint: "bg-sky-50/70 border-sky-100",
                      sub:
                        psikotesTotal > 0 ? (
                          <>
@@ -1308,6 +1311,7 @@ if (blacklistError)
                      n: st.jadwalInterview + st.selesaiInterview,
                      dot: "bg-amber-400",
                      bar: "bg-amber-400",
+                     tint: "bg-amber-50/70 border-amber-100",
                      sub:
                        interviewTotal > 0 ? (
                          <>
@@ -1322,6 +1326,7 @@ if (blacklistError)
                      n: st.referenceCheck,
                      dot: "bg-fuchsia-400",
                      bar: "bg-fuchsia-400",
+                     tint: "bg-fuchsia-50/70 border-fuchsia-100",
                      sub: null,
                      title: "Reference check sudah diisi — menunggu keputusan akhir (approval / hire)",
                    },
@@ -1338,16 +1343,20 @@ if (blacklistError)
                      onClick={() => { setSelectedPosition(position); setCurrentPage(1); setSearch(""); }}
                      className="group bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-lg hover:border-[#5A305A]/30 hover:-translate-y-0.5 transition-all cursor-pointer flex flex-col overflow-hidden"
                    >
-                     <div className="p-5 flex flex-col gap-4">
+                     <div className="h-1 w-full bg-gradient-to-r from-[#5A305A] via-[#73507B] to-[#F58C77]" />
+                     <div className="p-4 flex flex-col gap-3.5 flex-1">
                        {/* Header */}
-                       <div className="flex items-start justify-between gap-3">
-                         <div className="min-w-0">
-                           <h3 className="text-lg font-bold text-[#5A305A] truncate leading-tight" title={position}>
+                       <div className="flex items-start gap-3">
+                         <div className="w-10 h-10 rounded-xl bg-[#5A305A]/10 text-[#5A305A] flex items-center justify-center shrink-0 border border-[#5A305A]/10">
+                           <Briefcase size={18} />
+                         </div>
+                         <div className="min-w-0 flex-1">
+                           <h3 className="text-base font-bold text-[#5A305A] truncate leading-tight" title={position}>
                              {position}
                            </h3>
                            <div className="mt-1.5 flex items-center gap-x-2 gap-y-1 flex-wrap text-xs text-[#73507B]">
                              <span
-                               className={cn("inline-flex items-center gap-1.5 font-semibold", isPublished ? "text-emerald-700" : "text-slate-500")}
+                               className={cn("inline-flex items-center gap-1.5 font-semibold px-2 py-0.5 rounded-full", isPublished ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500")}
                                title={isPublished ? "Lowongan sedang dipublikasikan di Open Recruitment" : "Lowongan tidak sedang dipublikasikan, tapi masih ada pelamar aktif"}
                              >
                                <span className={cn("w-1.5 h-1.5 rounded-full", isPublished ? "bg-emerald-500" : "bg-slate-400")} />
@@ -1373,15 +1382,15 @@ if (blacklistError)
                        </div>
 
                        {/* Stages */}
-                       <div className="grid grid-cols-3 sm:grid-cols-5 gap-y-3 rounded-xl bg-slate-50/80 border border-slate-100 py-3">
-                         {stages.map((stage, i) => (
+                       <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                         {stages.map((stage) => (
                            <div
                              key={stage.label}
                              title={stage.title}
                              className={cn(
-                               "px-3 min-w-0",
-                               i > 0 && "sm:border-l sm:border-slate-200/80",
-                               stage.n === 0 && !stage.sub && "opacity-45",
+                               "rounded-xl border px-2.5 py-2 min-w-0 transition-opacity",
+                               stage.tint,
+                               stage.n === 0 && !stage.sub && "opacity-50",
                              )}
                            >
                              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#73507B] whitespace-nowrap">
@@ -1391,16 +1400,14 @@ if (blacklistError)
                              <div className="mt-0.5 text-xl font-extrabold text-[#5A305A] leading-tight tabular-nums">
                                {stage.n}
                              </div>
-                             {stage.sub && (
-                               <div className="text-[10.5px] text-[#73507B] leading-snug truncate">{stage.sub}</div>
-                             )}
+                             <div className="mt-0.5 min-h-[2.75em] text-[10.5px] text-[#73507B] leading-snug">{stage.sub}</div>
                            </div>
                          ))}
                        </div>
 
                        {/* Distribution bar */}
                        {st.total > 0 && (
-                         <div className="flex h-1.5 w-full rounded-full overflow-hidden bg-slate-100 gap-px">
+                         <div className="flex h-2 w-full rounded-full overflow-hidden bg-slate-100 gap-px">
                            {segments.map((seg) => (
                              <div
                                key={seg.label}
@@ -1413,7 +1420,13 @@ if (blacklistError)
                        )}
                      </div>
 
-                     {/* Needs action (footer strip) */}
+                     {/* Needs action (footer strip) — always rendered so every card has the same height */}
+                     {actionParts.length === 0 && (
+                       <div className="flex items-center gap-2 w-full px-5 py-2.5 bg-slate-50/80 border-t border-slate-100 text-[#73507B] text-xs font-semibold">
+                         <CheckCircle size={14} className="shrink-0 text-emerald-500" />
+                         <span>Tidak ada tindakan tertunda</span>
+                       </div>
+                     )}
                      {actionParts.length > 0 && (
                        <button
                          onClick={(e) => {

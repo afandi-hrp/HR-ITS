@@ -88,6 +88,16 @@
   html {
     @apply font-sans;
   }
+  /* App-wide default scale of 90% (what the team ended up using via browser
+     zoom on 14" laptops). Tailwind sizes are rem-based, so this shrinks text,
+     spacing and controls together; breakpoints (rem media queries) and
+     viewport-height layouts (h-screen) are unaffected, which `zoom` would
+     break. Screen only — printed/PDF reports keep their 100% sizing. */
+  @media screen {
+    html {
+      font-size: 90%;
+    }
+  }
 }
 
 @layer utilities {

@@ -211,7 +211,7 @@ export default function RegistrationTokens() {
       </div>
 
       {/* Filter Bar — one row from lg up */}
-      <div className="bg-white/70 backdrop-blur-md p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap lg:flex-nowrap items-center gap-2">
+      <div className="bg-white/70 backdrop-blur-md p-2 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap lg:flex-nowrap items-center gap-1.5">
         <div className="relative w-full sm:w-auto sm:flex-1 min-w-[160px]">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#73507B]" />
           <input
@@ -222,7 +222,7 @@ export default function RegistrationTokens() {
               setCurrentPage(1);
             }}
             placeholder="Cari token / penerima..."
-            className="w-full pl-9 pr-8 text-sm rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#5A305A] h-10"
+            className="w-full pl-9 pr-8 text-sm rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#5A305A] h-9"
           />
           {search && (
             <button
@@ -233,7 +233,7 @@ export default function RegistrationTokens() {
             </button>
           )}
         </div>
-        <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2.5 h-10 w-[190px] shrink-0">
+        <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2 h-9 w-[190px] shrink-0">
           <Filter size={16} className="text-[#73507B] shrink-0" />
           <select
             value={statusFilter}
@@ -254,17 +254,17 @@ export default function RegistrationTokens() {
           <button
             onClick={() => setConfirmDelete({ type: "used" })}
             disabled={deleting || counts.terpakai === 0}
-            className="h-10 w-10 shrink-0 flex items-center justify-center bg-white border border-rose-200 text-rose-600 rounded-xl hover:bg-rose-50 transition-colors shadow-sm disabled:opacity-50"
+            className="h-9 w-9 shrink-0 flex items-center justify-center bg-white border border-rose-200 text-rose-600 rounded-xl hover:bg-rose-50 transition-colors shadow-sm disabled:opacity-50"
             title={`Hapus semua token terpakai (${counts.terpakai})`}
           >
-            <Trash2 size={18} />
+            <Trash2 size={16} />
           </button>
         )}
         {canEdit && (
           <button
             onClick={() => generateToken(10)}
             disabled={generating}
-            className="h-10 px-3.5 shrink-0 bg-[#5A305A]/10 text-[#5A305A] text-sm rounded-xl hover:bg-[#5A305A]/20 transition-colors flex items-center gap-1.5 disabled:opacity-70 font-medium whitespace-nowrap"
+            className="h-9 px-3.5 shrink-0 bg-[#5A305A]/10 text-[#5A305A] text-sm rounded-xl hover:bg-[#5A305A]/20 transition-colors flex items-center gap-1.5 disabled:opacity-70 font-medium whitespace-nowrap"
           >
             {generating ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
             Buat 10
@@ -274,7 +274,7 @@ export default function RegistrationTokens() {
           <button
             onClick={() => generateToken(1)}
             disabled={generating}
-            className="h-10 px-3.5 shrink-0 bg-[#5A305A] text-white text-sm rounded-xl hover:bg-[#3F223F] transition-colors flex items-center gap-1.5 disabled:opacity-70 font-medium whitespace-nowrap"
+            className="h-9 px-3.5 shrink-0 bg-[#5A305A] text-white text-sm rounded-xl hover:bg-[#3F223F] transition-colors flex items-center gap-1.5 disabled:opacity-70 font-medium whitespace-nowrap"
           >
             {generating ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
             Buat 1 Token

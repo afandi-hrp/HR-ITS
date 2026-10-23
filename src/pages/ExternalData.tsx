@@ -281,11 +281,11 @@ export default function ExternalData() {
       </div>
 
       {/* Panel Pencarian & Refresh */}
-      <div className="bg-white/70 backdrop-blur-md p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-4 items-center">
+      <div className="bg-white/70 backdrop-blur-md p-2 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-3 items-center">
         <div className="relative w-full flex-1">
           <Search
             className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            size={18}
+            size={16}
           />
           <input
             type="text"
@@ -295,7 +295,7 @@ export default function ExternalData() {
               setSearchTerm(e.target.value);
               // setCurrentPage(1) dipindah ke useEffect debounce
             }}
-            className="pl-10 pr-4 border border-white/60 bg-white/50 backdrop-blur-md rounded-xl w-full focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-sm h-10"
+            className="pl-10 pr-4 border border-white/60 bg-white/50 backdrop-blur-md rounded-xl w-full focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-sm h-9"
           />
         </div>
 
@@ -306,7 +306,7 @@ export default function ExternalData() {
               setStatusFilter(e.target.value as any);
               setCurrentPage(1);
             }}
-            className="w-full sm:w-auto px-4 border border-white/60 bg-white/50 backdrop-blur-md rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-sm text-[#5A305A] font-medium h-10"
+            className="w-full sm:w-auto px-3 border border-white/60 bg-white/50 backdrop-blur-md rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-sm text-[#5A305A] font-medium h-9"
           >
             <option value="all">Semua Data</option>
             <option value="hide_archived">Sembunyikan Arsip</option>
@@ -320,9 +320,9 @@ export default function ExternalData() {
           <button
             onClick={handleRefresh}
             disabled={isLoading}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 bg-white/50 backdrop-blur-md border border-white/60 text-indigo-700 rounded-xl hover:bg-white/80 hover:shadow-md transition-all shadow-sm disabled:opacity-50 font-medium text-sm h-10"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-6 bg-white/50 backdrop-blur-md border border-white/60 text-indigo-700 rounded-xl hover:bg-white/80 hover:shadow-md transition-all shadow-sm disabled:opacity-50 font-medium text-sm h-9"
           >
-            <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} />
+            <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
             Refresh Data
           </button>
         </div>

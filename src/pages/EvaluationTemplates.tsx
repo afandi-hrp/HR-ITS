@@ -503,32 +503,32 @@ export default function EvaluationTemplates() {
         </div>
       </div>
 
-      <div className="bg-white/70 backdrop-blur-md p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4">
+      <div className="bg-white/70 backdrop-blur-md p-2 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-3">
         <div className="relative flex-1">
           <Search
             className="absolute left-3 top-1/2 -translate-y-1/2 text-[#73507B]"
-            size={18}
+            size={16}
           />
           <input
             type="text"
             placeholder="Cari template evaluasi..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm h-10"
+            className="w-full pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm h-9"
           />
         </div>
         <button
           onClick={fetchTemplates}
-          className="text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm flex items-center justify-center h-10 text-sm w-10 shrink-0"
+          className="text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl transition-all shadow-sm flex items-center justify-center h-9 text-sm w-9 shrink-0"
         >
-          <RefreshCcw size={20} className={loading ? "animate-spin" : ""} />
+          <RefreshCcw size={16} className={loading ? "animate-spin" : ""} />
         </button>
         {canEdit && (
           <button
             onClick={() => handleOpenModal()}
-            className="flex items-center justify-center gap-2 px-4 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-100 transition-all text-sm whitespace-nowrap h-10"
+            className="flex items-center justify-center gap-1.5 px-3 bg-[#5A305A] text-white font-bold rounded-xl hover:bg-[#3F223F] shadow-lg shadow-indigo-100 transition-all text-sm whitespace-nowrap h-9"
           >
-            <Plus size={18} />
+            <Plus size={16} />
             Tambah Template
           </button>
         )}
