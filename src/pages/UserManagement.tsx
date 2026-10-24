@@ -21,6 +21,7 @@ import {
   AlertTriangle,
   UserX,
   UserCheck,
+  Pencil,
 } from "lucide-react";
 import { useToast } from "../components/ui/use-toast";
 import { usePermissions } from "../hooks/usePermissions";
@@ -510,11 +511,11 @@ export default function UserManagement() {
             <colgroup>
               <col style={{ width: "20%" }} />
               <col style={{ width: "10%" }} />
-              <col style={{ width: "11%" }} />
-              <col style={{ width: "13%" }} />
+              <col style={{ width: "10%" }} />
+              <col style={{ width: "12%" }} />
               <col style={{ width: "16%" }} />
               <col style={{ width: "13%" }} />
-              <col style={{ width: "17%" }} />
+              <col style={{ width: "19%" }} />
             </colgroup>
             <thead>
               <tr className="bg-[#5A305A]/5 border-b border-[#5A305A]/20">
@@ -658,19 +659,22 @@ export default function UserManagement() {
                       );
                     })()}
                     <td className="px-3 py-3 text-center">
-                      <div className="inline-flex flex-wrap items-center justify-center gap-1.5">
+                      <div className="inline-flex flex-nowrap items-center justify-center gap-1.5">
                         {canEdit && (
                           <button
                             onClick={() => handleEdit(user)}
-                            className="inline-flex items-center justify-center bg-[#5A305A] hover:bg-[#3F223F] text-white font-medium text-xs px-3 py-2 rounded-lg transition-colors"
+                            className="p-2 rounded-lg bg-[#5A305A] hover:bg-[#3F223F] text-white transition-colors"
+                            title="Edit akses"
+                            aria-label="Edit akses"
                           >
-                            Edit Akses
+                            <Pencil size={16} />
                           </button>
                         )}
                         <button
                           onClick={() => openDetail(user)}
                           className="p-2 rounded-lg border border-[#5A305A]/20 text-[#5A305A] hover:bg-[#5A305A]/10 transition-colors"
                           title="Lihat aktivitas"
+                          aria-label="Lihat aktivitas"
                         >
                           <Activity size={16} />
                         </button>
@@ -679,6 +683,7 @@ export default function UserManagement() {
                             onClick={() => setResetUser(user)}
                             className="p-2 rounded-lg border border-[#F58C77]/50 text-[#c2573f] hover:bg-[#FFF5C5] transition-colors"
                             title="Reset password"
+                            aria-label="Reset password"
                           >
                             <KeyRound size={16} />
                           </button>
@@ -689,6 +694,7 @@ export default function UserManagement() {
                               onClick={() => setEnableTarget(user)}
                               className="p-2 rounded-lg border border-emerald-300 text-emerald-700 hover:bg-emerald-50 transition-colors"
                               title="Aktifkan akun"
+                              aria-label="Aktifkan akun"
                             >
                               <UserCheck size={16} />
                             </button>
@@ -697,6 +703,7 @@ export default function UserManagement() {
                               onClick={() => setDisableTarget(user)}
                               className="p-2 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 transition-colors"
                               title="Nonaktifkan akun"
+                              aria-label="Nonaktifkan akun"
                             >
                               <UserX size={16} />
                             </button>
