@@ -19,6 +19,8 @@ import {
   Copy,
   Check,
   AlertTriangle,
+  UserX,
+  UserCheck,
 } from "lucide-react";
 import { useToast } from "../components/ui/use-toast";
 import { usePermissions } from "../hooks/usePermissions";
@@ -28,6 +30,8 @@ import { getPageLabel } from "../lib/pageLabels";
 
 type ActivityRow = {
   id: string;
+  created_at: string;
+  disabled: boolean;
   last_sign_in_at: string | null;
   last_seen_at: string | null;
   last_path: string | null;
@@ -50,11 +54,13 @@ const STATUS_META: Record<string, { label: string; cls: string; dot: string }> =
   today: { label: "Aktif hari ini", cls: "bg-sky-50 text-sky-700 border-sky-200", dot: "bg-sky-500" },
   inactive: { label: "Tidak aktif", cls: "bg-slate-100 text-slate-600 border-slate-200", dot: "bg-slate-400" },
   never: { label: "Belum pernah login", cls: "bg-amber-50 text-amber-700 border-amber-200", dot: "bg-amber-500" },
+  disabled: { label: "Dinonaktifkan", cls: "bg-rose-50 text-rose-700 border-rose-200", dot: "bg-rose-500" },
 };
 
 // Online = seen within 5 minutes (the tracker sends a heartbeat every 2 min
 // while a tab is open). Otherwise judged from the latest of last seen / login.
 function getActivityStatus(a?: ActivityRow): string {
+  if (a?.disabled) return "disabled";
   const seen = a?.last_seen_at ? new Date(a.last_seen_at).getTime() : 0;
   const login = a?.last_sign_in_at ? new Date(a.last_sign_in_at).getTime() : 0;
   const latest = Math.max(seen, login);
@@ -130,6 +136,11 @@ export default function UserManagement() {
   const [resetting, setResetting] = useState(false);
   const [resetResult, setResetResult] = useState<{ email: string | null; temporaryPassword: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [neverLoginDays, setNeverLoginDays] = useState(60);
+  const [disableTarget, setDisableTarget] = useState<Profile | null>(null);
+  const [enableTarget, setEnableTarget] = useState<Profile | null>(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [statusBusy, setStatusBusy] = useState(false);
   const { profile: me } = useAuth();
   const [editingUser, setEditingUser] = useState<Profile | null>(null);
   const [editRole, setEditRole] = useState("");
@@ -182,13 +193,16 @@ export default function UserManagement() {
 
   const fetchActivity = async () => {
     try {
-      const { rows, trackingReady: ready } = await api.get<{ rows: ActivityRow[]; trackingReady: boolean }>(
-        "/api/users/activity",
-      );
+      const { rows, trackingReady: ready, neverLoginDays: days } = await api.get<{
+        rows: ActivityRow[];
+        trackingReady: boolean;
+        neverLoginDays?: number;
+      }>("/api/users/activity");
       const map: Record<string, ActivityRow> = {};
       rows.forEach((r) => (map[r.id] = r));
       setActivityById(map);
       setTrackingReady(ready);
+      if (days) setNeverLoginDays(days);
     } catch (err) {
       console.warn("Failed to load user activity:", err);
     }
@@ -232,6 +246,72 @@ export default function UserManagement() {
       toast({ title: "Gagal mereset password", description: error.message, variant: "destructive" });
     } finally {
       setResetting(false);
+    }
+  };
+
+  // Accounts that never logged in and are older than neverLoginDays (the server
+  // re-checks the same rule before disabling anything).
+  const staleCandidates = users.filter((u) => {
+    const a = activityById[u.id];
+    return (
+      !!a &&
+      !a.disabled &&
+      !a.last_sign_in_at &&
+      u.id !== me?.id &&
+      Date.now() - new Date(a.created_at).getTime() > neverLoginDays * DAY_MS
+    );
+  });
+
+  const handleDisable = async () => {
+    if (!disableTarget) return;
+    setStatusBusy(true);
+    try {
+      await api.post(`/api/users/${disableTarget.id}/disable`);
+      toast({ title: "Akun dinonaktifkan", description: disableTarget.full_name || undefined });
+      setDisableTarget(null);
+      fetchActivity();
+    } catch (error: any) {
+      toast({ title: "Gagal menonaktifkan akun", description: error.message, variant: "destructive" });
+    } finally {
+      setStatusBusy(false);
+    }
+  };
+
+  const handleEnable = async () => {
+    if (!enableTarget) return;
+    setStatusBusy(true);
+    try {
+      const result = await api.post<{ email: string | null; temporaryPassword: string }>(
+        `/api/users/${enableTarget.id}/enable`,
+      );
+      // Same one-time password dialog as Reset Password.
+      setResetUser(enableTarget);
+      setResetResult(result);
+      setEnableTarget(null);
+      fetchActivity();
+    } catch (error: any) {
+      toast({ title: "Gagal mengaktifkan akun", description: error.message, variant: "destructive" });
+    } finally {
+      setStatusBusy(false);
+    }
+  };
+
+  const handleBulkDisable = async () => {
+    setStatusBusy(true);
+    try {
+      const result = await api.post<{ disabled: number; skipped: number }>("/api/users/disable-inactive", {
+        ids: staleCandidates.map((u) => u.id),
+      });
+      toast({
+        title: `${result.disabled} akun dinonaktifkan`,
+        description: result.skipped ? `${result.skipped} dilewati karena tidak memenuhi syarat.` : undefined,
+      });
+      setBulkOpen(false);
+      fetchActivity();
+    } catch (error: any) {
+      toast({ title: "Gagal menonaktifkan akun", description: error.message, variant: "destructive" });
+    } finally {
+      setStatusBusy(false);
     }
   };
 
@@ -355,6 +435,15 @@ export default function UserManagement() {
             Kelola akses dan peran pengguna lintas divisi.
           </p>
         </div>
+        {canEdit && staleCandidates.length > 0 && (
+          <button
+            onClick={() => setBulkOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 text-sm font-semibold transition-colors"
+          >
+            <UserX size={16} />
+            Nonaktifkan yang belum pernah login ({staleCandidates.length})
+          </button>
+        )}
       </div>
 
       <div className="bg-white/70 backdrop-blur-md p-2 rounded-2xl border border-slate-200 shadow-sm mb-4 flex flex-wrap items-center gap-3">
@@ -594,6 +683,25 @@ export default function UserManagement() {
                             <KeyRound size={16} />
                           </button>
                         )}
+                        {canEdit && user.id !== me?.id && (
+                          activityById[user.id]?.disabled ? (
+                            <button
+                              onClick={() => setEnableTarget(user)}
+                              className="p-2 rounded-lg border border-emerald-300 text-emerald-700 hover:bg-emerald-50 transition-colors"
+                              title="Aktifkan akun"
+                            >
+                              <UserCheck size={16} />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => setDisableTarget(user)}
+                              className="p-2 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 transition-colors"
+                              title="Nonaktifkan akun"
+                            >
+                              <UserX size={16} />
+                            </button>
+                          )
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -733,6 +841,115 @@ export default function UserManagement() {
                   )}
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Disable / Enable / Bulk-disable confirmation modals */}
+      {(disableTarget || enableTarget) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="p-5 border-b border-slate-200 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-[#5A305A] flex items-center gap-2">
+                {disableTarget ? <UserX size={18} /> : <UserCheck size={18} />}
+                {disableTarget ? "Nonaktifkan Akun" : "Aktifkan Akun"}
+              </h3>
+              <button
+                onClick={() => (disableTarget ? setDisableTarget(null) : setEnableTarget(null))}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-5 space-y-3 text-sm text-[#5A305A]">
+              {(() => {
+                const target = (disableTarget || enableTarget)!;
+                return (
+                  <p>
+                    {disableTarget ? "Nonaktifkan" : "Aktifkan kembali"} akun{" "}
+                    <span className="font-bold">{target.full_name || "pengguna ini"}</span>
+                    {emailById[target.id] ? ` (${emailById[target.id]})` : ""}?
+                  </p>
+                );
+              })()}
+              <ul className="list-disc pl-5 text-[#73507B] space-y-1">
+                {disableTarget ? (
+                  <>
+                    <li>Pengguna tidak bisa login dan sesi yang sedang aktif ditolak.</li>
+                    <li>Data dan riwayat pengguna tetap tersimpan.</li>
+                    <li>Bisa diaktifkan kembali kapan saja.</li>
+                  </>
+                ) : (
+                  <>
+                    <li>Dibuat password sementara baru, ditampilkan satu kali.</li>
+                    <li>Pengguna wajib mengganti password saat login berikutnya.</li>
+                  </>
+                )}
+              </ul>
+            </div>
+            <div className="p-5 border-t border-slate-200 bg-slate-50 flex justify-end gap-3">
+              <button
+                onClick={() => (disableTarget ? setDisableTarget(null) : setEnableTarget(null))}
+                className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-200 rounded-xl transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={disableTarget ? handleDisable : handleEnable}
+                disabled={statusBusy}
+                className={`px-4 py-2 text-white font-medium rounded-xl transition-colors flex items-center gap-2 disabled:opacity-50 ${
+                  disableTarget ? "bg-rose-600 hover:bg-rose-700" : "bg-[#5A305A] hover:bg-[#3F223F]"
+                }`}
+              >
+                {statusBusy && <Loader2 className="w-4 h-4 animate-spin" />}
+                {disableTarget ? "Ya, Nonaktifkan" : "Ya, Aktifkan"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {bulkOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
+            <div className="p-5 border-b border-slate-200 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-[#5A305A] flex items-center gap-2">
+                <UserX size={18} /> Nonaktifkan Akun Belum Pernah Login
+              </h3>
+              <button onClick={() => setBulkOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-5 space-y-3 text-sm text-[#5A305A]">
+              <p>
+                {staleCandidates.length} akun dibuat lebih dari {neverLoginDays} hari lalu dan belum pernah login.
+                Akun ini akan dinonaktifkan:
+              </p>
+              <ul className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden max-h-64 overflow-y-auto">
+                {staleCandidates.map((u) => (
+                  <li key={u.id} className="px-3 py-2">
+                    <p className="font-medium truncate">{u.full_name || "Tanpa Nama"}</p>
+                    <p className="text-xs text-slate-500 truncate">
+                      {emailById[u.id] || "-"} · dibuat {formatDateTime(activityById[u.id]?.created_at)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-[#73507B]">Data tetap tersimpan dan setiap akun bisa diaktifkan kembali.</p>
+            </div>
+            <div className="p-5 border-t border-slate-200 bg-slate-50 flex justify-end gap-3">
+              <button onClick={() => setBulkOpen(false)} className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-200 rounded-xl transition-colors">
+                Batal
+              </button>
+              <button
+                onClick={handleBulkDisable}
+                disabled={statusBusy}
+                className="px-4 py-2 bg-rose-600 text-white font-medium rounded-xl hover:bg-rose-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                {statusBusy && <Loader2 className="w-4 h-4 animate-spin" />}
+                Ya, Nonaktifkan {staleCandidates.length} Akun
+              </button>
             </div>
           </div>
         </div>

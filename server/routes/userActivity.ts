@@ -54,17 +54,45 @@ function generateTempPassword(): string {
   return chars.join("");
 }
 
+// Accounts that never logged in within this many days of being created can be
+// disabled in bulk from Manajemen Pengguna.
+const NEVER_LOGIN_DISABLE_DAYS = 60;
+const DAY_MS = 24 * 60 * 60 * 1000;
+// GoTrue has no "banned forever"; 100 years is the usual stand-in.
+const DISABLE_DURATION = "876000h";
+const BULK_DISABLE_MAX = 200;
+
+type AuthUserRow = {
+  id: string;
+  email?: string;
+  created_at: string;
+  last_sign_in_at: string | null;
+  disabled: boolean;
+};
+
 async function listAuthUsers() {
   const admin = getSupabaseAdmin();
-  const users: { id: string; email?: string; last_sign_in_at?: string | null }[] = [];
+  const users: AuthUserRow[] = [];
   for (let page = 1; ; page++) {
     const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
     if (error) throw error;
-    users.push(...data.users.map((u) => ({ id: u.id, email: u.email, last_sign_in_at: u.last_sign_in_at ?? null })));
+    users.push(
+      ...data.users.map((u) => ({
+        id: u.id,
+        email: u.email,
+        created_at: u.created_at,
+        last_sign_in_at: u.last_sign_in_at ?? null,
+        disabled: !!u.banned_until && new Date(u.banned_until).getTime() > Date.now(),
+      })),
+    );
     if (data.users.length < 200) break;
   }
   return users;
 }
+
+// Never logged in and created more than NEVER_LOGIN_DISABLE_DAYS ago.
+const isStaleNeverLoggedIn = (u: AuthUserRow) =>
+  !u.last_sign_in_at && Date.now() - new Date(u.created_at).getTime() > NEVER_LOGIN_DISABLE_DAYS * DAY_MS;
 
 // `requireAuth` is injectable only so scripts/test-backend-routes.ts can run
 // the routes with a fixed profile; server.ts always passes the real one.
@@ -132,8 +160,11 @@ export function registerUserActivityRoutes(app: Express, requireAuth: RequestHan
       const byUser = new Map((activity.data || []).map((a: any) => [a.user_id, a]));
       res.json({
         trackingReady,
+        neverLoginDays: NEVER_LOGIN_DISABLE_DAYS,
         rows: users.map((u) => ({
           id: u.id,
+          created_at: u.created_at,
+          disabled: u.disabled,
           last_sign_in_at: u.last_sign_in_at,
           last_seen_at: byUser.get(u.id)?.last_seen_at ?? null,
           last_path: byUser.get(u.id)?.last_path ?? null,
@@ -207,6 +238,111 @@ export function registerUserActivityRoutes(app: Express, requireAuth: RequestHan
       auditLog(req, "users.reset_password", { target: id });
       res.setHeader("Cache-Control", "no-store");
       res.json({ success: true, email: data.user.email ?? null, temporaryPassword });
+    }),
+  );
+
+  // Disable (ban) one account. Data is kept; sign-in and token refresh are
+  // refused by GoTrue and requireAuth rejects tokens that are still valid.
+  app.post(
+    "/api/users/:id/disable",
+    requireAuth,
+    requireHrAdmin,
+    handle(async (req, res) => {
+      const id = req.params.id;
+      if (!UUID_RE.test(id)) throw new HttpError(400, "ID pengguna tidak valid.");
+      if (id === req.profile.id) throw new HttpError(400, "Anda tidak dapat menonaktifkan akun sendiri.");
+
+      const admin = getSupabaseAdmin();
+      const users = await listAuthUsers();
+      const target = users.find((u) => u.id === id);
+      if (!target) throw new HttpError(404, "Pengguna tidak ditemukan.");
+      if (target.disabled) throw new HttpError(400, "Akun ini sudah nonaktif.");
+
+      // Never lock HR out: another active HR Admin must remain.
+      const { data: hrAdmins, error: hrError } = await admin.from("profiles").select("id").eq("role", "HR_ADMIN");
+      if (hrError) throw hrError;
+      const hrIds = new Set((hrAdmins || []).map((p: any) => p.id));
+      if (hrIds.has(id) && !users.some((u) => u.id !== id && hrIds.has(u.id) && !u.disabled)) {
+        throw new HttpError(400, "Tidak dapat menonaktifkan HR Admin terakhir yang aktif.");
+      }
+
+      const { error } = await admin.auth.admin.updateUserById(id, { ban_duration: DISABLE_DURATION });
+      if (error) {
+        console.error("disable user error:", error);
+        throw new HttpError(400, error.message || "Gagal menonaktifkan akun.");
+      }
+      auditLog(req, "users.disable", { target: id });
+      res.json({ success: true });
+    }),
+  );
+
+  // Re-enable a disabled account. It comes back with a fresh temporary
+  // password and must_change_password, since the old password is the
+  // HR-issued one (returned once, like reset-password).
+  app.post(
+    "/api/users/:id/enable",
+    requireAuth,
+    requireHrAdmin,
+    handle(async (req, res) => {
+      const id = req.params.id;
+      if (!UUID_RE.test(id)) throw new HttpError(400, "ID pengguna tidak valid.");
+      const admin = getSupabaseAdmin();
+      const { data, error } = await admin.auth.admin.getUserById(id);
+      if (error || !data?.user) throw new HttpError(404, "Pengguna tidak ditemukan.");
+      const bannedUntil = data.user.banned_until;
+      if (!bannedUntil || new Date(bannedUntil).getTime() <= Date.now()) {
+        throw new HttpError(400, "Akun ini tidak dalam keadaan nonaktif.");
+      }
+
+      const temporaryPassword = generateTempPassword();
+      const { error: updateError } = await admin.auth.admin.updateUserById(id, {
+        ban_duration: "none",
+        password: temporaryPassword,
+        app_metadata: { ...data.user.app_metadata, must_change_password: true },
+      });
+      if (updateError) {
+        console.error("enable user error:", updateError);
+        throw new HttpError(400, updateError.message || "Gagal mengaktifkan akun.");
+      }
+      auditLog(req, "users.enable", { target: id });
+      res.setHeader("Cache-Control", "no-store");
+      res.json({ success: true, email: data.user.email ?? null, temporaryPassword });
+    }),
+  );
+
+  // Bulk-disable accounts that never logged in. The client sends the ids it
+  // previewed; each one is re-checked here, so a stale or tampered list can't
+  // disable anyone who doesn't qualify.
+  app.post(
+    "/api/users/disable-inactive",
+    requireAuth,
+    requireHrAdmin,
+    handle(async (req, res) => {
+      const ids: unknown = req.body?.ids;
+      if (!Array.isArray(ids) || ids.length === 0 || ids.length > BULK_DISABLE_MAX || !ids.every((i) => typeof i === "string" && UUID_RE.test(i))) {
+        throw new HttpError(400, "Daftar pengguna tidak valid.");
+      }
+      const admin = getSupabaseAdmin();
+      const byId = new Map((await listAuthUsers()).map((u) => [u.id, u]));
+
+      const disabled: string[] = [];
+      const skipped: string[] = [];
+      for (const id of new Set(ids as string[])) {
+        const u = byId.get(id);
+        if (!u || id === req.profile.id || u.disabled || !isStaleNeverLoggedIn(u)) {
+          skipped.push(id);
+          continue;
+        }
+        const { error } = await admin.auth.admin.updateUserById(id, { ban_duration: DISABLE_DURATION });
+        if (error) {
+          console.error("bulk disable error:", id, error);
+          skipped.push(id);
+          continue;
+        }
+        disabled.push(id);
+      }
+      auditLog(req, "users.disable_inactive", { disabled, skipped: skipped.length });
+      res.json({ success: true, disabled: disabled.length, skipped: skipped.length });
     }),
   );
 }

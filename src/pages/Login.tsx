@@ -128,7 +128,8 @@ export default function Login() {
     });
 
     if (error) {
-      setError("wrong username or password");
+      // GoTrue answers a disabled (banned) account with "User is banned".
+      setError(/banned/i.test(error.message) ? "Akun Anda dinonaktifkan. Hubungi HR Admin." : "wrong username or password");
       setLoading(false);
       setTimeout(() => setError(null), 5000);
     }

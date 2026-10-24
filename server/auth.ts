@@ -40,6 +40,12 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     if (error || !user) {
       return res.status(401).json({ error: "Sesi login tidak valid. Silakan login ulang." });
     }
+    // Disabled by HR (Manajemen Pengguna). GoTrue already refuses sign-in and
+    // token refresh for a banned user; this also cuts off an access token that
+    // is still within its lifetime.
+    if (user.banned_until && new Date(user.banned_until).getTime() > Date.now()) {
+      return res.status(403).json({ error: "Akun Anda dinonaktifkan. Hubungi HR Admin." });
+    }
     // New account that hasn't replaced its HR-issued password yet — only
     // POST /api/account/change-password is allowed (server/routes/account.ts).
     if (user.app_metadata?.must_change_password === true) {
