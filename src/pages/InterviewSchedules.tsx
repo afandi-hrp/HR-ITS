@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import ScheduleTabs, { ScheduleTabCounts } from "../components/ScheduleTabs";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { api } from "../lib/api";
 import { Schedule, Candidate } from "../types";
@@ -183,6 +184,22 @@ export default function InterviewSchedules() {
     setLoading(false);
   };
 
+  const [tabCounts, setTabCounts] = useState<ScheduleTabCounts | null>(null);
+
+  const fetchTabCounts = async () => {
+    try {
+      setTabCounts(
+        await api.get<ScheduleTabCounts>(`/api/schedules/interview/counts`, {
+          startDate,
+          endDate,
+          search: debouncedSearch,
+        }),
+      );
+    } catch (err) {
+      console.warn("Failed to load tab counts:", err);
+    }
+  };
+
   const fetchSchedules = async (showLoading = true) => {
     if (showLoading) {
       setLoading(true);
@@ -202,6 +219,7 @@ export default function InterviewSchedules() {
       );
       setSchedules(rows);
       setTotalItems(total);
+      fetchTabCounts();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -436,59 +454,14 @@ export default function InterviewSchedules() {
       ) : (
         <>
           {/* Tabs */}
-          <div className="flex gap-4 border-b border-slate-200">
-            <button
-              onClick={() => {
-                setActiveTab("pending");
-                setCurrentPage(1);
-              }}
-              className={cn(
-                "pb-4 text-sm font-bold transition-all relative",
-                activeTab === "pending"
-                  ? "text-[#5A305A]"
-                  : "text-slate-400 hover:text-slate-600",
-              )}
-            >
-              Menunggu
-              {activeTab === "pending" && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#5A305A] rounded-t-full" />
-              )}
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab("confirmed");
-                setCurrentPage(1);
-              }}
-              className={cn(
-                "pb-4 text-sm font-bold transition-all relative",
-                activeTab === "confirmed"
-                  ? "text-[#5A305A]"
-                  : "text-slate-400 hover:text-slate-600",
-              )}
-            >
-              Selesai
-              {activeTab === "confirmed" && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#5A305A] rounded-t-full" />
-              )}
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab("no_show");
-                setCurrentPage(1);
-              }}
-              className={cn(
-                "pb-4 text-sm font-bold transition-all relative",
-                activeTab === "no_show"
-                  ? "text-rose-600"
-                  : "text-slate-400 hover:text-slate-600",
-              )}
-            >
-              Tidak Hadir
-              {activeTab === "no_show" && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-rose-600 rounded-t-full" />
-              )}
-            </button>
-          </div>
+          <ScheduleTabs
+            activeTab={activeTab}
+            counts={tabCounts}
+            onChange={(tab) => {
+              setActiveTab(tab);
+              setCurrentPage(1);
+            }}
+          />
 
           {/* Schedule List (Pending) */}
           {activeTab === "pending" && (

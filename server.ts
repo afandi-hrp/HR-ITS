@@ -19,6 +19,7 @@ import { registerScheduleRoutes } from "./server/routes/schedules";
 import { registerAnalyticsRoutes } from "./server/routes/analytics";
 import { registerContentRoutes } from "./server/routes/content";
 import { registerAccountRoutes } from "./server/routes/account";
+import { registerUserActivityRoutes } from "./server/routes/userActivity";
 
 dotenv.config();
 
@@ -1545,6 +1546,7 @@ app.use((req: any, res, next) => {
   registerAnalyticsRoutes(app);
   registerContentRoutes(app);
   registerAccountRoutes(app);
+  registerUserActivityRoutes(app);
 
   // API 404 handler - Catch all unmatched /api routes
   app.all("/api/*", (req, res) => {

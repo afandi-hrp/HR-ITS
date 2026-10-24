@@ -74,6 +74,39 @@ export function registerScheduleRoutes(app: Express, requireAuth: RequestHandler
     }),
   );
 
+  // Tab badges for the list view: how many schedules sit in each tab under the
+  // same ?startDate&endDate&search filters as the list above.
+  app.get(
+    "/api/schedules/:type/counts",
+    requireAuth,
+    requireHrRead,
+    handle(async (req, res) => {
+      const table = tableFor(req.params.type);
+      const search = cleanSearch(req.query.search);
+      const countFor = async (tab: "pending" | "confirmed" | "no_show") => {
+        let query = getSupabaseAdmin()
+          .from(table)
+          .select("id, candidate:candidates!inner(id)", { count: "exact", head: true });
+        if (isDate(req.query.startDate)) query = query.gte("schedule_date", `${req.query.startDate}T00:00:00`);
+        if (isDate(req.query.endDate)) query = query.lte("schedule_date", `${req.query.endDate}T23:59:59`);
+        if (search) {
+          query = query.or(`full_name.ilike.%${search}%,position.ilike.%${search}%`, { foreignTable: "candidates" });
+        }
+        if (tab === "no_show") query = query.eq("is_no_show", true);
+        else query = query.eq("is_confirmed", tab === "confirmed").eq("is_no_show", false);
+        const { count, error } = await query;
+        if (error) throw error;
+        return count ?? 0;
+      };
+      const [pending, confirmed, no_show] = await Promise.all([
+        countFor("pending"),
+        countFor("confirmed"),
+        countFor("no_show"),
+      ]);
+      res.json({ pending, confirmed, no_show });
+    }),
+  );
+
   // Calendar view: ?start&end (ISO) &search
   app.get(
     "/api/schedules/:type/calendar",

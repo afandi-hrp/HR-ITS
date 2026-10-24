@@ -7,7 +7,7 @@
 # (kejadian 2026-10-18 setelah commit f860715).
 
 # Stage 1: Build React App
-FROM node:20-alpine AS builder
+FROM node:24.22.1-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
@@ -16,7 +16,7 @@ COPY . .
 RUN npm run build
 
 # Stage 2: Production Node.js Server
-FROM node:20-alpine
+FROM node:24.22.1-alpine
 WORKDIR /app
 
 # Set environment ke production agar server.ts menyajikan folder dist/

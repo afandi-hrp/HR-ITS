@@ -7,7 +7,11 @@ export type Role = "HR_ADMIN" | "USER_MANAGER" | "DIRECTOR" | "FINANCE_DIRECTOR"
 // READ_ONLY sees what HR_ADMIN sees (minus salary) but may not change
 // anything: every non-GET request through requireAuth is refused, except
 // these POSTs that only read.
-const READ_ONLY_POST_ALLOWLIST = new Set(["/api/external-data/by-uids", "/api/external-data/links"]);
+const READ_ONLY_POST_ALLOWLIST = new Set([
+  "/api/external-data/by-uids",
+  "/api/external-data/links",
+  "/api/activity/ping", // records the caller's own last-seen page, not candidate data
+]);
 
 export interface AuthProfile {
   id: string;

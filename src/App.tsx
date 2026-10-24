@@ -7,6 +7,7 @@ import DashboardLayout from './components/DashboardLayout';
 import PageLoader from './components/PageLoader';
 import { Toaster } from './components/ui/Toaster';
 import RealtimeNotifications from './components/RealtimeNotifications';
+import ActivityTracker from './components/ActivityTracker';
 
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -145,6 +146,7 @@ function AppRoutes() {
           </Routes>
         </Suspense>
         {session && !mustChangePassword && <RealtimeNotifications />}
+        {session && !mustChangePassword && <ActivityTracker />}
         <Toaster />
       </div>
     </BrowserRouter>
