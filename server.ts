@@ -164,7 +164,10 @@ app.use(
             // dynamically import()s the module instead, which is governed
             // by script-src, not worker-src (kept below for the real-worker
             // path too).
-            scriptSrc: ["'self'", "https://unpkg.com"],
+            // https://challenges.cloudflare.com: Cloudflare Turnstile (login
+            // captcha) loads its script from there and renders in an iframe on
+            // the same origin (frame-src already allows https:).
+            scriptSrc: ["'self'", "https://unpkg.com", "https://challenges.cloudflare.com"],
             styleSrc: ["'self'", "'unsafe-inline'"],
             // Candidate CVs/photos can be hosted on arbitrary external
             // sources (Google Drive, job boards like Jobstreet, etc.), not

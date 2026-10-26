@@ -33,20 +33,35 @@ export function registerAccountRoutes(app: Express) {
         return res.status(401).json({ error: "Sesi login tidak valid. Silakan login ulang." });
       }
 
-      // Reject reusing the current (HR-issued) password: if signing in with
-      // the "new" password works, it's the same one. Skipped if the anon key
-      // isn't in the server env.
-      const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
-      const url = (process.env.VITE_SUPABASE_URL || "").replace(/^http:\/\//, "https://");
-      if (anonKey && url && user.email) {
-        const probe = createClient(url, anonKey, {
-          auth: { persistSession: false, autoRefreshToken: false },
-        });
-        const { data: same } = await probe.auth.signInWithPassword({ email: user.email, password });
-        if (same.session) {
-          await probe.auth.signOut().catch(() => {});
-          return res.status(400).json({ error: "Password baru tidak boleh sama dengan password lama." });
+      // Reject reusing the current (HR-issued) password. Preferred: compare the
+      // bcrypt hash in the database (public.password_matches_current, migration
+      // 20261026000000) — independent of login and of the Turnstile captcha.
+      // Fallback (function not created yet): try to sign in with the "new"
+      // password; if that works it's the same one. That fallback stops working
+      // once captcha is enforced on Supabase Auth, so run the migration first.
+      let sameAsCurrent: boolean | null = null;
+      const { data: matches, error: matchError } = await admin.rpc("password_matches_current", {
+        p_user_id: user.id,
+        p_password: password,
+      });
+      if (!matchError && typeof matches === "boolean") sameAsCurrent = matches;
+
+      if (sameAsCurrent === null) {
+        const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
+        const url = (process.env.VITE_SUPABASE_URL || "").replace(/^http:\/\//, "https://");
+        if (anonKey && url && user.email) {
+          const probe = createClient(url, anonKey, {
+            auth: { persistSession: false, autoRefreshToken: false },
+          });
+          const { data: same } = await probe.auth.signInWithPassword({ email: user.email, password });
+          if (same.session) {
+            await probe.auth.signOut().catch(() => {});
+            sameAsCurrent = true;
+          }
         }
+      }
+      if (sameAsCurrent) {
+        return res.status(400).json({ error: "Password baru tidak boleh sama dengan password lama." });
       }
 
       const { error: updateError } = await admin.auth.admin.updateUserById(user.id, {

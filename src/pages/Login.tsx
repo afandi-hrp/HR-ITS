@@ -1,10 +1,16 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabase";
-import { Mail, Lock, Loader2, RefreshCw, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, Loader2, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { SiteSettings } from "../types";
 import { cn } from "../lib/utils";
 import LoginBackground from "../components/LoginBackground";
+import TurnstileWidget, { TurnstileHandle } from "../components/TurnstileWidget";
+
+// Cloudflare Turnstile site key (public). The matching secret key is set on the
+// Supabase Auth server (GOTRUE_SECURITY_CAPTCHA_*), which verifies the token on
+// sign-in. Without a site key (local dev) no widget is shown and no token is sent.
+const TURNSTILE_SITE_KEY = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined) || "";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -19,68 +25,10 @@ export default function Login() {
   const [revealed, setRevealed] = useState(false);
   const location = useLocation();
 
-  // CAPTCHA states
-  const [captchaText, setCaptchaText] = useState("");
-  const [captchaInput, setCaptchaInput] = useState("");
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  const generateCaptcha = () => {
-    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-    let text = "";
-    for (let i = 0; i < 4; i++) {
-      text += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setCaptchaText(text);
-  };
-
-  useEffect(() => {
-    generateCaptcha();
-  }, []);
-
-  useEffect(() => {
-    if (captchaText && canvasRef.current) {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // Background
-        ctx.fillStyle = "#f8fafc";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Add noise (lines)
-        for (let i = 0; i < 4; i++) {
-          ctx.strokeStyle = `rgba(${Math.random() * 255},${Math.random() * 255},${Math.random() * 255}, 0.5)`;
-          ctx.beginPath();
-          ctx.moveTo(
-            Math.random() * canvas.width,
-            Math.random() * canvas.height,
-          );
-          ctx.lineTo(
-            Math.random() * canvas.width,
-            Math.random() * canvas.height,
-          );
-          ctx.stroke();
-        }
-
-        // Add text
-        ctx.font = "bold 24px Inter, sans-serif";
-        ctx.fillStyle = "#334155";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-
-        // Draw characters with slight rotation, spaced to always fit the canvas width
-        const spacing = canvas.width / (captchaText.length + 1);
-        for (let i = 0; i < captchaText.length; i++) {
-          ctx.save();
-          ctx.translate(spacing * (i + 1), canvas.height / 2);
-          ctx.rotate((Math.random() - 0.5) * 0.4);
-          ctx.fillText(captchaText[i], 0, 0);
-          ctx.restore();
-        }
-      }
-    }
-  }, [captchaText]);
+  // Cloudflare Turnstile token (single-use; reset after every attempt)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileHandle>(null);
+  const captchaRequired = !!TURNSTILE_SITE_KEY;
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -112,10 +60,9 @@ export default function Login() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (captchaInput !== captchaText) {
-      setError("Invalid CAPTCHA. Please try again.");
-      generateCaptcha();
-      setCaptchaInput("");
+    if (captchaRequired && !captchaToken) {
+      setError("Selesaikan verifikasi keamanan terlebih dahulu.");
+      setTimeout(() => setError(null), 5000);
       return;
     }
 
@@ -125,13 +72,23 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
+      ...(captchaToken ? { options: { captchaToken } } : {}),
     });
 
     if (error) {
-      // GoTrue answers a disabled (banned) account with "User is banned".
-      setError(/banned/i.test(error.message) ? "Akun Anda dinonaktifkan. Hubungi HR Admin." : "wrong username or password");
+      // GoTrue answers a disabled (banned) account with "User is banned", and a
+      // rejected Turnstile token with a message mentioning "captcha".
+      setError(
+        /banned/i.test(error.message)
+          ? "Akun Anda dinonaktifkan. Hubungi HR Admin."
+          : /captcha/i.test(error.message)
+            ? "Verifikasi keamanan gagal. Silakan coba lagi."
+            : "wrong username or password",
+      );
       setLoading(false);
       setTimeout(() => setError(null), 5000);
+      // The token was consumed by this attempt — ask Turnstile for a fresh one.
+      turnstileRef.current?.reset();
     }
   };
 
@@ -241,38 +198,21 @@ export default function Login() {
                 </button>
               </div>
 
-              <div className="pt-1">
-                <label className="block text-xs font-bold text-[#5A305A]/70 mb-1.5 px-1 uppercase tracking-wide">
-                  Security Verification
-                </label>
-                <div className="flex gap-2 items-center">
-                  <input
-                    type="text"
-                    required
-                    maxLength={4}
-                    value={captchaInput}
-                    onChange={(e) => setCaptchaInput(e.target.value)}
-                    className="w-20 shrink-0 px-3 py-3 bg-[#FDF3D3] border border-white/80 shadow-[0_4px_16px_rgba(90,48,90,0.08)] rounded-full text-sm text-[#5A305A] placeholder-[#5A305A]/40 focus:outline-none focus:ring-2 focus:ring-[#5A305A]/30 transition-all font-mono tracking-wider"
-                    placeholder="Kode"
+              {captchaRequired && (
+                <div className="pt-1">
+                  <label className="block text-xs font-bold text-[#5A305A]/70 mb-1.5 px-1 uppercase tracking-wide">
+                    Security Verification
+                  </label>
+                  <TurnstileWidget
+                    ref={turnstileRef}
+                    siteKey={TURNSTILE_SITE_KEY}
+                    onToken={setCaptchaToken}
+                    onLoadError={() => {
+                      setError("Verifikasi keamanan gagal dimuat. Periksa koneksi internet lalu muat ulang halaman.");
+                    }}
                   />
-                  <div className="flex items-center gap-1 bg-white/80 backdrop-blur-sm border border-white shadow-[0_4px_16px_rgba(90,48,90,0.08)] p-1.5 rounded-full shrink-0">
-                    <canvas
-                      ref={canvasRef}
-                      width="110"
-                      height="36"
-                      className="rounded-full bg-slate-50 border border-slate-200"
-                    />
-                    <button
-                      type="button"
-                      onClick={generateCaptcha}
-                      className="p-1.5 text-[#5A305A]/60 hover:text-[#5A305A] hover:bg-white rounded-full transition-colors shrink-0"
-                      title="Refresh CAPTCHA"
-                    >
-                      <RefreshCw size={16} />
-                    </button>
-                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="flex items-center justify-between pt-2">
                 <p className="text-xs text-[#5A305A]/50 font-semibold">
@@ -280,7 +220,7 @@ export default function Login() {
                 </p>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || (captchaRequired && !captchaToken)}
                   aria-label="Log In"
                   title="Log In"
                   className="w-12 h-12 shrink-0 rounded-full bg-[#5A305A] text-white flex items-center justify-center shadow-lg hover:bg-[#3F223F] hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100"
