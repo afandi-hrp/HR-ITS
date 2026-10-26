@@ -10,6 +10,7 @@ import { PassThrough } from "stream";
 import crypto from "crypto";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
+import { verifyTurnstile } from "./server/turnstile";
 import { registerExternalDataRoutes } from "./server/routes/externalData";
 import { registerRegistrationTokenRoutes } from "./server/routes/registrationTokens";
 import { registerLogRoutes } from "./server/routes/logs";
@@ -931,9 +932,23 @@ app.use((req: any, res, next) => {
       return res.status(400).json({ error: "Phone number is required" });
     }
 
+    // Cloudflare Turnstile: this endpoint sends a WhatsApp message through n8n,
+    // so a solved captcha token is required before anything is created or sent.
+    // (Single-use token: the browser asks for a new one on every request/resend.)
+    const captcha = await verifyTurnstile(req, req.body?.captchaToken);
+    if (!captcha.ok) {
+      if (!captcha.unavailable) console.warn("request-otp captcha rejected:", (captcha.codes || []).join(","));
+      return res.status(captcha.unavailable ? 503 : 400).json({
+        code: "captcha_failed",
+        error: captcha.unavailable
+          ? "Verifikasi keamanan tidak dapat diproses saat ini. Silakan coba beberapa saat lagi."
+          : "Verifikasi keamanan gagal atau kedaluwarsa. Silakan selesaikan verifikasi lalu coba lagi.",
+      });
+    }
+
     try {
       const supabaseAdmin = getSupabaseAdmin();
-      
+
       // Basic Rate Limiting: Check if there are more than 3 requests in the last 5 minutes for this phone
       const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
       const { count, error: rateLimitError } = await supabaseAdmin

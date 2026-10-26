@@ -17,7 +17,6 @@ import {
   ArrowLeft,
   ClipboardList,
   GraduationCap,
-  RefreshCw,
   MessageCircle,
   Heart,
   TrendingUp,
@@ -37,6 +36,11 @@ import {
 import { useToast } from "../components/ui/use-toast";
 import { cn, fetchWithRetry } from "../lib/utils";
 import { SiteSettings } from "../types";
+import TurnstileWidget, { TurnstileHandle } from "../components/TurnstileWidget";
+
+// Cloudflare Turnstile site key (public). The token is verified server-side by
+// POST /api/request-otp (server/turnstile.ts). Empty = no widget (local dev).
+const TURNSTILE_SITE_KEY = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined) || "";
 
 interface OpenRecruitment {
   id: string;
@@ -78,10 +82,12 @@ export default function PublicCareer() {
   // Upload Data
   const [files, setFiles] = useState<File[]>([]);
 
-  // CAPTCHA Data
-  const [captchaText, setCaptchaText] = useState("");
-  const [captchaInput, setCaptchaInput] = useState("");
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  // Cloudflare Turnstile token. Single-use, and only one widget is mounted at a
+  // time (step 1: before sending the OTP; step 2: before resending it), so one
+  // token + one ref is enough. It is cleared on every step change.
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileHandle>(null);
+  const captchaRequired = !!TURNSTILE_SITE_KEY;
 
   // Positions
   const [availablePositions, setAvailablePositions] = useState<string[]>([]);
@@ -161,19 +167,9 @@ export default function PublicCareer() {
     },
   ];
 
-  const generateCaptcha = () => {
-    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-    let text = "";
-    for (let i = 0; i < 5; i++) {
-      text += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setCaptchaText(text);
-  };
-
+  // Token Turnstile sekali pakai: kosongkan setiap pindah langkah (widget dipasang ulang).
   useEffect(() => {
-    if (step === 2) {
-      generateCaptcha();
-    }
+    setCaptchaToken(null);
   }, [step]);
 
   useEffect(() => {
@@ -183,50 +179,6 @@ export default function PublicCareer() {
     }
     return () => clearTimeout(timer);
   }, [countdown]);
-
-  useEffect(() => {
-    if (step === 2 && captchaText && canvasRef.current) {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // Background
-        ctx.fillStyle = "#f8fafc";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Add noise (lines)
-        for (let i = 0; i < 5; i++) {
-          ctx.beginPath();
-          ctx.moveTo(
-            Math.random() * canvas.width,
-            Math.random() * canvas.height,
-          );
-          ctx.lineTo(
-            Math.random() * canvas.width,
-            Math.random() * canvas.height,
-          );
-          ctx.strokeStyle = "#cbd5e1";
-          ctx.stroke();
-        }
-
-        // Add text
-        ctx.font = "bold 24px Inter, sans-serif";
-        ctx.fillStyle = "#334155";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-
-        // Draw characters with slight rotation
-        for (let i = 0; i < captchaText.length; i++) {
-          ctx.save();
-          ctx.translate(20 + i * 20, canvas.height / 2);
-          ctx.rotate((Math.random() - 0.5) * 0.4);
-          ctx.fillText(captchaText[i], 0, 0);
-          ctx.restore();
-        }
-      }
-    }
-  }, [captchaText, step]);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -315,6 +267,14 @@ export default function PublicCareer() {
       });
       return;
     }
+    if (captchaRequired && !captchaToken) {
+      toast({
+        title: "Peringatan",
+        description: "Selesaikan verifikasi keamanan terlebih dahulu.",
+        variant: "destructive",
+      });
+      return;
+    }
     setShowOtpConfirmModal(true);
   };
 
@@ -328,6 +288,7 @@ export default function PublicCareer() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phone: phoneNumber,
+          captchaToken,
         }),
       });
 
@@ -347,6 +308,7 @@ export default function PublicCareer() {
       setCountdown(120);
     } catch (error: any) {
       console.error("Error requesting OTP:", error);
+      turnstileRef.current?.reset(); // token sudah terpakai
 
       let errorMessage =
         error.message || "Gagal terhubung ke server, silakan coba kembali";
@@ -381,6 +343,7 @@ export default function PublicCareer() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phone: phoneNumber,
+          captchaToken,
         }),
       });
 
@@ -399,8 +362,10 @@ export default function PublicCareer() {
         description: "Silakan periksa WhatsApp Anda untuk kode OTP baru.",
       });
       setCountdown(120);
+      turnstileRef.current?.reset(); // token sudah terpakai
     } catch (error: any) {
       console.error("Error resending OTP:", error);
+      turnstileRef.current?.reset(); // token sudah terpakai
       let errorMessage =
         error.message || "Gagal terhubung ke server, silakan coba kembali";
       if (
@@ -432,17 +397,6 @@ export default function PublicCareer() {
         description: "Masukkan 6 digit kode OTP.",
         variant: "destructive",
       });
-      return;
-    }
-
-    if (captchaInput !== captchaText) {
-      toast({
-        title: "Peringatan",
-        description: "CAPTCHA tidak valid. Silakan coba lagi.",
-        variant: "destructive",
-      });
-      generateCaptcha();
-      setCaptchaInput("");
       return;
     }
 
@@ -949,10 +903,31 @@ export default function PublicCareer() {
                     </div>
                   </div>
 
+                  {captchaRequired && (
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        Verifikasi Keamanan
+                      </label>
+                      <TurnstileWidget
+                        key="otp-request"
+                        ref={turnstileRef}
+                        siteKey={TURNSTILE_SITE_KEY}
+                        onToken={setCaptchaToken}
+                        onLoadError={() =>
+                          toast({
+                            title: "Verifikasi keamanan gagal dimuat",
+                            description: "Periksa koneksi internet lalu muat ulang halaman.",
+                            variant: "destructive",
+                          })
+                        }
+                      />
+                    </div>
+                  )}
+
                   <button
                     type="button"
                     onClick={handleRequestOTPClick}
-                    disabled={loading}
+                    disabled={loading || (captchaRequired && !captchaToken)}
                     className="w-full py-4 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {loading ? (
@@ -997,44 +972,6 @@ export default function PublicCareer() {
                     />
                   </div>
 
-                  {/* CAPTCHA Section */}
-                  <div className="pt-4 text-left">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">
-                      Verifikasi Keamanan
-                    </label>
-                    <div className="flex gap-3 items-center">
-                      <div className="relative flex-1">
-                        <input
-                          type="text"
-                          required
-                          maxLength={5}
-                          value={captchaInput}
-                          onChange={(e) => setCaptchaInput(e.target.value)}
-                          className="block w-full px-4 py-3 bg-white/50 border border-white/40 rounded-xl text-[#5A305A] placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/80 transition-all font-mono tracking-widest"
-                          placeholder="Ketik 5 karakter"
-                        />
-                      </div>
-                      <div className="flex items-center gap-2 bg-white/60 p-1.5 rounded-xl border border-white/40 shadow-sm">
-                        <canvas
-                          ref={canvasRef}
-                          width="120"
-                          height="40"
-                          className="rounded-lg cursor-pointer"
-                          onClick={generateCaptcha}
-                          title="Klik untuk mengganti CAPTCHA"
-                        />
-                        <button
-                          type="button"
-                          onClick={generateCaptcha}
-                          className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                          title="Ganti CAPTCHA"
-                        >
-                          <RefreshCw size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
                   <button
                     type="submit"
                     disabled={loading || otpInput.length !== 6}
@@ -1062,13 +999,22 @@ export default function PublicCareer() {
                         <button
                           type="button"
                           onClick={handleResendOTP}
-                          disabled={loading}
+                          disabled={loading || (captchaRequired && !captchaToken)}
                           className="text-indigo-600 font-bold hover:underline disabled:opacity-50"
                         >
                           Kirim Ulang
                         </button>
                       )}
                     </div>
+
+                    {captchaRequired && countdown === 0 && (
+                      <TurnstileWidget
+                        key="otp-resend"
+                        ref={turnstileRef}
+                        siteKey={TURNSTILE_SITE_KEY}
+                        onToken={setCaptchaToken}
+                      />
+                    )}
 
                     <button
                       type="button"
