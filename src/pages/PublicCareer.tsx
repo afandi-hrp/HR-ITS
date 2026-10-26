@@ -910,6 +910,7 @@ export default function PublicCareer() {
                       </label>
                       <TurnstileWidget
                         key="otp-request"
+                        variant="career"
                         ref={turnstileRef}
                         siteKey={TURNSTILE_SITE_KEY}
                         onToken={setCaptchaToken}
@@ -1010,6 +1011,7 @@ export default function PublicCareer() {
                     {captchaRequired && countdown === 0 && (
                       <TurnstileWidget
                         key="otp-resend"
+                        variant="career"
                         ref={turnstileRef}
                         siteKey={TURNSTILE_SITE_KEY}
                         onToken={setCaptchaToken}
