@@ -8,9 +8,11 @@ import axios from "axios";
 import FormData from "form-data";
 import { PassThrough } from "stream";
 import crypto from "crypto";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import helmet from "helmet";
 import { verifyTurnstile } from "./server/turnstile";
+import { otpClientKey } from "./server/clientIp";
+import { OTP_MAX_WRONG_ATTEMPTS, noteWrongOtpAttempt, clearOtpAttempts } from "./server/otpAttempts";
 import { registerExternalDataRoutes } from "./server/routes/externalData";
 import { registerRegistrationTokenRoutes } from "./server/routes/registrationTokens";
 import { registerLogRoutes } from "./server/routes/logs";
@@ -45,6 +47,9 @@ const otpRequestRateLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
   max: 15, // limit each IP to 15 OTP requests per 5 minutes to prevent spamming different numbers
   message: { error: "Terlalu banyak permintaan OTP dari perangkat Anda. Silakan coba lagi nanti." },
+  // Real visitor IP (see server/clientIp.ts): behind the Cloudflare tunnel + nginx every
+  // visitor would otherwise share one bucket.
+  keyGenerator: (req) => ipKeyGenerator(otpClientKey(req)),
   validate: { trustProxy: false, xForwardedForHeader: false }
 });
 
@@ -52,6 +57,7 @@ const otpVerifyRateLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
   max: 10, // limit each IP to 10 OTP verification attempts per 5 minutes to prevent brute-force
   message: { error: "Terlalu banyak percobaan kode OTP. Silakan coba lagi nanti." },
+  keyGenerator: (req) => ipKeyGenerator(otpClientKey(req)),
   validate: { trustProxy: false, xForwardedForHeader: false }
 });
 
@@ -168,7 +174,11 @@ app.use(
             // https://challenges.cloudflare.com: Cloudflare Turnstile (login
             // captcha) loads its script from there and renders in an iframe on
             // the same origin (frame-src already allows https:).
-            scriptSrc: ["'self'", "https://unpkg.com", "https://challenges.cloudflare.com"],
+            // https://static.cloudflareinsights.com: Cloudflare Web Analytics
+            // beacon, auto-injected into the HTML by Cloudflare's proxy (not
+            // by our code). Its reports go to cloudflareinsights.com, which
+            // connect-src already allows via https:.
+            scriptSrc: ["'self'", "https://unpkg.com", "https://challenges.cloudflare.com", "https://static.cloudflareinsights.com"],
             styleSrc: ["'self'", "'unsafe-inline'"],
             // Candidate CVs/photos can be hosted on arbitrary external
             // sources (Google Drive, job boards like Jobstreet, etc.), not
@@ -935,7 +945,7 @@ app.use((req: any, res, next) => {
     // Cloudflare Turnstile: this endpoint sends a WhatsApp message through n8n,
     // so a solved captcha token is required before anything is created or sent.
     // (Single-use token: the browser asks for a new one on every request/resend.)
-    const captcha = await verifyTurnstile(req, req.body?.captchaToken);
+    const captcha = await verifyTurnstile(req, req.body?.captchaToken, "request_otp");
     if (!captcha.ok) {
       if (!captcha.unavailable) console.warn("request-otp captcha rejected:", (captcha.codes || []).join(","));
       return res.status(captcha.unavailable ? 503 : 400).json({
@@ -1048,8 +1058,18 @@ app.use((req: any, res, next) => {
       }
 
       if (data.otp_code !== otpInput) {
-        return res.status(400).json({ error: "Kode OTP salah." });
+        // Per-code cap (in addition to the per-IP limiter): a 6-digit code must not be
+        // guessable by many clients in parallel. After OTP_MAX_WRONG_ATTEMPTS wrong tries
+        // the code is burned and a new one has to be requested (which needs a captcha).
+        const wrong = noteWrongOtpAttempt(String(otpRequestId));
+        if (wrong >= OTP_MAX_WRONG_ATTEMPTS) {
+          await supabaseAdmin.from('otp_requests').update({ is_used: true }).eq('id', otpRequestId);
+          clearOtpAttempts(String(otpRequestId));
+          return res.status(429).json({ error: "Terlalu banyak kode salah. Silakan minta kode OTP baru." });
+        }
+        return res.status(400).json({ error: `Kode OTP salah. Sisa percobaan: ${OTP_MAX_WRONG_ATTEMPTS - wrong}.` });
       }
+      clearOtpAttempts(String(otpRequestId));
 
       // Generate an upload token and extend expiration to 1 hour
       const uploadToken = crypto.randomBytes(32).toString('hex');

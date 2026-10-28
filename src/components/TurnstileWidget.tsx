@@ -60,6 +60,9 @@ type Props = {
   appearance?: "always" | "interaction-only";
   // Look of our status chip: pill (login page) or rounded box (public career form).
   variant?: "login" | "career";
+  // Binds the token to one action (letters/digits/_/-, max 32). The server rejects a
+  // token minted for a different action, e.g. the login one used for request-otp.
+  action?: string;
 };
 
 const CHIP: Record<NonNullable<Props["variant"]>, string> = {
@@ -70,7 +73,7 @@ const CHIP: Record<NonNullable<Props["variant"]>, string> = {
 
 // A Turnstile token is single-use: call reset() after every submit attempt.
 const TurnstileWidget = forwardRef<TurnstileHandle, Props>(
-  ({ siteKey, onToken, onLoadError, appearance = "interaction-only", variant = "login" }, ref) => {
+  ({ siteKey, onToken, onLoadError, appearance = "interaction-only", variant = "login", action }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const widgetIdRef = useRef<string | null>(null);
     const onTokenRef = useRef(onToken);
@@ -96,6 +99,7 @@ const TurnstileWidget = forwardRef<TurnstileHandle, Props>(
             language: "id",
             size: "flexible", // fills the card width like the inputs above it
             appearance,
+            ...(action ? { action } : {}),
             callback: (token: string) => {
               setStatus("success");
               onTokenRef.current(token);
@@ -121,7 +125,7 @@ const TurnstileWidget = forwardRef<TurnstileHandle, Props>(
         if (widgetIdRef.current && window.turnstile) window.turnstile.remove(widgetIdRef.current);
         widgetIdRef.current = null;
       };
-    }, [siteKey, appearance]);
+    }, [siteKey, appearance, action]);
 
     const chip = {
       verifying: { icon: <Loader2 size={16} className="animate-spin shrink-0 opacity-70" />, text: "Memverifikasi keamanan…", tone: "" },

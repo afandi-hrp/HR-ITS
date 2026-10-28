@@ -206,6 +206,7 @@ export default function Login() {
                   <TurnstileWidget
                     ref={turnstileRef}
                     siteKey={TURNSTILE_SITE_KEY}
+                    action="login"
                     onToken={setCaptchaToken}
                     onLoadError={() => {
                       setError("Verifikasi keamanan gagal dimuat. Periksa koneksi internet lalu muat ulang halaman.");
